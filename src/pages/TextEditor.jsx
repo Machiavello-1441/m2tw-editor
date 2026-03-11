@@ -157,6 +157,18 @@ export default function TextEditor() {
 
         {/* Editor */}
         <ScrollArea className="flex-1">
+          {showRaw ? (
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-foreground">Raw export_buildings.txt</span>
+                <Badge variant="outline" className="text-[10px] ml-auto">{rawContent.split('\n').length} lines</Badge>
+              </div>
+              <pre className="text-[10px] font-mono bg-card border border-border rounded-lg p-4 whitespace-pre-wrap break-all leading-relaxed text-muted-foreground">
+                {rawContent}
+              </pre>
+            </div>
+          ) : (
           <div className="p-4 max-w-2xl">
             {!selectedLevel ? (
               <div className="text-center text-sm text-muted-foreground py-20">
