@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, ChevronRight, ChevronDown, Trash2, Castle, Layers } from 'lucide-react';
+import { Upload, FileText, ChevronRight, ChevronDown, Trash2, Castle, Layers, Eye } from 'lucide-react';
 import { FACTIONS } from '../components/edb/EDBParser';
 
 function BuildingTreeNav({ edbData, textData, selectedLevel, setSelectedLevel }) {
