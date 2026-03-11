@@ -84,9 +84,12 @@ function parseRequirements(reqStr) {
     parts.push({ text: current.trim(), connector: null });
   }
   
-  for (const part of parts) {
+  for (let pi = 0; pi < parts.length; pi++) {
+    const part = parts[pi];
     const text = part.text;
-    const cond = { connector: part.nextConnector || null };
+    // prevConnector = connector that precedes this condition
+    const prevConn = pi > 0 ? (parts[pi - 1].nextConnector || null) : undefined;
+    const cond = { connector: part.nextConnector || null, prevConnector: prevConn };
     
     if (text.startsWith('factions')) {
       const match = text.match(/factions\s*\{([^}]*)\}/);
