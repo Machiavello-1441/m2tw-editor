@@ -4,7 +4,7 @@ import { createPageUrl } from '@/utils';
 import { useEDB } from '../components/edb/EDBContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, Castle, FileText, Image, Download, ArrowRight, Sword } from 'lucide-react';
+import { Upload, Castle, FileText, ImageIcon, Download, ArrowRight, Sword } from 'lucide-react';
 
 export default function Home() {
   const { loadEDB, edbData } = useEDB();
