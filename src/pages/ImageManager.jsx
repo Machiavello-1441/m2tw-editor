@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Image, Upload, FileImage, Trash2, Info } from 'lucide-react';
+import { ImageIcon, Upload, FileImage, Trash2, Info } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function ImageManager() {
