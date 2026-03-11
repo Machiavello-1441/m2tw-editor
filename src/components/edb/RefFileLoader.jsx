@@ -40,7 +40,7 @@ export default function RefFileLoader() {
     loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile,
   } = useRefData();
 
-  const [loaded, setLoaded] = React.useState({});
+  const [loaded, setLoaded] = useState({});
   const folderRef = useRef();
 
   const loaders = { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile };
