@@ -49,7 +49,7 @@ export default function ImageManager() {
   return (
     <div className="h-screen flex flex-col">
       <div className="h-10 border-b border-border flex items-center px-4 gap-3 shrink-0 bg-card/50">
-        <Image className="w-4 h-4 text-muted-foreground" />
+        <ImageIcon className="w-4 h-4 text-muted-foreground" />
         <span className="text-xs font-medium text-foreground">Image Manager</span>
         <span className="text-[10px] text-muted-foreground">— Building images & icons</span>
       </div>
