@@ -15,6 +15,7 @@ const navItems = [
 
 export default function Layout({ children, currentPageName }) {
   return (
+    <RefDataProvider>
     <EDBProvider>
       <div className="dark min-h-screen bg-background flex">
         {/* Sidebar */}
