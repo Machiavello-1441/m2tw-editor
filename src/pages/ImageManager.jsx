@@ -13,6 +13,7 @@ import { base44 } from '@/api/base44Client';
 
 export default function ImageManager() {
   const { edbData, imageData, setImageData } = useEDB();
+  const { cultures } = useRefData();
   const [selectedLevel, setSelectedLevel] = useState('');
   const [selectedCulture, setSelectedCulture] = useState('northern_european');
   const [uploading, setUploading] = useState({});
