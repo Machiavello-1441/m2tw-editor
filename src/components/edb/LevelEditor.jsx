@@ -172,6 +172,9 @@ export default function LevelEditor() {
           </CardContent>
         </Card>
 
+        {/* Level Images */}
+        <LevelImages levelName={level.name} />
+
         {/* Requirements */}
         <Card>
           <CardHeader className="p-3 pb-2">
