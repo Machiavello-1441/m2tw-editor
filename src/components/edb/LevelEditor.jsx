@@ -65,11 +65,11 @@ export default function LevelEditor() {
           <div>
             <h2 className="text-sm font-bold text-foreground">{level.name}</h2>
             <p className="text-[10px] text-muted-foreground">
-              {building.name} → {level.settlementType}
+              {building.name} → Level {levelIndex + 1} · {level.settlementType}
             </p>
           </div>
           <Badge variant="outline" className="ml-auto text-[10px]">
-            {level.settlementMin}
+            #{levelIndex + 1} · {level.settlementMin}
           </Badge>
         </div>
 
