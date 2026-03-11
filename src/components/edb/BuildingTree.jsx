@@ -147,8 +147,8 @@ export default function BuildingTree() {
           <h2 className="text-xs font-bold text-foreground uppercase tracking-wider flex-1">Buildings</h2>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                <Plus className="w-3.5 h-3.5" />
+              <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] gap-1">
+                <Plus className="w-3 h-3" /> New
               </Button>
             </DialogTrigger>
             <DialogContent>
