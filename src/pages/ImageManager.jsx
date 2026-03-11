@@ -65,7 +65,7 @@ export default function ImageManager() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CULTURES.map(c => (
+                {cultures.map(c => (
                   <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
                 ))}
               </SelectContent>
