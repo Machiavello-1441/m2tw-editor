@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
-import { CULTURES } from '../components/edb/EDBParser';
+import { useRefData } from '../components/edb/RefDataContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
