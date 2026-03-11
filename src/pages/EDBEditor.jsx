@@ -52,8 +52,9 @@ export default function EDBEditor() {
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">
-            {edbData.buildings.length} buildings · {edbData.hiddenResources.length} hidden resources
+          <RefFileLoader />
+          <span className="text-[10px] text-muted-foreground hidden xl:block">
+            {edbData.buildings.length} bldgs · {edbData.hiddenResources.length} hidden res
           </span>
           <label className="cursor-pointer">
             <input type="file" accept=".txt" onChange={handleFileUpload} className="hidden" />
