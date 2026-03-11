@@ -16,7 +16,7 @@ const navItems = [
 export default function Layout({ children, currentPageName }) {
   return (
     <RefDataProvider>
-    <EDBProvider>
+      <EDBProvider>
       <div className="dark min-h-screen bg-background flex">
         {/* Sidebar */}
         <nav className="w-16 lg:w-56 border-r border-border bg-card flex flex-col shrink-0">
