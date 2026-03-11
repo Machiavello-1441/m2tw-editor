@@ -92,12 +92,13 @@ export function EDBProvider({ children }) {
   }, [selectedBuilding]);
 
   const addLevel = useCallback((buildingName) => {
+    let newLevelName = '';
     setEdbData(prev => {
       if (!prev) return prev;
       const newBuildings = prev.buildings.map(b => {
         if (b.name === buildingName) {
           const newLevel = createDefaultLevel(buildingName, b.levels.length);
-          // Update previous last level's upgrades to point to new level
+          newLevelName = newLevel.name;
           const updatedLevels = b.levels.map((l, idx) => {
             if (idx === b.levels.length - 1 && l.upgrades.length === 0) {
               return { ...l, upgrades: [newLevel.name] };
@@ -110,6 +111,18 @@ export function EDBProvider({ children }) {
       });
       return { ...prev, buildings: newBuildings };
     });
+    // Auto-create text entry for new level
+    setTimeout(() => {
+      if (newLevelName) {
+        setTextData(prev => {
+          const next = { ...prev };
+          if (!next[newLevelName]) next[newLevelName] = newLevelName;
+          if (!next[newLevelName + '_desc']) next[newLevelName + '_desc'] = '';
+          if (!next[newLevelName + '_desc_short']) next[newLevelName + '_desc_short'] = '';
+          return next;
+        });
+      }
+    }, 0);
     setIsDirty(true);
   }, []);
 
