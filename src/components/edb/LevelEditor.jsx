@@ -6,8 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Settings, Shield, Swords, ArrowUpRight } from 'lucide-react';
+import { Settings, Shield, Swords, X } from 'lucide-react';
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor';
 import RequirementBuilder from './RequirementBuilder';
@@ -26,17 +25,29 @@ export default function LevelEditor() {
   const building = edbData.buildings.find(b => b.name === selectedBuilding);
   if (!building) return null;
 
-  // If only building selected (not a specific level), show building overview
   if (!selectedLevel) {
-    return <BuildingOverview building={building} />;
+    return <BuildingOverview building={building} edbData={edbData} />;
   }
 
   const level = building.levels.find(l => l.name === selectedLevel);
   if (!level) return null;
 
-  const update = (field, value) => {
-    updateLevel(selectedBuilding, selectedLevel, { [field]: value });
+  const update = (field, value) => updateLevel(selectedBuilding, selectedLevel, { [field]: value });
+
+  // Other levels in same building (for upgrades)
+  const otherLevels = building.levels.filter(l => l.name !== selectedLevel).map(l => l.name);
+
+  const toggleUpgrade = (levelName) => {
+    const current = level.upgrades || [];
+    if (current.includes(levelName)) {
+      update('upgrades', current.filter(u => u !== levelName));
+    } else {
+      update('upgrades', [...current, levelName]);
+    }
   };
+
+  // All building names for convert_to dropdown
+  const allBuildingNames = edbData.buildings.map(b => b.name);
 
   return (
     <ScrollArea className="h-full">
@@ -67,48 +78,33 @@ export default function LevelEditor() {
               <div>
                 <Label className="text-[10px] text-muted-foreground">Level Name</Label>
                 <Input className="h-7 text-xs mt-1" value={level.name}
-                  onChange={e => {
-                    const newName = e.target.value;
-                    updateLevel(selectedBuilding, selectedLevel, prev => ({ ...prev, name: newName }));
-                  }}
+                  onChange={e => updateLevel(selectedBuilding, selectedLevel, prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Settlement Type</Label>
                 <Select value={level.settlementType} onValueChange={v => update('settlementType', v)}>
-                  <SelectTrigger className="h-7 text-xs mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {SETTLEMENT_TYPES.map(t => (
-                      <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
-                    ))}
+                    {SETTLEMENT_TYPES.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Material</Label>
                 <Select value={level.material} onValueChange={v => update('material', v)}>
-                  <SelectTrigger className="h-7 text-xs mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {MATERIALS.map(m => (
-                      <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
-                    ))}
+                    {MATERIALS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Settlement Min</Label>
                 <Select value={level.settlementMin} onValueChange={v => update('settlementMin', v)}>
-                  <SelectTrigger className="h-7 text-xs mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {SETTLEMENT_LEVELS.map(s => (
-                      <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
-                    ))}
+                    {SETTLEMENT_LEVELS.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -124,28 +120,49 @@ export default function LevelEditor() {
                   onChange={e => update('cost', parseInt(e.target.value) || 0)}
                 />
               </div>
-              <div>
+              <div className="col-span-2">
                 <Label className="text-[10px] text-muted-foreground">Convert To</Label>
-                <Input className="h-7 text-xs mt-1" value={level.convertTo ?? ''}
-                  placeholder="Index or blank"
-                  onChange={e => update('convertTo', e.target.value || null)}
-                />
+                <Select value={level.convertTo || '__none__'} onValueChange={v => update('convertTo', v === '__none__' ? null : v)}>
+                  <SelectTrigger className="h-7 text-xs mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__" className="text-xs text-muted-foreground">— None —</SelectItem>
+                    {allBuildingNames.filter(n => n !== selectedBuilding).map(n => (
+                      <SelectItem key={n} value={n} className="text-xs">{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            
-            {/* Upgrades */}
+
+            {/* Upgrades — multi-select from same tree */}
             <div>
               <Label className="text-[10px] text-muted-foreground">Upgrades To</Label>
-              <div className="flex gap-1 mt-1 flex-wrap">
-                {level.upgrades.map((u, i) => (
-                  <Badge key={i} variant="secondary" className="text-[10px]">
-                    <ArrowUpRight className="w-2.5 h-2.5 mr-0.5" />{u}
-                  </Badge>
-                ))}
-                {level.upgrades.length === 0 && (
-                  <span className="text-[10px] text-muted-foreground italic">Top level (no upgrades)</span>
-                )}
-              </div>
+              {otherLevels.length > 0 ? (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {otherLevels.map(ln => {
+                    const selected = (level.upgrades || []).includes(ln);
+                    return (
+                      <button
+                        key={ln}
+                        onClick={() => toggleUpgrade(ln)}
+                        className={`px-2 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1
+                          ${selected
+                            ? 'bg-primary/20 border-primary/40 text-primary'
+                            : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
+                          }`}
+                      >
+                        {ln}
+                        {selected && <X className="w-2 h-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground mt-1 italic">No other levels in this building tree</p>
+              )}
+              {(level.upgrades || []).length === 0 && otherLevels.length > 0 && (
+                <p className="text-[10px] text-muted-foreground italic mt-1">Top level (no upgrades selected)</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -162,6 +179,7 @@ export default function LevelEditor() {
             <RequirementBuilder
               requirements={level.requirements || []}
               onChange={reqs => update('requirements', reqs)}
+              edbData={edbData}
             />
           </CardContent>
         </Card>
@@ -178,6 +196,7 @@ export default function LevelEditor() {
             <CapabilityEditor
               capabilities={level.capabilities}
               onChange={caps => update('capabilities', caps)}
+              edbData={edbData}
             />
           </CardContent>
         </Card>
@@ -186,8 +205,9 @@ export default function LevelEditor() {
   );
 }
 
-function BuildingOverview({ building }) {
+function BuildingOverview({ building, edbData }) {
   const { updateBuilding } = useEDB();
+  const allBuildingNames = edbData.buildings.map(b => b.name);
 
   return (
     <ScrollArea className="h-full">
@@ -211,11 +231,15 @@ function BuildingOverview({ building }) {
           <CardContent className="p-3 pt-0 space-y-3">
             <div>
               <Label className="text-[10px] text-muted-foreground">Convert To (castle/city equivalent)</Label>
-              <Input className="h-7 text-xs mt-1"
-                value={building.convertTo || ''}
-                placeholder="e.g. castle_barracks"
-                onChange={e => updateBuilding(building.name, { convertTo: e.target.value || null })}
-              />
+              <Select value={building.convertTo || '__none__'} onValueChange={v => updateBuilding(building.name, { convertTo: v === '__none__' ? null : v })}>
+                <SelectTrigger className="h-7 text-xs mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" className="text-xs text-muted-foreground">— None —</SelectItem>
+                  {allBuildingNames.filter(n => n !== building.name).map(n => (
+                    <SelectItem key={n} value={n} className="text-xs">{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="text-[10px] text-muted-foreground">Levels</Label>
