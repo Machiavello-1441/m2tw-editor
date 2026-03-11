@@ -36,6 +36,9 @@ export default function LevelEditor() {
 
   const update = (field, value) => updateLevel(selectedBuilding, selectedLevel, { [field]: value });
 
+  // Level index (1-based)
+  const levelIndex = building.levels.findIndex(l => l.name === selectedLevel);
+
   // Other levels in same building (for upgrades)
   const otherLevels = building.levels.filter(l => l.name !== selectedLevel).map(l => l.name);
 
