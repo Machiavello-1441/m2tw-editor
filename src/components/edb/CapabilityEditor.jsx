@@ -1,88 +1,96 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Swords, Shield } from 'lucide-react';
 import { BUILDING_TRAITS } from './EDBParser';
 import { useRefData } from './RefDataContext';
 import RequirementBuilder from './RequirementBuilder';
+import SearchableSelect from './SearchableSelect';
 
 function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
   const [showReqs, setShowReqs] = useState(false);
   const { units } = useRefData();
 
+  const unitOptions = units.map(u => ({ value: u.type, label: u.type }));
+
   return (
     <div className="bg-accent/50 rounded-lg p-3 space-y-2">
-      {/* Column headers */}
-      <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto_auto] gap-2 items-center">
-        <p className="text-[9px] text-muted-foreground/60 pl-5">Unit type name</p>
-        <p className="text-[9px] text-muted-foreground/60 w-14 text-center">Init pts</p>
-        <p className="text-[9px] text-muted-foreground/60 w-14 text-center">+per turn</p>
-        <p className="text-[9px] text-muted-foreground/60 w-14 text-center">Max pts</p>
-        <p className="text-[9px] text-muted-foreground/60 w-10 text-center">XP (0-9)</p>
-        <div className="w-14" />
-        <div className="w-5" />
-      </div>
-      <div className="flex items-center gap-2">
-        <Swords className="w-3.5 h-3.5 text-primary shrink-0" />
-        <div className="flex-1 grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center">
-          {units.length > 0 ? (
-            <Select value={cap.unitName || ''} onValueChange={v => onChange(index, { ...cap, unitName: v })}>
-              <SelectTrigger className="h-7 text-xs">
-                <SelectValue placeholder="Select unit..." />
-              </SelectTrigger>
-              <SelectContent>
-                {units.map(u => (
-                  <SelectItem key={u.type} value={u.type} className="text-xs">
-                    {u.type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              className="h-7 text-xs"
-              placeholder="Unit type name (load export_descr_unit.txt)"
-              value={cap.unitName || ''}
-              onChange={e => onChange(index, { ...cap, unitName: e.target.value })}
-            />
-          )}
-          <Input
-            className="h-7 text-xs w-14"
-            type="number" step="0.1"
-            value={cap.initialPool ?? ''}
-            onChange={e => onChange(index, { ...cap, initialPool: parseFloat(e.target.value) || 0 })}
-          />
-          <Input
-            className="h-7 text-xs w-14"
-            type="number" step="0.001"
-            value={cap.replenishRate ?? ''}
-            onChange={e => onChange(index, { ...cap, replenishRate: parseFloat(e.target.value) || 0 })}
-          />
-          <Input
-            className="h-7 text-xs w-14"
-            type="number" step="0.1"
-            value={cap.maxPool ?? ''}
-            onChange={e => onChange(index, { ...cap, maxPool: parseFloat(e.target.value) || 0 })}
-          />
-          <Input
-            className="h-7 text-xs w-10"
-            type="number" min="0" max="9"
-            value={cap.experience ?? ''}
-            onChange={e => onChange(index, { ...cap, experience: Math.min(9, Math.max(0, parseInt(e.target.value) || 0)) })}
-          />
+      <div className="flex items-start gap-2">
+        <Swords className="w-3.5 h-3.5 text-primary shrink-0 mt-1.5" />
+        <div className="flex-1 space-y-2">
+          {/* Unit name — full width row */}
+          <div>
+            <p className="text-[9px] text-muted-foreground mb-0.5">Unit type name</p>
+            {unitOptions.length > 0 ? (
+              <SearchableSelect
+                value={cap.unitName || ''}
+                onValueChange={v => onChange(index, { ...cap, unitName: v })}
+                options={unitOptions}
+                placeholder="Select unit..."
+                className="w-full"
+              />
+            ) : (
+              <Input
+                className="h-7 text-xs w-full"
+                placeholder="Unit type name (load export_descr_unit.txt)"
+                value={cap.unitName || ''}
+                onChange={e => onChange(index, { ...cap, unitName: e.target.value })}
+              />
+            )}
+          </div>
+          {/* Number fields row */}
+          <div className="grid grid-cols-4 gap-2">
+            <div>
+              <p className="text-[9px] text-muted-foreground mb-0.5">Init pts</p>
+              <Input
+                className="h-7 text-xs"
+                type="number" step="0.1"
+                value={cap.initialPool ?? ''}
+                onChange={e => onChange(index, { ...cap, initialPool: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <p className="text-[9px] text-muted-foreground mb-0.5">+per turn</p>
+              <Input
+                className="h-7 text-xs"
+                type="number" step="0.001"
+                value={cap.replenishRate ?? ''}
+                onChange={e => onChange(index, { ...cap, replenishRate: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <p className="text-[9px] text-muted-foreground mb-0.5">Max pts</p>
+              <Input
+                className="h-7 text-xs"
+                type="number" step="0.1"
+                value={cap.maxPool ?? ''}
+                onChange={e => onChange(index, { ...cap, maxPool: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <p className="text-[9px] text-muted-foreground mb-0.5">XP (0-9)</p>
+              <Input
+                className="h-7 text-xs"
+                type="number" min="0" max="9"
+                value={cap.experience ?? ''}
+                onChange={e => onChange(index, { ...cap, experience: Math.min(9, Math.max(0, parseInt(e.target.value) || 0)) })}
+              />
+            </div>
+          </div>
         </div>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs shrink-0" onClick={() => setShowReqs(!showReqs)}>
-          <Shield className="w-3 h-3 mr-1" />
-          Req ({cap.requirements?.length || 0})
-        </Button>
-        <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded shrink-0">
-          <Trash2 className="w-3 h-3 text-destructive" />
-        </button>
+        <div className="flex flex-col gap-1 shrink-0">
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setShowReqs(!showReqs)}>
+            <Shield className="w-3 h-3 mr-1" />
+            Req ({cap.requirements?.length || 0})
+          </Button>
+          <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded self-end">
+            <Trash2 className="w-3 h-3 text-destructive" />
+          </button>
+        </div>
       </div>
       {showReqs && (
-        <div className="ml-6">
+        <div className="ml-6 border-t border-border/50 pt-2">
           <RequirementBuilder
             requirements={cap.requirements || []}
             onChange={reqs => onChange(index, { ...cap, requirements: reqs })}
@@ -94,34 +102,46 @@ function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
   );
 }
 
-function BonusRow({ cap, index, onChange, onRemove }) {
+function BonusRow({ cap, index, onChange, onRemove, edbData }) {
+  const [showReqs, setShowReqs] = useState(false);
+  const traitOptions = BUILDING_TRAITS.filter(t => t !== 'recruit_pool').map(t => ({ value: t, label: t }));
+
   return (
-    <div className="flex items-center gap-2 bg-accent/30 rounded-lg px-3 py-1.5">
-      <Select
-        value={cap.identifier || ''}
-        onValueChange={val => onChange(index, { ...cap, identifier: val })}
-      >
-        <SelectTrigger className="h-7 text-xs w-48">
-          <SelectValue placeholder="Select trait..." />
-        </SelectTrigger>
-        <SelectContent>
-          {BUILDING_TRAITS.filter(t => t !== 'recruit_pool').map(trait => (
-            <SelectItem key={trait} value={trait} className="text-xs">{trait}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {cap.type === 'bonus' && (
-        <Badge variant="outline" className="text-[10px] shrink-0">bonus</Badge>
+    <div className="bg-accent/30 rounded-lg p-2 space-y-2">
+      <div className="flex items-center gap-2">
+        <SearchableSelect
+          value={cap.identifier || ''}
+          onValueChange={val => onChange(index, { ...cap, identifier: val })}
+          options={traitOptions}
+          placeholder="Select trait..."
+          className="flex-1"
+        />
+        {cap.type === 'bonus' && (
+          <Badge variant="outline" className="text-[10px] shrink-0">bonus</Badge>
+        )}
+        <Input
+          className="h-7 text-xs w-20 shrink-0"
+          type="number"
+          value={cap.value ?? ''}
+          onChange={e => onChange(index, { ...cap, value: parseFloat(e.target.value) || 0 })}
+        />
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs shrink-0" onClick={() => setShowReqs(!showReqs)}>
+          <Shield className="w-3 h-3 mr-1" />
+          Req ({cap.requirements?.length || 0})
+        </Button>
+        <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded shrink-0">
+          <Trash2 className="w-3 h-3 text-destructive" />
+        </button>
+      </div>
+      {showReqs && (
+        <div className="border-t border-border/50 pt-2">
+          <RequirementBuilder
+            requirements={cap.requirements || []}
+            onChange={reqs => onChange(index, { ...cap, requirements: reqs })}
+            edbData={edbData}
+          />
+        </div>
       )}
-      <Input
-        className="h-7 text-xs w-20"
-        type="number"
-        value={cap.value ?? ''}
-        onChange={e => onChange(index, { ...cap, value: parseFloat(e.target.value) || 0 })}
-      />
-      <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded ml-auto">
-        <Trash2 className="w-3 h-3 text-destructive" />
-      </button>
     </div>
   );
 }
@@ -149,8 +169,8 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
     }]);
   };
 
-  const addBonus = () => onChange([...capabilities, { type: 'bonus', identifier: 'happiness_bonus', value: 1 }]);
-  const addSimple = () => onChange([...capabilities, { type: 'simple', identifier: 'wall_level', value: 1 }]);
+  const addBonus = () => onChange([...capabilities, { type: 'bonus', identifier: 'happiness_bonus', value: 1, requirements: [] }]);
+  const addSimple = () => onChange([...capabilities, { type: 'simple', identifier: 'wall_level', value: 1, requirements: [] }]);
 
   const recruitPools = capabilities.filter(c => c.type === 'recruit_pool');
   const others = capabilities.filter(c => c.type !== 'recruit_pool');
@@ -162,7 +182,7 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
           <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Building Traits</h4>
           {others.map((cap, i) => {
             const realIndex = capabilities.indexOf(cap);
-            return <BonusRow key={i} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} />;
+            return <BonusRow key={i} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} />;
           })}
         </div>
       )}
