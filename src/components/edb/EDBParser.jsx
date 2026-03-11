@@ -640,6 +640,56 @@ export function createDefaultBuilding(name) {
   };
 }
 
+// ─── Reference File Parsers ───────────────────────────────────────────────
+
+export function parseFactionsFile(text) {
+  const factions = [];
+  const cultures = new Set();
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    const facMatch = trimmed.match(/^faction\s+(\w+)/);
+    if (facMatch) factions.push(facMatch[1]);
+    const culMatch = trimmed.match(/^culture\s+(\w+)/);
+    if (culMatch) cultures.add(culMatch[1]);
+  }
+  return { factions: factions.length ? factions : null, cultures: cultures.size ? [...cultures] : null };
+}
+
+export function parseResourcesFile(text) {
+  const resources = [];
+  for (const line of text.split('\n')) {
+    const match = line.trim().match(/^resource\s+(\w+)/);
+    if (match) resources.push(match[1]);
+  }
+  return resources;
+}
+
+export function parseEventsFile(text) {
+  const events = new Set();
+  for (const line of text.split('\n')) {
+    const match = line.trim().match(/^event_counter\s+(\w+)/);
+    if (match) events.add(match[1]);
+  }
+  return [...events];
+}
+
+export function parseUnitsFile(text) {
+  const units = [];
+  let currentType = null;
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(';')) continue;
+    const typeMatch = trimmed.match(/^type\s+(.+)/);
+    if (typeMatch) { currentType = typeMatch[1].trim(); }
+    const dictMatch = trimmed.match(/^dictionary\s+(\S+)/);
+    if (dictMatch && currentType) {
+      units.push({ type: currentType, dictionary: dictMatch[1] });
+      currentType = null;
+    }
+  }
+  return units;
+}
+
 // Create a new level with defaults
 export function createDefaultLevel(baseName, index) {
   return {
