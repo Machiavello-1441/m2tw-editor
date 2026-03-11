@@ -62,7 +62,7 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </main>
       </div>
-    </EDBProvider>
+      </EDBProvider>
     </RefDataProvider>
   );
 }
