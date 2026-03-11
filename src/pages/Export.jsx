@@ -130,7 +130,7 @@ export default function Export() {
 
                   {Object.keys(imageData).length > 0 && (
                     <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
-                      <Image className="w-5 h-5 text-chart-5/60 shrink-0" />
+                      <ImageIcon className="w-5 h-5 text-chart-5/60 shrink-0" />
                       <div className="flex-1">
                         <p className="text-xs font-medium text-foreground">Building Images</p>
                         <p className="text-[10px] text-muted-foreground">
