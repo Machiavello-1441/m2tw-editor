@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, CheckCircle2, FolderOpen } from 'lucide-react';
 import { useRefData } from './RefDataContext';
