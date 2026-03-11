@@ -10,6 +10,8 @@ import { Settings, Shield, Swords, X } from 'lucide-react';
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor';
 import RequirementBuilder from './RequirementBuilder';
+import SearchableSelect from './SearchableSelect';
+import LevelImages from './LevelImages';
 
 export default function LevelEditor() {
   const { edbData, selectedBuilding, selectedLevel, updateLevel, updateBuilding } = useEDB();
