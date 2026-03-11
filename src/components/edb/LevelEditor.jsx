@@ -239,15 +239,15 @@ function BuildingOverview({ building, edbData }) {
           <CardContent className="p-3 pt-0 space-y-3">
             <div>
               <Label className="text-[10px] text-muted-foreground">Convert To (castle/city equivalent)</Label>
-              <Select value={building.convertTo || '__none__'} onValueChange={v => updateBuilding(building.name, { convertTo: v === '__none__' ? null : v })}>
-                <SelectTrigger className="h-7 text-xs mt-1"><SelectValue placeholder="None" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__" className="text-xs text-muted-foreground">— None —</SelectItem>
-                  {allBuildingNames.filter(n => n !== building.name).map(n => (
-                    <SelectItem key={n} value={n} className="text-xs">{n}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="mt-1">
+                <SearchableSelect
+                  value={building.convertTo || '__none__'}
+                  onValueChange={v => updateBuilding(building.name, { convertTo: v === '__none__' ? null : v })}
+                  options={allBuildingNames.filter(n => n !== building.name).map(n => ({ value: n, label: n }))}
+                  includeNone
+                  placeholder="None"
+                />
+              </div>
             </div>
             <div>
               <Label className="text-[10px] text-muted-foreground">Levels</Label>
