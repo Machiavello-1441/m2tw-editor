@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, FileText, Image, Package, Eye, Copy, Check } from 'lucide-react';
+import { Download, FileText, ImageIcon, Package, Eye, Copy, Check } from 'lucide-react';
 
 export default function Export() {
   const { edbData, exportEDB, textData, imageData, fileName } = useEDB();
