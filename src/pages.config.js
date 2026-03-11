@@ -48,11 +48,13 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import Home from './pages/Home';
+import EDBEditor from './pages/EDBEditor';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Home": Home,
+    "EDBEditor": EDBEditor,
 }
 
 export const pagesConfig = {
