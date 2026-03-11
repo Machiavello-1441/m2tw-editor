@@ -61,9 +61,20 @@ export function EDBProvider({ children }) {
   }, []);
 
   const addBuilding = useCallback((name) => {
+    const newBuilding = createDefaultBuilding(name);
     setEdbData(prev => {
       if (!prev) return prev;
-      return { ...prev, buildings: [...prev.buildings, createDefaultBuilding(name)] };
+      return { ...prev, buildings: [...prev.buildings, newBuilding] };
+    });
+    // Auto-create text entries for the new building's levels
+    setTextData(prev => {
+      const next = { ...prev };
+      for (const level of newBuilding.levels) {
+        if (!next[level.name]) next[level.name] = level.name;
+        if (!next[level.name + '_desc']) next[level.name + '_desc'] = '';
+        if (!next[level.name + '_desc_short']) next[level.name + '_desc_short'] = '';
+      }
+      return next;
     });
     setIsDirty(true);
   }, []);
