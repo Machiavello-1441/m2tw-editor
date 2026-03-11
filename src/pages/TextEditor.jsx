@@ -119,9 +119,14 @@ export default function TextEditor() {
         <span className="text-[10px] text-muted-foreground">— export_buildings.txt</span>
         <div className="ml-auto flex items-center gap-2">
           {loaded && (
-            <Badge variant="outline" className="text-[10px] text-green-400 border-green-500/40">
-              File loaded
-            </Badge>
+            <>
+              <Badge variant="outline" className="text-[10px] text-green-400 border-green-500/40">
+                File loaded
+              </Badge>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowRaw(!showRaw)}>
+                <Eye className="w-3 h-3 mr-1" /> {showRaw ? 'Hide Raw' : 'View Raw'}
+              </Button>
+            </>
           )}
           <label className="cursor-pointer">
             <input type="file" accept=".txt" onChange={handleLoadFile} className="hidden" />
