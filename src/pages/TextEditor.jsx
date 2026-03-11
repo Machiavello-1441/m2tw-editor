@@ -87,6 +87,7 @@ export default function TextEditor() {
       }
       if (currentKey) entries[currentKey] = currentText.trim();
       setTextData(prev => ({ ...prev, ...entries }));
+      setRawContent(ev.target.result);
       setLoaded(true);
     };
     reader.readAsText(file);
