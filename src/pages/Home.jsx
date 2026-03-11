@@ -25,7 +25,7 @@ export default function Home() {
     { icon: Upload, title: 'Load EDB File', desc: 'Upload your export_descr_buildings.txt file to begin editing' },
     { icon: Castle, title: 'Edit Buildings', desc: 'Add, modify, or remove buildings and their levels using the visual editor' },
     { icon: FileText, title: 'Manage Texts', desc: 'Edit building titles, descriptions, and faction-specific entries' },
-    { icon: Image, title: 'Manage Images', desc: 'Upload TGA images for building icons and construction views' },
+    { icon: ImageIcon, title: 'Manage Images', desc: 'Upload TGA images for building icons and construction views' },
     { icon: Download, title: 'Export Mod', desc: 'Download the complete mod package ready for M2TW' },
   ];
 
