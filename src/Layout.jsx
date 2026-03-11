@@ -8,7 +8,7 @@ const navItems = [
   { name: 'Home', icon: Home, page: 'Home' },
   { name: 'EDB Editor', icon: Castle, page: 'EDBEditor' },
   { name: 'Text Editor', icon: FileText, page: 'TextEditor' },
-  { name: 'Images', icon: Image, page: 'ImageManager' },
+  { name: 'Images', icon: ImageIcon, page: 'ImageManager' },
   { name: 'Export', icon: Download, page: 'Export' },
 ];
 
