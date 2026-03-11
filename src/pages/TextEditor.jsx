@@ -261,6 +261,7 @@ export default function TextEditor() {
               </div>
             )}
           </div>
+          )}
         </ScrollArea>
       </div>
     </div>
