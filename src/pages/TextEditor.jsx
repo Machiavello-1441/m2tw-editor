@@ -3,18 +3,65 @@ import { useEDB } from '../components/edb/EDBContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, Plus, Trash2, Save } from 'lucide-react';
+import { Upload, FileText, ChevronRight, ChevronDown, Trash2, Castle, Layers } from 'lucide-react';
 import { FACTIONS } from '../components/edb/EDBParser';
+
+function BuildingTreeNav({ edbData, textData, selectedLevel, setSelectedLevel }) {
+  const [expanded, setExpanded] = useState({});
+
+  const toggle = (name) => setExpanded(p => ({ ...p, [name]: !p[name] }));
+
+  if (!edbData) return (
+    <p className="text-xs text-muted-foreground text-center py-8 px-2">Load an EDB file first</p>
+  );
+
+  return (
+    <div className="px-2 space-y-0.5">
+      {edbData.buildings.map(building => {
+        const isOpen = expanded[building.name] !== false; // open by default
+        return (
+          <div key={building.name} className="mb-0.5">
+            <button
+              onClick={() => toggle(building.name)}
+              className="flex items-center gap-1 w-full px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              {isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+              <Castle className="w-3 h-3 text-primary/60 shrink-0" />
+              <span className="truncate font-medium">{building.name}</span>
+            </button>
+            {isOpen && (
+              <div className="ml-4 pl-2 border-l border-border/50 space-y-0.5">
+                {building.levels.map(level => {
+                  const hasText = !!textData[level.name];
+                  return (
+                    <button
+                      key={level.name}
+                      onClick={() => setSelectedLevel(level.name)}
+                      className={`flex items-center gap-1.5 w-full px-2 py-1 rounded text-xs transition-colors
+                        ${selectedLevel === level.name ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
+                    >
+                      <Layers className="w-3 h-3 shrink-0" />
+                      <span className="flex-1 truncate">{level.name}</span>
+                      {hasText && <span className="text-primary text-[8px]">●</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function TextEditor() {
   const { edbData, textData, setTextData } = useEDB();
   const [selectedLevel, setSelectedLevel] = useState('');
-  const [rawText, setRawText] = useState('');
   const [loaded, setLoaded] = useState(false);
 
   const handleLoadFile = useCallback((e) => {
@@ -22,8 +69,6 @@ export default function TextEditor() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setRawText(ev.target.result);
-      // Parse the text file into entries
       const entries = {};
       const lines = ev.target.result.split('\n');
       let currentKey = '';
@@ -31,9 +76,7 @@ export default function TextEditor() {
       for (const line of lines) {
         const match = line.match(/^\{([^}]+)\}/);
         if (match) {
-          if (currentKey) {
-            entries[currentKey] = currentText.trim();
-          }
+          if (currentKey) entries[currentKey] = currentText.trim();
           currentKey = match[1];
           currentText = line.replace(/^\{[^}]+\}/, '').trim();
         } else if (currentKey) {
@@ -41,16 +84,12 @@ export default function TextEditor() {
         }
       }
       if (currentKey) entries[currentKey] = currentText.trim();
-      setTextData(entries);
+      setTextData(prev => ({ ...prev, ...entries }));
       setLoaded(true);
     };
     reader.readAsText(file);
+    e.target.value = '';
   }, [setTextData]);
-
-  // Get all level names from the EDB
-  const allLevels = edbData 
-    ? edbData.buildings.flatMap(b => b.levels.map(l => l.name))
-    : [];
 
   const currentEntry = textData[selectedLevel] || '';
   const descKey = selectedLevel + '_desc';
@@ -58,20 +97,15 @@ export default function TextEditor() {
   const currentDesc = textData[descKey] || '';
   const currentShortDesc = textData[shortDescKey] || '';
 
-  const updateEntry = (key, value) => {
-    setTextData(prev => ({ ...prev, [key]: value }));
-  };
+  const updateEntry = (key, value) => setTextData(prev => ({ ...prev, [key]: value }));
 
-  // Find faction-specific entries
-  const factionEntries = selectedLevel 
+  const factionEntries = selectedLevel
     ? FACTIONS.filter(f => textData[selectedLevel + '_' + f])
     : [];
 
   const addFactionEntry = (faction) => {
     const key = selectedLevel + '_' + faction;
-    if (!textData[key]) {
-      updateEntry(key, textData[selectedLevel] || '');
-    }
+    if (!textData[key]) updateEntry(key, textData[selectedLevel] || '');
   };
 
   return (
@@ -81,39 +115,34 @@ export default function TextEditor() {
         <span className="text-xs font-medium text-foreground">Text Editor</span>
         <span className="text-[10px] text-muted-foreground">— export_buildings.txt</span>
         <div className="ml-auto flex items-center gap-2">
+          {loaded && (
+            <Badge variant="outline" className="text-[10px] text-green-400 border-green-500/40">
+              File loaded
+            </Badge>
+          )}
           <label className="cursor-pointer">
             <input type="file" accept=".txt" onChange={handleLoadFile} className="hidden" />
             <Button variant="outline" size="sm" className="h-7 text-xs pointer-events-none">
-              <Upload className="w-3 h-3 mr-1" /> Load Text File
+              <Upload className="w-3 h-3 mr-1" /> Load export_buildings.txt
             </Button>
           </label>
         </div>
       </div>
 
       <div className="flex-1 flex min-h-0">
-        {/* Level selector */}
-        <div className="w-56 border-r border-border bg-card/30 shrink-0">
-          <div className="p-3">
-            <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Building Levels</h3>
+        {/* Building tree nav */}
+        <div className="w-56 border-r border-border bg-card/30 shrink-0 flex flex-col">
+          <div className="p-3 border-b border-border">
+            <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Buildings</h3>
           </div>
-          <ScrollArea className="h-[calc(100vh-6rem)]">
-            <div className="px-2 space-y-0.5">
-              {allLevels.map(level => (
-                <button
-                  key={level}
-                  onClick={() => setSelectedLevel(level)}
-                  className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors
-                    ${selectedLevel === level ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
-                >
-                  {level}
-                  {textData[level] && <span className="text-primary ml-1">●</span>}
-                </button>
-              ))}
-              {allLevels.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-8">
-                  Load an EDB file first
-                </p>
-              )}
+          <ScrollArea className="flex-1">
+            <div className="py-2">
+              <BuildingTreeNav
+                edbData={edbData}
+                textData={textData}
+                selectedLevel={selectedLevel}
+                setSelectedLevel={setSelectedLevel}
+              />
             </div>
           </ScrollArea>
         </div>
@@ -123,9 +152,10 @@ export default function TextEditor() {
           <div className="p-4 max-w-2xl">
             {!selectedLevel ? (
               <div className="text-center text-sm text-muted-foreground py-20">
-                {loaded || Object.keys(textData).length > 0
+                {edbData
                   ? 'Select a building level to edit its text entries'
-                  : 'Load an export_buildings.txt file and select a level to begin editing'}
+                  : 'Load an EDB file first, then optionally load export_buildings.txt to import existing text'
+                }
               </div>
             ) : (
               <div className="space-y-4">
