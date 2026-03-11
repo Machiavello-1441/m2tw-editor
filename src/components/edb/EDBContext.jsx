@@ -1,0 +1,145 @@
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { parseEDB, serializeEDB, createDefaultBuilding, createDefaultLevel } from './EDBParser';
+
+const EDBContext = createContext(null);
+
+export function EDBProvider({ children }) {
+  const [edbData, setEdbData] = useState(null);
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
+  const [selectedLevel, setSelectedLevel] = useState(null);
+  const [textData, setTextData] = useState({}); // { levelName: { title, desc, shortDesc, factionEntries: {} } }
+  const [imageData, setImageData] = useState({}); // { levelName_culture: { icon, constructed, construction } }
+  const [isDirty, setIsDirty] = useState(false);
+  const [fileName, setFileName] = useState('');
+
+  const loadEDB = useCallback((text, name) => {
+    const parsed = parseEDB(text);
+    setEdbData(parsed);
+    setFileName(name || 'export_descr_buildings.txt');
+    setSelectedBuilding(null);
+    setSelectedLevel(null);
+    setIsDirty(false);
+  }, []);
+
+  const exportEDB = useCallback(() => {
+    if (!edbData) return '';
+    return serializeEDB(edbData);
+  }, [edbData]);
+
+  const updateBuilding = useCallback((buildingName, updater) => {
+    setEdbData(prev => {
+      if (!prev) return prev;
+      const newBuildings = prev.buildings.map(b => {
+        if (b.name === buildingName) {
+          return typeof updater === 'function' ? updater(b) : { ...b, ...updater };
+        }
+        return b;
+      });
+      return { ...prev, buildings: newBuildings };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const updateLevel = useCallback((buildingName, levelName, updater) => {
+    setEdbData(prev => {
+      if (!prev) return prev;
+      const newBuildings = prev.buildings.map(b => {
+        if (b.name === buildingName) {
+          const newLevels = b.levels.map(l => {
+            if (l.name === levelName) {
+              return typeof updater === 'function' ? updater(l) : { ...l, ...updater };
+            }
+            return l;
+          });
+          return { ...b, levels: newLevels };
+        }
+        return b;
+      });
+      return { ...prev, buildings: newBuildings };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const addBuilding = useCallback((name) => {
+    setEdbData(prev => {
+      if (!prev) return prev;
+      return { ...prev, buildings: [...prev.buildings, createDefaultBuilding(name)] };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const deleteBuilding = useCallback((buildingName) => {
+    setEdbData(prev => {
+      if (!prev) return prev;
+      return { ...prev, buildings: prev.buildings.filter(b => b.name !== buildingName) };
+    });
+    if (selectedBuilding === buildingName) {
+      setSelectedBuilding(null);
+      setSelectedLevel(null);
+    }
+    setIsDirty(true);
+  }, [selectedBuilding]);
+
+  const addLevel = useCallback((buildingName) => {
+    setEdbData(prev => {
+      if (!prev) return prev;
+      const newBuildings = prev.buildings.map(b => {
+        if (b.name === buildingName) {
+          const newLevel = createDefaultLevel(buildingName, b.levels.length);
+          // Update previous last level's upgrades to point to new level
+          const updatedLevels = b.levels.map((l, idx) => {
+            if (idx === b.levels.length - 1 && l.upgrades.length === 0) {
+              return { ...l, upgrades: [newLevel.name] };
+            }
+            return l;
+          });
+          return { ...b, levels: [...updatedLevels, newLevel] };
+        }
+        return b;
+      });
+      return { ...prev, buildings: newBuildings };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const deleteLevel = useCallback((buildingName, levelName) => {
+    setEdbData(prev => {
+      if (!prev) return prev;
+      const newBuildings = prev.buildings.map(b => {
+        if (b.name === buildingName) {
+          const newLevels = b.levels.filter(l => l.name !== levelName);
+          // Clean up upgrade references
+          const cleaned = newLevels.map(l => ({
+            ...l,
+            upgrades: l.upgrades.filter(u => u !== levelName)
+          }));
+          return { ...b, levels: cleaned };
+        }
+        return b;
+      });
+      return { ...prev, buildings: newBuildings };
+    });
+    if (selectedLevel === levelName) setSelectedLevel(null);
+    setIsDirty(true);
+  }, [selectedLevel]);
+
+  const value = {
+    edbData, setEdbData, loadEDB, exportEDB,
+    selectedBuilding, setSelectedBuilding,
+    selectedLevel, setSelectedLevel,
+    updateBuilding, updateLevel,
+    addBuilding, deleteBuilding,
+    addLevel, deleteLevel,
+    textData, setTextData,
+    imageData, setImageData,
+    isDirty, fileName
+  };
+
+  return <EDBContext.Provider value={value}>{children}</EDBContext.Provider>;
+}
+
+export function useEDB() {
+  const ctx = useContext(EDBContext);
+  if (!ctx) throw new Error('useEDB must be within EDBProvider');
+  return ctx;
+}
