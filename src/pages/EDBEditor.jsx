@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
 import BuildingTree from '../components/edb/BuildingTree';
 import LevelEditor from '../components/edb/LevelEditor';
+import RefFileLoader from '../components/edb/RefFileLoader';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 
