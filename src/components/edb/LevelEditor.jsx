@@ -6,12 +6,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Settings, Shield, Swords, X } from 'lucide-react';
+import { Settings, Shield, Swords, X, ImageIcon } from 'lucide-react';
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor';
 import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect';
-import LevelImages from './LevelImages';
+import { useRefData } from './RefDataContext';
+
+function LevelImages({ levelName }) {
+  const { imageData } = useEDB();
+  const { cultures } = useRefData();
+  const IMAGE_TYPES = ['icon', 'constructed', 'construction'];
+  const IMAGE_LABELS = { icon: 'Icon', constructed: 'Info Pic', construction: 'Construction' };
+
+  // Collect all uploaded images for this level across all cultures
+  const images = [];
+  for (const culture of cultures) {
+    for (const type of IMAGE_TYPES) {
+      const key = `${levelName}_${culture}_${type}`;
+      if (imageData[key]) images.push({ ...imageData[key], type, culture, key, label: IMAGE_LABELS[type] });
+    }
+  }
+
+  if (images.length === 0) return (
+    <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/30 border border-dashed border-border">
+      <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />
+      <span className="text-[10px] text-muted-foreground">No images uploaded yet — use the Images tab</span>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {images.map(img => (
+        <div key={img.key} className="flex flex-col items-center gap-1">
+          <img src={img.url} alt={img.label} className="w-16 h-16 object-contain rounded border border-border bg-black/20" />
+          <span className="text-[9px] text-muted-foreground">{img.label}</span>
+          <span className="text-[9px] text-muted-foreground/60">{img.culture}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function LevelEditor() {
   const { edbData, selectedBuilding, selectedLevel, updateLevel, updateBuilding } = useEDB();
@@ -31,16 +66,15 @@ export default function LevelEditor() {
     return <BuildingOverview building={building} edbData={edbData} />;
   }
 
-  const level = building.levels.find(l => l.name === selectedLevel);
+  const levelIndex = building.levels.findIndex(l => l.name === selectedLevel);
+  const level = building.levels[levelIndex];
   if (!level) return null;
 
   const update = (field, value) => updateLevel(selectedBuilding, selectedLevel, { [field]: value });
 
-  // Level index (1-based)
-  const levelIndex = building.levels.findIndex(l => l.name === selectedLevel);
-
-  // Other levels in same building (for upgrades)
-  const otherLevels = building.levels.filter(l => l.name !== selectedLevel).map(l => l.name);
+  const otherLevels = building.levels
+    .map((l, i) => ({ name: l.name, index: i }))
+    .filter(l => l.name !== selectedLevel);
 
   const toggleUpgrade = (levelName) => {
     const current = level.upgrades || [];
@@ -51,8 +85,10 @@ export default function LevelEditor() {
     }
   };
 
-  // All building names for convert_to dropdown
-  const allBuildingNames = edbData.buildings.map(b => b.name);
+  // Building names for convert_to (excluding self)
+  const buildingOptions = edbData.buildings
+    .filter(b => b.name !== selectedBuilding)
+    .map(b => ({ value: b.name, label: b.name }));
 
   return (
     <ScrollArea className="h-full">
@@ -69,7 +105,7 @@ export default function LevelEditor() {
             </p>
           </div>
           <Badge variant="outline" className="ml-auto text-[10px]">
-            #{levelIndex + 1} · {level.settlementMin}
+            #{levelIndex + 1}
           </Badge>
         </div>
 
@@ -126,14 +162,14 @@ export default function LevelEditor() {
                 />
               </div>
               <div className="col-span-2">
-                <Label className="text-[10px] text-muted-foreground">Convert To</Label>
+                <Label className="text-[10px] text-muted-foreground">Convert To (level)</Label>
                 <div className="mt-1">
                   <SearchableSelect
                     value={level.convertTo || '__none__'}
                     onValueChange={v => update('convertTo', v === '__none__' ? null : v)}
-                    options={allBuildingNames.filter(n => n !== selectedBuilding).map(n => ({ value: n, label: n }))}
-                    includeNone
+                    options={buildingOptions}
                     placeholder="None"
+                    noneOption
                   />
                 </div>
               </div>
@@ -144,7 +180,7 @@ export default function LevelEditor() {
               <Label className="text-[10px] text-muted-foreground">Upgrades To</Label>
               {otherLevels.length > 0 ? (
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {otherLevels.map(ln => {
+                  {otherLevels.map(({ name: ln, index: li }) => {
                     const selected = (level.upgrades || []).includes(ln);
                     return (
                       <button
@@ -156,7 +192,7 @@ export default function LevelEditor() {
                             : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
                           }`}
                       >
-                        {ln}
+                        {li + 1}. {ln}
                         {selected && <X className="w-2 h-2" />}
                       </button>
                     );
@@ -169,11 +205,14 @@ export default function LevelEditor() {
                 <p className="text-[10px] text-muted-foreground italic mt-1">Top level (no upgrades selected)</p>
               )}
             </div>
+
+            {/* Images preview */}
+            <div>
+              <Label className="text-[10px] text-muted-foreground mb-1 block">Images</Label>
+              <LevelImages levelName={level.name} />
+            </div>
           </CardContent>
         </Card>
-
-        {/* Level Images */}
-        <LevelImages levelName={level.name} />
 
         {/* Requirements */}
         <Card>
@@ -215,7 +254,9 @@ export default function LevelEditor() {
 
 function BuildingOverview({ building, edbData }) {
   const { updateBuilding } = useEDB();
-  const allBuildingNames = edbData.buildings.map(b => b.name);
+  const buildingOptions = edbData.buildings
+    .filter(b => b.name !== building.name)
+    .map(b => ({ value: b.name, label: b.name }));
 
   return (
     <ScrollArea className="h-full">
@@ -243,9 +284,9 @@ function BuildingOverview({ building, edbData }) {
                 <SearchableSelect
                   value={building.convertTo || '__none__'}
                   onValueChange={v => updateBuilding(building.name, { convertTo: v === '__none__' ? null : v })}
-                  options={allBuildingNames.filter(n => n !== building.name).map(n => ({ value: n, label: n }))}
-                  includeNone
+                  options={buildingOptions}
                   placeholder="None"
+                  noneOption
                 />
               </div>
             </div>
