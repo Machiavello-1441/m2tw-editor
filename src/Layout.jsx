@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { EDBProvider } from './components/edb/EDBContext';
-import { Castle, FileText, Image, Download, Home } from 'lucide-react';
+import { Castle, FileText, ImageIcon, Download, Home } from 'lucide-react';
 
 const navItems = [
   { name: 'Home', icon: Home, page: 'Home' },
