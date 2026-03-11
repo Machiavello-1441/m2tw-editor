@@ -519,12 +519,9 @@ function serializeRequirements(reqs) {
     const req = reqs[i];
     
     if (i > 0) {
-      const prevConn = reqs[i - 1].connector;
-      if (prevConn) {
-        out += ` ${prevConn} `;
-      } else {
-        out += ' and ';
-      }
+      // Support both old 'connector' (on previous) and new 'prevConnector' (on current)
+      const conn = req.prevConnector || reqs[i - 1].connector || 'and';
+      out += ` ${conn} `;
     }
     
     if (req.type === 'factions') {
