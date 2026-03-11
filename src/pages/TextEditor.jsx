@@ -157,6 +157,7 @@ export default function TextEditor() {
 
         {/* Editor */}
         <ScrollArea className="flex-1">
+          <div>
           {showRaw ? (
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">
