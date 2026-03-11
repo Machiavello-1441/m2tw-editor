@@ -63,6 +63,8 @@ export default function TextEditor() {
   const { edbData, textData, setTextData } = useEDB();
   const [selectedLevel, setSelectedLevel] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [rawContent, setRawContent] = useState('');
+  const [showRaw, setShowRaw] = useState(false);
 
   const handleLoadFile = useCallback((e) => {
     const file = e.target.files?.[0];
