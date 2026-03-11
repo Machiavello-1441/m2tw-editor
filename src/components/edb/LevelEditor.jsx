@@ -127,15 +127,15 @@ export default function LevelEditor() {
               </div>
               <div className="col-span-2">
                 <Label className="text-[10px] text-muted-foreground">Convert To</Label>
-                <Select value={level.convertTo || '__none__'} onValueChange={v => update('convertTo', v === '__none__' ? null : v)}>
-                  <SelectTrigger className="h-7 text-xs mt-1"><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__" className="text-xs text-muted-foreground">— None —</SelectItem>
-                    {allBuildingNames.filter(n => n !== selectedBuilding).map(n => (
-                      <SelectItem key={n} value={n} className="text-xs">{n}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="mt-1">
+                  <SearchableSelect
+                    value={level.convertTo || '__none__'}
+                    onValueChange={v => update('convertTo', v === '__none__' ? null : v)}
+                    options={allBuildingNames.filter(n => n !== selectedBuilding).map(n => ({ value: n, label: n }))}
+                    includeNone
+                    placeholder="None"
+                  />
+                </div>
               </div>
             </div>
 
