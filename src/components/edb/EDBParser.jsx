@@ -141,6 +141,7 @@ function parseRequirements(reqStr) {
   return conditions;
 }
 
+
 function parseCapabilityLine(line) {
   line = line.trim();
   
