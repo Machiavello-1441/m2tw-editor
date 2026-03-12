@@ -75,11 +75,26 @@ function BuildingNode({ building }) {
 
       {expanded && (
         <div className="ml-4 pl-2 border-l border-border/50">
-          {building.levels.map(level => {
+          {building.levels.map((level, li) => {
             const isLevelSelected = selectedBuilding === building.name && selectedLevel === level.name;
+            const levelNum = li + 1;
+            const showVanillaWarn = levelNum === 9;
+            const showEopWarn = levelNum > 50;
             return (
+              <div key={level.name}>
+                {showVanillaWarn && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 text-[9px] text-yellow-500 bg-yellow-500/10 rounded mb-0.5">
+                    <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                    Level 9 = vanilla limit. M2TWEOP allows 50+.
+                  </div>
+                )}
+                {showEopWarn && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 text-[9px] text-orange-400 bg-orange-500/10 rounded mb-0.5">
+                    <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                    Level {levelNum}: close to M2TWEOP max!
+                  </div>
+                )}
               <div
-                key={level.name}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer group text-xs transition-colors
                   ${isLevelSelected ? 'bg-primary/15 text-primary' : 'hover:bg-accent text-muted-foreground hover:text-foreground'}`}
                 onClick={() => { setSelectedBuilding(building.name); setSelectedLevel(level.name); }}
