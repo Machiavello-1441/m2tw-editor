@@ -115,5 +115,8 @@ export function makeDefaultLayerSettings() {
       opacity: LAYER_DEFS[key].defaultOpacity,
     };
   }
+  // Regions-specific overlay mode
+  out.regions.overlayMode = false;
+  out.regions.highlightColor = null; // [r,g,b] of selected region color
   return out;
 }
