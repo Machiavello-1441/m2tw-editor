@@ -305,7 +305,7 @@ export default function MapCanvas() {
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden bg-black"
-      style={{ minHeight: 0 }}
+      style={{ minHeight: 0, cursor: cursorStyle }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
