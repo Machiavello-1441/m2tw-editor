@@ -229,7 +229,8 @@ export function parseEDB(text) {
 }
 
 function parseBuilding(lines, startIndex) {
-  const headerLine = lines[startIndex].trim();
+  // Strip inline comment
+  const headerLine = lines[startIndex].trim().split(';')[0].trim();
   const buildingName = headerLine.replace('building ', '').trim();
   
   const building = {
