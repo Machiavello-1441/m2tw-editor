@@ -166,6 +166,7 @@ function BuildingNode({ building }) {
 
 export default function BuildingTree() {
   const { edbData, addBuilding } = useEDB();
+  const { setTextData, textDataLoaded, cultures } = useRefData();
   const [search, setSearch] = useState('');
   const [newName, setNewName] = useState('');
   const [newPrefix, setNewPrefix] = useState('none');
@@ -178,11 +179,30 @@ export default function BuildingTree() {
     b.levels.some(l => l.name.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const seedTextForBuilding = (buildingName) => {
+    if (!textDataLoaded) return;
+    // Default: one level named buildingName_1
+    const levelName = buildingName + '_1';
+    setTextData(prev => {
+      const next = { ...prev };
+      if (!next[levelName]) next[levelName] = levelName;
+      if (!next[`${levelName}_desc`]) next[`${levelName}_desc`] = '';
+      if (!next[`${levelName}_desc_short`]) next[`${levelName}_desc_short`] = '';
+      for (const culture of cultures) {
+        if (!next[`${levelName}_${culture}_desc`]) next[`${levelName}_${culture}_desc`] = '';
+        if (!next[`${levelName}_${culture}_desc_short`]) next[`${levelName}_${culture}_desc_short`] = '';
+      }
+      return next;
+    });
+  };
+
   const handleAddBuilding = () => {
     const baseName = newName.trim().replace(/\s+/g, '_');
     const prefix = newPrefix === 'none' ? '' : newPrefix;
     if (baseName) {
-      addBuilding(prefix + baseName);
+      const fullName = prefix + baseName;
+      addBuilding(fullName);
+      seedTextForBuilding(fullName);
       setNewName('');
       setNewPrefix('');
       setDialogOpen(false);
