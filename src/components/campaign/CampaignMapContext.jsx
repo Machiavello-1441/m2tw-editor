@@ -99,6 +99,10 @@ export function CampaignMapProvider({ children }) {
     setLayerSettings(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
   }, []);
 
+  const updateGridSetting = useCallback((field, value) => {
+    setGridSettings(prev => ({ ...prev, [field]: value }));
+  }, []);
+
   return (
     <CampaignMapContext.Provider value={{
       layers, loadLayer,
