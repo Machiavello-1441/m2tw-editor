@@ -41,6 +41,7 @@ export default function MapCanvas() {
     canvas.height = height;
 
     ctx.clearRect(0, 0, width, height);
+    ctx.imageSmoothingEnabled = false;
 
     for (const key of LAYER_ORDER) {
       const layer = layers[key];
