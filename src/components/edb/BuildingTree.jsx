@@ -3,8 +3,9 @@ import { useEDB } from './EDBContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search
+  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search, AlertTriangle
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -14,6 +15,14 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger
 } from '@/components/ui/dialog';
+
+const PREFIXES = [
+  { value: '', label: '(no prefix)', hint: 'Default — normal building' },
+  { value: 'core_', label: 'core_', hint: 'Upgrades settlement to next level' },
+  { value: 'hinterland_', label: 'hinterland_', hint: 'Cannot be demolished for cash' },
+  { value: 'temple_', label: 'temple_', hint: 'Only one temple_ building per settlement' },
+  { value: 'guild_', label: 'guild_', hint: 'Guild — needs entry in export_descr_guilds.txt (max 3 levels)' },
+];
 
 function BuildingNode({ building }) {
   const { selectedBuilding, setSelectedBuilding, selectedLevel, setSelectedLevel,
@@ -123,6 +132,7 @@ export default function BuildingTree() {
   const { edbData, addBuilding } = useEDB();
   const [search, setSearch] = useState('');
   const [newName, setNewName] = useState('');
+  const [newPrefix, setNewPrefix] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
   if (!edbData) return null;
@@ -133,9 +143,11 @@ export default function BuildingTree() {
   );
 
   const handleAddBuilding = () => {
-    if (newName.trim()) {
-      addBuilding(newName.trim().replace(/\s+/g, '_'));
+    const baseName = newName.trim().replace(/\s+/g, '_');
+    if (baseName) {
+      addBuilding(newPrefix + baseName);
       setNewName('');
+      setNewPrefix('');
       setDialogOpen(false);
     }
   };
@@ -153,14 +165,44 @@ export default function BuildingTree() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>New Building</DialogTitle>
+                <DialogTitle>New Building Tree</DialogTitle>
               </DialogHeader>
-              <Input
-                placeholder="building_name (use underscores)"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddBuilding()}
-              />
+              <div className="space-y-3 py-1">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Prefix</label>
+                  <Select value={newPrefix} onValueChange={setNewPrefix}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="(no prefix)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PREFIXES.map(p => (
+                        <SelectItem key={p.value} value={p.value} className="text-xs">
+                          <div>
+                            <span className="font-mono font-semibold">{p.label}</span>
+                            <span className="ml-2 text-muted-foreground">{p.hint}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {newPrefix && (
+                    <p className="text-[10px] text-primary mt-1">{PREFIXES.find(p=>p.value===newPrefix)?.hint}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Base name</label>
+                  <Input
+                    placeholder="building_name (use underscores)"
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddBuilding()}
+                    className="h-8 text-xs"
+                  />
+                  {newName && (
+                    <p className="text-[10px] text-muted-foreground mt-1">Result: <span className="font-mono text-foreground">{newPrefix}{newName.trim().replace(/\s+/g,'_')}</span></p>
+                  )}
+                </div>
+              </div>
               <DialogFooter>
                 <Button onClick={handleAddBuilding} disabled={!newName.trim()}>Create</Button>
               </DialogFooter>
