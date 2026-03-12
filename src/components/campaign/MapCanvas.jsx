@@ -37,14 +37,25 @@ export default function MapCanvas() {
 
   const primaryLayer = layers.heights || layers[Object.keys(layers)[0]] || null;
 
-  // Convert mouse event → map pixel coords using actual canvas bounding rect
-  const getMapCoords = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return [0, 0];
-    const rect = canvas.getBoundingClientRect();
-    const cx = (e.clientX - rect.left) / zoomRef.current;
-    const cy = (e.clientY - rect.top) / zoomRef.current;
-    return [Math.floor(cx), Math.floor(cy)];
+  // Convert mouse event → map pixel coords.
+  // The container is the reference. Canvas is positioned at pan offset inside it.
+  // For regions/features (half-resolution), one pixel = 2 canvas pixels.
+  const getMapCoords = useCallback((e, layerKey) => {
+    const container = containerRef.current;
+    if (!container) return [0, 0];
+    const rect = container.getBoundingClientRect();
+    // Position within the container in CSS pixels
+    const cx = e.clientX - rect.left - panRef.current.x;
+    const cy = e.clientY - rect.top - panRef.current.y;
+    // Divide by zoom to get canvas (map) pixel coords for the primary (full-res) layer
+    const mx = cx / zoomRef.current;
+    const my = cy / zoomRef.current;
+    // regions and features are half-resolution: one pixel = 2 primary pixels
+    const isHalf = layerKey === 'regions' || layerKey === 'features';
+    if (isHalf) {
+      return [Math.floor(mx / 2), Math.floor(my / 2)];
+    }
+    return [Math.floor(mx), Math.floor(my)];
   }, []);
 
   // ── Composite render ──────────────────────────────────────────────────────
