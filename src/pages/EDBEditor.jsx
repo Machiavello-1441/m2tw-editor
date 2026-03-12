@@ -9,8 +9,31 @@ import { Button } from '@/components/ui/button';
 import { Castle, Code2, Save, RotateCcw, Download } from 'lucide-react';
 
 export default function EDBEditor() {
-  const { edbData, fileName } = useEDB();
+  const { edbData, fileName, exportEDB, loadEDB, isDirty } = useEDB();
   const [showCode, setShowCode] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState(null);
+
+  const handleSave = () => {
+    // Commit current state as the revert baseline
+    setSavedSnapshot(JSON.stringify(edbData));
+  };
+
+  const handleRevert = () => {
+    if (savedSnapshot) {
+      loadEDB.__revert ? loadEDB.__revert(savedSnapshot) : null;
+    }
+  };
+
+  const handleExport = () => {
+    const text = exportEDB();
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || 'export_descr_buildings.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!edbData) {
     return (
