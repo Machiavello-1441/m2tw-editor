@@ -12,6 +12,7 @@ import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor.jsx';
 import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
+import TextDescriptionEditor from './TextDescriptionEditor.jsx';
 import { useRefData } from './RefDataContext';
 
 function UpgradeRow({ upg, index, levelOptions, onChange, onRemove, edbData }) {
