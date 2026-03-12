@@ -57,10 +57,24 @@ export default function Home() {
   const dataFolderRef = useRef();
   const campaignFolderRef = useRef();
 
+  // Read file as text, auto-detecting UTF-16 BOM
   const readText = (file) => new Promise((resolve) => {
     const r = new FileReader();
-    r.onload = e => resolve(e.target.result);
-    r.readAsText(file);
+    r.onload = e => {
+      const buf = e.target.result;
+      const bytes = new Uint8Array(buf.slice(0, 4));
+      // UTF-16 LE BOM: FF FE
+      if (bytes[0] === 0xFF && bytes[1] === 0xFE) {
+        resolve(new TextDecoder('utf-16le').decode(buf));
+      // UTF-16 BE BOM: FE FF
+      } else if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
+        resolve(new TextDecoder('utf-16be').decode(buf));
+      } else {
+        // UTF-8 or ASCII
+        resolve(new TextDecoder('utf-8').decode(buf));
+      }
+    };
+    r.readAsArrayBuffer(file);
   });
 
   const handleDataFolder = async (e) => {
