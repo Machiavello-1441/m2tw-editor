@@ -87,8 +87,8 @@ export default function PalettePanel() {
             style={{ backgroundColor: rgbToHex(selectedColor.rgb) }}
           />
           <div>
-            <div className="text-xs font-medium">{selectedColor.label}</div>
-            <div className="text-[10px] font-mono text-muted-foreground">rgb({selectedColor.rgb.join(', ')})</div>
+            <div className="text-xs font-medium text-slate-200">{selectedColor.label}</div>
+            <div className="text-[10px] font-mono text-slate-400">rgb({selectedColor.rgb.join(', ')})</div>
           </div>
         </div>
       )}
