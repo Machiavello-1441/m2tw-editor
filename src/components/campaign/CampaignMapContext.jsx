@@ -11,7 +11,7 @@ export function CampaignMapProvider({ children }) {
   const [activeLayer, setActiveLayer] = useState('ground_types');
 
   // Editor state
-  const [tool, setTool] = useState('pencil'); // 'pencil' | 'bucket'
+  const [tool, setTool] = useState('pencil'); // 'pencil' | 'bucket' | 'eyedropper'
   const [selectedColor, setSelectedColor] = useState(null); // { rgb: [r,g,b], label: string }
   const [brushSize, setBrushSize] = useState(1);
   const [isDirty, setIsDirty] = useState({}); // { layerKey: bool }

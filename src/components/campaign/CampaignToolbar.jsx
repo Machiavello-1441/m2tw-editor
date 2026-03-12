@@ -52,7 +52,7 @@ export default function CampaignToolbar({ onValidate }) {
     <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card shrink-0">
       <span className="text-xs font-bold text-primary mr-2">Campaign Map</span>
 
-      <Button size="sm" variant="outline" onClick={() => folderInputRef.current?.click()} className="h-7 text-xs gap-1.5">
+      <Button size="sm" variant="outline" onClick={() => folderInputRef.current?.click()} className="h-7 text-xs gap-1.5 text-foreground">
         <FolderOpen className="w-3.5 h-3.5" />
         Load Folder
       </Button>
@@ -68,14 +68,14 @@ export default function CampaignToolbar({ onValidate }) {
       <div className="h-4 w-px bg-border mx-1" />
 
       <Button size="sm" variant="outline" onClick={() => activeLayer && revertLayer(activeLayer)}
-        disabled={!dirty} className="h-7 text-xs gap-1.5">
+        disabled={!dirty} className="h-7 text-xs gap-1.5 text-foreground">
         <RotateCcw className="w-3.5 h-3.5" />
         Revert
       </Button>
 
       <Button size="sm" variant="outline" onClick={handleExport}
         disabled={!activeLayer || !layers[activeLayer]}
-        className="h-7 text-xs gap-1.5">
+        className="h-7 text-xs gap-1.5 text-foreground">
         <Download className="w-3.5 h-3.5" />
         Export .tga
       </Button>
