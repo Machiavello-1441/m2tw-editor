@@ -249,7 +249,9 @@ function parseBuilding(lines, startIndex) {
   let braceDepth = 1;
   
   while (i < lines.length && braceDepth > 0) {
-    const line = lines[i].trim();
+    let line = lines[i].trim();
+    // Strip inline comments
+    if (line.includes(';')) line = line.split(';')[0].trim();
     
     if (line === '}') {
       braceDepth--;
