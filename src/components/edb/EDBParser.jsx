@@ -447,8 +447,16 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
     
     if (inUpgrades) {
       if (line && line !== '{' && line !== '}') {
-        // line is already comment-stripped
-        level.upgrades.push(line);
+        // Parse: "levelname requires factions { ... } and ..."
+        // or just: "levelname"
+        const reqIdx = line.indexOf(' requires ');
+        if (reqIdx !== -1) {
+          const upgName = line.slice(0, reqIdx).trim();
+          const reqStr = line.slice(reqIdx + 10).trim();
+          level.upgrades.push({ name: upgName, requirements: parseRequirements(reqStr) });
+        } else {
+          level.upgrades.push({ name: line.trim(), requirements: [] });
+        }
       }
       i++; continue;
     }
