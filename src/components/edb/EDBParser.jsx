@@ -207,8 +207,9 @@ export function parseEDB(text) {
   
   // Skip comments and empty lines, find hidden_resources
   while (i < lines.length) {
-    const line = lines[i].trim();
-    if (line.startsWith(';') || line === '') { i++; continue; }
+    const rawLine = lines[i].trim();
+    const line = rawLine.startsWith(';') ? '' : rawLine.split(';')[0].trim();
+    if (line === '') { i++; continue; }
     if (line.startsWith('hidden_resources')) {
       // Strip inline comments before parsing
       const withoutComment = line.split(';')[0];
