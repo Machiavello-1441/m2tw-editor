@@ -159,7 +159,7 @@ export default function ImageManager() {
                   <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
                     Each building level needs 3 images per culture: a small icon, a large info pic (with "_constructed" suffix), 
-                    and a construction scroll image. Images should be .tga format.
+                    and a construction scroll image. Upload .png or .jpg — click the <strong className="text-foreground">↓</strong> button to download as .tga for use in-game.
                   </p>
                 </div>
 
