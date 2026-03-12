@@ -156,8 +156,9 @@ export default function BuildingTree() {
 
   const handleAddBuilding = () => {
     const baseName = newName.trim().replace(/\s+/g, '_');
+    const prefix = newPrefix === 'none' ? '' : newPrefix;
     if (baseName) {
-      addBuilding(newPrefix + baseName);
+      addBuilding(prefix + baseName);
       setNewName('');
       setNewPrefix('');
       setDialogOpen(false);
