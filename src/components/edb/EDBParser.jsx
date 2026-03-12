@@ -387,17 +387,9 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
   }
   
   let i = startIndex + 1;
-  // Find opening brace — skip blank/comment lines
-  while (i < lines.length) {
-    const t = lines[i].trim();
-    if (t === '{') { i++; break; }
-    // if this line has content (non-comment, non-blank), we may have overrun; just continue
-    if (t && !t.startsWith(';')) {
-      // Check if it's the opening brace run-on with content on same line
-      // just advance
-    }
-    i++;
-  }
+  // Find opening brace of this level block
+  while (i < lines.length && lines[i].trim() !== '{') i++;
+  i++; // skip {
   
   let depth = 1;
   let inCapability = false;
