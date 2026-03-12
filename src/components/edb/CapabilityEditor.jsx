@@ -220,7 +220,9 @@ function BonusGroupRow({ cap, index, onChange, onRemove, edbData, groupLabel, gr
 
   const handleGroupChange = (newGroup) => {
     const groupItems = groups[newGroup] || [];
-    onChange(index, { ...cap, groupKey: newGroup, identifier: groupItems[0] || '' });
+    // Always set identifier to first item in the group, never leave it empty
+    const firstItem = groupItems.length > 0 ? groupItems[0] : '';
+    onChange(index, { ...cap, groupKey: newGroup, identifier: firstItem });
   };
 
   const currentGroupItems = groups[cap.groupKey] || [];
@@ -241,7 +243,7 @@ function BonusGroupRow({ cap, index, onChange, onRemove, edbData, groupLabel, gr
         </Select>
 
         {/* capability identifier */}
-        <Select value={cap.identifier || ''} onValueChange={val => onChange(index, { ...cap, identifier: val })}>
+        <Select value={cap.identifier || (currentGroupItems.length > 0 ? currentGroupItems[0] : '')} onValueChange={val => onChange(index, { ...cap, identifier: val })}>
           <SelectTrigger className="h-7 text-xs flex-1">
             <SelectValue placeholder="Select capability…" />
           </SelectTrigger>
