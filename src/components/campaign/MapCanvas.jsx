@@ -140,7 +140,15 @@ export default function MapCanvas() {
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      if (lw !== width || lh !== height) {
+
+      // ground_types is (regions*2+1): each GT pixel is 0.5 primary pixels,
+      // with a -0.5 pixel offset so pixel centres align perfectly.
+      const primaryRegions = layers.regions;
+      if (key === 'ground_types' && primaryRegions && lw === primaryRegions.width * 2 + 1) {
+        const scale = width / (lw - 1); // e.g. (201-1)=200 GT steps cover 100 region pixels = 100 primary pixels
+        ctx.translate(-0.5 * scale, -0.5 * scale);
+        ctx.drawImage(offscreen, 0, 0, lw * scale, lh * scale);
+      } else if (lw !== width || lh !== height) {
         ctx.drawImage(offscreen, 0, 0, width, height);
       } else {
         ctx.drawImage(offscreen, 0, 0);
