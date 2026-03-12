@@ -347,7 +347,7 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
           </h4>
           {militaryCaps.map((cap) => {
             const realIndex = capabilities.indexOf(cap);
-            return <BonusRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} options={ALL_MILITARY_BONUSES} />;
+            return <BonusRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} groups={MILITARY_BONUS_GROUPS} />;
           })}
         </section>
       )}
