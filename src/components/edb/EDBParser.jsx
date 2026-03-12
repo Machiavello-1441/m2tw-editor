@@ -489,7 +489,7 @@ export function serializeEDB(edbData) {
   return output;
 }
 
-function serializeBuilding(building) {
+export function serializeBuilding(building) {
   let out = `building ${building.name}\n{\n`;
   
   if (building.convertTo) {
