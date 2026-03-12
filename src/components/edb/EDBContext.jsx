@@ -8,7 +8,6 @@ export function EDBProvider({ children }) {
   const [savedSnapshot, setSavedSnapshot] = useState(null); // JSON snapshot for Revert
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedLevel, setSelectedLevel] = useState(null);
-  const [textData, setTextData] = useState({}); // { levelName: { title, desc, shortDesc, factionEntries: {} } }
   const [imageData, setImageData] = useState({}); // { levelName_culture: { icon, constructed, construction } }
   const [isDirty, setIsDirty] = useState(false);
   const [fileName, setFileName] = useState('');
