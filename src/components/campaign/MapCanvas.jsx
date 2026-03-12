@@ -263,7 +263,7 @@ export default function MapCanvas() {
     }
 
     if (isPainting && selectedColor && activeLayer && tool === 'pencil') {
-      const [mx, my] = getMapCoords(e);
+      const [mx, my] = getMapCoords(e, activeLayer);
       const layer = layers[activeLayer];
       if (!layer) return;
       if (mx < 0 || my < 0 || mx >= layer.width || my >= layer.height) return;
@@ -278,8 +278,8 @@ export default function MapCanvas() {
       }
     }
 
-    // Build tooltip probe
-    const [mx, my] = getMapCoords(e);
+    // Build tooltip probe (always use full-res coords)
+    const [mx, my] = getMapCoords(e, 'heights');
     if (primaryLayer && mx >= 0 && my >= 0 && mx < primaryLayer.width && my < primaryLayer.height) {
       const pixelData = {};
       for (const key of LAYER_ORDER) {
