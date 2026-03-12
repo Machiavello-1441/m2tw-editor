@@ -311,17 +311,28 @@ export default function Home() {
 
 function ManualFileLoader({ setFileStatus }) {
   const { loadEDB } = useEDB();
-  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
+  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadTextFile } = useRefData();
 
-  const readAndLoad = (key, loader) => (e) => {
+  const readAndLoad = (key, loader, utf16 = false) => (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const r = new FileReader();
     r.onload = ev => {
-      loader(ev.target.result, file.name);
+      let text;
+      if (utf16) {
+        const buf = ev.target.result;
+        const bytes = new Uint8Array(buf.slice(0, 2));
+        if (bytes[0] === 0xFF && bytes[1] === 0xFE) text = new TextDecoder('utf-16le').decode(buf);
+        else if (bytes[0] === 0xFE && bytes[1] === 0xFF) text = new TextDecoder('utf-16be').decode(buf);
+        else text = new TextDecoder('utf-8').decode(buf);
+      } else {
+        text = ev.target.result;
+      }
+      loader(text, file.name);
       setFileStatus(p => ({ ...p, [key]: 'ok' }));
     };
-    r.readAsText(file);
+    if (utf16) r.readAsArrayBuffer(file);
+    else r.readAsText(file);
     e.target.value = '';
   };
 
@@ -331,6 +342,7 @@ function ManualFileLoader({ setFileStatus }) {
     { key: 'res',  label: 'Resources', hint: 'descr_sm_resources.txt',      loader: loadResourcesFile },
     { key: 'ev',   label: 'Events',    hint: 'descr_events.txt',            loader: loadEventsFile },
     { key: 'unit', label: 'Units',     hint: 'export_descr_unit.txt',       loader: loadUnitsFile },
+    { key: 'txt',  label: 'Bld Texts', hint: 'export_buildings.txt',        loader: loadTextFile, utf16: true },
   ];
 
   return (
