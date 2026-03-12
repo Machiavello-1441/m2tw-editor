@@ -49,7 +49,7 @@ export default function PalettePanel() {
       {/* Color palette */}
       {def && (
         <div className="space-y-1">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+          <div className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider px-1">
             {def.label} Colors
           </div>
           <div className="space-y-0.5 max-h-64 overflow-y-auto pr-1">
