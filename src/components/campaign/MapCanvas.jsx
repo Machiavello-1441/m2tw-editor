@@ -16,7 +16,7 @@ export default function MapCanvas() {
   const containerRef = useRef(null);
   const {
     layers, layerSettings, activeLayer,
-    tool, selectedColor, brushSize,
+    tool, setTool, selectedColor, setSelectedColor, brushSize,
     paintPixel, bucketFill,
     gridSettings,
   } = useCampaignMap();
