@@ -190,32 +190,27 @@ export default function LevelEditor() {
             </div>
 
             <div>
-              <Label className="text-[10px] text-muted-foreground">Upgrades To</Label>
-              {otherLevels.length > 0 ? (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {otherLevels.map(({ name: ln, index: li }) => {
-                    const selected = (level.upgrades || []).includes(ln);
-                    return (
-                      <button
-                        key={ln}
-                        onClick={() => toggleUpgrade(ln)}
-                        className={`px-2 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1
-                          ${selected
-                            ? 'bg-primary/20 border-primary/40 text-primary'
-                            : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
-                          }`}
-                      >
-                        {li + 1}. {ln}
-                        {selected && <X className="w-2 h-2" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-[10px] text-muted-foreground mt-1 italic">No other levels in this building tree</p>
+              <Label className="text-[10px] text-muted-foreground mb-1 block">Upgrades To</Label>
+              {upgrades.length === 0 && (
+                <p className="text-[10px] text-muted-foreground italic mb-1">No upgrades — top level</p>
               )}
-              {(level.upgrades || []).length === 0 && otherLevels.length > 0 && (
-                <p className="text-[10px] text-muted-foreground italic mt-1">Top level (no upgrades selected)</p>
+              <div className="space-y-2">
+                {upgrades.map((upg, i) => (
+                  <UpgradeRow
+                    key={i}
+                    upg={upg}
+                    index={i}
+                    levelOptions={otherLevels}
+                    onChange={updateUpgrade}
+                    onRemove={removeUpgrade}
+                    edbData={edbData}
+                  />
+                ))}
+              </div>
+              {otherLevels.length > 0 && (
+                <Button variant="outline" size="sm" className="h-6 text-[10px] mt-2" onClick={addUpgrade}>
+                  <Plus className="w-2.5 h-2.5 mr-1" /> Add Upgrade
+                </Button>
               )}
             </div>
 
