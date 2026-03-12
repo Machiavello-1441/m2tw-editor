@@ -157,18 +157,24 @@ export default function LevelEditor() {
                   onChange={e => update('cost', parseInt(e.target.value) || 0)}
                 />
               </div>
-              <div className="col-span-2">
-                <Label className="text-[10px] text-muted-foreground">Convert To (level)</Label>
-                <div className="mt-1">
-                  <SearchableSelect
-                    value={level.convertTo || '__none__'}
-                    onValueChange={v => update('convertTo', v === '__none__' ? null : v)}
-                    options={buildingOptions}
-                    placeholder="None"
-                    noneOption
+              {building.convertTo && (
+                <div className="col-span-2">
+                  <Label className="text-[10px] text-muted-foreground">
+                    Convert To Index
+                    <span className="ml-1 text-muted-foreground/60">(auto-set from level position, editable)</span>
+                  </Label>
+                  <Input
+                    className="h-7 text-xs mt-1"
+                    type="number"
+                    min="0"
+                    value={level.convertTo !== null && level.convertTo !== undefined ? level.convertTo : levelIndex}
+                    onChange={e => update('convertTo', e.target.value)}
                   />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Building converts to <span className="text-primary font-mono">{building.convertTo}</span>. Auto-index: {levelIndex}
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
 
             <div>
