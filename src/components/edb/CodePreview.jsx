@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useEDB } from './EDBContext';
-import { serializeBuilding } from './EDBParser.js';
+import { serializeBuilding } from './EDBParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Code2 } from 'lucide-react';
 
