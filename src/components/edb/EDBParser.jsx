@@ -294,8 +294,9 @@ function parseBuilding(lines, startIndex) {
         
         // Check if this is a level definition line
         // Format: level_name (city|castle) requires ...
+        // level name can include brackets like [state]_name
         const levelMatch = lLine.match(/^(\S+)\s+(city|castle)\s*(.*)/);
-        if (levelMatch && levelsPart.includes(levelMatch[1])) {
+        if (levelMatch && levelsPart.some(lp => lp === levelMatch[1] || lp.replace(/^\[.*?\]/, '').replace(/\[.*?\]$/, '') === levelMatch[1].replace(/^\[.*?\]/, '').replace(/\[.*?\]$/, ''))) {
           const level = parseLevelBlock(lines, i, levelMatch[1], levelMatch[2], levelMatch[3] || '');
           building.levels.push(level.data);
           i = level.nextIndex;
