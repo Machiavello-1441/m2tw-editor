@@ -49,9 +49,9 @@ function FileStatus({ label, hint, status, icon: FileIconComp }) {
 
 export default function Home() {
   const { loadEDB, edbData, fileName } = useEDB();
-  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
+  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadTextFile, textDataLoaded } = useRefData();
   const [fileStatus, setFileStatus] = useState({
-    edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle'
+    edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle', txt: 'idle'
   });
   const dataFolderRef = useRef();
   const campaignFolderRef = useRef();
