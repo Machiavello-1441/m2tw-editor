@@ -177,13 +177,13 @@ function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
 }
 
 function AgentRow({ cap, index, onChange, onRemove }) {
-  const isLimit = cap.type === 'agent_limit';
+  const type = cap.type || 'agent';
 
   return (
     <div className="bg-accent/30 rounded-lg px-3 py-2 flex items-center gap-2">
       <UserRound className="w-3.5 h-3.5 text-blue-400 shrink-0" />
       {/* type toggle */}
-      <Select value={cap.type} onValueChange={val => onChange(index, { ...cap, type: val })}>
+      <Select value={type} onValueChange={val => onChange(index, { ...cap, type: val })}>
         <SelectTrigger className="h-7 text-xs w-28">
           <SelectValue />
         </SelectTrigger>
@@ -203,13 +203,11 @@ function AgentRow({ cap, index, onChange, onRemove }) {
           ))}
         </SelectContent>
       </Select>
-      {/* limit value — only for agent_limit */}
-      {isLimit && (
-        <Input className="h-7 text-xs w-16" type="number"
-          value={cap.value ?? 1}
-          onChange={e => onChange(index, { ...cap, value: parseInt(e.target.value) || 1 })}
-        />
-      )}
+      {/* value — always required */}
+      <Input className="h-7 text-xs w-16" type="number"
+        value={cap.value ?? 1}
+        onChange={e => onChange(index, { ...cap, value: parseInt(e.target.value) || 1 })}
+      />
       <button onClick={() => onRemove(index)} className="ml-auto p-1 hover:bg-destructive/20 rounded shrink-0">
         <Trash2 className="w-3 h-3 text-destructive" />
       </button>
@@ -217,42 +215,44 @@ function AgentRow({ cap, index, onChange, onRemove }) {
   );
 }
 
-function BonusRow({ cap, index, onChange, onRemove, edbData, options }) {
-  const [showReqs, setShowReqs] = useState(false);
-  const allOptions = options || ALL_MILITARY_BONUSES;
+function BonusGroupRow({ cap, index, onChange, onRemove, groupLabel, groupKey, groups }) {
+  const [expanded, setExpanded] = useState(false);
 
-  // Group options by sub-group if we have group info
-  const grouped = options === ALL_CIVILIAN_BONUSES
-    ? CIVILIAN_BONUS_GROUPS
-    : options === ALL_MILITARY_BONUSES
-    ? MILITARY_BONUS_GROUPS
-    : null;
+  const handleGroupChange = (newGroup) => {
+    const groupItems = groups[newGroup] || [];
+    onChange(index, { ...cap, groupKey: newGroup, identifier: groupItems[0] || '' });
+  };
+
+  const currentGroupItems = groups[cap.groupKey] || [];
 
   return (
     <div className="bg-accent/30 rounded-lg px-3 py-2 space-y-2">
       <div className="flex items-center gap-2">
+        {/* sub-group selector */}
+        <Select value={cap.groupKey || ''} onValueChange={handleGroupChange}>
+          <SelectTrigger className="h-7 text-xs flex-1 max-w-xs">
+            <SelectValue placeholder="Select sub-group…" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.keys(groups).map(g => (
+              <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* capability identifier */}
         <Select value={cap.identifier || ''} onValueChange={val => onChange(index, { ...cap, identifier: val })}>
           <SelectTrigger className="h-7 text-xs flex-1">
             <SelectValue placeholder="Select capability…" />
           </SelectTrigger>
           <SelectContent>
-            {grouped ? (
-              Object.entries(grouped).map(([group, items]) => (
-                <React.Fragment key={group}>
-                  <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">{group}</div>
-                  {items.map(trait => (
-                    <SelectItem key={trait} value={trait} className="text-xs pl-4">{trait}</SelectItem>
-                  ))}
-                </React.Fragment>
-              ))
-            ) : (
-              allOptions.map(trait => (
-                <SelectItem key={trait} value={trait} className="text-xs">{trait}</SelectItem>
-              ))
-            )}
+            {currentGroupItems.map(trait => (
+              <SelectItem key={trait} value={trait} className="text-xs">{trait}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
-        {/* bonus vs simple toggle */}
+
+        {/* bonus vs simple */}
         <Select value={cap.type} onValueChange={val => onChange(index, { ...cap, type: val })}>
           <SelectTrigger className="h-7 text-xs w-20">
             <SelectValue />
@@ -262,20 +262,23 @@ function BonusRow({ cap, index, onChange, onRemove, edbData, options }) {
             <SelectItem value="simple" className="text-xs">simple</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* value */}
         <Input className="h-7 text-xs w-20" type="number"
           value={cap.value ?? ''}
           onChange={e => onChange(index, { ...cap, value: parseFloat(e.target.value) || 0 })}
         />
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs shrink-0" onClick={() => setShowReqs(!showReqs)}>
-          <Shield className="w-3 h-3 mr-1" />
-          Req ({cap.requirements?.length || 0})
-        </Button>
+
+        <button onClick={() => setExpanded(!expanded)} className="p-1 hover:bg-accent rounded shrink-0">
+          <Shield className="w-3 h-3 text-muted-foreground" />
+        </button>
         <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded">
           <Trash2 className="w-3 h-3 text-destructive" />
         </button>
       </div>
-      {showReqs && (
-        <div className="ml-2">
+
+      {expanded && (
+        <div className="ml-2 pt-1 border-t border-border/50">
           <RequirementBuilder
             requirements={cap.requirements || []}
             onChange={reqs => onChange(index, { ...cap, requirements: reqs })}
@@ -308,9 +311,9 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
   const addRecruitPool = () => onChange([...capabilities, {
     type: 'recruit_pool', unitName: '', initialPool: 1, replenishRate: 0.5, maxPool: 4, experience: 0, requirements: []
   }]);
-  const addAgent = () => onChange([...capabilities, { type: 'agent', agentType: 'merchant' }]);
-  const addCivilian = () => onChange([...capabilities, { type: 'bonus', identifier: 'happiness_bonus', value: 1, requirements: [] }]);
-  const addMilitary = () => onChange([...capabilities, { type: 'bonus', identifier: 'wall_level', value: 1, requirements: [] }]);
+  const addAgent = () => onChange([...capabilities, { type: 'agent', agentType: 'merchant', value: 1 }]);
+  const addCivilian = () => onChange([...capabilities, { type: 'bonus', groupKey: 'Population bonuses', identifier: 'happiness_bonus', value: 1, requirements: [] }]);
+  const addMilitary = () => onChange([...capabilities, { type: 'bonus', groupKey: 'Infrastructure', identifier: 'wall_level', value: 1, requirements: [] }]);
 
   return (
     <div className="space-y-5">
@@ -336,7 +339,7 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
           </h4>
           {civilianCaps.map((cap) => {
             const realIndex = capabilities.indexOf(cap);
-            return <BonusRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} options={ALL_CIVILIAN_BONUSES} />;
+            return <BonusGroupRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} groupLabel="Civilian Bonuses" groupKey={cap.groupKey} groups={CIVILIAN_BONUS_GROUPS} />;
           })}
         </section>
       )}
@@ -349,7 +352,7 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
           </h4>
           {militaryCaps.map((cap) => {
             const realIndex = capabilities.indexOf(cap);
-            return <BonusRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} options={ALL_MILITARY_BONUSES} />;
+            return <BonusGroupRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} groupLabel="Military Bonuses" groupKey={cap.groupKey} groups={MILITARY_BONUS_GROUPS} />;
           })}
         </section>
       )}
