@@ -14,6 +14,15 @@ export function EDBProvider({ children }) {
 
   const loadEDB = useCallback((text, name) => {
     const parsed = parseEDB(text);
+    // Auto-assign convertTo index for buildings that have a convertTo
+    for (const building of parsed.buildings) {
+      if (building.convertTo) {
+        building.levels = building.levels.map((level, idx) => ({
+          ...level,
+          convertTo: level.convertTo !== null && level.convertTo !== undefined ? level.convertTo : String(idx)
+        }));
+      }
+    }
     setEdbData(parsed);
     setFileName(name || 'export_descr_buildings.txt');
     setSelectedBuilding(null);
