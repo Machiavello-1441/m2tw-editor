@@ -15,6 +15,7 @@ const REF_FILE_MAP = {
   'descr_sm_resources.txt': 'res',
   'descr_events.txt': 'ev',
   'export_descr_unit.txt': 'unit',
+  'export_buildings.txt': 'txt',
 };
 
 const CAMPAIGN_FILE_MAP = {
