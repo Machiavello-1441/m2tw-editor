@@ -67,6 +67,12 @@ export default function CampaignToolbar({ onValidate }) {
 
       <div className="h-4 w-px bg-border mx-1" />
 
+      <Button size="sm" variant="outline" onClick={() => activeLayer && saveLayer(activeLayer)}
+        disabled={!dirty} className="h-7 text-xs gap-1.5 text-green-400 border-green-500/50 hover:bg-green-500/10">
+        <Save className="w-3.5 h-3.5" />
+        Save
+      </Button>
+
       <Button size="sm" variant="outline" onClick={() => activeLayer && revertLayer(activeLayer)}
         disabled={!dirty} className="h-7 text-xs gap-1.5 text-foreground">
         <RotateCcw className="w-3.5 h-3.5" />
