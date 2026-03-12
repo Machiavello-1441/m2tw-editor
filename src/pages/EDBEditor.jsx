@@ -9,20 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Castle, Code2, Save, RotateCcw, Download } from 'lucide-react';
 
 export default function EDBEditor() {
-  const { edbData, fileName, exportEDB, loadEDB, isDirty } = useEDB();
+  const { edbData, fileName, exportEDB, saveEDB, revertEDB, savedSnapshot } = useEDB();
   const [showCode, setShowCode] = useState(false);
-  const [savedSnapshot, setSavedSnapshot] = useState(null);
-
-  const handleSave = () => {
-    // Commit current state as the revert baseline
-    setSavedSnapshot(JSON.stringify(edbData));
-  };
-
-  const handleRevert = () => {
-    if (savedSnapshot) {
-      loadEDB.__revert ? loadEDB.__revert(savedSnapshot) : null;
-    }
-  };
 
   const handleExport = () => {
     const text = exportEDB();
