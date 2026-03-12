@@ -144,7 +144,7 @@ export default function BuildingTree() {
   const { edbData, addBuilding } = useEDB();
   const [search, setSearch] = useState('');
   const [newName, setNewName] = useState('');
-  const [newPrefix, setNewPrefix] = useState('');
+  const [newPrefix, setNewPrefix] = useState('none');
   const [dialogOpen, setDialogOpen] = useState(false);
 
   if (!edbData) return null;
