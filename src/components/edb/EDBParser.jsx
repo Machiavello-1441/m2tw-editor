@@ -410,7 +410,6 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
       if (inCapability) {
         capDepth--;
         if (capDepth === 0) inCapability = false;
-        else depth--; // nested } inside capability still balances depth
         i++; continue;
       }
       if (inFactionCapability) {
