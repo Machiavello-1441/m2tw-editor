@@ -14,6 +14,42 @@ import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
 import { useRefData } from './RefDataContext';
 
+function UpgradeRow({ upg, index, levelOptions, onChange, onRemove, edbData }) {
+  const [showReqs, setShowReqs] = useState(false);
+  return (
+    <div className="bg-accent/30 rounded-lg px-3 py-2 space-y-2">
+      <div className="flex items-center gap-2">
+        <Select value={upg.name || ''} onValueChange={v => onChange(index, { ...upg, name: v })}>
+          <SelectTrigger className="h-7 text-xs flex-1">
+            <SelectValue placeholder="Select level…" />
+          </SelectTrigger>
+          <SelectContent>
+            {levelOptions.map(({ name: ln, index: li }) => (
+              <SelectItem key={ln} value={ln} className="text-xs">{li + 1}. {ln}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs shrink-0" onClick={() => setShowReqs(!showReqs)}>
+          <Shield className="w-3 h-3 mr-1" />
+          Req ({upg.requirements?.length || 0})
+        </Button>
+        <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded shrink-0">
+          <Trash2 className="w-3 h-3 text-destructive" />
+        </button>
+      </div>
+      {showReqs && (
+        <div className="ml-2">
+          <RequirementBuilder
+            requirements={upg.requirements || []}
+            onChange={reqs => onChange(index, { ...upg, requirements: reqs })}
+            edbData={edbData}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LevelImages({ levelName }) {
   const { imageData } = useEDB();
   const { cultures } = useRefData();
