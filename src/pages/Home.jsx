@@ -7,7 +7,7 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
   Castle, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Users, Package, Zap, ArrowRight, Info, BookOpen, Sword
+  FileText, Users, Package, Zap, ArrowRight, Info, BookOpen, Swords
 } from 'lucide-react';
 
 const REF_FILE_MAP = {
