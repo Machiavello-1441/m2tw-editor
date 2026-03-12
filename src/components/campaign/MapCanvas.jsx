@@ -223,12 +223,22 @@ export default function MapCanvas() {
       e.preventDefault();
       return;
     }
-    if (e.button === 0 && selectedColor && activeLayer) {
-      setIsPainting(true);
-      const [mx, my] = getMapCoords(e);
+    if (e.button === 0 && activeLayer) {
+      const [mx, my] = getMapCoords(e, activeLayer);
       const layer = layers[activeLayer];
       if (!layer) return;
       if (mx < 0 || my < 0 || mx >= layer.width || my >= layer.height) return;
+
+      if (tool === 'eyedropper') {
+        const idx = (my * layer.width + mx) * 4;
+        const rgb = [layer.edited[idx], layer.edited[idx + 1], layer.edited[idx + 2]];
+        setSelectedColor({ rgb, label: `rgb(${rgb.join(',')})` });
+        setTool('pencil');
+        return;
+      }
+
+      if (!selectedColor) return;
+      setIsPainting(true);
       if (tool === 'bucket') {
         bucketFill(activeLayer, mx, my, selectedColor.rgb);
       } else {
@@ -243,7 +253,7 @@ export default function MapCanvas() {
         }
       }
     }
-  }, [selectedColor, activeLayer, tool, brushSize, layers, getMapCoords, paintPixel, bucketFill]);
+  }, [selectedColor, activeLayer, tool, setTool, setSelectedColor, brushSize, layers, getMapCoords, paintPixel, bucketFill]);
 
   const handleMouseMove = useCallback((e) => {
     if (isPanning && panStart.current) {
