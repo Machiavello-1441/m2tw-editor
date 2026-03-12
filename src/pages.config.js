@@ -48,14 +48,12 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import Export from './pages/Export';
-import ImageManager from './pages/ImageManager';
 import TextEditor from './pages/TextEditor';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Export": Export,
-    "ImageManager": ImageManager,
     "TextEditor": TextEditor,
 }
 
