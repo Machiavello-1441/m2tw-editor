@@ -78,57 +78,53 @@ function BuildingNode({ building }) {
           {building.levels.map((level, li) => {
             const isLevelSelected = selectedBuilding === building.name && selectedLevel === level.name;
             const levelNum = li + 1;
-            const showVanillaWarn = levelNum === 9;
-            const showEopWarn = levelNum > 50;
+            const levelCls = isLevelSelected
+              ? 'bg-primary/15 text-primary'
+              : 'hover:bg-accent text-muted-foreground hover:text-foreground';
             return (
               <div key={level.name}>
-                {showVanillaWarn && (
+                {levelNum === 9 && (
                   <div className="flex items-center gap-1 px-2 py-0.5 text-[9px] text-yellow-500 bg-yellow-500/10 rounded mb-0.5">
                     <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
                     Level 9 = vanilla limit. M2TWEOP allows 50+.
                   </div>
                 )}
-                {showEopWarn && (
+                {levelNum > 50 && (
                   <div className="flex items-center gap-1 px-2 py-0.5 text-[9px] text-orange-400 bg-orange-500/10 rounded mb-0.5">
                     <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
-                    Level {levelNum}: close to M2TWEOP max!
+                    {"Level " + levelNum + ": close to M2TWEOP max!"}
                   </div>
                 )}
-              <div
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer group text-xs transition-colors
-                  ${isLevelSelected ? 'bg-primary/15 text-primary' : 'hover:bg-accent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => { setSelectedBuilding(building.name); setSelectedLevel(level.name); }}
-              >
-                <Layers className="w-3 h-3 shrink-0" />
-                <span className="flex-1 truncate">{level.name}</span>
-                <span className="text-[10px] opacity-60">{level.settlementType}</span>
-                {building.levels.length > 1 && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        onClick={e => e.stopPropagation()}
-                        className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-2.5 h-2.5 text-destructive" />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Level</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Delete level "{level.name}"?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteLevel(building.name, level.name)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-              </div>
+                <div
+                  className={"flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer group text-xs transition-colors " + levelCls}
+                  onClick={() => { setSelectedBuilding(building.name); setSelectedLevel(level.name); }}
+                >
+                  <Layers className="w-3 h-3 shrink-0" />
+                  <span className="flex-1 truncate">{level.name}</span>
+                  <span className="text-[10px] opacity-60">{level.settlementType}</span>
+                  {building.levels.length > 1 && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          onClick={e => e.stopPropagation()}
+                          className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-2.5 h-2.5 text-destructive" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Level</AlertDialogTitle>
+                          <AlertDialogDescription>Delete level "{level.name}"?</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteLevel(building.name, level.name)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </div>
             );
           })}
