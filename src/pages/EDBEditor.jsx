@@ -1,14 +1,18 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
 import BuildingTree from '../components/edb/BuildingTree';
 import LevelEditor from '../components/edb/LevelEditor.jsx';
 import RefFileLoader from '../components/edb/RefFileLoader.jsx';
+import ValidationPanel from '../components/edb/ValidationPanel';
+import CodePreview from '../components/edb/CodePreview';
+import HiddenResourceEditor from '../components/edb/HiddenResourceEditor';
 
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Code2, PanelRightOpen, PanelRightClose } from 'lucide-react';
 
 export default function EDBEditor() {
   const { edbData, loadEDB, isDirty, fileName } = useEDB();
+  const [showCodePreview, setShowCodePreview] = useState(false);
 
   const handleFileUpload = useCallback((e) => {
     const file = e.target.files?.[0];
@@ -16,6 +20,7 @@ export default function EDBEditor() {
     const reader = new FileReader();
     reader.onload = (ev) => loadEDB(ev.target.result, file.name);
     reader.readAsText(file);
+    e.target.value = '';
   }, [loadEDB]);
 
   if (!edbData) {
@@ -46,17 +51,28 @@ export default function EDBEditor() {
     <div className="h-screen flex flex-col">
       {/* Toolbar */}
       <div className="h-10 border-b border-border flex items-center px-3 gap-3 shrink-0 bg-card/50">
-        <span className="text-xs text-muted-foreground font-mono">{fileName}</span>
+        <span className="text-xs text-muted-foreground font-mono truncate max-w-xs">{fileName}</span>
         {isDirty && (
-          <span className="flex items-center gap-1 text-[10px] text-primary">
-            <AlertCircle className="w-3 h-3" /> Unsaved changes
+          <span className="flex items-center gap-1 text-[10px] text-primary shrink-0">
+            <AlertCircle className="w-3 h-3" /> Unsaved
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5">
           <RefFileLoader />
+          <HiddenResourceEditor />
           <span className="text-[10px] text-muted-foreground hidden xl:block">
-            {edbData.buildings.length} bldgs · {edbData.hiddenResources.length} hidden res
+            {edbData.buildings.length} bldgs · {edbData.hiddenResources.length} hr
           </span>
+          <Button
+            variant={showCodePreview ? 'default' : 'ghost'}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setShowCodePreview(p => !p)}
+            title="Toggle code preview"
+          >
+            {showCodePreview ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+            <span className="hidden lg:inline">Code</span>
+          </Button>
           <label className="cursor-pointer">
             <input type="file" accept=".txt" onChange={handleFileUpload} className="hidden" />
             <Button variant="ghost" size="sm" className="h-7 text-xs pointer-events-none">
@@ -68,14 +84,25 @@ export default function EDBEditor() {
 
       {/* Main split view */}
       <div className="flex-1 flex min-h-0">
-        {/* Tree panel */}
-        <div className="w-64 lg:w-72 border-r border-border bg-card/30 shrink-0">
-          <BuildingTree />
+        {/* Tree + Validation panel */}
+        <div className="w-64 lg:w-72 border-r border-border bg-card/30 shrink-0 flex flex-col">
+          <div className="flex-1 min-h-0">
+            <BuildingTree />
+          </div>
+          <ValidationPanel />
         </div>
+
         {/* Editor panel */}
         <div className="flex-1 min-w-0">
           <LevelEditor />
         </div>
+
+        {/* Code preview panel */}
+        {showCodePreview && (
+          <div className="w-72 xl:w-80 border-l border-border bg-card/30 shrink-0">
+            <CodePreview />
+          </div>
+        )}
       </div>
     </div>
   );
