@@ -153,7 +153,7 @@ function BuildingNode({ building }) {
             );
           })}
           <button
-            onClick={() => addLevel(building.name)}
+            onClick={handleAddLevel}
             className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-muted-foreground hover:text-primary transition-colors w-full"
           >
             <Plus className="w-2.5 h-2.5" /> Add Level
