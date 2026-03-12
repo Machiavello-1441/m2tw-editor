@@ -265,15 +265,16 @@ function parseBuilding(lines, startIndex) {
       i++; continue;
     }
     
-    if (line.startsWith('levels ')) {
+    if (line.startsWith('levels ') || line === 'levels') {
       // Parse level names - they may span multiple lines before opening {
       const levelsPart = [];
-      const firstTokens = line.replace('levels ', '').trim().split(/\s+/);
+      // line is already comment-stripped
+      const firstTokens = line.replace(/^levels\s*/, '').trim().split(/\s+/);
       let brace_found = false;
       for (const t of firstTokens) {
         if (t === '{') { brace_found = true; break; }
-        if (t.startsWith(';')) break;
-        if (t) levelsPart.push(t);
+        if (!t) continue;
+        levelsPart.push(t);
       }
       i++;
       // If { not on levels line, collect more names from subsequent lines
