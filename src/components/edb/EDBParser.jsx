@@ -387,7 +387,10 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
   let capDepth = 0;
   
   while (i < lines.length && depth > 0) {
-    const line = lines[i].trim();
+    const rawL = lines[i].trim();
+    // Skip pure comment lines
+    if (rawL.startsWith(';')) { i++; continue; }
+    const line = rawL;
     
     if (line === '}') {
       if (inCapability) {
