@@ -142,6 +142,21 @@ function parseRequirements(reqStr) {
 }
 
 
+// Helper to find which group an identifier belongs to
+function findGroupForIdentifier(identifier) {
+  const { CIVILIAN_BONUS_GROUPS, MILITARY_BONUS_GROUPS } = require('./CapabilityEditor');
+  
+  for (const [groupKey, items] of Object.entries(CIVILIAN_BONUS_GROUPS)) {
+    if (items.includes(identifier)) return { type: 'civilian', key: groupKey };
+  }
+  
+  for (const [groupKey, items] of Object.entries(MILITARY_BONUS_GROUPS)) {
+    if (items.includes(identifier)) return { type: 'military', key: groupKey };
+  }
+  
+  return null;
+}
+
 function parseCapabilityLine(line) {
   line = line.trim();
   
@@ -164,20 +179,26 @@ function parseCapabilityLine(line) {
   // bonus-style capabilities: "identifier bonus N" or "identifier N"
   const bonusMatch = line.match(/^(\S+)\s+bonus\s+([-\d.]+)/);
   if (bonusMatch) {
+    const identifier = bonusMatch[1];
+    const group = findGroupForIdentifier(identifier);
     return {
       type: 'bonus',
-      identifier: bonusMatch[1],
-      value: parseFloat(bonusMatch[2])
+      identifier,
+      value: parseFloat(bonusMatch[2]),
+      groupKey: group?.key || null
     };
   }
   
   // simple value capabilities: "identifier N"
   const simpleMatch = line.match(/^(\S+)\s+([-\d.]+)/);
   if (simpleMatch) {
+    const identifier = simpleMatch[1];
+    const group = findGroupForIdentifier(identifier);
     return {
       type: 'simple',
-      identifier: simpleMatch[1],
-      value: parseFloat(simpleMatch[2])
+      identifier,
+      value: parseFloat(simpleMatch[2]),
+      groupKey: group?.key || null
     };
   }
   
