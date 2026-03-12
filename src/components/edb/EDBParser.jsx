@@ -637,11 +637,11 @@ function serializeCapability(cap) {
   }
   
   if (cap.type === 'agent') {
-    return `agent ${cap.agentType}`;
+    return `agent ${cap.agentType}${cap.value != null ? ' ' + cap.value : ''}`;
   }
-  
+
   if (cap.type === 'agent_limit') {
-    return `agent_limit ${cap.agentType} ${cap.value}`;
+    return `agent_limit ${cap.agentType} ${cap.value ?? 1}`;
   }
   
   return cap.text || '';
