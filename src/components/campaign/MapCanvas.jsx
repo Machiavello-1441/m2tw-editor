@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useCampaignMap } from './CampaignMapContext';
 import { LAYER_ORDER, LAYER_DEFS } from './MapLayerDefs';
-import MapPixelTooltip from './MapPixelTooltip';
+import MapPixelTooltip from './MapPixelTooltip.jsx';
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 100;
