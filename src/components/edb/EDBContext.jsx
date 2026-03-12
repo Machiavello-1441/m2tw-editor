@@ -153,7 +153,6 @@ export function EDBProvider({ children }) {
     updateBuilding, updateLevel,
     addBuilding, deleteBuilding,
     addLevel, deleteLevel,
-    textData, setTextData,
     imageData, setImageData,
     isDirty, fileName
   };
