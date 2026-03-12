@@ -260,18 +260,24 @@ function parseBuilding(lines, startIndex) {
     }
     
     if (line.startsWith('levels ')) {
-      // Parse levels line - extract level names (all on one line before the {)
+      // Parse levels line - extract level names
       const levelsLine = line.replace('levels ', '').trim();
+      // Level names are space-separated, but the block starts with {
+      // We need to find where the level names end
       const levelsPart = [];
-      for (const p of levelsLine.split(/\s+/)) {
-        if (p === '{' || p === '') break;
+      const parts = levelsLine.split(/\s+/);
+      
+      // Collect all level names (they come before the { or are on the same line)
+      for (const p of parts) {
+        if (p === '{') break;
         levelsPart.push(p);
       }
-
-      // Find the { that starts the levels block (may be on the same line or next)
+      
+      // Find the { that starts the levels block
+      let levelsBlockStart = i;
       if (!levelsLine.includes('{')) {
         i++;
-        while (i < lines.length && lines[i].trim() !== '{') i++;
+        while (i < lines.length && !lines[i].trim().startsWith('{')) i++;
       }
       i++; // skip {
       
@@ -288,7 +294,6 @@ function parseBuilding(lines, startIndex) {
         
         // Check if this is a level definition line
         // Format: level_name (city|castle) requires ...
-        // level name can include brackets like [state]_name
         const levelMatch = lLine.match(/^(\S+)\s+(city|castle)\s*(.*)/);
         if (levelMatch && levelsPart.includes(levelMatch[1])) {
           const level = parseLevelBlock(lines, i, levelMatch[1], levelMatch[2], levelMatch[3] || '');
@@ -489,7 +494,7 @@ export function serializeEDB(edbData) {
   return output;
 }
 
-export function serializeBuilding(building) {
+function serializeBuilding(building) {
   let out = `building ${building.name}\n{\n`;
   
   if (building.convertTo) {
