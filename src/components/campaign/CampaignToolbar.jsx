@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { FolderOpen, RotateCcw, Download, ShieldCheck, X } from 'lucide-react';
+import { FolderOpen, RotateCcw, Download, ShieldCheck, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCampaignMap } from './CampaignMapContext';
 import { LAYER_DEFS } from './MapLayerDefs';
