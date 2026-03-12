@@ -19,10 +19,18 @@ const REQ_TYPES = [
 const CONNECTORS = ['and', 'or', 'and not'];
 
 function FactionSelector({ values, onChange, factions, cultures }) {
-  const allOptions = [...cultures, ...factions];
+  const allOptions = ['all', ...cultures, ...factions];
   const toggleFaction = (f) => {
-    if (values.includes(f)) onChange(values.filter(v => v !== f));
-    else onChange([...values, f]);
+    if (f === 'all') {
+      // Toggle: if 'all' is already selected, clear; otherwise set only 'all'
+      if (values.includes('all')) onChange([]);
+      else onChange(['all']);
+    } else {
+      // Selecting a specific faction removes 'all'
+      const withoutAll = values.filter(v => v !== 'all');
+      if (withoutAll.includes(f)) onChange(withoutAll.filter(v => v !== f));
+      else onChange([...withoutAll, f]);
+    }
   };
 
   return (
