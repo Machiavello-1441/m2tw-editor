@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Download, FileText, ImageIcon, Package, Eye, Copy, Check } from 'lucide-react';
 
 export default function Export() {
-  const { edbData, exportEDB, textData, imageData, fileName } = useEDB();
+  const { edbData, exportEDB, imageData, fileName } = useEDB();
+  const { textData } = useRefData();
   const [preview, setPreview] = useState('');
   const [copied, setCopied] = useState(false);
 
