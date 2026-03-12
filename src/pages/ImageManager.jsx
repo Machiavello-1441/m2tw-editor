@@ -8,8 +8,54 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { ImageIcon, Upload, FileImage, Trash2, Info } from 'lucide-react';
+import { ImageIcon, Upload, FileImage, Trash2, Info, Download } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+
+// Convert any image to .tga (uncompressed RGBA) and trigger download
+function downloadAsTGA(imageUrl, fileName) {
+  const img = new window.Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    // TGA header (18 bytes) + footer
+    const header = new Uint8Array(18);
+    header[2] = 2;       // uncompressed RGB/RGBA
+    header[12] = w & 0xFF; header[13] = (w >> 8) & 0xFF;
+    header[14] = h & 0xFF; header[15] = (h >> 8) & 0xFF;
+    header[16] = 32;     // 32 bits per pixel (RGBA)
+    header[17] = 8;      // 8 bits alpha, origin top-left
+    // TGA stores rows bottom-up by default; flip
+    const rowSize = w * 4;
+    const pixels = new Uint8Array(w * h * 4);
+    for (let row = 0; row < h; row++) {
+      const srcRow = (h - 1 - row) * rowSize;
+      const dstRow = row * rowSize;
+      for (let col = 0; col < w; col++) {
+        const si = srcRow + col * 4;
+        const di = dstRow + col * 4;
+        // RGBA -> BGRA for TGA
+        pixels[di + 0] = data[si + 2]; // B
+        pixels[di + 1] = data[si + 1]; // G
+        pixels[di + 2] = data[si + 0]; // R
+        pixels[di + 3] = data[si + 3]; // A
+      }
+    }
+    const footer = new Uint8Array([0,0,0,0,0,0,0,0,...Array.from('TRUEVISION-XFILE').map(c=>c.charCodeAt(0)),0,0]);
+    const blob = new Blob([header, pixels, footer], { type: 'application/octet-stream' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName.replace(/\.(png|jpg|jpeg)$/i, '') + '.tga';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  img.src = imageUrl;
+}
 
 export default function ImageManager() {
   const { edbData, imageData, setImageData } = useEDB();
