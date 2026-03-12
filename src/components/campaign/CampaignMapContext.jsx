@@ -85,7 +85,17 @@ export function CampaignMapProvider({ children }) {
     setIsDirty(prev => ({ ...prev, [layerKey]: true }));
   }, []);
 
-  // Revert a layer to original
+  // Save current edits as the new baseline (so Revert goes back to this point)
+  const saveLayer = useCallback((layerKey) => {
+    setLayers(prev => {
+      const layer = prev[layerKey];
+      if (!layer) return prev;
+      return { ...prev, [layerKey]: { ...layer, data: new Uint8ClampedArray(layer.edited) } };
+    });
+    setIsDirty(prev => ({ ...prev, [layerKey]: false }));
+  }, []);
+
+  // Revert a layer to last saved baseline
   const revertLayer = useCallback((layerKey) => {
     setLayers(prev => {
       const layer = prev[layerKey];
