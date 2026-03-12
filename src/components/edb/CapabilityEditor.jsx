@@ -177,12 +177,10 @@ function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
 }
 
 function AgentRow({ cap, index, onChange, onRemove }) {
-  const isLimit = cap.type === 'agent_limit';
-
   return (
     <div className="bg-accent/30 rounded-lg px-3 py-2 flex items-center gap-2">
       <UserRound className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-      {/* type toggle */}
+      {/* agent vs agent_limit */}
       <Select value={cap.type} onValueChange={val => onChange(index, { ...cap, type: val })}>
         <SelectTrigger className="h-7 text-xs w-28">
           <SelectValue />
@@ -203,13 +201,11 @@ function AgentRow({ cap, index, onChange, onRemove }) {
           ))}
         </SelectContent>
       </Select>
-      {/* limit value — only for agent_limit */}
-      {isLimit && (
-        <Input className="h-7 text-xs w-16" type="number"
-          value={cap.value ?? 1}
-          onChange={e => onChange(index, { ...cap, value: parseInt(e.target.value) || 1 })}
-        />
-      )}
+      {/* value — always shown (e.g. "agent merchant 1") */}
+      <Input className="h-7 text-xs w-16" type="number"
+        value={cap.value ?? 1}
+        onChange={e => onChange(index, { ...cap, value: parseInt(e.target.value) || 1 })}
+      />
       <button onClick={() => onRemove(index)} className="ml-auto p-1 hover:bg-destructive/20 rounded shrink-0">
         <Trash2 className="w-3 h-3 text-destructive" />
       </button>
