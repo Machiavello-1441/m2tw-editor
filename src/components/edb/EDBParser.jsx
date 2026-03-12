@@ -417,15 +417,12 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
     }
     
     if (inCapability) {
-      // Strip inline comments but keep "requires" portion (requirements come before any ;;)
-      const capLine = line.replace(/\s*;;.*$/, '').trim();
-      if (capLine) level.capabilities.push(parseCapabilityLine(capLine));
+      if (line) level.capabilities.push(parseCapabilityLine(line));
       i++; continue;
     }
     
     if (inFactionCapability) {
-      const capLine = line.replace(/\s*;;.*$/, '').trim();
-      if (capLine) level.factionCapability.push(parseCapabilityLine(capLine));
+      if (line) level.factionCapability.push(parseCapabilityLine(line));
       i++; continue;
     }
     
