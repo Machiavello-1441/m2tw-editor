@@ -482,6 +482,8 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
 }
 
 // Serialize back to EDB format
+export { serializeBuilding };
+
 export function serializeEDB(edbData) {
   let output = ';This file is generated from M2TW EDB Editor\n\n\n\n\n';
   output += 'hidden_resources ' + edbData.hiddenResources.join(' ') + '\n\n';
