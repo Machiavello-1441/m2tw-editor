@@ -28,6 +28,29 @@ const PREFIXES = [
 function BuildingNode({ building }) {
   const { selectedBuilding, setSelectedBuilding, selectedLevel, setSelectedLevel,
     deleteBuilding, addLevel, deleteLevel } = useEDB();
+  const { setTextData, textDataLoaded, cultures } = useRefData();
+
+  const seedTextEntries = (levelName) => {
+    if (!textDataLoaded) return;
+    setTextData(prev => {
+      const next = { ...prev };
+      if (!next[levelName]) next[levelName] = levelName;
+      if (!next[`${levelName}_desc`]) next[`${levelName}_desc`] = '';
+      if (!next[`${levelName}_desc_short`]) next[`${levelName}_desc_short`] = '';
+      for (const culture of cultures) {
+        if (!next[`${levelName}_${culture}_desc`]) next[`${levelName}_${culture}_desc`] = '';
+        if (!next[`${levelName}_${culture}_desc_short`]) next[`${levelName}_${culture}_desc_short`] = '';
+      }
+      return next;
+    });
+  };
+
+  const handleAddLevel = () => {
+    // We need the new level name before calling addLevel — build it here
+    const newLevelName = building.name + '_' + (building.levels.length + 1);
+    addLevel(building.name);
+    seedTextEntries(newLevelName);
+  };
   const [expanded, setExpanded] = useState(selectedBuilding === building.name);
   const isSelected = selectedBuilding === building.name && !selectedLevel;
 
