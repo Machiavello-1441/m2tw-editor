@@ -28,10 +28,7 @@ export default function Export() {
   };
 
   const handleDownloadTexts = () => {
-    let text = '';
-    for (const [key, value] of Object.entries(textData)) {
-      text += `{${key}}${value}\n`;
-    }
+    const text = serializeExportBuildingsFile(textData);
     downloadFile(text, 'export_buildings.txt', 'text/plain');
   };
 
