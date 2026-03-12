@@ -139,7 +139,7 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
             <SelectValue placeholder="Select resource..." />
           </SelectTrigger>
           <SelectContent>
-            {HIDDEN_RESOURCES_DEFAULT.map(r => (
+            {hiddenResources.map(r => (
               <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
             ))}
           </SelectContent>
