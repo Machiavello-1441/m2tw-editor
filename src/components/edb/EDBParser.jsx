@@ -275,13 +275,19 @@ function parseBuilding(lines, startIndex) {
       const levelsPart = (braceIdx >= 0 ? levelsRaw.slice(0, braceIdx) : levelsRaw)
         .trim().split(/\s+/).filter(p => p.length > 0);
       
-      // Find the { that starts the levels block
-      let levelsBlockStart = i;
-      if (!levelsLine.includes('{')) {
+      // Find the { that starts the levels block — already found above via levelsRaw
+      // Advance i past the levels declaration lines up to and including the {
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('{') && !levelsRaw.includes(lines[i-1].trim())) {
+        if (lines[i].trim() === '{') break;
         i++;
-        while (i < lines.length && !lines[i].trim().startsWith('{')) i++;
       }
-      i++; // skip {
+      // skip the { line
+      if (i < lines.length && lines[i].trim() === '{') {
+        i++;
+      } else {
+        i++;
+      }
       
       // Now parse each level
       let levelDepth = 1;
