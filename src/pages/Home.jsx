@@ -21,8 +21,8 @@ const CAMPAIGN_FILE_MAP = {
   'descr_events.txt': 'ev',
 };
 
-function FileStatus({ label, hint, status, icon: FileIcon }) {
-  const Icon = FileIcon;
+function FileStatus({ label, hint, status, icon: FileIconComp }) {
+  const Icon = FileIconComp || null;
   const colors = {
     idle:    'border-border bg-card text-muted-foreground',
     ok:      'border-green-500/40 bg-green-500/5 text-green-400',
