@@ -78,8 +78,8 @@ export default function Home() {
     // Update status for what we found
     setFileStatus(prev => {
       const next = { ...prev };
-      for (const k of ['edb', 'fac', 'res', 'ev', 'unit']) {
-        next[k] = foundKeys[k] ? 'loading' : 'idle';
+      for (const k of ['edb', 'fac', 'res', 'ev', 'unit', 'txt']) {
+        next[k] = foundKeys[k] ? 'loading' : prev[k];
       }
       return next;
     });
@@ -89,6 +89,7 @@ export default function Home() {
       res: loadResourcesFile,
       ev: loadEventsFile,
       unit: loadUnitsFile,
+      txt: loadTextFile,
     };
 
     for (const [key, file] of Object.entries(foundKeys)) {
