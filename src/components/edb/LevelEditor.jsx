@@ -75,13 +75,25 @@ export default function LevelEditor() {
     .map((l, i) => ({ name: l.name, index: i }))
     .filter(l => l.name !== selectedLevel);
 
-  const toggleUpgrade = (levelName) => {
-    const current = level.upgrades || [];
-    if (current.includes(levelName)) {
-      update('upgrades', current.filter(u => u !== levelName));
-    } else {
-      update('upgrades', [...current, levelName]);
-    }
+  // Normalize upgrades: support both old string[] and new {name, requirements}[]
+  const normalizeUpgrades = (ups) => (ups || []).map(u =>
+    typeof u === 'string' ? { name: u, requirements: [] } : u
+  );
+
+  const upgrades = normalizeUpgrades(level.upgrades);
+
+  const addUpgrade = () => {
+    const first = otherLevels[0]?.name || '';
+    update('upgrades', [...upgrades, { name: first, requirements: [] }]);
+  };
+
+  const updateUpgrade = (i, patch) => {
+    const next = upgrades.map((u, idx) => idx === i ? { ...u, ...patch } : u);
+    update('upgrades', next);
+  };
+
+  const removeUpgrade = (i) => {
+    update('upgrades', upgrades.filter((_, idx) => idx !== i));
   };
 
   const buildingOptions = edbData.buildings
