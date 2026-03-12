@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 
 const PREFIXES = [
-  { value: '', label: '(no prefix)', hint: 'Default — normal building' },
+  { value: 'none', label: '(no prefix)', hint: 'Default — normal building' },
   { value: 'core_', label: 'core_', hint: 'Upgrades settlement to next level' },
   { value: 'hinterland_', label: 'hinterland_', hint: 'Cannot be demolished for cash' },
   { value: 'temple_', label: 'temple_', hint: 'Only one temple_ building per settlement' },

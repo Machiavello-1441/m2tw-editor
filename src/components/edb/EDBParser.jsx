@@ -296,19 +296,26 @@ function parseBuilding(lines, startIndex) {
       let levelDepth = 1;
       while (i < lines.length && levelDepth > 0) {
         const rawLLine = lines[i].trim();
-        // Strip pure comment lines; for data lines keep raw for requires parsing
+        // Strip pure comment lines
         if (rawLLine.startsWith(';') || rawLLine === '') { i++; continue; }
-        const lLine = rawLLine;
-        if (lLine.startsWith('}')) {
+        // Strip inline comments for structural matching
+        const lLine = rawLLine.split(';')[0].trim();
+        if (!lLine) { i++; continue; }
+        if (lLine === '}') {
           levelDepth--;
           i++;
           continue;
         }
-        if (lLine.startsWith('{')) { i++; continue; }
-        // Format: level_name (city|castle) [requires ...]
-        const levelMatch = lLine.match(/^(\S+)\s+(city|castle)\s*(.*)/);
-        if (levelMatch && levelsPart.includes(levelMatch[1])) {
-          const level = parseLevelBlock(lines, i, levelMatch[1], levelMatch[2], levelMatch[3] || '');
+        if (lLine === '{') { levelDepth++; i++; continue; }
+        // Format: level_name (city|castle) [requires ...]  OR just check first token against levelsPart
+        const firstToken = lLine.split(/\s+/)[0];
+        if (levelsPart.includes(firstToken)) {
+          // extract settlement type and requires string
+          const rest = lLine.slice(firstToken.length).trim();
+          const stMatch = rest.match(/^(city|castle)(.*)/);
+          const settlementType = stMatch ? stMatch[1] : 'city';
+          const requiresStr = stMatch ? stMatch[2].trim() : rest;
+          const level = parseLevelBlock(lines, i, firstToken, settlementType, requiresStr);
           building.levels.push(level.data);
           i = level.nextIndex;
         } else {
