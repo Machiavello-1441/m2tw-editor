@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, PaintBucket, Minus, Plus } from 'lucide-react';
+import { Pencil, PaintBucket, Minus, Plus, Pipette } from 'lucide-react';
 import { useCampaignMap } from './CampaignMapContext';
 import { LAYER_DEFS } from './MapLayerDefs';
 import { Button } from '@/components/ui/button';
