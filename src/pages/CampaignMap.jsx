@@ -1,17 +1,31 @@
-import React, { useState } from 'react';
-import { CampaignMapProvider } from '../components/campaign/CampaignMapContext';
+import React, { useState, useEffect } from 'react';
+import { CampaignMapProvider, useCampaignMap } from '../components/campaign/CampaignMapContext';
 import CampaignToolbar from '../components/campaign/CampaignToolbar';
 import MapCanvas from '../components/campaign/MapCanvas';
 import LayerPanel from '../components/campaign/LayerPanel';
 import PalettePanel from '../components/campaign/PalettePanel';
 import CampaignValidationPanel from '../components/campaign/ValidationPanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { TGA_FILENAMES } from '../components/campaign/MapLayerDefs';
 
-export default function CampaignMap() {
+function CampaignMapContent() {
+  const { loadLayer } = useCampaignMap();
   const [showValidation, setShowValidation] = useState(false);
 
+  useEffect(() => {
+    const handleLoadMapTGA = (e) => {
+      const { fileName, data } = e.detail;
+      const fname = fileName.toLowerCase();
+      const key = TGA_FILENAMES?.[fname];
+      if (!key) return;
+      loadLayer(key, data);
+    };
+
+    window.addEventListener('load-map-tga', handleLoadMapTGA);
+    return () => window.removeEventListener('load-map-tga', handleLoadMapTGA);
+  }, [loadLayer]);
+
   return (
-    <CampaignMapProvider>
       <div className="flex flex-col h-screen bg-background">
         <CampaignToolbar onValidate={() => setShowValidation(true)} />
 
@@ -41,6 +55,13 @@ export default function CampaignMap() {
           )}
         </div>
       </div>
+  );
+}
+
+export default function CampaignMap() {
+  return (
+    <CampaignMapProvider>
+      <CampaignMapContent />
     </CampaignMapProvider>
   );
 }
