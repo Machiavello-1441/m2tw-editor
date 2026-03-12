@@ -5,9 +5,8 @@ import LevelEditor from '../components/edb/LevelEditor';
 import ValidationPanel from '../components/edb/ValidationPanel';
 import CodePreview from '../components/edb/CodePreview';
 import HiddenResourceEditor from '../components/edb/HiddenResourceEditor';
-import RefFileLoader from '../components/edb/RefFileLoader';
 import { Button } from '@/components/ui/button';
-import { Castle, Code2 } from 'lucide-react';
+import { Castle, Code2, Save, RotateCcw, Download } from 'lucide-react';
 
 export default function EDBEditor() {
   const { edbData, fileName } = useEDB();
