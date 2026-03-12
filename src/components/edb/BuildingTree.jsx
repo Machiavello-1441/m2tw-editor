@@ -129,6 +129,7 @@ function BuildingNode({ building }) {
                   </AlertDialog>
                 )}
               </div>
+              </div>
             );
           })}
           <button
