@@ -36,6 +36,20 @@ export function EDBProvider({ children }) {
     return serializeEDB(edbData);
   }, [edbData]);
 
+  // Save: commit current state as the revert baseline
+  const saveEDB = useCallback(() => {
+    if (!edbData) return;
+    setSavedSnapshot(JSON.stringify(edbData));
+    setIsDirty(false);
+  }, [edbData]);
+
+  // Revert: restore to last saved snapshot
+  const revertEDB = useCallback(() => {
+    if (!savedSnapshot) return;
+    setEdbData(JSON.parse(savedSnapshot));
+    setIsDirty(false);
+  }, [savedSnapshot]);
+
   const updateBuilding = useCallback((buildingName, updater) => {
     setEdbData(prev => {
       if (!prev) return prev;
