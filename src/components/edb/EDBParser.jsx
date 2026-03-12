@@ -260,34 +260,20 @@ function parseBuilding(lines, startIndex) {
     }
     
     if (line.startsWith('levels ')) {
-      // Parse levels line - extract level names
-      // Multi-line: keep reading until we hit the opening { of the levels block
-      let levelsRaw = line.replace(/^levels\s*/, '').trim();
-      // If no { yet, accumulate next lines
-      let scanI = i + 1;
-      while (!levelsRaw.includes('{') && scanI < lines.length) {
-        const nextLine = lines[scanI].trim();
-        levelsRaw += ' ' + nextLine;
-        scanI++;
+      // Parse levels line - extract level names (all on one line before the {)
+      const levelsLine = line.replace('levels ', '').trim();
+      const levelsPart = [];
+      for (const p of levelsLine.split(/\s+/)) {
+        if (p === '{' || p === '') break;
+        levelsPart.push(p);
       }
-      // Everything before { is level names
-      const braceIdx = levelsRaw.indexOf('{');
-      const levelsPart = (braceIdx >= 0 ? levelsRaw.slice(0, braceIdx) : levelsRaw)
-        .trim().split(/\s+/).filter(p => p.length > 0);
-      
-      // Find the { that starts the levels block — already found above via levelsRaw
-      // Advance i past the levels declaration lines up to and including the {
-      i++;
-      while (i < lines.length && !lines[i].trim().startsWith('{') && !levelsRaw.includes(lines[i-1].trim())) {
-        if (lines[i].trim() === '{') break;
+
+      // Find the { that starts the levels block (may be on the same line or next)
+      if (!levelsLine.includes('{')) {
         i++;
+        while (i < lines.length && lines[i].trim() !== '{') i++;
       }
-      // skip the { line
-      if (i < lines.length && lines[i].trim() === '{') {
-        i++;
-      } else {
-        i++;
-      }
+      i++; // skip {
       
       // Now parse each level
       let levelDepth = 1;
