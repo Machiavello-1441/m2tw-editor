@@ -295,12 +295,16 @@ function parseBuilding(lines, startIndex) {
       // i is now right after the opening {
       let levelDepth = 1;
       while (i < lines.length && levelDepth > 0) {
-        const lLine = lines[i].trim();
-        if (lLine === '}') {
+        const rawLLine = lines[i].trim();
+        // Strip pure comment lines; for data lines keep raw for requires parsing
+        if (rawLLine.startsWith(';') || rawLLine === '') { i++; continue; }
+        const lLine = rawLLine;
+        if (lLine.startsWith('}')) {
           levelDepth--;
           i++;
           continue;
         }
+        if (lLine.startsWith('{')) { i++; continue; }
         // Format: level_name (city|castle) [requires ...]
         const levelMatch = lLine.match(/^(\S+)\s+(city|castle)\s*(.*)/);
         if (levelMatch && levelsPart.includes(levelMatch[1])) {
