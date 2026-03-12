@@ -210,7 +210,9 @@ export function parseEDB(text) {
     const line = lines[i].trim();
     if (line.startsWith(';') || line === '') { i++; continue; }
     if (line.startsWith('hidden_resources')) {
-      hiddenResources = line.replace('hidden_resources', '').trim().split(/\s+/);
+      // Strip inline comments before parsing
+      const withoutComment = line.split(';')[0];
+      hiddenResources = withoutComment.replace('hidden_resources', '').trim().split(/\s+/).filter(Boolean);
       i++;
       continue;
     }
