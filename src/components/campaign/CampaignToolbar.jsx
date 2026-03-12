@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { FolderOpen, RotateCcw, Download, ShieldCheck, Save } from 'lucide-react';
+import { RotateCcw, Download, ShieldCheck, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCampaignMap } from './CampaignMapContext';
 import { LAYER_DEFS } from './MapLayerDefs';
@@ -11,21 +11,7 @@ const TGA_FILENAMES = Object.fromEntries(
 );
 
 export default function CampaignToolbar({ onValidate }) {
-  const folderInputRef = useRef(null);
-  const { layers, loadLayer, saveLayer, revertLayer, isDirty, activeLayer, setValidationResults } = useCampaignMap();
-
-  const handleFolderSelect = (e) => {
-    const files = Array.from(e.target.files);
-    files.forEach(file => {
-      const fname = file.name.toLowerCase();
-      const key = TGA_FILENAMES[fname];
-      if (!key) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => loadLayer(key, ev.target.result);
-      reader.readAsArrayBuffer(file);
-    });
-    e.target.value = '';
-  };
+  const { layers, saveLayer, revertLayer, isDirty, activeLayer, setValidationResults } = useCampaignMap();
 
   const handleExport = () => {
     if (!activeLayer || !layers[activeLayer]) return;
@@ -51,6 +37,8 @@ export default function CampaignToolbar({ onValidate }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card shrink-0">
       <span className="text-xs font-bold text-primary mr-2">Campaign Map</span>
+
+      <div className="h-4 w-px bg-border mx-1" />
 
       <Button size="sm" variant="outline" onClick={() => activeLayer && saveLayer(activeLayer)}
         disabled={!dirty} className="h-7 text-xs gap-1.5 text-green-400 border-green-500/50 hover:bg-green-500/10">
