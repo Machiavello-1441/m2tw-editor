@@ -107,6 +107,10 @@ export const LAYER_DEFS = {
 
 export const LAYER_ORDER = ['heights', 'ground_types', 'climates', 'regions', 'features', 'fog'];
 
+export const TGA_FILENAMES = Object.fromEntries(
+  Object.entries(LAYER_DEFS).map(([k, v]) => [v.filename, k])
+);
+
 export function makeDefaultLayerSettings() {
   const out = {};
   for (const key of LAYER_ORDER) {
