@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Settings, Shield, Swords, X, ImageIcon, TrendingUp } from 'lucide-react';
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor.jsx';
-import UpgradesEditor from './UpgradesEditor.jsx';
+
 import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
 import { useRefData } from './RefDataContext';
@@ -172,13 +172,50 @@ export default function LevelEditor() {
             </div>
 
             <div>
-              <Label className="text-[10px] text-muted-foreground block mb-2">Upgrades To</Label>
-              <UpgradesEditor
-                level={level}
-                otherLevels={otherLevels.map((l, idx) => ({ ...l, index: idx }))}
-                onUpdate={upgrades => update('upgrades', upgrades)}
-                edbData={edbData}
-              />
+              <Label className="text-[10px] text-muted-foreground">Upgrades To</Label>
+              {otherLevels.length > 0 ? (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {otherLevels.map(({ name: ln, index: li }) => {
+                    const upgrades = level.upgrades || [];
+                    const isSelected = upgrades.some(u => (typeof u === 'string' ? u : u.name) === ln);
+                    return (
+                      <button
+                        key={ln}
+                        onClick={() => {
+                          if (!isSelected) {
+                            const newUpgrades = [...upgrades, ln];
+                            update('upgrades', newUpgrades);
+                          }
+                        }}
+                        className={`px-2 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1
+                          ${isSelected
+                            ? 'bg-primary/20 border-primary/40 text-primary'
+                            : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
+                          }`}
+                      >
+                        {li + 1}. {ln}
+                        {isSelected && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newUpgrades = upgrades.filter(u => (typeof u === 'string' ? u : u.name) !== ln);
+                              update('upgrades', newUpgrades);
+                            }}
+                            className="ml-auto"
+                          >
+                            <X className="w-2 h-2" />
+                          </button>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground mt-1 italic">No other levels in this building tree</p>
+              )}
+              {(level.upgrades || []).length === 0 && otherLevels.length > 0 && (
+                <p className="text-[10px] text-muted-foreground italic mt-1">Top level (no upgrades selected)</p>
+              )}
             </div>
 
             <div>
@@ -199,23 +236,6 @@ export default function LevelEditor() {
             <RequirementBuilder
               requirements={level.requirements || []}
               onChange={reqs => update('requirements', reqs)}
-              edbData={edbData}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-primary" />
-              Upgrades ({(level.upgrades || []).length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <UpgradesEditor
-              level={level}
-              otherLevels={otherLevels.map((l, idx) => ({ ...l, index: idx }))}
-              onUpdate={upgrades => update('upgrades', upgrades)}
               edbData={edbData}
             />
           </CardContent>

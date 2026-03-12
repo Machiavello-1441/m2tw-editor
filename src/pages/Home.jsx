@@ -55,11 +55,18 @@ export default function Home() {
   });
   const dataFolderRef = useRef();
   const campaignFolderRef = useRef();
+  const baseMapsFolderRef = useRef();
 
   const readText = (file) => new Promise((resolve) => {
     const r = new FileReader();
     r.onload = e => resolve(e.target.result);
     r.readAsText(file);
+  });
+
+  const readBinary = (file) => new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result);
+    r.readAsArrayBuffer(file);
   });
 
   const handleDataFolder = async (e) => {
@@ -113,6 +120,23 @@ export default function Home() {
         const text = await readText(file);
         loadEventsFile(text);
         setFileStatus(prev => ({ ...prev, ev: 'ok' }));
+      } else if (name.endsWith('.tga')) {
+        // Load TGA map files
+        const buf = await readBinary(file);
+        window.dispatchEvent(new CustomEvent('load-map-tga', { detail: { fileName: name, data: buf } }));
+      }
+    }
+  };
+
+  const handleBaseMapFolder = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+
+    for (const file of files) {
+      const name = file.name.toLowerCase();
+      if (name.endsWith('.tga')) {
+        const buf = await readBinary(file);
+        window.dispatchEvent(new CustomEvent('load-map-tga', { detail: { fileName: name, data: buf } }));
       }
     }
   };
@@ -170,28 +194,44 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Campaign folder */}
+        {/* Campaign & Map files */}
         <div className="p-4 border-t border-border bg-accent/5 space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-primary" />
-              Step 2 — Load Campaign Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+              Step 2 — Load Campaign Files <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
             </h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Default: <code className="text-xs font-mono">data\world\maps\campaign\imperial_campaign\</code> — finds <code className="text-xs font-mono">descr_events.txt</code>
+              Load <code className="text-xs font-mono">descr_events.txt</code> and TGA map files from either base maps or campaign folder
             </p>
           </div>
-          <label className="cursor-pointer">
-            <input ref={campaignFolderRef} type="file" className="hidden"
-              webkitdirectory="" directory="" multiple onChange={handleCampaignFolder} />
-            <Button asChild variant="outline"
-              className="w-full h-9 pointer-events-none gap-2 text-xs">
-              <span>
-                <FolderOpen className="w-3.5 h-3.5" />
-                Browse to campaign folder
-              </span>
-            </Button>
-          </label>
+
+          <div className="space-y-2">
+            <label className="cursor-pointer">
+              <input ref={campaignFolderRef} type="file" className="hidden"
+                webkitdirectory="" directory="" multiple onChange={handleCampaignFolder} />
+              <Button asChild variant="outline"
+                className="w-full h-9 pointer-events-none gap-2 text-xs">
+                <span>
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  Browse to campaign folder (default: imperial_campaign)
+                </span>
+              </Button>
+            </label>
+
+            <label className="cursor-pointer">
+              <input ref={baseMapsFolderRef} type="file" className="hidden"
+                webkitdirectory="" directory="" multiple onChange={handleBaseMapFolder} />
+              <Button asChild variant="outline"
+                className="w-full h-9 pointer-events-none gap-2 text-xs text-muted-foreground">
+                <span>
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  Browse to base maps folder
+                </span>
+              </Button>
+            </label>
+          </div>
+
           <FileStatus label="Events" hint="descr_events.txt" status={fileStatus.ev} icon={Zap} />
         </div>
       </div>
