@@ -438,7 +438,8 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
     
     if (inUpgrades) {
       if (line && line !== '{' && line !== '}') {
-        level.upgrades.push(line.trim());
+        // line is already comment-stripped
+        level.upgrades.push(line);
       }
       i++; continue;
     }
