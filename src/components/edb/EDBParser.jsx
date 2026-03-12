@@ -427,7 +427,7 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
     
     if (line === '{') {
       if (inCapability || inFactionCapability) { capDepth++; }
-      else { depth++; }
+      else if (!inUpgrades) { depth++; }
       i++; continue;
     }
     
