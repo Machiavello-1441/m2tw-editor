@@ -7,17 +7,13 @@ export const BUILDING_TRAITS = [
   'road_level', 'free_upkeep', 'armour', 'weapon_simple', 'weapon_bladed',
   'weapon_missile', 'weapon_siege', 'weapon_other', 'weapon_naval_gunpowder',
   'recruitment_slots', 'agent', 'agent_limit', 'population_health_bonus',
-  'population_growth_bonus', 'stage_games', 'stage_races',
-  'construction_cost_bonus_military', 'construction_cost_bonus_religious',
-  'construction_cost_bonus_defensive', 'construction_cost_bonus_other',
-  'construction_cost_bonus_stone', 'construction_cost_bonus_wooden',
-  'construction_time_bonus_military', 'construction_time_bonus_religious',
-  'construction_time_bonus_defensive', 'construction_time_bonus_other',
-  'construction_time_bonus_stone', 'construction_time_bonus_wooden',
-  'religious_belief', 'religious_order',
+  'population_growth_bonus', 'stage_games', 'stage_races', 'construction_cost_bonus_military',
+  'construction_cost_bonus_religious', 'construction_cost_bonus_defensive',
+  'construction_cost_bonus_other', 'construction_time_bonus_military',
+  'construction_time_bonus_religious', 'construction_time_bonus_defensive',
+  'construction_time_bonus_other', 'religious_belief', 'religious_order',
   'archer_bonus', 'cavalry_bonus', 'heavy_cavalry_bonus', 'gun_bonus',
   'navy_bonus', 'religious_conversion', 'body_guard',
-  'income_bonus', 'recruits_exp_bonus', 'recruits_morale_bonus',
 ];
 
 export const SETTLEMENT_TYPES = ['city', 'castle'];
@@ -391,10 +387,13 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
   let capDepth = 0;
   
   while (i < lines.length && depth > 0) {
-    const rawL = lines[i].trim();
-    // Skip pure comment lines
-    if (rawL.startsWith(';')) { i++; continue; }
-    const line = rawL;
+    // Strip single-; comments (but not inside requires clauses; those are handled in capability parsing)
+    const rawLine = lines[i].trim();
+    // For capability content lines we want to keep inline requires, so only strip trailing ;;+ comments
+    // For structural keywords, strip everything after ;
+    const line = rawLine.startsWith(';') ? '' : rawLine.split(';')[0].trim();
+    
+    if (line === '') { i++; continue; }
     
     if (line === '}') {
       if (inCapability) {
@@ -421,12 +420,15 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
     }
     
     if (inCapability) {
-      if (line) level.capabilities.push(parseCapabilityLine(line));
+      // Use rawLine for capability content to preserve inline requires clauses
+      const capLine = rawLine.replace(/\s*;;;.*$/, '').trim();
+      if (capLine && !capLine.startsWith(';')) level.capabilities.push(parseCapabilityLine(capLine));
       i++; continue;
     }
     
     if (inFactionCapability) {
-      if (line) level.factionCapability.push(parseCapabilityLine(line));
+      const capLine = rawLine.replace(/\s*;;;.*$/, '').trim();
+      if (capLine && !capLine.startsWith(';')) level.factionCapability.push(parseCapabilityLine(capLine));
       i++; continue;
     }
     
