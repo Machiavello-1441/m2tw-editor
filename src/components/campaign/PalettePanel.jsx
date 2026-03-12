@@ -20,13 +20,20 @@ export default function PalettePanel() {
       <div className="flex gap-1">
         <button
           onClick={() => setTool('pencil')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-all ${tool === 'pencil' ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-accent'}`}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-all ${tool === 'pencil' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-slate-200 hover:bg-accent'}`}
         >
           <Pencil className="w-3 h-3" /> Pencil
         </button>
         <button
+          onClick={() => setTool('eyedropper')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-all ${tool === 'eyedropper' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-slate-200 hover:bg-accent'}`}
+          title="Pick colour from map"
+        >
+          <Pipette className="w-3 h-3" /> Pick
+        </button>
+        <button
           onClick={() => setTool('bucket')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-all ${tool === 'bucket' ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-accent'}`}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-all ${tool === 'bucket' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-slate-200 hover:bg-accent'}`}
         >
           <PaintBucket className="w-3 h-3" /> Bucket
         </button>
