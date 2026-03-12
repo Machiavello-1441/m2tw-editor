@@ -261,17 +261,19 @@ function parseBuilding(lines, startIndex) {
     
     if (line.startsWith('levels ')) {
       // Parse levels line - extract level names
-      const levelsLine = line.replace('levels ', '').trim();
-      // Level names are space-separated, but the block starts with {
-      // We need to find where the level names end
-      const levelsPart = [];
-      const parts = levelsLine.split(/\s+/);
-      
-      // Collect all level names (they come before the { or are on the same line)
-      for (const p of parts) {
-        if (p === '{') break;
-        levelsPart.push(p);
+      // Multi-line: keep reading until we hit the opening { of the levels block
+      let levelsRaw = line.replace(/^levels\s*/, '').trim();
+      // If no { yet, accumulate next lines
+      let scanI = i + 1;
+      while (!levelsRaw.includes('{') && scanI < lines.length) {
+        const nextLine = lines[scanI].trim();
+        levelsRaw += ' ' + nextLine;
+        scanI++;
       }
+      // Everything before { is level names
+      const braceIdx = levelsRaw.indexOf('{');
+      const levelsPart = (braceIdx >= 0 ? levelsRaw.slice(0, braceIdx) : levelsRaw)
+        .trim().split(/\s+/).filter(p => p.length > 0);
       
       // Find the { that starts the levels block
       let levelsBlockStart = i;
