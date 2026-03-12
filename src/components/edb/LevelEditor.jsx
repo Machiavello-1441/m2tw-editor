@@ -13,6 +13,93 @@ import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
 import { useRefData } from './RefDataContext';
 
+function UpgradesSection({ level, otherLevels, onChange }) {
+  const [expandedUpgrade, setExpandedUpgrade] = React.useState(null);
+  const upgrades = level.upgrades || [];
+  
+  const toggleUpgrade = (levelName) => {
+    if (upgrades.includes(levelName)) {
+      onChange('upgrades', upgrades.filter(u => u !== levelName));
+    } else {
+      onChange('upgrades', [...upgrades, levelName]);
+    }
+  };
+
+  const getUpgradeObject = (levelName) => {
+    if (typeof upgrades[0] === 'string') {
+      return null; // old format
+    }
+    return upgrades.find(u => u.targetLevel === levelName);
+  };
+
+  const updateUpgradeReqs = (levelName, reqs) => {
+    const newUpgrades = upgrades.map(u =>
+      (typeof u === 'string' ? u : u.targetLevel) === levelName
+        ? { targetLevel: levelName, requirements: reqs }
+        : u
+    );
+    onChange('upgrades', newUpgrades);
+  };
+
+  return (
+    <div>
+      <Label className="text-[10px] text-muted-foreground">Upgrades To</Label>
+      {otherLevels.length > 0 ? (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {otherLevels.map(({ name: ln, index: li }) => {
+            const isSelected = upgrades.some(u => (typeof u === 'string' ? u : u.targetLevel) === ln);
+            const upgradeObj = getUpgradeObject(ln);
+            const isExpanded = expandedUpgrade === ln;
+
+            return (
+              <div key={ln}>
+                <button
+                  onClick={() => {
+                    if (!isSelected) {
+                      toggleUpgrade(ln);
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (isSelected) setExpandedUpgrade(isExpanded ? null : ln);
+                  }}
+                  className={`px-2 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1
+                    ${isSelected
+                      ? 'bg-primary/20 border-primary/40 text-primary'
+                      : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
+                    }`}
+                  title="Left-click to toggle, right-click to edit requirements"
+                >
+                  {li + 1}. {ln}
+                  {isSelected && <X className="w-2 h-2 cursor-pointer" onClick={(e) => {
+                    e.stopPropagation();
+                    toggleUpgrade(ln);
+                    setExpandedUpgrade(null);
+                  }} />}
+                </button>
+                {isSelected && isExpanded && (
+                  <div className="mt-2 pl-2 border-l-2 border-primary/30 space-y-2">
+                    <RequirementBuilder
+                      requirements={upgradeObj?.requirements || []}
+                      onChange={reqs => updateUpgradeReqs(ln, reqs)}
+                      compact
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-[10px] text-muted-foreground mt-1 italic">No other levels in this building tree</p>
+      )}
+      {upgrades.length === 0 && otherLevels.length > 0 && (
+        <p className="text-[10px] text-muted-foreground italic mt-1">Top level (no upgrades selected)</p>
+      )}
+    </div>
+  );
+}
+
 function LevelImages({ levelName }) {
   const { imageData } = useEDB();
   const { cultures } = useRefData();
@@ -177,35 +264,7 @@ export default function LevelEditor() {
               )}
             </div>
 
-            <div>
-              <Label className="text-[10px] text-muted-foreground">Upgrades To</Label>
-              {otherLevels.length > 0 ? (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {otherLevels.map(({ name: ln, index: li }) => {
-                    const selected = (level.upgrades || []).includes(ln);
-                    return (
-                      <button
-                        key={ln}
-                        onClick={() => toggleUpgrade(ln)}
-                        className={`px-2 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1
-                          ${selected
-                            ? 'bg-primary/20 border-primary/40 text-primary'
-                            : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
-                          }`}
-                      >
-                        {li + 1}. {ln}
-                        {selected && <X className="w-2 h-2" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-[10px] text-muted-foreground mt-1 italic">No other levels in this building tree</p>
-              )}
-              {(level.upgrades || []).length === 0 && otherLevels.length > 0 && (
-                <p className="text-[10px] text-muted-foreground italic mt-1">Top level (no upgrades selected)</p>
-              )}
-            </div>
+            <UpgradesSection level={level} otherLevels={otherLevels} onChange={update} />
 
             <div>
               <Label className="text-[10px] text-muted-foreground mb-1 block">Images</Label>
