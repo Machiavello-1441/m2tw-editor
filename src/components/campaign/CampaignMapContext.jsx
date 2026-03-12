@@ -16,6 +16,12 @@ export function CampaignMapProvider({ children }) {
   const [brushSize, setBrushSize] = useState(1);
   const [isDirty, setIsDirty] = useState({}); // { layerKey: bool }
 
+  // Grid overlay settings
+  const [gridSettings, setGridSettings] = useState({
+    showGridRegionsFeatures: false,
+    showGridOther: false,
+  });
+
   // Validation results
   const [validationResults, setValidationResults] = useState(null);
 
