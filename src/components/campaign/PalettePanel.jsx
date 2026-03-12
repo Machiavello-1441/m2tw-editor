@@ -14,7 +14,7 @@ export default function PalettePanel() {
 
   return (
     <div className="space-y-3">
-      <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-1">Paint Tools</div>
+      <div className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider px-1">Paint Tools</div>
 
       {/* Tool selector */}
       <div className="flex gap-1">
