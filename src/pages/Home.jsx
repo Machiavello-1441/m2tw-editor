@@ -119,6 +119,19 @@ export default function Home() {
     }
   };
 
+  const handleTextFolder = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    for (const file of files) {
+      if (file.name.toLowerCase() === 'export_buildings.txt') {
+        setFileStatus(prev => ({ ...prev, txt: 'loading' }));
+        const text = await readText(file);
+        loadTextFile(text);
+        setFileStatus(prev => ({ ...prev, txt: 'ok' }));
+      }
+    }
+  };
+
   const handleCampaignFolder = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
