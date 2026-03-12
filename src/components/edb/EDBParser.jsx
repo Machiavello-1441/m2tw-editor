@@ -260,40 +260,42 @@ function parseBuilding(lines, startIndex) {
     }
     
     if (line.startsWith('levels ')) {
-      // Parse levels line - extract level names
-      const levelsLine = line.replace('levels ', '').trim();
-      // Level names are space-separated, but the block starts with {
-      // We need to find where the level names end
+      // Parse level names - they may span multiple lines before opening {
       const levelsPart = [];
-      const parts = levelsLine.split(/\s+/);
-      
-      // Collect all level names (they come before the { or are on the same line)
-      for (const p of parts) {
-        if (p === '{') break;
-        levelsPart.push(p);
+      const firstTokens = line.replace('levels ', '').trim().split(/\s+/);
+      let brace_found = false;
+      for (const t of firstTokens) {
+        if (t === '{') { brace_found = true; break; }
+        if (t.startsWith(';')) break;
+        if (t) levelsPart.push(t);
       }
-      
-      // Find the { that starts the levels block
-      let levelsBlockStart = i;
-      if (!levelsLine.includes('{')) {
-        i++;
-        while (i < lines.length && !lines[i].trim().startsWith('{')) i++;
+      i++;
+      // If { not on levels line, collect more names from subsequent lines
+      if (!brace_found) {
+        while (i < lines.length) {
+          const nline = lines[i].trim();
+          if (nline === '' || nline.startsWith(';')) { i++; continue; }
+          const tokens = nline.split(/\s+/);
+          let lineBrace = false;
+          for (const t of tokens) {
+            if (t === '{') { lineBrace = true; break; }
+            if (t.startsWith(';')) break;
+            if (t) levelsPart.push(t);
+          }
+          i++;
+          if (lineBrace) break;
+        }
       }
-      i++; // skip {
-      
-      // Now parse each level
+      // i is now right after the opening {
       let levelDepth = 1;
       while (i < lines.length && levelDepth > 0) {
         const lLine = lines[i].trim();
-        
         if (lLine === '}') {
           levelDepth--;
           i++;
           continue;
         }
-        
-        // Check if this is a level definition line
-        // Format: level_name (city|castle) requires ...
+        // Format: level_name (city|castle) [requires ...]
         const levelMatch = lLine.match(/^(\S+)\s+(city|castle)\s*(.*)/);
         if (levelMatch && levelsPart.includes(levelMatch[1])) {
           const level = parseLevelBlock(lines, i, levelMatch[1], levelMatch[2], levelMatch[3] || '');
@@ -494,7 +496,7 @@ export function serializeEDB(edbData) {
   return output;
 }
 
-function serializeBuilding(building) {
+export function serializeBuilding(building) {
   let out = `building ${building.name}\n{\n`;
   
   if (building.convertTo) {
