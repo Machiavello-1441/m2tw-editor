@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Eye, EyeOff, Grid3X3, Layers } from 'lucide-react';
+import { Eye, EyeOff, Grid3X3 } from 'lucide-react';
 import { useCampaignMap } from './CampaignMapContext';
 import { LAYER_ORDER, LAYER_DEFS } from './MapLayerDefs';
 import { Slider } from '@/components/ui/slider';
