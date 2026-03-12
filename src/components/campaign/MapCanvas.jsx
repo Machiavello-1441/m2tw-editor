@@ -295,7 +295,7 @@ export default function MapCanvas() {
     } else {
       setProbe(null);
     }
-  }, [isPanning, isPainting, selectedColor, activeLayer, tool, brushSize, layers, primaryLayer, getMapCoords, paintPixel]);
+  }, [isPanning, isPainting, selectedColor, activeLayer, tool, brushSize, layers, primaryLayer, getMapCoords, paintPixel, setTool, setSelectedColor]);
 
   const handleMouseUp = useCallback(() => {
     setIsPanning(false);
