@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useEDB } from './EDBContext';
 import { validateEDB } from './EDBValidator';
-import { AlertTriangle, XCircle, ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, XCircle, ChevronDown, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
@@ -13,6 +13,7 @@ export default function ValidationPanel() {
   const issues = useMemo(() => validateEDB(edbData), [edbData]);
   const errors = issues.filter(i => i.severity === 'error');
   const warnings = issues.filter(i => i.severity === 'warning');
+  const infos = issues.filter(i => i.severity === 'info');
   const filtered = filter === 'all' ? issues : issues.filter(i => i.severity === filter);
 
   const navigate = (issue) => {
@@ -20,9 +21,11 @@ export default function ValidationPanel() {
     setSelectedLevel(issue.level || null);
   };
 
-  const icon = (severity) => severity === 'error'
-    ? <XCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
-    : <AlertTriangle className="w-3 h-3 text-yellow-500 shrink-0 mt-0.5" />;
+  const icon = (severity) => {
+    if (severity === 'error') return <XCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />;
+    if (severity === 'warning') return <AlertTriangle className="w-3 h-3 text-yellow-500 shrink-0 mt-0.5" />;
+    return <Info className="w-3 h-3 text-blue-400 shrink-0 mt-0.5" />;
+  };
 
   return (
     <div className="border-t border-border bg-card/30 shrink-0">
@@ -32,20 +35,26 @@ export default function ValidationPanel() {
       >
         {expanded ? <ChevronDown className="w-3 h-3 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex-1 text-left">Validation</span>
-        {errors.length > 0 && <Badge variant="destructive" className="text-[9px] h-4 px-1">{errors.length}</Badge>}
-        {warnings.length > 0 && <span className="text-[9px] text-yellow-500 font-medium">{warnings.length}⚠</span>}
+        {errors.length > 0 && <Badge variant="destructive" className="text-[9px] h-4 px-1">{errors.length}E</Badge>}
+        {warnings.length > 0 && <span className="text-[9px] text-yellow-500 font-medium">{warnings.length}W</span>}
+        {infos.length > 0 && <span className="text-[9px] text-blue-400 font-medium">{infos.length}I</span>}
         {issues.length === 0 && edbData && <CheckCircle2 className="w-3 h-3 text-green-500" />}
       </button>
 
       {expanded && (
         <div className="flex flex-col" style={{ height: 180 }}>
-          <div className="flex gap-1 px-2 pb-1 shrink-0">
-            {['all', 'error', 'warning'].map(f => (
-              <button key={f} onClick={() => setFilter(f)}
+          <div className="flex gap-1 px-2 pb-1 shrink-0 flex-wrap">
+            {[
+              { key: 'all', label: `All (${issues.length})` },
+              { key: 'error', label: `Err (${errors.length})` },
+              { key: 'warning', label: `Warn (${warnings.length})` },
+              { key: 'info', label: `Info (${infos.length})` },
+            ].map(f => (
+              <button key={f.key} onClick={() => setFilter(f.key)}
                 className={`text-[9px] px-2 py-0.5 rounded transition-colors
-                  ${filter === f ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                  ${filter === f.key ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                {f === 'all' ? `All (${issues.length})` : f === 'error' ? `Err (${errors.length})` : `Warn (${warnings.length})`}
+                {f.label}
               </button>
             ))}
           </div>
