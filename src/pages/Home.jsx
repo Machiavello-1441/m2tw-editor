@@ -167,13 +167,14 @@ export default function Home() {
 
       {/* Main load card */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
+        {/* Step 1 — data\ folder */}
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <FolderOpen className="w-4 h-4 text-primary" />
             Step 1 — Load M2TW <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\</code> Folder
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Automatically finds: <span className="font-mono text-foreground">export_descr_buildings.txt</span>,{' '}
+            Finds: <span className="font-mono text-foreground">export_descr_buildings.txt</span>,{' '}
             <span className="font-mono text-foreground">descr_sm_factions.txt</span>,{' '}
             <span className="font-mono text-foreground">descr_sm_resources.txt</span>,{' '}
             <span className="font-mono text-foreground">export_descr_unit.txt</span>
@@ -191,7 +192,6 @@ export default function Home() {
               </span>
             </Button>
           </label>
-
           <div className="grid grid-cols-2 gap-2">
             <FileStatus label="EDB File" hint="export_descr_buildings.txt" status={fileStatus.edb} icon={Castle} />
             <FileStatus label="Factions" hint="descr_sm_factions.txt" status={fileStatus.fac} icon={Users} />
@@ -200,12 +200,38 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Campaign folder */}
+        {/* Step 2 — data\text\ folder */}
+        <div className="p-4 border-t border-border bg-accent/5 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Step 2 — Load <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\text\</code> Folder
+              <span className="text-[10px] text-muted-foreground font-normal">(recommended)</span>
+            </h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Finds <code className="text-xs font-mono">export_buildings.txt</code> — building names &amp; descriptions (UTF-16)
+            </p>
+          </div>
+          <label className="cursor-pointer">
+            <input ref={textFolderRef} type="file" className="hidden"
+              webkitdirectory="" directory="" multiple onChange={handleTextFolder} />
+            <Button asChild variant="outline"
+              className="w-full h-9 pointer-events-none gap-2 text-xs">
+              <span>
+                <FolderOpen className="w-3.5 h-3.5" />
+                Browse to <code className="text-[10px] font-mono">…\data\text\</code> folder
+              </span>
+            </Button>
+          </label>
+          <FileStatus label="Building Texts" hint="export_buildings.txt" status={fileStatus.txt} icon={FileText} />
+        </div>
+
+        {/* Step 3 — Campaign folder */}
         <div className="p-4 border-t border-border bg-accent/5 space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-primary" />
-              Step 2 — Load Campaign Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+              Step 3 — Load Campaign Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
             </h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               Default: <code className="text-xs font-mono">data\world\maps\campaign\imperial_campaign\</code> — finds <code className="text-xs font-mono">descr_events.txt</code>
