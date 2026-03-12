@@ -166,7 +166,7 @@ export default function Home() {
             <FileStatus label="EDB File" hint="export_descr_buildings.txt" status={fileStatus.edb} icon={Castle} />
             <FileStatus label="Factions" hint="descr_sm_factions.txt" status={fileStatus.fac} icon={Users} />
             <FileStatus label="Resources" hint="descr_sm_resources.txt" status={fileStatus.res} icon={Package} />
-            <FileStatus label="Units" hint="export_descr_unit.txt" status={fileStatus.unit} icon={Sword} />
+            <FileStatus label="Units" hint="export_descr_unit.txt" status={fileStatus.unit} icon={Swords} />
           </div>
         </div>
 
