@@ -55,6 +55,7 @@ export default function Home() {
     edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle', txt: 'idle'
   });
   const dataFolderRef = useRef();
+  const textFolderRef = useRef();
   const campaignFolderRef = useRef();
 
   // Read file as text, auto-detecting UTF-16 BOM
