@@ -18,7 +18,7 @@ export default function LayerPanel() {
   const [showRegionPicker, setShowRegionPicker] = useState(false);
 
   // Collect unique colors from loaded regions layer (excluding black/white)
-  const regionColors = React.useMemo(() => {
+  const regionColors = useMemo(() => {
     const layer = layers.regions;
     if (!layer) return [];
     const seen = new Map();
