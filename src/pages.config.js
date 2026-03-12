@@ -47,7 +47,6 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import EDBEditor from './pages/EDBEditor';
 import Export from './pages/Export';
 import ImageManager from './pages/ImageManager';
 import TextEditor from './pages/TextEditor';
@@ -55,14 +54,13 @@ import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "EDBEditor": EDBEditor,
     "Export": Export,
     "ImageManager": ImageManager,
     "TextEditor": TextEditor,
 }
 
 export const pagesConfig = {
-    mainPage: "EDBEditor",
+    mainPage: "Export",
     Pages: PAGES,
     Layout: __Layout,
 };
