@@ -83,7 +83,7 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
           const base = { type, prevConnector: req.prevConnector };
           if (type === 'factions') updateReq({ ...base, values: [] });
           else if (type === 'event_counter') updateReq({ ...base, event: eventCounters[0] || '', value: 1 });
-          else if (type === 'hidden_resource') updateReq({ ...base, resource: HIDDEN_RESOURCES_DEFAULT[0] });
+          else if (type === 'hidden_resource') updateReq({ ...base, resource: hiddenResources[0] || '' });
           else if (type === 'building_present_min_level') updateReq({ ...base, building: '', level: '' });
           else if (type === 'resource') updateReq({ ...base, resource: mapResources[0] || '' });
           else if (type === 'region_religion') updateReq({ ...base, religion: 'catholic', percentage: 50 });
