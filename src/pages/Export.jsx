@@ -54,8 +54,8 @@ export default function Export() {
     buildings: edbData.buildings.length,
     levels: edbData.buildings.reduce((sum, b) => sum + b.levels.length, 0),
     hiddenResources: edbData.hiddenResources.length,
-    textEntries: Object.keys(textData).length,
-    images: Object.keys(imageData).length,
+    textEntries: Object.keys(textData || {}).length,
+    images: Object.keys(imageData || {}).length,
   } : null;
 
   return (
