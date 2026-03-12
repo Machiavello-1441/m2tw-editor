@@ -113,6 +113,7 @@ export function CampaignMapProvider({ children }) {
       brushSize, setBrushSize,
       isDirty, setIsDirty,
       paintPixel, bucketFill, revertLayer,
+      gridSettings, updateGridSetting,
       validationResults, setValidationResults,
     }}>
       {children}
