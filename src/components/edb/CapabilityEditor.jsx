@@ -215,7 +215,7 @@ function AgentRow({ cap, index, onChange, onRemove }) {
   );
 }
 
-function BonusGroupRow({ cap, index, onChange, onRemove, groupLabel, groupKey, groups }) {
+function BonusGroupRow({ cap, index, onChange, onRemove, edbData, groupLabel, groupKey, groups }) {
   const [expanded, setExpanded] = useState(false);
 
   const handleGroupChange = (newGroup) => {
