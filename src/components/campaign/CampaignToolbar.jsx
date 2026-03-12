@@ -12,7 +12,7 @@ const TGA_FILENAMES = Object.fromEntries(
 
 export default function CampaignToolbar({ onValidate }) {
   const folderInputRef = useRef(null);
-  const { layers, loadLayer, revertLayer, isDirty, activeLayer, setValidationResults } = useCampaignMap();
+  const { layers, loadLayer, saveLayer, revertLayer, isDirty, activeLayer, setValidationResults } = useCampaignMap();
 
   const handleFolderSelect = (e) => {
     const files = Array.from(e.target.files);
