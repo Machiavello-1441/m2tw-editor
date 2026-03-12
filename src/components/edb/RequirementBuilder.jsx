@@ -57,6 +57,10 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
   const updateReq = (updates) => onChange(index, { ...req, ...updates });
 
   const buildingNames = edbData ? edbData.buildings.map(b => b.name) : [];
+  // Merge EDB hidden resources with defaults, deduplicated
+  const hiddenResources = edbData?.hiddenResources?.length
+    ? [...new Set([...edbData.hiddenResources, ...HIDDEN_RESOURCES_DEFAULT])]
+    : HIDDEN_RESOURCES_DEFAULT;
 
   return (
     <div className="space-y-1.5 p-2 bg-card rounded-lg border border-border">
