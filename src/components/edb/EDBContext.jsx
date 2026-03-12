@@ -172,7 +172,7 @@ export function EDBProvider({ children }) {
   }, [selectedLevel]);
 
   const value = {
-    edbData, setEdbData, loadEDB, exportEDB,
+    edbData, setEdbData, loadEDB, exportEDB, saveEDB, revertEDB, savedSnapshot,
     selectedBuilding, setSelectedBuilding,
     selectedLevel, setSelectedLevel,
     updateBuilding, updateLevel,
