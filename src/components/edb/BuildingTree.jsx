@@ -15,6 +15,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger
 } from '@/components/ui/dialog';
+import { useRefData } from './RefDataContext';
 
 const PREFIXES = [
   { value: 'none', label: '(no prefix)', hint: 'Default — normal building' },
