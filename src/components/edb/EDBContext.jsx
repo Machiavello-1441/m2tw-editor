@@ -5,6 +5,7 @@ const EDBContext = createContext(null);
 
 export function EDBProvider({ children }) {
   const [edbData, setEdbData] = useState(null);
+  const [savedSnapshot, setSavedSnapshot] = useState(null); // JSON snapshot for Revert
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [textData, setTextData] = useState({}); // { levelName: { title, desc, shortDesc, factionEntries: {} } }
