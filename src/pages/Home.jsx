@@ -349,7 +349,7 @@ function ManualFileLoader({ setFileStatus }) {
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {files.map(f => (
         <label key={f.key} className="cursor-pointer">
-          <input type="file" accept=".txt" className="hidden" onChange={readAndLoad(f.key, f.loader)} />
+          <input type="file" accept=".txt" className="hidden" onChange={readAndLoad(f.key, f.loader, f.utf16)} />
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-border bg-accent/30 hover:bg-accent/60 transition-colors">
             <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
             <div>
