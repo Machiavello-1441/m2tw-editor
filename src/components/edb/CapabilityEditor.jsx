@@ -231,7 +231,7 @@ function BonusGroupRow({ cap, index, onChange, onRemove, edbData, groupLabel, gr
     <div className="bg-accent/30 rounded-lg px-3 py-2 space-y-2">
       <div className="flex items-center gap-2">
         {/* sub-group selector — only show if not auto-determined */}
-        {showGroupSelector && (
+        {showGroupSelector ? (
           <Select value={cap.groupKey || ''} onValueChange={handleGroupChange}>
             <SelectTrigger className="h-7 text-xs flex-1 max-w-xs">
               <SelectValue placeholder="Select sub-group…" />
@@ -242,6 +242,8 @@ function BonusGroupRow({ cap, index, onChange, onRemove, edbData, groupLabel, gr
               ))}
             </SelectContent>
           </Select>
+        ) : (
+          <div className="text-xs text-muted-foreground px-2 py-1.5">{cap.groupKey}</div>
         )}
 
         {/* capability identifier */}
