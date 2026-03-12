@@ -50,6 +50,7 @@
 import Export from './pages/Export';
 import TextEditor from './pages/TextEditor';
 import Home from './pages/Home';
+import EDBEditor from './pages/EDBEditor';
 import __Layout from './Layout.jsx';
 
 
@@ -57,6 +58,7 @@ export const PAGES = {
     "Export": Export,
     "TextEditor": TextEditor,
     "Home": Home,
+    "EDBEditor": EDBEditor,
 }
 
 export const pagesConfig = {
