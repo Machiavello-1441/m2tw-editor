@@ -42,7 +42,7 @@ export default function PalettePanel() {
       {/* Brush size */}
       {tool === 'pencil' && (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Brush:</span>
+          <span className="text-xs text-slate-300">Brush:</span>
           <button onClick={() => setBrushSize(s => Math.max(1, s - 1))} className="w-5 h-5 rounded bg-secondary flex items-center justify-center hover:bg-accent">
             <Minus className="w-3 h-3" />
           </button>
