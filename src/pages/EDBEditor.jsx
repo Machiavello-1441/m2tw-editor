@@ -44,12 +44,12 @@ export default function EDBEditor() {
         <div className="flex-1" />
         <Button size="sm" variant="outline"
           className="h-7 text-xs gap-1 text-green-400 border-green-500/40 hover:bg-green-500/10"
-          onClick={handleSave}>
+          onClick={saveEDB}>
           <Save className="w-3 h-3" /> Save
         </Button>
         <Button size="sm" variant="outline"
           className="h-7 text-xs gap-1"
-          onClick={handleRevert}
+          onClick={revertEDB}
           disabled={!savedSnapshot}>
           <RotateCcw className="w-3 h-3" /> Revert
         </Button>
