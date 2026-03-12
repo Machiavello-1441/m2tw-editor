@@ -75,9 +75,11 @@ export default function MapCanvas() {
       offscreen.width = lw;
       offscreen.height = lh;
       const offCtx = offscreen.getContext('2d');
+      offCtx.imageSmoothingEnabled = false;
       offCtx.putImageData(imgData, 0, 0);
 
       ctx.save();
+      ctx.imageSmoothingEnabled = false;
       // Scale to primary layer size if needed
       if (lw !== width || lh !== height) {
         ctx.drawImage(offscreen, 0, 0, width, height);
