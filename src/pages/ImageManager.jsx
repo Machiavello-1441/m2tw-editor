@@ -180,11 +180,18 @@ export default function ImageManager() {
                         </p>
                         {existing ? (
                           <div className="flex items-center gap-3 p-2 bg-accent/50 rounded-lg">
-                            <FileImage className="w-8 h-8 text-primary/60" />
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-foreground">{existing.fileName}</p>
+                            <img src={existing.url} alt={existing.fileName} className="w-12 h-12 object-contain rounded border border-border bg-black/20 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">{existing.fileName}</p>
                               <p className="text-[10px] text-muted-foreground">Uploaded</p>
                             </div>
+                            <button
+                              title="Download as .tga"
+                              onClick={() => downloadAsTGA(existing.url, existing.fileName)}
+                              className="p-1 hover:bg-primary/20 rounded"
+                            >
+                              <Download className="w-3 h-3 text-primary" />
+                            </button>
                             <button onClick={() => removeImage(key)} className="p-1 hover:bg-destructive/20 rounded">
                               <Trash2 className="w-3 h-3 text-destructive" />
                             </button>
