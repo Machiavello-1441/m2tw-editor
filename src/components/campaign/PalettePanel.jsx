@@ -68,8 +68,8 @@ export default function PalettePanel() {
                     className="w-4 h-4 rounded-sm border border-white/20 shrink-0"
                     style={{ backgroundColor: hex }}
                   />
-                  <span className="flex-1 truncate">{c.label}</span>
-                  <span className="font-mono text-[9px] text-muted-foreground shrink-0">
+                  <span className="flex-1 truncate text-slate-200">{c.label}</span>
+                  <span className="font-mono text-[9px] text-slate-500 shrink-0">
                     {c.rgb.join(',')}
                   </span>
                 </button>
