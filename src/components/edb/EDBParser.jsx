@@ -611,7 +611,16 @@ function serializeLevel(level) {
   out += `            settlement_min ${level.settlementMin}\n`;
   out += '            upgrades\n            {\n';
   for (const up of level.upgrades) {
-    out += `                ${up}\n`;
+    if (typeof up === 'string') {
+      out += `                ${up}\n`;
+    } else {
+      // {name, requirements}
+      let line = `                ${up.name}`;
+      if (up.requirements && up.requirements.length > 0) {
+        line += ' requires ' + serializeRequirements(up.requirements);
+      }
+      out += line + '\n';
+    }
   }
   out += '            }\n';
   out += '        }\n';
