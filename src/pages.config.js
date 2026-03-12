@@ -49,12 +49,14 @@
  */
 import Export from './pages/Export';
 import TextEditor from './pages/TextEditor';
+import Home from './pages/Home';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Export": Export,
     "TextEditor": TextEditor,
+    "Home": Home,
 }
 
 export const pagesConfig = {
