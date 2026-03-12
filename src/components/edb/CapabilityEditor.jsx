@@ -220,27 +220,29 @@ function BonusGroupRow({ cap, index, onChange, onRemove, edbData, groupLabel, gr
 
   const handleGroupChange = (newGroup) => {
     const groupItems = groups[newGroup] || [];
-    // Always set identifier to first item in the group, never leave it empty
     const firstItem = groupItems.length > 0 ? groupItems[0] : '';
     onChange(index, { ...cap, groupKey: newGroup, identifier: firstItem });
   };
 
   const currentGroupItems = groups[cap.groupKey] || [];
+  const showGroupSelector = !cap.groupKey; // Only show if group wasn't auto-determined on load
 
   return (
     <div className="bg-accent/30 rounded-lg px-3 py-2 space-y-2">
       <div className="flex items-center gap-2">
-        {/* sub-group selector */}
-        <Select value={cap.groupKey || ''} onValueChange={handleGroupChange}>
-          <SelectTrigger className="h-7 text-xs flex-1 max-w-xs">
-            <SelectValue placeholder="Select sub-group…" />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.keys(groups).map(g => (
-              <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* sub-group selector — only show if not auto-determined */}
+        {showGroupSelector && (
+          <Select value={cap.groupKey || ''} onValueChange={handleGroupChange}>
+            <SelectTrigger className="h-7 text-xs flex-1 max-w-xs">
+              <SelectValue placeholder="Select sub-group…" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.keys(groups).map(g => (
+                <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {/* capability identifier */}
         <Select value={cap.identifier || (currentGroupItems.length > 0 ? currentGroupItems[0] : '')} onValueChange={val => onChange(index, { ...cap, identifier: val })}>
