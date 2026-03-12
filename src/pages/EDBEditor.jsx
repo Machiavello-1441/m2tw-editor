@@ -49,15 +49,27 @@ export default function EDBEditor() {
   return (
     <div className="h-screen flex flex-col">
       {/* Top bar */}
-      <div className="h-10 border-b border-border flex items-center px-3 gap-3 shrink-0 bg-card/50">
+      <div className="h-10 border-b border-border flex items-center px-3 gap-2 shrink-0 bg-card/50">
         <Castle className="w-4 h-4 text-muted-foreground shrink-0" />
-        <span className="text-xs font-medium text-foreground truncate max-w-[200px]">{fileName || 'EDB Editor'}</span>
-        <span className="text-[10px] text-muted-foreground hidden sm:block">
-          {edbData.buildings.length} buildings
-        </span>
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <RefFileLoader />
-        </div>
+        <span className="text-xs font-medium text-foreground truncate max-w-[180px]">{fileName || 'EDB Editor'}</span>
+        <span className="text-[10px] text-muted-foreground hidden sm:block">{edbData.buildings.length} buildings</span>
+        <div className="flex-1" />
+        <Button size="sm" variant="outline"
+          className="h-7 text-xs gap-1 text-green-400 border-green-500/40 hover:bg-green-500/10"
+          onClick={handleSave}>
+          <Save className="w-3 h-3" /> Save
+        </Button>
+        <Button size="sm" variant="outline"
+          className="h-7 text-xs gap-1"
+          onClick={handleRevert}
+          disabled={!savedSnapshot}>
+          <RotateCcw className="w-3 h-3" /> Revert
+        </Button>
+        <Button size="sm" variant="outline"
+          className="h-7 text-xs gap-1 text-primary border-primary/40 hover:bg-primary/10"
+          onClick={handleExport}>
+          <Download className="w-3 h-3" /> Export
+        </Button>
         <HiddenResourceEditor />
         <Button
           size="sm"
