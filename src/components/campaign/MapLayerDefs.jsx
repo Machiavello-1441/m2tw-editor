@@ -1,4 +1,4 @@
-export const LAYER_DEFS = {
+const LAYER_DEFS_OBJ = {
   heights: {
     key: 'heights',
     filename: 'map_heights.tga',
@@ -105,18 +105,18 @@ export const LAYER_DEFS = {
   },
 };
 
+export const LAYER_DEFS = LAYER_DEFS_OBJ;
 export const LAYER_ORDER = ['heights', 'ground_types', 'climates', 'regions', 'features', 'fog'];
-
 export const TGA_FILENAMES = Object.fromEntries(
-  Object.entries(LAYER_DEFS).map(([k, v]) => [v.filename, k])
+  Object.entries(LAYER_DEFS_OBJ).map(([k, v]) => [v.filename, k])
 );
 
 export function makeDefaultLayerSettings() {
   const out = {};
   for (const key of LAYER_ORDER) {
     out[key] = {
-      visible: LAYER_DEFS[key].defaultVisible,
-      opacity: LAYER_DEFS[key].defaultOpacity,
+      visible: LAYER_DEFS_OBJ[key].defaultVisible,
+      opacity: LAYER_DEFS_OBJ[key].defaultOpacity,
     };
   }
   // Regions-specific overlay mode
