@@ -49,7 +49,6 @@
  */
 import EDBEditor from './pages/EDBEditor';
 import Export from './pages/Export';
-import Home from './pages/Home';
 import ImageManager from './pages/ImageManager';
 import TextEditor from './pages/TextEditor';
 import __Layout from './Layout.jsx';
@@ -58,13 +57,12 @@ import __Layout from './Layout.jsx';
 export const PAGES = {
     "EDBEditor": EDBEditor,
     "Export": Export,
-    "Home": Home,
     "ImageManager": ImageManager,
     "TextEditor": TextEditor,
 }
 
 export const pagesConfig = {
-    mainPage: "Home",
+    mainPage: "EDBEditor",
     Pages: PAGES,
     Layout: __Layout,
 };
