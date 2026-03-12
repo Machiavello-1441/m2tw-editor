@@ -3,8 +3,9 @@ import { useEDB } from './EDBContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search
+  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search, AlertTriangle
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -15,9 +16,65 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger
 } from '@/components/ui/dialog';
 
+const PREFIXES = [
+  { value: '', label: '(no prefix)', hint: 'Default — normal building. No special rules apply.' },
+  { value: 'core_', label: 'core_', hint: 'Upgrades the settlement to the next level (e.g. village → town).' },
+  { value: 'hinterland_', label: 'hinterland_', hint: 'Cannot be demolished for cash. Persists in the settlement.' },
+  { value: 'temple_', label: 'temple_', hint: 'Only one temple_ building is allowed per settlement at a time.' },
+  { value: 'guild_', label: 'guild_', hint: 'Guild building — requires an entry in export_descr_guilds.txt. Max 3 levels in vanilla.' },
+];
+
+function LevelAddButton({ building }) {
+  const { addLevel } = useEDB();
+  const [warningOpen, setWarningOpen] = useState(false);
+  const [warningMsg, setWarningMsg] = useState('');
+
+  const handleAdd = () => {
+    const count = building.levels.length;
+    if (count === 8) {
+      setWarningMsg(`You're about to add the 9th level — this is the vanilla M2TW limit. The M2TWEOP extended options patch allows more than 50 levels, but vanilla clients will not load beyond 9.`);
+      setWarningOpen(true);
+    } else if (count >= 49) {
+      setWarningMsg(`Level ${count + 1} — you are close to or beyond the M2TWEOP practical limit (50+). Use with caution and make sure M2TWEOP is required for your mod.`);
+      setWarningOpen(true);
+    } else {
+      addLevel(building.name);
+    }
+  };
+
+  return (
+    <>
+      <button onClick={handleAdd}
+        className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-muted-foreground hover:text-primary transition-colors w-full"
+      >
+        <Plus className="w-2.5 h-2.5" /> Add Level
+        {building.levels.length >= 8 && (
+          <AlertTriangle className="w-2.5 h-2.5 text-yellow-500 ml-0.5" title="Near level limit" />
+        )}
+      </button>
+      <AlertDialog open={warningOpen} onOpenChange={setWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-500" /> Level Limit Warning
+            </AlertDialogTitle>
+            <AlertDialogDescription>{warningMsg}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setWarningOpen(false); addLevel(building.name); }}>
+              Add Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 function BuildingNode({ building }) {
   const { selectedBuilding, setSelectedBuilding, selectedLevel, setSelectedLevel,
-    deleteBuilding, addLevel, deleteLevel } = useEDB();
+    deleteBuilding, deleteLevel } = useEDB();
   const [expanded, setExpanded] = useState(selectedBuilding === building.name);
   const isSelected = selectedBuilding === building.name && !selectedLevel;
 
@@ -29,32 +86,24 @@ function BuildingNode({ building }) {
 
   return (
     <div className="mb-0.5">
-      <div
-        className={`flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer group text-sm transition-colors
-          ${isSelected ? 'bg-primary/15 text-primary' : 'hover:bg-accent text-foreground'}`}
-      >
-        <button onClick={() => setExpanded(!expanded)} className="p-0.5 hover:bg-accent rounded">
+      <div className={`flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer group text-sm transition-colors
+          ${isSelected ? 'bg-primary/15 text-primary' : 'hover:bg-accent text-foreground'}`}>
+        <button onClick={() => setExpanded(!expanded)} className="p-0.5 hover:bg-accent rounded shrink-0">
           {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
         </button>
         <Castle className="w-3.5 h-3.5 text-primary/60 shrink-0" />
-        <span onClick={handleSelect} className="flex-1 truncate font-medium text-xs">
-          {building.name}
-        </span>
-        <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
-          {building.levels.length}L
-        </span>
+        <span onClick={handleSelect} className="flex-1 truncate font-medium text-xs">{building.name}</span>
+        <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0">{building.levels.length}L</span>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <button className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            <button className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
               <Trash2 className="w-3 h-3 text-destructive" />
             </button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Building</AlertDialogTitle>
-              <AlertDialogDescription>
-                Delete "{building.name}" and all its levels? This cannot be undone.
-              </AlertDialogDescription>
+              <AlertDialogDescription>Delete "{building.name}" and all its levels? This cannot be undone.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -66,40 +115,34 @@ function BuildingNode({ building }) {
 
       {expanded && (
         <div className="ml-4 pl-2 border-l border-border/50">
-          {building.levels.map(level => {
+          {building.levels.map((level, idx) => {
             const isLevelSelected = selectedBuilding === building.name && selectedLevel === level.name;
             return (
-              <div
-                key={level.name}
+              <div key={level.name}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer group text-xs transition-colors
                   ${isLevelSelected ? 'bg-primary/15 text-primary' : 'hover:bg-accent text-muted-foreground hover:text-foreground'}`}
                 onClick={() => { setSelectedBuilding(building.name); setSelectedLevel(level.name); }}
               >
+                <span className="text-[9px] text-muted-foreground/50 w-5 shrink-0 text-right">#{idx + 1}</span>
                 <Layers className="w-3 h-3 shrink-0" />
                 <span className="flex-1 truncate">{level.name}</span>
-                <span className="text-[10px] opacity-60">{level.settlementType}</span>
+                <span className="text-[10px] opacity-60 shrink-0">{level.settlementType[0]}</span>
                 {building.levels.length > 1 && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <button
-                        onClick={e => e.stopPropagation()}
-                        className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100"
-                      >
+                      <button onClick={e => e.stopPropagation()}
+                        className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 shrink-0">
                         <Trash2 className="w-2.5 h-2.5 text-destructive" />
                       </button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete Level</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Delete level "{level.name}"?
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>Delete level "{level.name}"?</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteLevel(building.name, level.name)}>
-                          Delete
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={() => deleteLevel(building.name, level.name)}>Delete</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -107,12 +150,7 @@ function BuildingNode({ building }) {
               </div>
             );
           })}
-          <button
-            onClick={() => addLevel(building.name)}
-            className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-muted-foreground hover:text-primary transition-colors w-full"
-          >
-            <Plus className="w-2.5 h-2.5" /> Add Level
-          </button>
+          <LevelAddButton building={building} />
         </div>
       )}
     </div>
@@ -122,8 +160,9 @@ function BuildingNode({ building }) {
 export default function BuildingTree() {
   const { edbData, addBuilding } = useEDB();
   const [search, setSearch] = useState('');
-  const [newName, setNewName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [prefix, setPrefix] = useState('');
 
   if (!edbData) return null;
 
@@ -132,17 +171,20 @@ export default function BuildingTree() {
     b.levels.some(l => l.name.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const selectedPrefixInfo = PREFIXES.find(p => p.value === prefix) || PREFIXES[0];
+  const fullName = (prefix + (newName.trim().replace(/\s+/g, '_')));
+
   const handleAddBuilding = () => {
-    if (newName.trim()) {
-      addBuilding(newName.trim().replace(/\s+/g, '_'));
-      setNewName('');
-      setDialogOpen(false);
-    }
+    if (!newName.trim()) return;
+    addBuilding(fullName);
+    setNewName('');
+    setPrefix('');
+    setDialogOpen(false);
   };
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-3 border-b border-border space-y-2">
+      <div className="p-3 border-b border-border space-y-2 shrink-0">
         <div className="flex items-center gap-2">
           <h2 className="text-xs font-bold text-foreground uppercase tracking-wider flex-1">Buildings</h2>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -153,14 +195,42 @@ export default function BuildingTree() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>New Building</DialogTitle>
+                <DialogTitle>New Building Tree</DialogTitle>
               </DialogHeader>
-              <Input
-                placeholder="building_name (use underscores)"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddBuilding()}
-              />
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-foreground mb-1.5 block">Prefix</label>
+                  <Select value={prefix} onValueChange={setPrefix}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="(no prefix)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PREFIXES.map(p => (
+                        <SelectItem key={p.value} value={p.value}>
+                          <span className="font-mono">{p.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed min-h-[2.5rem]">
+                    {selectedPrefixInfo.hint}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground mb-1.5 block">Building Name</label>
+                  <Input
+                    placeholder="building_name (use underscores)"
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddBuilding()}
+                  />
+                  {newName.trim() && (
+                    <p className="text-[11px] mt-1.5">
+                      Full name: <span className="font-mono text-primary font-semibold">{fullName}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
               <DialogFooter>
                 <Button onClick={handleAddBuilding} disabled={!newName.trim()}>Create</Button>
               </DialogFooter>
@@ -169,22 +239,13 @@ export default function BuildingTree() {
         </div>
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="h-7 text-xs pl-7"
-          />
+          <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="h-7 text-xs pl-7" />
         </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2">
-          {filtered.map(building => (
-            <BuildingNode key={building.name} building={building} />
-          ))}
-          {filtered.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-8">No buildings found</p>
-          )}
+          {filtered.map(building => <BuildingNode key={building.name} building={building} />)}
+          {filtered.length === 0 && <p className="text-xs text-muted-foreground text-center py-8">No buildings found</p>}
         </div>
       </ScrollArea>
     </div>
