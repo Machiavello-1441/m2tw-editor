@@ -15,7 +15,6 @@ const REF_FILE_MAP = {
   'descr_sm_resources.txt': 'res',
   'descr_events.txt': 'ev',
   'export_descr_unit.txt': 'unit',
-  'export_buildings.txt': 'txt',
 };
 
 const CAMPAIGN_FILE_MAP = {
@@ -50,32 +49,17 @@ function FileStatus({ label, hint, status, icon: FileIconComp }) {
 
 export default function Home() {
   const { loadEDB, edbData, fileName } = useEDB();
-  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadTextFile, textDataLoaded } = useRefData();
+  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
   const [fileStatus, setFileStatus] = useState({
-    edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle', txt: 'idle'
+    edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle'
   });
   const dataFolderRef = useRef();
-  const textFolderRef = useRef();
   const campaignFolderRef = useRef();
 
-  // Read file as text, auto-detecting UTF-16 BOM
   const readText = (file) => new Promise((resolve) => {
     const r = new FileReader();
-    r.onload = e => {
-      const buf = e.target.result;
-      const bytes = new Uint8Array(buf.slice(0, 4));
-      // UTF-16 LE BOM: FF FE
-      if (bytes[0] === 0xFF && bytes[1] === 0xFE) {
-        resolve(new TextDecoder('utf-16le').decode(buf));
-      // UTF-16 BE BOM: FE FF
-      } else if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
-        resolve(new TextDecoder('utf-16be').decode(buf));
-      } else {
-        // UTF-8 or ASCII
-        resolve(new TextDecoder('utf-8').decode(buf));
-      }
-    };
-    r.readAsArrayBuffer(file);
+    r.onload = e => resolve(e.target.result);
+    r.readAsText(file);
   });
 
   const handleDataFolder = async (e) => {
@@ -94,8 +78,8 @@ export default function Home() {
     // Update status for what we found
     setFileStatus(prev => {
       const next = { ...prev };
-      for (const k of ['edb', 'fac', 'res', 'ev', 'unit', 'txt']) {
-        next[k] = foundKeys[k] ? 'loading' : prev[k];
+      for (const k of ['edb', 'fac', 'res', 'ev', 'unit']) {
+        next[k] = foundKeys[k] ? 'loading' : 'idle';
       }
       return next;
     });
@@ -105,7 +89,6 @@ export default function Home() {
       res: loadResourcesFile,
       ev: loadEventsFile,
       unit: loadUnitsFile,
-      txt: loadTextFile,
     };
 
     for (const [key, file] of Object.entries(foundKeys)) {
@@ -116,19 +99,6 @@ export default function Home() {
         loaderMap[key]?.(text);
       }
       setFileStatus(prev => ({ ...prev, [key]: 'ok' }));
-    }
-  };
-
-  const handleTextFolder = async (e) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-    for (const file of files) {
-      if (file.name.toLowerCase() === 'export_buildings.txt') {
-        setFileStatus(prev => ({ ...prev, txt: 'loading' }));
-        const text = await readText(file);
-        loadTextFile(text);
-        setFileStatus(prev => ({ ...prev, txt: 'ok' }));
-      }
     }
   };
 
@@ -167,14 +137,13 @@ export default function Home() {
 
       {/* Main load card */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
-        {/* Step 1 — data\ folder */}
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <FolderOpen className="w-4 h-4 text-primary" />
             Step 1 — Load M2TW <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\</code> Folder
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Finds: <span className="font-mono text-foreground">export_descr_buildings.txt</span>,{' '}
+            Automatically finds: <span className="font-mono text-foreground">export_descr_buildings.txt</span>,{' '}
             <span className="font-mono text-foreground">descr_sm_factions.txt</span>,{' '}
             <span className="font-mono text-foreground">descr_sm_resources.txt</span>,{' '}
             <span className="font-mono text-foreground">export_descr_unit.txt</span>
@@ -192,6 +161,7 @@ export default function Home() {
               </span>
             </Button>
           </label>
+
           <div className="grid grid-cols-2 gap-2">
             <FileStatus label="EDB File" hint="export_descr_buildings.txt" status={fileStatus.edb} icon={Castle} />
             <FileStatus label="Factions" hint="descr_sm_factions.txt" status={fileStatus.fac} icon={Users} />
@@ -200,38 +170,12 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Step 2 — data\text\ folder */}
-        <div className="p-4 border-t border-border bg-accent/5 space-y-3">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" />
-              Step 2 — Load <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\text\</code> Folder
-              <span className="text-[10px] text-muted-foreground font-normal">(recommended)</span>
-            </h2>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Finds <code className="text-xs font-mono">export_buildings.txt</code> — building names &amp; descriptions (UTF-16)
-            </p>
-          </div>
-          <label className="cursor-pointer">
-            <input ref={textFolderRef} type="file" className="hidden"
-              webkitdirectory="" directory="" multiple onChange={handleTextFolder} />
-            <Button asChild variant="outline"
-              className="w-full h-9 pointer-events-none gap-2 text-xs">
-              <span>
-                <FolderOpen className="w-3.5 h-3.5" />
-                Browse to <code className="text-[10px] font-mono">…\data\text\</code> folder
-              </span>
-            </Button>
-          </label>
-          <FileStatus label="Building Texts" hint="export_buildings.txt" status={fileStatus.txt} icon={FileText} />
-        </div>
-
-        {/* Step 3 — Campaign folder */}
+        {/* Campaign folder */}
         <div className="p-4 border-t border-border bg-accent/5 space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-primary" />
-              Step 3 — Load Campaign Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+              Step 2 — Load Campaign Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
             </h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               Default: <code className="text-xs font-mono">data\world\maps\campaign\imperial_campaign\</code> — finds <code className="text-xs font-mono">descr_events.txt</code>
@@ -311,28 +255,17 @@ export default function Home() {
 
 function ManualFileLoader({ setFileStatus }) {
   const { loadEDB } = useEDB();
-  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadTextFile } = useRefData();
+  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
 
-  const readAndLoad = (key, loader, utf16 = false) => (e) => {
+  const readAndLoad = (key, loader) => (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const r = new FileReader();
     r.onload = ev => {
-      let text;
-      if (utf16) {
-        const buf = ev.target.result;
-        const bytes = new Uint8Array(buf.slice(0, 2));
-        if (bytes[0] === 0xFF && bytes[1] === 0xFE) text = new TextDecoder('utf-16le').decode(buf);
-        else if (bytes[0] === 0xFE && bytes[1] === 0xFF) text = new TextDecoder('utf-16be').decode(buf);
-        else text = new TextDecoder('utf-8').decode(buf);
-      } else {
-        text = ev.target.result;
-      }
-      loader(text, file.name);
+      loader(ev.target.result, file.name);
       setFileStatus(p => ({ ...p, [key]: 'ok' }));
     };
-    if (utf16) r.readAsArrayBuffer(file);
-    else r.readAsText(file);
+    r.readAsText(file);
     e.target.value = '';
   };
 
@@ -342,14 +275,13 @@ function ManualFileLoader({ setFileStatus }) {
     { key: 'res',  label: 'Resources', hint: 'descr_sm_resources.txt',      loader: loadResourcesFile },
     { key: 'ev',   label: 'Events',    hint: 'descr_events.txt',            loader: loadEventsFile },
     { key: 'unit', label: 'Units',     hint: 'export_descr_unit.txt',       loader: loadUnitsFile },
-    { key: 'txt',  label: 'Bld Texts', hint: 'export_buildings.txt',        loader: loadTextFile, utf16: true },
   ];
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {files.map(f => (
         <label key={f.key} className="cursor-pointer">
-          <input type="file" accept=".txt" className="hidden" onChange={readAndLoad(f.key, f.loader, f.utf16)} />
+          <input type="file" accept=".txt" className="hidden" onChange={readAndLoad(f.key, f.loader)} />
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-border bg-accent/30 hover:bg-accent/60 transition-colors">
             <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
             <div>

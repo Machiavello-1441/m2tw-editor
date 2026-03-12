@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
-import { useRefData } from '../components/edb/RefDataContext';
-import { serializeExportBuildingsFile } from '../components/edb/RefDataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Download, FileText, ImageIcon, Package, Eye, Copy, Check } from 'lucide-react';
 
 export default function Export() {
-  const { edbData, exportEDB, imageData, fileName } = useEDB();
-  const { textData } = useRefData();
+  const { edbData, exportEDB, textData, imageData, fileName } = useEDB();
   const [preview, setPreview] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -28,7 +25,10 @@ export default function Export() {
   };
 
   const handleDownloadTexts = () => {
-    const text = serializeExportBuildingsFile(textData);
+    let text = '';
+    for (const [key, value] of Object.entries(textData)) {
+      text += `{${key}}${value}\n`;
+    }
     downloadFile(text, 'export_buildings.txt', 'text/plain');
   };
 
@@ -54,8 +54,8 @@ export default function Export() {
     buildings: edbData.buildings.length,
     levels: edbData.buildings.reduce((sum, b) => sum + b.levels.length, 0),
     hiddenResources: edbData.hiddenResources.length,
-    textEntries: Object.keys(textData || {}).length,
-    images: Object.keys(imageData || {}).length,
+    textEntries: Object.keys(textData).length,
+    images: Object.keys(imageData).length,
   } : null;
 
   return (

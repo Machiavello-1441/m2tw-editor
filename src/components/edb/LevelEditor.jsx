@@ -1,55 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useEDB } from './EDBContext';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Settings, Shield, Swords, X, ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { Settings, Shield, Swords, X, ImageIcon } from 'lucide-react';
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor.jsx';
 import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
-import TextDescriptionEditor from './TextDescriptionEditor.jsx';
 import { useRefData } from './RefDataContext';
-
-function UpgradeRow({ upg, index, levelOptions, onChange, onRemove, edbData }) {
-  const [showReqs, setShowReqs] = useState(false);
-  return (
-    <div className="bg-accent/30 rounded-lg px-3 py-2 space-y-2">
-      <div className="flex items-center gap-2">
-        <Select value={upg.name || ''} onValueChange={v => onChange(index, { ...upg, name: v })}>
-          <SelectTrigger className="h-7 text-xs flex-1">
-            <SelectValue placeholder="Select level…" />
-          </SelectTrigger>
-          <SelectContent>
-            {levelOptions.map(({ name: ln, index: li }) => (
-              <SelectItem key={ln} value={ln} className="text-xs">{li + 1}. {ln}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs shrink-0" onClick={() => setShowReqs(!showReqs)}>
-          <Shield className="w-3 h-3 mr-1" />
-          Req ({upg.requirements?.length || 0})
-        </Button>
-        <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded shrink-0">
-          <Trash2 className="w-3 h-3 text-destructive" />
-        </button>
-      </div>
-      {showReqs && (
-        <div className="ml-2">
-          <RequirementBuilder
-            requirements={upg.requirements || []}
-            onChange={reqs => onChange(index, { ...upg, requirements: reqs })}
-            edbData={edbData}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
 
 function LevelImages({ levelName }) {
   const { imageData } = useEDB();
@@ -113,25 +75,13 @@ export default function LevelEditor() {
     .map((l, i) => ({ name: l.name, index: i }))
     .filter(l => l.name !== selectedLevel);
 
-  // Normalize upgrades: support both old string[] and new {name, requirements}[]
-  const normalizeUpgrades = (ups) => (ups || []).map(u =>
-    typeof u === 'string' ? { name: u, requirements: [] } : u
-  );
-
-  const upgrades = normalizeUpgrades(level.upgrades);
-
-  const addUpgrade = () => {
-    const first = otherLevels[0]?.name || '';
-    update('upgrades', [...upgrades, { name: first, requirements: [] }]);
-  };
-
-  const updateUpgrade = (i, patch) => {
-    const next = upgrades.map((u, idx) => idx === i ? { ...u, ...patch } : u);
-    update('upgrades', next);
-  };
-
-  const removeUpgrade = (i) => {
-    update('upgrades', upgrades.filter((_, idx) => idx !== i));
+  const toggleUpgrade = (levelName) => {
+    const current = level.upgrades || [];
+    if (current.includes(levelName)) {
+      update('upgrades', current.filter(u => u !== levelName));
+    } else {
+      update('upgrades', [...current, levelName]);
+    }
   };
 
   const buildingOptions = edbData.buildings
@@ -228,27 +178,32 @@ export default function LevelEditor() {
             </div>
 
             <div>
-              <Label className="text-[10px] text-muted-foreground mb-1 block">Upgrades To</Label>
-              {upgrades.length === 0 && (
-                <p className="text-[10px] text-muted-foreground italic mb-1">No upgrades — top level</p>
+              <Label className="text-[10px] text-muted-foreground">Upgrades To</Label>
+              {otherLevels.length > 0 ? (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {otherLevels.map(({ name: ln, index: li }) => {
+                    const selected = (level.upgrades || []).includes(ln);
+                    return (
+                      <button
+                        key={ln}
+                        onClick={() => toggleUpgrade(ln)}
+                        className={`px-2 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1
+                          ${selected
+                            ? 'bg-primary/20 border-primary/40 text-primary'
+                            : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
+                          }`}
+                      >
+                        {li + 1}. {ln}
+                        {selected && <X className="w-2 h-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground mt-1 italic">No other levels in this building tree</p>
               )}
-              <div className="space-y-2">
-                {upgrades.map((upg, i) => (
-                  <UpgradeRow
-                    key={i}
-                    upg={upg}
-                    index={i}
-                    levelOptions={otherLevels}
-                    onChange={updateUpgrade}
-                    onRemove={removeUpgrade}
-                    edbData={edbData}
-                  />
-                ))}
-              </div>
-              {otherLevels.length > 0 && (
-                <Button variant="outline" size="sm" className="h-6 text-[10px] mt-2" onClick={addUpgrade}>
-                  <Plus className="w-2.5 h-2.5 mr-1" /> Add Upgrade
-                </Button>
+              {(level.upgrades || []).length === 0 && otherLevels.length > 0 && (
+                <p className="text-[10px] text-muted-foreground italic mt-1">Top level (no upgrades selected)</p>
               )}
             </div>
 
@@ -290,8 +245,6 @@ export default function LevelEditor() {
             />
           </CardContent>
         </Card>
-
-        <TextDescriptionEditor levelName={level.name} />
       </div>
     </ScrollArea>
   );

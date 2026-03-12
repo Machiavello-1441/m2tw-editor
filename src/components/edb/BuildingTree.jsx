@@ -15,7 +15,6 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger
 } from '@/components/ui/dialog';
-import { useRefData } from './RefDataContext';
 
 const PREFIXES = [
   { value: 'none', label: '(no prefix)', hint: 'Default — normal building' },
@@ -28,29 +27,6 @@ const PREFIXES = [
 function BuildingNode({ building }) {
   const { selectedBuilding, setSelectedBuilding, selectedLevel, setSelectedLevel,
     deleteBuilding, addLevel, deleteLevel } = useEDB();
-  const { setTextData, textDataLoaded, cultures } = useRefData();
-
-  const seedTextEntries = (levelName) => {
-    if (!textDataLoaded) return;
-    setTextData(prev => {
-      const next = { ...prev };
-      if (!next[levelName]) next[levelName] = levelName;
-      if (!next[`${levelName}_desc`]) next[`${levelName}_desc`] = '';
-      if (!next[`${levelName}_desc_short`]) next[`${levelName}_desc_short`] = '';
-      for (const culture of cultures) {
-        if (!next[`${levelName}_${culture}_desc`]) next[`${levelName}_${culture}_desc`] = '';
-        if (!next[`${levelName}_${culture}_desc_short`]) next[`${levelName}_${culture}_desc_short`] = '';
-      }
-      return next;
-    });
-  };
-
-  const handleAddLevel = () => {
-    // We need the new level name before calling addLevel — build it here
-    const newLevelName = building.name + '_' + (building.levels.length + 1);
-    addLevel(building.name);
-    seedTextEntries(newLevelName);
-  };
   const [expanded, setExpanded] = useState(selectedBuilding === building.name);
   const isSelected = selectedBuilding === building.name && !selectedLevel;
 
@@ -153,7 +129,7 @@ function BuildingNode({ building }) {
             );
           })}
           <button
-            onClick={handleAddLevel}
+            onClick={() => addLevel(building.name)}
             className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-muted-foreground hover:text-primary transition-colors w-full"
           >
             <Plus className="w-2.5 h-2.5" /> Add Level
@@ -166,7 +142,6 @@ function BuildingNode({ building }) {
 
 export default function BuildingTree() {
   const { edbData, addBuilding } = useEDB();
-  const { setTextData, textDataLoaded, cultures } = useRefData();
   const [search, setSearch] = useState('');
   const [newName, setNewName] = useState('');
   const [newPrefix, setNewPrefix] = useState('none');
@@ -179,30 +154,11 @@ export default function BuildingTree() {
     b.levels.some(l => l.name.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const seedTextForBuilding = (buildingName) => {
-    if (!textDataLoaded) return;
-    // Default: one level named buildingName_1
-    const levelName = buildingName + '_1';
-    setTextData(prev => {
-      const next = { ...prev };
-      if (!next[levelName]) next[levelName] = levelName;
-      if (!next[`${levelName}_desc`]) next[`${levelName}_desc`] = '';
-      if (!next[`${levelName}_desc_short`]) next[`${levelName}_desc_short`] = '';
-      for (const culture of cultures) {
-        if (!next[`${levelName}_${culture}_desc`]) next[`${levelName}_${culture}_desc`] = '';
-        if (!next[`${levelName}_${culture}_desc_short`]) next[`${levelName}_${culture}_desc_short`] = '';
-      }
-      return next;
-    });
-  };
-
   const handleAddBuilding = () => {
     const baseName = newName.trim().replace(/\s+/g, '_');
     const prefix = newPrefix === 'none' ? '' : newPrefix;
     if (baseName) {
-      const fullName = prefix + baseName;
-      addBuilding(fullName);
-      seedTextForBuilding(fullName);
+      addBuilding(prefix + baseName);
       setNewName('');
       setNewPrefix('');
       setDialogOpen(false);

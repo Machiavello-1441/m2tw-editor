@@ -5,23 +5,13 @@ import LevelEditor from '../components/edb/LevelEditor';
 import ValidationPanel from '../components/edb/ValidationPanel';
 import CodePreview from '../components/edb/CodePreview';
 import HiddenResourceEditor from '../components/edb/HiddenResourceEditor';
+import RefFileLoader from '../components/edb/RefFileLoader';
 import { Button } from '@/components/ui/button';
-import { Castle, Code2, Save, RotateCcw, Download } from 'lucide-react';
+import { Castle, Code2 } from 'lucide-react';
 
 export default function EDBEditor() {
-  const { edbData, fileName, exportEDB, saveEDB, revertEDB, savedSnapshot } = useEDB();
+  const { edbData, fileName } = useEDB();
   const [showCode, setShowCode] = useState(false);
-
-  const handleExport = () => {
-    const text = exportEDB();
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName || 'export_descr_buildings.txt';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   if (!edbData) {
     return (
@@ -37,27 +27,15 @@ export default function EDBEditor() {
   return (
     <div className="h-screen flex flex-col">
       {/* Top bar */}
-      <div className="h-10 border-b border-border flex items-center px-3 gap-2 shrink-0 bg-card/50">
+      <div className="h-10 border-b border-border flex items-center px-3 gap-3 shrink-0 bg-card/50">
         <Castle className="w-4 h-4 text-muted-foreground shrink-0" />
-        <span className="text-xs font-medium text-foreground truncate max-w-[180px]">{fileName || 'EDB Editor'}</span>
-        <span className="text-[10px] text-muted-foreground hidden sm:block">{edbData.buildings.length} buildings</span>
-        <div className="flex-1" />
-        <Button size="sm" variant="outline"
-          className="h-7 text-xs gap-1 text-green-400 border-green-500/40 hover:bg-green-500/10"
-          onClick={saveEDB}>
-          <Save className="w-3 h-3" /> Save
-        </Button>
-        <Button size="sm" variant="outline"
-          className="h-7 text-xs gap-1"
-          onClick={revertEDB}
-          disabled={!savedSnapshot}>
-          <RotateCcw className="w-3 h-3" /> Revert
-        </Button>
-        <Button size="sm" variant="outline"
-          className="h-7 text-xs gap-1 text-primary border-primary/40 hover:bg-primary/10"
-          onClick={handleExport}>
-          <Download className="w-3 h-3" /> Export
-        </Button>
+        <span className="text-xs font-medium text-foreground truncate max-w-[200px]">{fileName || 'EDB Editor'}</span>
+        <span className="text-[10px] text-muted-foreground hidden sm:block">
+          {edbData.buildings.length} buildings
+        </span>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <RefFileLoader />
+        </div>
         <HiddenResourceEditor />
         <Button
           size="sm"

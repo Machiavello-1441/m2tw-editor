@@ -5,9 +5,9 @@ const EDBContext = createContext(null);
 
 export function EDBProvider({ children }) {
   const [edbData, setEdbData] = useState(null);
-  const [savedSnapshot, setSavedSnapshot] = useState(null); // JSON snapshot for Revert
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedLevel, setSelectedLevel] = useState(null);
+  const [textData, setTextData] = useState({}); // { levelName: { title, desc, shortDesc, factionEntries: {} } }
   const [imageData, setImageData] = useState({}); // { levelName_culture: { icon, constructed, construction } }
   const [isDirty, setIsDirty] = useState(false);
   const [fileName, setFileName] = useState('');
@@ -34,20 +34,6 @@ export function EDBProvider({ children }) {
     if (!edbData) return '';
     return serializeEDB(edbData);
   }, [edbData]);
-
-  // Save: commit current state as the revert baseline
-  const saveEDB = useCallback(() => {
-    if (!edbData) return;
-    setSavedSnapshot(JSON.stringify(edbData));
-    setIsDirty(false);
-  }, [edbData]);
-
-  // Revert: restore to last saved snapshot
-  const revertEDB = useCallback(() => {
-    if (!savedSnapshot) return;
-    setEdbData(JSON.parse(savedSnapshot));
-    setIsDirty(false);
-  }, [savedSnapshot]);
 
   const updateBuilding = useCallback((buildingName, updater) => {
     setEdbData(prev => {
@@ -89,6 +75,16 @@ export function EDBProvider({ children }) {
       if (!prev) return prev;
       return { ...prev, buildings: [...prev.buildings, newBuilding] };
     });
+    // Auto-create text entries for the new building's levels
+    setTextData(prev => {
+      const next = { ...prev };
+      for (const level of newBuilding.levels) {
+        if (!next[level.name]) next[level.name] = level.name;
+        if (!next[level.name + '_desc']) next[level.name + '_desc'] = '';
+        if (!next[level.name + '_desc_short']) next[level.name + '_desc_short'] = '';
+      }
+      return next;
+    });
     setIsDirty(true);
   }, []);
 
@@ -105,14 +101,16 @@ export function EDBProvider({ children }) {
   }, [selectedBuilding]);
 
   const addLevel = useCallback((buildingName) => {
+    let newLevelName = '';
     setEdbData(prev => {
       if (!prev) return prev;
       const newBuildings = prev.buildings.map(b => {
         if (b.name === buildingName) {
           const newLevel = createDefaultLevel(buildingName, b.levels.length);
+          newLevelName = newLevel.name;
           const updatedLevels = b.levels.map((l, idx) => {
             if (idx === b.levels.length - 1 && l.upgrades.length === 0) {
-              return { ...l, upgrades: [{ name: newLevel.name, requirements: [] }] };
+              return { ...l, upgrades: [newLevel.name] };
             }
             return l;
           });
@@ -122,6 +120,18 @@ export function EDBProvider({ children }) {
       });
       return { ...prev, buildings: newBuildings };
     });
+    // Auto-create text entry for new level
+    setTimeout(() => {
+      if (newLevelName) {
+        setTextData(prev => {
+          const next = { ...prev };
+          if (!next[newLevelName]) next[newLevelName] = newLevelName;
+          if (!next[newLevelName + '_desc']) next[newLevelName + '_desc'] = '';
+          if (!next[newLevelName + '_desc_short']) next[newLevelName + '_desc_short'] = '';
+          return next;
+        });
+      }
+    }, 0);
     setIsDirty(true);
   }, []);
 
@@ -147,12 +157,13 @@ export function EDBProvider({ children }) {
   }, [selectedLevel]);
 
   const value = {
-    edbData, setEdbData, loadEDB, exportEDB, saveEDB, revertEDB, savedSnapshot,
+    edbData, setEdbData, loadEDB, exportEDB,
     selectedBuilding, setSelectedBuilding,
     selectedLevel, setSelectedLevel,
     updateBuilding, updateLevel,
     addBuilding, deleteBuilding,
     addLevel, deleteLevel,
+    textData, setTextData,
     imageData, setImageData,
     isDirty, fileName
   };

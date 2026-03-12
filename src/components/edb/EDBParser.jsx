@@ -447,16 +447,8 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
     
     if (inUpgrades) {
       if (line && line !== '{' && line !== '}') {
-        // Parse: "levelname requires factions { ... } and ..."
-        // or just: "levelname"
-        const reqIdx = line.indexOf(' requires ');
-        if (reqIdx !== -1) {
-          const upgName = line.slice(0, reqIdx).trim();
-          const reqStr = line.slice(reqIdx + 10).trim();
-          level.upgrades.push({ name: upgName, requirements: parseRequirements(reqStr) });
-        } else {
-          level.upgrades.push({ name: line.trim(), requirements: [] });
-        }
+        // line is already comment-stripped
+        level.upgrades.push(line);
       }
       i++; continue;
     }
@@ -619,16 +611,7 @@ function serializeLevel(level) {
   out += `            settlement_min ${level.settlementMin}\n`;
   out += '            upgrades\n            {\n';
   for (const up of level.upgrades) {
-    if (typeof up === 'string') {
-      out += `                ${up}\n`;
-    } else {
-      // {name, requirements}
-      let line = `                ${up.name}`;
-      if (up.requirements && up.requirements.length > 0) {
-        line += ' requires ' + serializeRequirements(up.requirements);
-      }
-      out += line + '\n';
-    }
+    out += `                ${up}\n`;
   }
   out += '            }\n';
   out += '        }\n';
@@ -654,11 +637,11 @@ function serializeCapability(cap) {
   }
   
   if (cap.type === 'agent') {
-    return `agent ${cap.agentType}${cap.value != null ? ' ' + cap.value : ''}`;
+    return `agent ${cap.agentType}`;
   }
-
+  
   if (cap.type === 'agent_limit') {
-    return `agent_limit ${cap.agentType} ${cap.value ?? 1}`;
+    return `agent_limit ${cap.agentType} ${cap.value}`;
   }
   
   return cap.text || '';

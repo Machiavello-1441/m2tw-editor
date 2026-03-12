@@ -19,18 +19,10 @@ const REQ_TYPES = [
 const CONNECTORS = ['and', 'or', 'and not'];
 
 function FactionSelector({ values, onChange, factions, cultures }) {
-  const allOptions = ['all', ...cultures, ...factions];
+  const allOptions = [...cultures, ...factions];
   const toggleFaction = (f) => {
-    if (f === 'all') {
-      // Toggle: if 'all' is already selected, clear; otherwise set only 'all'
-      if (values.includes('all')) onChange([]);
-      else onChange(['all']);
-    } else {
-      // Selecting a specific faction removes 'all'
-      const withoutAll = values.filter(v => v !== 'all');
-      if (withoutAll.includes(f)) onChange(withoutAll.filter(v => v !== f));
-      else onChange([...withoutAll, f]);
-    }
+    if (values.includes(f)) onChange(values.filter(v => v !== f));
+    else onChange([...values, f]);
   };
 
   return (
@@ -57,10 +49,6 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
   const updateReq = (updates) => onChange(index, { ...req, ...updates });
 
   const buildingNames = edbData ? edbData.buildings.map(b => b.name) : [];
-  // Merge EDB hidden resources with defaults, deduplicated
-  const hiddenResources = edbData?.hiddenResources?.length
-    ? [...new Set([...edbData.hiddenResources, ...HIDDEN_RESOURCES_DEFAULT])]
-    : HIDDEN_RESOURCES_DEFAULT;
 
   return (
     <div className="space-y-1.5 p-2 bg-card rounded-lg border border-border">
@@ -83,7 +71,7 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
           const base = { type, prevConnector: req.prevConnector };
           if (type === 'factions') updateReq({ ...base, values: [] });
           else if (type === 'event_counter') updateReq({ ...base, event: eventCounters[0] || '', value: 1 });
-          else if (type === 'hidden_resource') updateReq({ ...base, resource: hiddenResources[0] || '' });
+          else if (type === 'hidden_resource') updateReq({ ...base, resource: HIDDEN_RESOURCES_DEFAULT[0] });
           else if (type === 'building_present_min_level') updateReq({ ...base, building: '', level: '' });
           else if (type === 'resource') updateReq({ ...base, resource: mapResources[0] || '' });
           else if (type === 'region_religion') updateReq({ ...base, religion: 'catholic', percentage: 50 });
@@ -139,7 +127,7 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
             <SelectValue placeholder="Select resource..." />
           </SelectTrigger>
           <SelectContent>
-            {hiddenResources.map(r => (
+            {HIDDEN_RESOURCES_DEFAULT.map(r => (
               <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
             ))}
           </SelectContent>

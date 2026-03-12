@@ -177,10 +177,12 @@ function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
 }
 
 function AgentRow({ cap, index, onChange, onRemove }) {
+  const isLimit = cap.type === 'agent_limit';
+
   return (
     <div className="bg-accent/30 rounded-lg px-3 py-2 flex items-center gap-2">
       <UserRound className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-      {/* agent vs agent_limit */}
+      {/* type toggle */}
       <Select value={cap.type} onValueChange={val => onChange(index, { ...cap, type: val })}>
         <SelectTrigger className="h-7 text-xs w-28">
           <SelectValue />
@@ -201,11 +203,13 @@ function AgentRow({ cap, index, onChange, onRemove }) {
           ))}
         </SelectContent>
       </Select>
-      {/* value — always shown (e.g. "agent merchant 1") */}
-      <Input className="h-7 text-xs w-16" type="number"
-        value={cap.value ?? 1}
-        onChange={e => onChange(index, { ...cap, value: parseInt(e.target.value) || 1 })}
-      />
+      {/* limit value — only for agent_limit */}
+      {isLimit && (
+        <Input className="h-7 text-xs w-16" type="number"
+          value={cap.value ?? 1}
+          onChange={e => onChange(index, { ...cap, value: parseInt(e.target.value) || 1 })}
+        />
+      )}
       <button onClick={() => onRemove(index)} className="ml-auto p-1 hover:bg-destructive/20 rounded shrink-0">
         <Trash2 className="w-3 h-3 text-destructive" />
       </button>
@@ -213,44 +217,42 @@ function AgentRow({ cap, index, onChange, onRemove }) {
   );
 }
 
-function BonusRow({ cap, index, onChange, onRemove, edbData, groups }) {
+function BonusRow({ cap, index, onChange, onRemove, edbData, options }) {
   const [showReqs, setShowReqs] = useState(false);
+  const allOptions = options || ALL_MILITARY_BONUSES;
 
-  // Find which sub-group the current identifier belongs to
-  const currentGroup = Object.entries(groups).find(([, items]) => items.includes(cap.identifier))?.[0] || '';
-
-  const handleGroupChange = (group) => {
-    // When sub-group changes, auto-select first item of that group
-    const first = groups[group]?.[0] || '';
-    onChange(index, { ...cap, identifier: first });
-  };
+  // Group options by sub-group if we have group info
+  const grouped = options === ALL_CIVILIAN_BONUSES
+    ? CIVILIAN_BONUS_GROUPS
+    : options === ALL_MILITARY_BONUSES
+    ? MILITARY_BONUS_GROUPS
+    : null;
 
   return (
     <div className="bg-accent/30 rounded-lg px-3 py-2 space-y-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Sub-group picker */}
-        <Select value={currentGroup} onValueChange={handleGroupChange}>
-          <SelectTrigger className="h-7 text-xs w-36">
-            <SelectValue placeholder="Sub-group…" />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.keys(groups).map(g => (
-              <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {/* Capability within that sub-group */}
+      <div className="flex items-center gap-2">
         <Select value={cap.identifier || ''} onValueChange={val => onChange(index, { ...cap, identifier: val })}>
-          <SelectTrigger className="h-7 text-xs flex-1 min-w-[140px]">
-            <SelectValue placeholder="Capability…" />
+          <SelectTrigger className="h-7 text-xs flex-1">
+            <SelectValue placeholder="Select capability…" />
           </SelectTrigger>
           <SelectContent>
-            {(groups[currentGroup] || []).map(trait => (
-              <SelectItem key={trait} value={trait} className="text-xs">{trait}</SelectItem>
-            ))}
+            {grouped ? (
+              Object.entries(grouped).map(([group, items]) => (
+                <React.Fragment key={group}>
+                  <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">{group}</div>
+                  {items.map(trait => (
+                    <SelectItem key={trait} value={trait} className="text-xs pl-4">{trait}</SelectItem>
+                  ))}
+                </React.Fragment>
+              ))
+            ) : (
+              allOptions.map(trait => (
+                <SelectItem key={trait} value={trait} className="text-xs">{trait}</SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
-        {/* bonus / simple */}
+        {/* bonus vs simple toggle */}
         <Select value={cap.type} onValueChange={val => onChange(index, { ...cap, type: val })}>
           <SelectTrigger className="h-7 text-xs w-20">
             <SelectValue />
@@ -334,7 +336,7 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
           </h4>
           {civilianCaps.map((cap) => {
             const realIndex = capabilities.indexOf(cap);
-            return <BonusRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} groups={CIVILIAN_BONUS_GROUPS} />;
+            return <BonusRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} options={ALL_CIVILIAN_BONUSES} />;
           })}
         </section>
       )}
@@ -347,7 +349,7 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
           </h4>
           {militaryCaps.map((cap) => {
             const realIndex = capabilities.indexOf(cap);
-            return <BonusRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} groups={MILITARY_BONUS_GROUPS} />;
+            return <BonusRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} options={ALL_MILITARY_BONUSES} />;
           })}
         </section>
       )}
