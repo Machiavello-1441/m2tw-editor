@@ -11,7 +11,6 @@ import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor.jsx';
 import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
-import { useRefData } from './RefDataContext';
 import { BuildingTreeTextEditor, LevelTextEditor } from './BuildingTextEditor';
 import UpgradesEditor from './UpgradesEditor';
 
