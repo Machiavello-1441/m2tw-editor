@@ -97,6 +97,8 @@ export default function Home() {
       ev: loadEventsFile,
       unit: loadUnitsFile,
       txt: loadTextFile,
+      traits: (t) => loadTraitFile(t, 'export_descr_character_traits.txt'),
+      anc: (t) => loadAncFile(t, 'export_descr_ancillaries.txt'),
     };
 
     for (const file of files) {
