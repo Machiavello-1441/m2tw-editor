@@ -8,6 +8,7 @@ import JSZip from 'jszip';
 import { encodeTGA } from '../components/campaign/TgaLoader';
 import { LAYER_DEFS, LAYER_ORDER } from '../components/campaign/MapLayerDefs';
 import ValidationDashboard from '../components/export/ValidationDashboard';
+import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 
 // We read layers from CampaignMapContext if it's mounted — access via global event bus
 // Since CampaignMapProvider only wraps the CampaignMap page, we collect layer data
