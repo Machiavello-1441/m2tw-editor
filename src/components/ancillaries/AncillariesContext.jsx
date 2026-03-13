@@ -180,6 +180,7 @@ export function AncillariesProvider({ children }) {
       setSelectedAnc,
       loadAncFile, loadTextFile, loadTgaImages,
       updateAncillary, addAncillary, deleteAncillary,
+      updateTrigger, addTrigger, deleteTrigger,
       revertAncillaries, saveAncillaries,
       updateTextEntry,
       exportAncFile, exportTextFile,
