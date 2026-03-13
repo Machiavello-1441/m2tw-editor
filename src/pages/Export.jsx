@@ -153,6 +153,9 @@ export default function Export() {
             </CardContent>
           </Card>
 
+          {/* Validation Dashboard */}
+          <ValidationDashboard edbData={edbData} />
+
           {/* Download button */}
           <Button
             className="w-full h-12 text-base gap-2"
