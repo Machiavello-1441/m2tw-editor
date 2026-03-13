@@ -659,11 +659,9 @@ function serializeCapability(cap) {
   }
   
   if (cap.type === 'bonus') {
-    return `${cap.identifier} bonus ${cap.value}`;
-  }
-  
-  if (cap.type === 'simple') {
-    return `${cap.identifier} ${cap.value}`;
+    return cap.needsBonus
+      ? `${cap.identifier} bonus ${cap.value}`
+      : `${cap.identifier} ${cap.value}`;
   }
   
   if (cap.type === 'agent') {
