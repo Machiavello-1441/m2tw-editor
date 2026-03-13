@@ -1,13 +1,5 @@
-import React, { useState } from 'react';
-import { useEDB } from './EDBContext';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import { Settings, Shield, Swords, X, ImageIcon, ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import React from 'react';
+import { Settings, Shield, Swords, ImageIcon } from 'lucide-react';
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor.jsx';
 import RequirementBuilder from './RequirementBuilder';
