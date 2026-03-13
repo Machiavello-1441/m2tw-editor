@@ -4,18 +4,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, ChevronDown, ChevronRight, Zap } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import EffectAttributeSelect from '../shared/EffectAttributeSelect';
+import { TraitTriggersEditor } from '../shared/TriggerEditor';
 
-const CHARACTER_TYPES = ['family', 'spy', 'assassin', 'diplomat', 'admiral', 'merchant', 'priest', 'all'];
+const CHARACTER_TYPES = ['family', 'spy', 'assassin', 'diplomat', 'admiral', 'merchant', 'priest', 'princess', 'all'];
 const CULTURES = ['northern_european', 'eastern_european', 'southern_european', 'greek', 'middle_eastern', 'mesoamerican'];
 
 const inputCls = 'h-8 text-xs font-mono mt-1 text-white bg-background';
 const inputSmCls = 'h-7 text-xs mt-0.5 text-white bg-background';
 const textareaCls = 'w-full mt-1 text-xs bg-background border border-border rounded px-2 py-1.5 text-white resize-none focus:outline-none focus:ring-1 focus:ring-primary';
 
+function renderPreviewText(text) {
+  if (!text) return null;
+  return text.split('\\n\\n').map((part, i, arr) => (
+    <React.Fragment key={i}>{part}{i < arr.length - 1 && <br />}</React.Fragment>
+  ));
+}
+
 export default function TraitEditor() {
-  const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry } = useTraits();
+  const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry, updateTriggers } = useTraits();
   const [expandedLevel, setExpandedLevel] = useState(0);
 
   if (selectedTrait === null || !traitsData) {
@@ -89,11 +97,6 @@ export default function TraitEditor() {
     });
     update('levels', levels);
   };
-
-  // Triggers that affect this trait
-  const relatedTriggers = (traitsData.triggers || []).filter(t =>
-    t.affects?.some(a => a.trait === trait.name)
-  );
 
   return (
     <div className="h-full overflow-y-auto">
@@ -179,7 +182,7 @@ export default function TraitEditor() {
               const effectsDescText = getText(level.effectsDescription);
               const epithText = getText(level.epithet);
               return (
-                <div key={li} className="rounded border border-border bg-card/50 overflow-hidden">
+                <div key={li} className="rounded border border-border bg-card/50 overflow-visible">
                   <div className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/50"
                     onClick={() => setExpandedLevel(isExpanded ? null : li)}>
                     {isExpanded ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
@@ -215,26 +218,31 @@ export default function TraitEditor() {
                         </div>
                       </div>
 
-                      {/* Text fields — edit actual text */}
+                      {/* Text fields */}
                       <div className="space-y-2">
                         <div>
                           <div className="flex items-center justify-between">
                             <Label className="text-[10px] text-muted-foreground">Description</Label>
                             <span className="text-[9px] text-muted-foreground/50 font-mono">{level.description}</span>
                           </div>
-                          <textarea rows={2} className={textareaCls}
+                          <textarea rows={4} className={textareaCls}
                             value={descText}
                             onChange={e => level.description && updateTextEntry(level.description, e.target.value)}
-                            placeholder={level.description ? 'Enter description text…' : 'No description key'}
+                            placeholder={level.description ? 'Enter description text… (use \\n\\n for line break)' : 'No description key'}
                             disabled={!level.description}
                           />
+                          {descText && (
+                            <p className="mt-1 text-[10px] text-muted-foreground italic bg-muted/20 rounded px-2 py-1">
+                              {renderPreviewText(descText)}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
                             <Label className="text-[10px] text-muted-foreground">Effects Description</Label>
                             <span className="text-[9px] text-muted-foreground/50 font-mono">{level.effectsDescription}</span>
                           </div>
-                          <textarea rows={2} className={textareaCls}
+                          <textarea rows={3} className={textareaCls}
                             value={effectsDescText}
                             onChange={e => level.effectsDescription && updateTextEntry(level.effectsDescription, e.target.value)}
                             placeholder={level.effectsDescription ? 'Enter effects description text…' : 'No effects description key'}
@@ -267,11 +275,12 @@ export default function TraitEditor() {
                         <div className="space-y-1">
                           {level.effects.map((effect, ei) => (
                             <div key={ei} className="flex items-center gap-1.5">
-                              <EffectAttributeSelect
-                                value={effect.attribute}
-                                onChange={v => updateEffect(li, ei, 'attribute', v)}
-                                className="flex-1"
-                              />
+                              <div className="flex-1 relative">
+                                <EffectAttributeSelect
+                                  value={effect.attribute}
+                                  onChange={v => updateEffect(li, ei, 'attribute', v)}
+                                />
+                              </div>
                               <Input type="number" value={effect.value}
                                 onChange={e => updateEffect(li, ei, 'value', parseInt(e.target.value) || 0)}
                                 className="h-6 text-xs w-20 text-white bg-background" />
@@ -295,46 +304,15 @@ export default function TraitEditor() {
         </div>
 
         {/* Triggers */}
-        {relatedTriggers.length > 0 && (
-          <div>
-            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-2">
-              <Zap className="w-3 h-3" /> How it is gained ({relatedTriggers.length} trigger{relatedTriggers.length > 1 ? 's' : ''})
-            </Label>
-            <div className="space-y-2">
-              {relatedTriggers.map((t, i) => (
-                <TriggerBlock key={i} trigger={t} traitName={trait.name} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TriggerBlock({ trigger, traitName }) {
-  const myAffects = trigger.affects?.filter(a => a.trait === traitName) || [];
-  return (
-    <div className="rounded border border-border bg-card/40 px-3 py-2 space-y-1">
-      <p className="text-[11px] font-mono font-semibold text-primary">{trigger.name}</p>
-      {trigger.whenToTest && (
-        <p className="text-[10px] text-muted-foreground">
-          <span className="text-foreground/60">When: </span>{trigger.whenToTest}
-        </p>
-      )}
-      {myAffects.map((a, i) => (
-        <p key={i} className="text-[10px] text-muted-foreground">
-          <span className="text-foreground/60">Affects: </span>
-          +{a.value} · {a.chance}% chance
-        </p>
-      ))}
-      {trigger.conditions.length > 0 && (
-        <div className="mt-1 space-y-0.5">
-          {trigger.conditions.map((c, i) => (
-            <p key={i} className="text-[10px] font-mono text-muted-foreground bg-muted/30 rounded px-1.5 py-0.5">{c}</p>
-          ))}
+        <div className="border-t border-border pt-4">
+          <TraitTriggersEditor
+            triggers={traitsData.triggers || []}
+            traitName={trait.name}
+            onUpdateTriggers={updateTriggers}
+          />
         </div>
-      )}
+
+      </div>
     </div>
   );
 }
