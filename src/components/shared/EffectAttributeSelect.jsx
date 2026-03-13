@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { ChevronDown, Search } from 'lucide-react';
 
 // Full M2TW attribute list
 export const EFFECT_ATTRIBUTES = [
@@ -31,41 +31,44 @@ export const EFFECT_ATTRIBUTES = [
 export default function EffectAttributeSelect({ value, onChange, className = '' }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
-  const triggerRef = useRef();
+  const [dropdownStyle, setDropdownStyle] = useState({});
+  const buttonRef = useRef();
   const inputRef = useRef();
 
   // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (triggerRef.current && triggerRef.current.contains(e.target)) return;
-      // check if clicking inside the portal dropdown
-      const portal = document.getElementById('effect-attr-portal');
-      if (portal && portal.contains(e.target)) return;
-      setOpen(false);
-      setSearch('');
+      if (buttonRef.current && !buttonRef.current.closest('[data-effect-select]')?.contains(e.target) &&
+          !document.getElementById('effect-select-portal')?.contains(e.target)) {
+        setOpen(false);
+        setSearch('');
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Focus search on open
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 30);
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 30);
+    }
   }, [open]);
 
-  const handleOpen = () => {
-    if (!open && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setDropPos({
-        top: rect.bottom + window.scrollY + 2,
-        left: rect.left + window.scrollX,
-        width: Math.max(rect.width, 180),
-      });
-    }
+  const openDropdown = () => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownH = 220;
+    const top = spaceBelow >= dropdownH ? rect.bottom + 2 : rect.top - dropdownH - 2;
+    setDropdownStyle({
+      position: 'fixed',
+      top,
+      left: rect.left,
+      width: Math.max(rect.width, 180),
+      zIndex: 9999,
+    });
     setOpen(v => !v);
-    setSearch('');
   };
 
   const filtered = EFFECT_ATTRIBUTES.filter(a =>
@@ -81,12 +84,10 @@ export default function EffectAttributeSelect({ value, onChange, className = '' 
     setSearch('');
   };
 
-  const dropdown = open ? createPortal(
-    <div
-      id="effect-attr-portal"
-      style={{ position: 'absolute', top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
-      className="bg-card border border-border rounded shadow-xl overflow-hidden"
-    >
+  const portal = open ? createPortal(
+    <div id="effect-select-portal"
+      style={dropdownStyle}
+      className="bg-card border border-border rounded shadow-xl overflow-hidden">
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border">
         <Search className="w-3 h-3 text-muted-foreground shrink-0" />
         <input
@@ -99,27 +100,27 @@ export default function EffectAttributeSelect({ value, onChange, className = '' 
       </div>
       <div className="max-h-44 overflow-y-auto">
         {showCustom && (
-          <button type="button" onMouseDown={() => select(value)}
+          <button type="button" onClick={() => select(value)}
             className="w-full text-left px-3 py-1.5 text-xs font-mono text-primary hover:bg-accent">
             {value} <span className="text-muted-foreground">(custom)</span>
           </button>
         )}
         {filtered.map(attr => (
-          <button key={attr} type="button" onMouseDown={() => select(attr)}
+          <button key={attr} type="button" onClick={() => select(attr)}
             className={`w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-accent transition-colors ${
               attr === value ? 'bg-primary/15 text-primary' : 'text-foreground'
             }`}>
             {attr}
           </button>
         ))}
-        {filtered.length === 0 && !showCustom && search && (
-          <button type="button" onMouseDown={() => select(search)}
+        {filtered.length === 0 && !showCustom && (
+          <div className="px-3 py-2 text-xs text-muted-foreground">No match</div>
+        )}
+        {filtered.length === 0 && search && (
+          <button type="button" onClick={() => select(search)}
             className="w-full text-left px-3 py-1.5 text-xs font-mono text-primary hover:bg-accent">
             Use "{search}"
           </button>
-        )}
-        {filtered.length === 0 && !showCustom && !search && (
-          <div className="px-3 py-2 text-xs text-muted-foreground">No match</div>
         )}
       </div>
     </div>,
@@ -127,16 +128,17 @@ export default function EffectAttributeSelect({ value, onChange, className = '' 
   ) : null;
 
   return (
-    <div ref={triggerRef} className={`relative ${className}`}>
+    <div data-effect-select className={`relative ${className}`}>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={handleOpen}
+        onClick={openDropdown}
         className="w-full h-6 flex items-center justify-between px-2 text-xs font-mono bg-background border border-border rounded text-white hover:border-primary/50 focus:outline-none"
       >
         <span className="truncate">{value || 'Select…'}</span>
         <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 ml-1" />
       </button>
-      {dropdown}
+      {portal}
     </div>
   );
 }
