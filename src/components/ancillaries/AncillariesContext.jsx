@@ -84,8 +84,32 @@ export function AncillariesProvider({ children }) {
     setIsDirty(true);
   }, []);
 
-  const updateTriggers = useCallback((triggers) => {
-    setAncData(prev => ({ ...prev, triggers }));
+  const updateTrigger = useCallback((index, updated) => {
+    setAncData(prev => {
+      const triggers = [...(prev.triggers || [])];
+      triggers[index] = updated;
+      return { ...prev, triggers };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const addTrigger = useCallback((ancName) => {
+    const newTrigger = {
+      name: `Trigger_${ancName}_New`,
+      whenToTest: 'PostBattle',
+      conditions: ['Condition IsGeneral true'],
+      acquireAncillary: { name: ancName, chance: 10 },
+      rawLines: [],
+    };
+    setAncData(prev => ({ ...prev, triggers: [...(prev.triggers || []), newTrigger] }));
+    setIsDirty(true);
+  }, []);
+
+  const deleteTrigger = useCallback((index) => {
+    setAncData(prev => {
+      const triggers = prev.triggers.filter((_, i) => i !== index);
+      return { ...prev, triggers };
+    });
     setIsDirty(true);
   }, []);
 
@@ -155,7 +179,7 @@ export function AncillariesProvider({ children }) {
       isDirty, selectedAnc,
       setSelectedAnc,
       loadAncFile, loadTextFile, loadTgaImages,
-      updateAncillary, addAncillary, deleteAncillary, updateTriggers,
+      updateAncillary, addAncillary, deleteAncillary,
       revertAncillaries, saveAncillaries,
       updateTextEntry,
       exportAncFile, exportTextFile,
