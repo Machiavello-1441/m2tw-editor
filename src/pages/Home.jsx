@@ -116,6 +116,7 @@ export default function Home() {
     traits: 'idle', anc: 'idle', vnvs: 'idle', anctxt: 'idle',
     map_heights: 'idle', map_ground_types: 'idle', map_climates: 'idle',
     map_regions: 'idle', map_features: 'idle', map_fog: 'idle',
+    anc_images: 'idle',
   });
 
   const [modName, setModName] = useState(() => {
