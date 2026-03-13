@@ -53,6 +53,7 @@ import Export from './pages/Export';
 import Home from './pages/Home';
 import TextEditor from './pages/TextEditor';
 import TraitsEditor from './pages/TraitsEditor';
+import CampaignMap from './pages/CampaignMap';
 import __Layout from './Layout.jsx';
 
 
@@ -63,6 +64,7 @@ export const PAGES = {
     "Home": Home,
     "TextEditor": TextEditor,
     "TraitsEditor": TraitsEditor,
+    "CampaignMap": CampaignMap,
 }
 
 export const pagesConfig = {
