@@ -16,6 +16,7 @@ import ValidationDashboard from '../components/export/ValidationDashboard';
 
 export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile } = useEDB();
+  const { traitData, exportTraitFile, ancData, exportAncFile } = useVnV();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
 
