@@ -122,8 +122,10 @@ export default function Home() {
   const [modName, setModName] = useState(() => {
     try { return localStorage.getItem('m2tw_mod_name') || 'my_mod'; } catch { return 'my_mod'; }
   });
+  const [ancImgCount, setAncImgCount] = useState(0);
   const dataFolderRef = useRef();
   const mapFolderRef = useRef();
+  const ancImagesFolderRef = useRef();
 
   const readText = (file) => new Promise((resolve) => {
     const r = new FileReader();
