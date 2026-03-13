@@ -3,14 +3,13 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { EDBProvider } from './components/edb/EDBContext';
 import { RefDataProvider } from './components/edb/RefDataContext';
-import { Castle, Download, Home, Map, Shield, Package } from 'lucide-react';
+import { Castle, Download, Home, Shield, Package } from 'lucide-react';
 
 const navItems = [
   { name: 'Home', icon: Home, page: 'Home' },
   { name: 'EDB Editor', icon: Castle, page: 'EDBEditor' },
   { name: 'Traits Editor', icon: Shield, page: 'TraitsEditor' },
   { name: 'Ancillaries', icon: Package, page: 'AncillariesEditor' },
-  { name: 'Campaign Map', icon: Map, page: 'CampaignMap' },
   { name: 'Export', icon: Download, page: 'Export' },
 ];
 
