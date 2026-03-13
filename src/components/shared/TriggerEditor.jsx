@@ -2,237 +2,162 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, ChevronDown, ChevronRight, Zap, Pencil } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Zap } from 'lucide-react';
 
-const inputCls = 'h-7 text-xs font-mono text-white bg-background';
-const textareaCls = 'w-full mt-1 text-xs bg-background border border-border rounded px-2 py-1.5 text-white resize-none focus:outline-none focus:ring-1 focus:ring-primary font-mono';
+const inputCls = 'h-7 text-xs font-mono bg-background text-white';
+const textareaCls = 'w-full text-xs bg-background border border-border rounded px-2 py-1.5 text-white font-mono resize-none focus:outline-none focus:ring-1 focus:ring-primary';
 
-// ── Trait Triggers Editor ─────────────────────────────────────────────────────
-
-export function TraitTriggersEditor({ triggers = [], traitName, onUpdateTriggers }) {
-  const related = triggers.map((t, i) => ({ ...t, _idx: i }))
-    .filter(t => t.affects?.some(a => a.trait === traitName));
-
-  const addTrigger = () => {
-    const name = `Trigger_${traitName}_${Date.now()}`;
-    const newTrigger = {
-      name,
-      whenToTest: 'PostBattle',
-      conditions: ['Condition IsGeneral'],
-      affects: [{ trait: traitName, value: 1, chance: 100 }],
-      rawLines: [],
-    };
-    onUpdateTriggers([...triggers, newTrigger]);
-  };
-
-  const updateTrigger = (idx, updated) => {
-    const next = triggers.map((t, i) => i === idx ? updated : t);
-    onUpdateTriggers(next);
-  };
-
-  const deleteTrigger = (idx) => {
-    onUpdateTriggers(triggers.filter((_, i) => i !== idx));
-  };
+// mode: 'trait' | 'ancillary'
+export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode }) {
+  const [expanded, setExpanded] = useState(null);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-          <Zap className="w-3 h-3" /> Triggers ({related.length})
+          <Zap className="w-3 h-3" /> Triggers ({triggers.length})
         </Label>
-        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] text-white" onClick={addTrigger}>
+        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] text-white"
+          onClick={() => { onAdd(entityName); setExpanded(triggers.length); }}>
           <Plus className="w-3 h-3 mr-1" /> Add Trigger
         </Button>
       </div>
+
       <div className="space-y-2">
-        {related.map(t => (
-          <TraitTriggerCard
-            key={t._idx}
-            trigger={t}
-            traitName={traitName}
-            onUpdate={(updated) => updateTrigger(t._idx, updated)}
-            onDelete={() => deleteTrigger(t._idx)}
-          />
-        ))}
-        {related.length === 0 && (
-          <p className="text-[10px] text-muted-foreground italic">No triggers reference this trait.</p>
+        {triggers.map((t, i) => {
+          const isOpen = expanded === i;
+          return (
+            <div key={i} className="rounded border border-border bg-card/40 overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/40"
+                onClick={() => setExpanded(isOpen ? null : i)}>
+                {isOpen ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
+                <span className="text-[11px] font-mono font-semibold text-primary flex-1 truncate">{t.name}</span>
+                {t.whenToTest && <span className="text-[10px] text-muted-foreground hidden sm:block">{t.whenToTest}</span>}
+                <button onClick={e => { e.stopPropagation(); onDelete(i); }}
+                  className="p-0.5 hover:bg-destructive/20 rounded shrink-0">
+                  <Trash2 className="w-3 h-3 text-destructive" />
+                </button>
+              </div>
+
+              {isOpen && (
+                <div className="px-3 pb-3 pt-2 border-t border-border/50 space-y-3">
+                  {/* Name */}
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Trigger Name</Label>
+                    <Input value={t.name} onChange={e => onUpdate(i, { ...t, name: e.target.value })} className={inputCls + ' mt-0.5'} />
+                  </div>
+
+                  {/* WhenToTest */}
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">WhenToTest</Label>
+                    <Input value={t.whenToTest} onChange={e => onUpdate(i, { ...t, whenToTest: e.target.value })}
+                      className={inputCls + ' mt-0.5'} placeholder="e.g. PostBattle" />
+                  </div>
+
+                  {/* Conditions */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-[10px] text-muted-foreground">Conditions</Label>
+                      <button className="text-[10px] text-primary hover:underline"
+                        onClick={() => onUpdate(i, { ...t, conditions: [...(t.conditions || []), 'Condition '] })}>
+                        + Add line
+                      </button>
+                    </div>
+                    <div className="space-y-1">
+                      {(t.conditions || []).map((cond, ci) => (
+                        <div key={ci} className="flex items-center gap-1">
+                          <Input value={cond}
+                            onChange={e => {
+                              const conds = [...t.conditions];
+                              conds[ci] = e.target.value;
+                              onUpdate(i, { ...t, conditions: conds });
+                            }}
+                            className={inputCls + ' flex-1'} />
+                          <button onClick={() => {
+                            onUpdate(i, { ...t, conditions: t.conditions.filter((_, j) => j !== ci) });
+                          }} className="p-0.5 hover:bg-destructive/20 rounded shrink-0">
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Affects (trait mode) */}
+                  {mode === 'trait' && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-[10px] text-muted-foreground">Affects</Label>
+                        <button className="text-[10px] text-primary hover:underline"
+                          onClick={() => onUpdate(i, { ...t, affects: [...(t.affects || []), { trait: entityName, value: 1, chance: 10 }] })}>
+                          + Add
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {(t.affects || []).map((a, ai) => (
+                          <div key={ai} className="flex items-center gap-1.5">
+                            <Input value={a.trait}
+                              onChange={e => {
+                                const affects = [...t.affects];
+                                affects[ai] = { ...a, trait: e.target.value };
+                                onUpdate(i, { ...t, affects });
+                              }}
+                              placeholder="Trait name" className={inputCls + ' flex-1 min-w-0'} />
+                            <Input type="number" value={a.value}
+                              onChange={e => {
+                                const affects = [...t.affects];
+                                affects[ai] = { ...a, value: parseInt(e.target.value) || 0 };
+                                onUpdate(i, { ...t, affects });
+                              }}
+                              className={inputCls + ' w-16'} />
+                            <span className="text-[10px] text-muted-foreground shrink-0">%</span>
+                            <Input type="number" value={a.chance}
+                              onChange={e => {
+                                const affects = [...t.affects];
+                                affects[ai] = { ...a, chance: parseInt(e.target.value) || 0 };
+                                onUpdate(i, { ...t, affects });
+                              }}
+                              className={inputCls + ' w-16'} />
+                            <button onClick={() => onUpdate(i, { ...t, affects: t.affects.filter((_, j) => j !== ai) })}
+                              className="p-0.5 hover:bg-destructive/20 rounded shrink-0">
+                              <Trash2 className="w-3 h-3 text-destructive" />
+                            </button>
+                          </div>
+                        ))}
+                        {(t.affects || []).length === 0 && (
+                          <p className="text-[10px] text-muted-foreground italic">No affects entries</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AcquireAncillary (ancillary mode) */}
+                  {mode === 'ancillary' && (
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">AcquireAncillary</Label>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Input
+                          value={t.acquireAncillary?.name || ''}
+                          onChange={e => onUpdate(i, { ...t, acquireAncillary: { ...(t.acquireAncillary || {}), name: e.target.value, chance: t.acquireAncillary?.chance ?? 10 } })}
+                          placeholder="Ancillary name"
+                          className={inputCls + ' flex-1'} />
+                        <span className="text-[10px] text-muted-foreground shrink-0">Chance</span>
+                        <Input type="number"
+                          value={t.acquireAncillary?.chance ?? ''}
+                          onChange={e => onUpdate(i, { ...t, acquireAncillary: { ...(t.acquireAncillary || {}), chance: parseInt(e.target.value) || 0 } })}
+                          className={inputCls + ' w-16'} placeholder="%" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {triggers.length === 0 && (
+          <p className="text-[10px] text-muted-foreground italic">No triggers — click Add Trigger to create one.</p>
         )}
       </div>
-    </div>
-  );
-}
-
-function TraitTriggerCard({ trigger, traitName, onUpdate, onDelete }) {
-  const [expanded, setExpanded] = useState(false);
-
-  const myAffect = trigger.affects?.find(a => a.trait === traitName) || { trait: traitName, value: 1, chance: 100 };
-
-  const updateAffect = (field, value) => {
-    const affects = (trigger.affects || []).map(a =>
-      a.trait === traitName ? { ...a, [field]: value } : a
-    );
-    if (!affects.some(a => a.trait === traitName)) affects.push({ ...myAffect, [field]: value });
-    onUpdate({ ...trigger, affects });
-  };
-
-  const conditionsText = (trigger.conditions || []).join('\n');
-  const setConditions = (text) => {
-    onUpdate({ ...trigger, conditions: text.split('\n').map(s => s.trim()).filter(Boolean) });
-  };
-
-  return (
-    <div className="rounded border border-border bg-card/40 overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/30"
-        onClick={() => setExpanded(v => !v)}>
-        {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
-        <span className="text-[11px] font-mono font-semibold text-primary flex-1 truncate">{trigger.name}</span>
-        <span className="text-[10px] text-muted-foreground hidden sm:block">{trigger.whenToTest}</span>
-        <Pencil className="w-3 h-3 text-muted-foreground/40 ml-1" />
-        <button onClick={e => { e.stopPropagation(); onDelete(); }}
-          className="p-0.5 hover:bg-destructive/20 rounded shrink-0 ml-1">
-          <Trash2 className="w-3 h-3 text-destructive" />
-        </button>
-      </div>
-
-      {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="col-span-2">
-              <Label className="text-[10px] text-muted-foreground">Trigger Name</Label>
-              <Input value={trigger.name} onChange={e => onUpdate({ ...trigger, name: e.target.value })} className={inputCls + ' mt-1'} />
-            </div>
-            <div>
-              <Label className="text-[10px] text-muted-foreground">WhenToTest</Label>
-              <Input value={trigger.whenToTest} onChange={e => onUpdate({ ...trigger, whenToTest: e.target.value })} className={inputCls + ' mt-1'} />
-            </div>
-            <div>
-              <Label className="text-[10px] text-muted-foreground">Chance (%)</Label>
-              <Input type="number" min={0} max={100} value={myAffect.chance}
-                onChange={e => updateAffect('chance', parseInt(e.target.value) || 0)}
-                className={inputCls + ' mt-1'} />
-            </div>
-            <div>
-              <Label className="text-[10px] text-muted-foreground">Value (points)</Label>
-              <Input type="number" value={myAffect.value}
-                onChange={e => updateAffect('value', parseInt(e.target.value) || 0)}
-                className={inputCls + ' mt-1'} />
-            </div>
-          </div>
-          <div>
-            <Label className="text-[10px] text-muted-foreground">Conditions (one per line)</Label>
-            <textarea rows={4} className={textareaCls}
-              value={conditionsText}
-              onChange={e => setConditions(e.target.value)}
-              placeholder={'Condition IsGeneral\nand FactionType == byzantium'} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Ancillary Triggers Editor ─────────────────────────────────────────────────
-
-export function AncillaryTriggersEditor({ triggers = [], ancName, onUpdateTriggers }) {
-  const related = triggers.map((t, i) => ({ ...t, _idx: i }))
-    .filter(t => t.acquireAncillary?.name === ancName);
-
-  const addTrigger = () => {
-    const name = `Trigger_${ancName}_${Date.now()}`;
-    const newTrigger = {
-      name,
-      whenToTest: 'PostBattle',
-      conditions: ['Condition IsGeneral'],
-      acquireAncillary: { name: ancName, chance: 100 },
-      rawLines: [],
-    };
-    onUpdateTriggers([...triggers, newTrigger]);
-  };
-
-  const updateTrigger = (idx, updated) => {
-    onUpdateTriggers(triggers.map((t, i) => i === idx ? updated : t));
-  };
-
-  const deleteTrigger = (idx) => {
-    onUpdateTriggers(triggers.filter((_, i) => i !== idx));
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-          <Zap className="w-3 h-3" /> Triggers ({related.length})
-        </Label>
-        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] text-white" onClick={addTrigger}>
-          <Plus className="w-3 h-3 mr-1" /> Add Trigger
-        </Button>
-      </div>
-      <div className="space-y-2">
-        {related.map(t => (
-          <AncTriggerCard
-            key={t._idx}
-            trigger={t}
-            ancName={ancName}
-            onUpdate={(updated) => updateTrigger(t._idx, updated)}
-            onDelete={() => deleteTrigger(t._idx)}
-          />
-        ))}
-        {related.length === 0 && (
-          <p className="text-[10px] text-muted-foreground italic">No triggers reference this ancillary.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function AncTriggerCard({ trigger, ancName, onUpdate, onDelete }) {
-  const [expanded, setExpanded] = useState(false);
-
-  const acq = trigger.acquireAncillary || { name: ancName, chance: 100 };
-  const conditionsText = (trigger.conditions || []).join('\n');
-
-  return (
-    <div className="rounded border border-border bg-card/40 overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/30"
-        onClick={() => setExpanded(v => !v)}>
-        {expanded ? <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />}
-        <span className="text-[11px] font-mono font-semibold text-primary flex-1 truncate">{trigger.name}</span>
-        <span className="text-[10px] text-muted-foreground hidden sm:block">{trigger.whenToTest} · {acq.chance}%</span>
-        <Pencil className="w-3 h-3 text-muted-foreground/40 ml-1" />
-        <button onClick={e => { e.stopPropagation(); onDelete(); }}
-          className="p-0.5 hover:bg-destructive/20 rounded shrink-0 ml-1">
-          <Trash2 className="w-3 h-3 text-destructive" />
-        </button>
-      </div>
-
-      {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="col-span-2">
-              <Label className="text-[10px] text-muted-foreground">Trigger Name</Label>
-              <Input value={trigger.name} onChange={e => onUpdate({ ...trigger, name: e.target.value })} className={inputCls + ' mt-1'} />
-            </div>
-            <div>
-              <Label className="text-[10px] text-muted-foreground">WhenToTest</Label>
-              <Input value={trigger.whenToTest} onChange={e => onUpdate({ ...trigger, whenToTest: e.target.value })} className={inputCls + ' mt-1'} />
-            </div>
-            <div>
-              <Label className="text-[10px] text-muted-foreground">Chance (%)</Label>
-              <Input type="number" min={0} max={100}
-                value={acq.chance}
-                onChange={e => onUpdate({ ...trigger, acquireAncillary: { ...acq, chance: parseInt(e.target.value) || 0 } })}
-                className={inputCls + ' mt-1'} />
-            </div>
-          </div>
-          <div>
-            <Label className="text-[10px] text-muted-foreground">Conditions (one per line)</Label>
-            <textarea rows={4} className={textareaCls}
-              value={conditionsText}
-              onChange={e => onUpdate({ ...trigger, conditions: e.target.value.split('\n').map(s => s.trim()).filter(Boolean) })}
-              placeholder={'Condition IsGeneral\nand FactionType == byzantium'} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
