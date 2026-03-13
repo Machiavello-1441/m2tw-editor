@@ -155,7 +155,7 @@ export function AncillariesProvider({ children }) {
       isDirty, selectedAnc,
       setSelectedAnc,
       loadAncFile, loadTextFile, loadTgaImages,
-      updateAncillary, addAncillary, deleteAncillary,
+      updateAncillary, addAncillary, deleteAncillary, updateTriggers,
       revertAncillaries, saveAncillaries,
       updateTextEntry,
       exportAncFile, exportTextFile,
