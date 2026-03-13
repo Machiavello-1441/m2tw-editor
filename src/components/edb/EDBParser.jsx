@@ -662,7 +662,7 @@ export function createDefaultBuilding(name) {
       requirements: [{ type: 'factions', values: ['northern_european', 'southern_european'], connector: null }],
       convertTo: null,
       capabilities: [
-        { type: 'bonus', identifier: 'happiness_bonus', value: 1 }
+        { type: 'bonus', identifier: 'happiness_bonus', needsBonus: true, value: 1 }
       ],
       factionCapability: [],
       material: 'wooden',
