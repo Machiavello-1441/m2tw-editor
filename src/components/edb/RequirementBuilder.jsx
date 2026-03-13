@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2 } from 'lucide-react';
 import { HIDDEN_RESOURCES_DEFAULT } from './EDBParser';
 import { useRefData } from './RefDataContext';
+import SearchableSelect from './SearchableSelect.jsx';
 
 const REQ_TYPES = [
   { value: 'factions', label: 'Factions / Cultures' },
@@ -19,23 +20,44 @@ const REQ_TYPES = [
 const CONNECTORS = ['and', 'or', 'and not'];
 
 function FactionSelector({ values, onChange, factions, cultures }) {
+  const isAll = values.includes('all');
   const allOptions = [...cultures, ...factions];
   const toggleFaction = (f) => {
-    if (values.includes(f)) onChange(values.filter(v => v !== f));
-    else onChange([...values, f]);
+    if (f === 'all') {
+      // Toggle "all" exclusively
+      if (isAll) onChange([]);
+      else onChange(['all']);
+    } else {
+      // Remove 'all' if selecting specific factions
+      const without = values.filter(v => v !== 'all');
+      if (without.includes(f)) onChange(without.filter(v => v !== f));
+      else onChange([...without, f]);
+    }
   };
 
   return (
     <div className="flex flex-wrap gap-1 mt-1">
+      {/* "all" special option */}
+      <button
+        onClick={() => toggleFaction('all')}
+        className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors font-semibold
+          ${isAll
+            ? 'bg-primary/20 border-primary/40 text-primary'
+            : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
+          }`}
+      >
+        all
+      </button>
       {allOptions.map(f => (
         <button
           key={f}
           onClick={() => toggleFaction(f)}
+          disabled={isAll}
           className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors
             ${values.includes(f)
               ? 'bg-primary/20 border-primary/40 text-primary'
               : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
-            }`}
+            } ${isAll ? 'opacity-40 cursor-not-allowed' : ''}`}
         >
           {f}
         </button>
@@ -136,21 +158,30 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
 
       {req.type === 'building_present_min_level' && (
         <div className="flex gap-2">
-          {buildingNames.length > 0 ? (
-            <Select value={req.building || ''} onValueChange={v => updateReq({ building: v })}>
-              <SelectTrigger className="h-7 text-xs flex-1">
-                <SelectValue placeholder="Building tree..." />
-              </SelectTrigger>
-              <SelectContent>
-                {buildingNames.map(n => (
-                  <SelectItem key={n} value={n} className="text-xs">{n}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input className="h-7 text-xs flex-1" placeholder="Building tree" value={req.building || ''} onChange={e => updateReq({ building: e.target.value })} />
-          )}
-          <Input className="h-7 text-xs flex-1" placeholder="Min level name" value={req.level || ''} onChange={e => updateReq({ level: e.target.value })} />
+          <SearchableSelect
+            value={req.building || ''}
+            onValueChange={v => updateReq({ building: v, level: '' })}
+            options={buildingNames.map(n => ({ value: n, label: n }))}
+            placeholder="Building tree..."
+            className="flex-1"
+          />
+          {(() => {
+            const selectedBuilding = edbData?.buildings.find(b => b.name === req.building);
+            const levelOptions = selectedBuilding
+              ? selectedBuilding.levels.map(l => ({ value: l.name, label: l.name }))
+              : [];
+            return levelOptions.length > 0 ? (
+              <SearchableSelect
+                value={req.level || ''}
+                onValueChange={v => updateReq({ level: v })}
+                options={levelOptions}
+                placeholder="Min level..."
+                className="flex-1"
+              />
+            ) : (
+              <Input className="h-7 text-xs flex-1" placeholder="Min level name" value={req.level || ''} onChange={e => updateReq({ level: e.target.value })} />
+            );
+          })()}
         </div>
       )}
 
