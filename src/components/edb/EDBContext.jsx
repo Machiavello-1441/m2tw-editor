@@ -165,6 +165,10 @@ export function EDBProvider({ children }) {
     setIsDirty(true);
   }, [selectedLevel]);
 
+  const loadTgaImages = useCallback((images) => {
+    setImageData(prev => ({ ...prev, ...images }));
+  }, []);
+
   const value = {
     edbData, setEdbData, loadEDB, exportEDB,
     loadTextFile, exportTextFile,
@@ -174,7 +178,7 @@ export function EDBProvider({ children }) {
     addBuilding, deleteBuilding,
     addLevel, deleteLevel,
     textData, setTextData,
-    imageData, setImageData,
+    imageData, setImageData, loadTgaImages,
     isDirty, fileName
   };
 
