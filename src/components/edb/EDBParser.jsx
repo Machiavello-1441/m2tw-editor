@@ -665,14 +665,6 @@ function serializeCapability(cap) {
     return line;
   }
   
-  if (cap.type === 'bonus') {
-    return `${cap.identifier} bonus ${cap.value}`;
-  }
-  
-  if (cap.type === 'simple') {
-    return `${cap.identifier} ${cap.value}`;
-  }
-  
   if (cap.type === 'agent') {
     return `agent ${cap.agentType}`;
   }
@@ -680,6 +672,15 @@ function serializeCapability(cap) {
   if (cap.type === 'agent_limit') {
     return `agent_limit ${cap.agentType} ${cap.value}`;
   }
+
+  // New-style: code already contains "bonus" suffix where needed
+  if (cap.code) {
+    return `${cap.code} ${cap.value}`;
+  }
+
+  // Legacy fallback
+  if (cap.type === 'bonus') return `${cap.identifier} bonus ${cap.value}`;
+  if (cap.type === 'simple') return `${cap.identifier} ${cap.value}`;
   
   return cap.text || '';
 }
