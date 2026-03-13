@@ -106,6 +106,8 @@ export default function EDBEditor() {
     <div className="h-screen flex flex-col">
       {/* Top bar */}
       <div className="h-10 border-b border-border flex items-center px-3 gap-3 shrink-0 bg-card/50">
+        <input ref={tgaFolderRef} type="file" className="hidden"
+          webkitdirectory="" directory="" multiple onChange={handleTgaFolder} />
         <Castle className="w-4 h-4 text-muted-foreground shrink-0" />
         <span className="text-xs font-medium text-foreground truncate max-w-[200px]">{fileName || 'EDB Editor'}</span>
         <span className="text-[10px] text-muted-foreground hidden sm:block">
@@ -115,6 +117,16 @@ export default function EDBEditor() {
           <RefFileLoader />
         </div>
         <HiddenResourceEditor />
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs gap-1 shrink-0 text-white"
+          title="Browse to data\ui\buildings\ folder"
+          onClick={() => tgaFolderRef.current?.click()}
+        >
+          <Image className="w-3 h-3" />
+          <span className="hidden lg:block">Load Images (.tga)</span>
+        </Button>
         <Button
           size="sm"
           variant={showCode ? 'default' : 'ghost'}
