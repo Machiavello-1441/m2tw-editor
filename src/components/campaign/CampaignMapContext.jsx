@@ -29,15 +29,19 @@ export function CampaignMapProvider({ children }) {
   const loadLayer = useCallback((key, arrayBuffer) => {
     const parsed = parseTGA(arrayBuffer);
     const edited = new Uint8ClampedArray(parsed.data);
-    setLayers(prev => ({
-      ...prev,
-      [key]: {
-        width: parsed.width,
-        height: parsed.height,
-        data: parsed.data,
-        edited,
-      }
-    }));
+    setLayers(prev => {
+      const next = {
+        ...prev,
+        [key]: {
+          width: parsed.width,
+          height: parsed.height,
+          data: parsed.data,
+          edited,
+        }
+      };
+      window.__campaignLayers = next;
+      return next;
+    });
   }, []);
 
   // Paint a pixel on the active layer's edited data
