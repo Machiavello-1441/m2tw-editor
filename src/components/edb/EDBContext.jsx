@@ -35,6 +35,15 @@ export function EDBProvider({ children }) {
     return serializeEDB(edbData);
   }, [edbData]);
 
+  const loadTextFile = useCallback((text) => {
+    const parsed = parseTextFile(text);
+    setTextData(prev => ({ ...prev, ...parsed }));
+  }, []);
+
+  const exportTextFile = useCallback(() => {
+    return serializeTextFile(textData);
+  }, [textData]);
+
   const updateBuilding = useCallback((buildingName, updater) => {
     setEdbData(prev => {
       if (!prev) return prev;
