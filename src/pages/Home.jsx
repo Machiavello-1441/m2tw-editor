@@ -273,6 +273,24 @@ export default function Home() {
             </Button>
           </Link>
         )}
+        {traitsLoaded && (
+          <Link to={createPageUrl('TraitEditor')}>
+            <Button variant="outline" className="w-full h-11 gap-2">
+              <Shield className="w-4 h-4" />
+              Open Trait Editor
+              <ArrowRight className="w-4 h-4 ml-auto" />
+            </Button>
+          </Link>
+        )}
+        {ancLoaded && (
+          <Link to={createPageUrl('AncillaryEditor')}>
+            <Button variant="outline" className="w-full h-11 gap-2">
+              <Package className="w-4 h-4" />
+              Open Ancillary Editor
+              <ArrowRight className="w-4 h-4 ml-auto" />
+            </Button>
+          </Link>
+        )}
         {anyMapLoaded && (
           <Link to={createPageUrl('CampaignMap')}>
             <Button variant="outline" className="w-full h-11 gap-2">
