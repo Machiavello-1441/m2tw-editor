@@ -4,19 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Trash2, Shield } from 'lucide-react';
 
-const CHARACTER_FILTERS = ['family', 'merchant', 'priest', 'princess', 'spy', 'assassin', 'diplomat', 'admiral', 'all'];
-
-const characterColors = {
-  family: 'text-amber-400',
-  spy: 'text-blue-400',
-  assassin: 'text-red-400',
-  diplomat: 'text-green-400',
-  admiral: 'text-cyan-400',
-  all: 'text-purple-400',
-  merchant: 'text-yellow-400',
-  priest: 'text-orange-400',
-  princess: 'text-pink-400',
-};
+const CHARACTER_FILTERS = ['family', 'spy', 'assassin', 'diplomat', 'admiral', 'merchant', 'priest', 'all'];
 
 export default function TraitList() {
   const { traitsData, selectedTrait, setSelectedTrait, addTrait, deleteTrait } = useTraits();
@@ -25,6 +13,8 @@ export default function TraitList() {
 
   if (!traitsData) return null;
 
+  const allChars = [...new Set(traitsData.traits.flatMap(t => t.characters))].sort();
+
   const filtered = traitsData.traits
     .map((t, i) => ({ ...t, _idx: i }))
     .filter(t => {
@@ -32,6 +22,17 @@ export default function TraitList() {
       const matchChar = !charFilter || t.characters.includes(charFilter);
       return matchSearch && matchChar;
     });
+
+  const characterColors = {
+    family: 'text-amber-400',
+    spy: 'text-blue-400',
+    assassin: 'text-red-400',
+    diplomat: 'text-green-400',
+    admiral: 'text-cyan-400',
+    all: 'text-purple-400',
+    merchant: 'text-yellow-400',
+    priest: 'text-orange-400',
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -45,19 +46,14 @@ export default function TraitList() {
             className="pl-7 h-8 text-xs"
           />
         </div>
-
-        {/* Character type filter */}
         <select
           value={charFilter}
           onChange={e => setCharFilter(e.target.value)}
           className="w-full h-7 text-xs bg-card border border-border rounded px-2 text-foreground"
         >
           <option value="">All Characters</option>
-          {CHARACTER_FILTERS.map(c => (
-            <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-          ))}
+          {allChars.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-
         <Button size="sm" className="w-full h-7 text-xs" onClick={() => {
           const idx = addTrait();
           setSelectedTrait(idx);
