@@ -61,6 +61,8 @@ const AuthenticatedApp = () => {
         />
       ))}
       <Route path="/CampaignMap" element={<LayoutWrapper currentPageName="CampaignMap"><CampaignMap /></LayoutWrapper>} />
+      <Route path="/TraitEditor" element={<LayoutWrapper currentPageName="TraitEditor"><TraitEditor /></LayoutWrapper>} />
+      <Route path="/AncillaryEditor" element={<LayoutWrapper currentPageName="AncillaryEditor"><AncillaryEditor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
