@@ -452,8 +452,15 @@ function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresS
     
     if (inUpgrades) {
       if (line && line !== '{' && line !== '}') {
-        // line is already comment-stripped
-        level.upgrades.push(line);
+        // line may be: "civlib" or "civlib requires factions { ... } and not hidden_resource italy"
+        const reqIdx = line.search(/\brequires\b/);
+        if (reqIdx !== -1) {
+          const levelName = line.slice(0, reqIdx).trim();
+          const reqText = line.slice(reqIdx + 'requires'.length).trim();
+          level.upgrades.push({ name: levelName, requirements: parseRequirements(reqText) });
+        } else {
+          level.upgrades.push(line);
+        }
       }
       i++; continue;
     }
