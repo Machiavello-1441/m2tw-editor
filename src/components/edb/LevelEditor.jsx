@@ -14,6 +14,7 @@ import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
 import { useRefData } from './RefDataContext';
 import { BuildingTreeTextEditor, LevelTextEditor } from './BuildingTextEditor';
+import UpgradesEditor from './UpgradesEditor';
 
 function LevelImages({ levelName }) {
   const { imageData } = useEDB();
