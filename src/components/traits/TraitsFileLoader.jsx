@@ -1,10 +1,16 @@
 import React, { useRef } from 'react';
 import { useTraits } from './TraitsContext';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, Download } from 'lucide-react';
+import { Upload, Download, Save, RotateCcw } from 'lucide-react';
 
 export default function TraitsFileLoader() {
-  const { traitsData, textData, traitsFilename, textFilename, loadTraitsFile, loadTextFile, exportTraitsFile, exportTextFile, isDirty } = useTraits();
+  const {
+    traitsData, textData, traitsFilename, textFilename,
+    loadTraitsFile, loadTextFile,
+    exportTraitsFile, exportTextFile,
+    saveTraits, revertTraits,
+    isDirty,
+  } = useTraits();
   const traitsRef = useRef();
   const textRef = useRef();
 
@@ -30,9 +36,7 @@ export default function TraitsFileLoader() {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
+    a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -41,44 +45,48 @@ export default function TraitsFileLoader() {
       <input ref={traitsRef} type="file" accept=".txt" className="hidden" onChange={handleTraitsFile} />
       <input ref={textRef} type="file" accept=".txt" className="hidden" onChange={handleTextFile} />
 
-      <div className="flex items-center gap-1.5">
-        <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5" onClick={() => traitsRef.current?.click()}>
-          <Upload className="w-3 h-3" />
-          Load Traits
-        </Button>
-        {traitsData && (
-          <span className="text-[10px] text-muted-foreground font-mono truncate max-w-32">{traitsFilename}</span>
-        )}
-      </div>
+      {/* Load buttons */}
+      <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
+        onClick={() => traitsRef.current?.click()}>
+        <Upload className="w-3 h-3" />
+        Load Traits
+      </Button>
+      {traitsData && <span className="text-[10px] text-muted-foreground font-mono truncate max-w-32">{traitsFilename}</span>}
 
-      <div className="flex items-center gap-1.5">
-        <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5" onClick={() => textRef.current?.click()}>
-          <Upload className="w-3 h-3" />
-          Load VnVs Text
-        </Button>
-        {textData && (
-          <span className="text-[10px] text-muted-foreground font-mono truncate max-w-32">{textFilename}</span>
-        )}
-      </div>
+      <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
+        onClick={() => textRef.current?.click()}>
+        <Upload className="w-3 h-3" />
+        Load VnVs Text
+      </Button>
+      {textData && <span className="text-[10px] text-muted-foreground font-mono truncate max-w-32">{textFilename}</span>}
 
-      {traitsData && (
-        <Button
-          size="sm"
-          className="h-7 px-2 text-xs gap-1.5 ml-auto"
-          onClick={() => downloadFile(exportTraitsFile(), traitsFilename)}
-        >
-          <Download className="w-3 h-3" />
-          Export Traits {isDirty && '*'}
-        </Button>
+      {/* Save / Revert */}
+      {traitsData && isDirty && (
+        <>
+          <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white ml-auto"
+            onClick={saveTraits}>
+            <Save className="w-3 h-3" />
+            Save
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
+            onClick={revertTraits}>
+            <RotateCcw className="w-3 h-3" />
+            Revert
+          </Button>
+        </>
       )}
 
+      {/* Export */}
+      {traitsData && (
+        <Button size="sm" className="h-7 px-2 text-xs gap-1.5 text-white ml-auto"
+          onClick={() => downloadFile(exportTraitsFile(), traitsFilename)}>
+          <Download className="w-3 h-3" />
+          Export Traits{isDirty && ' *'}
+        </Button>
+      )}
       {textData && (
-        <Button
-          size="sm"
-          variant="secondary"
-          className="h-7 px-2 text-xs gap-1.5"
-          onClick={() => downloadFile(exportTextFile(), textFilename)}
-        >
+        <Button size="sm" variant="secondary" className="h-7 px-2 text-xs gap-1.5 text-white"
+          onClick={() => downloadFile(exportTextFile(), textFilename)}>
           <Download className="w-3 h-3" />
           Export Text
         </Button>
