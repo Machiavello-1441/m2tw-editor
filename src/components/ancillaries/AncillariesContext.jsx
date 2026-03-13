@@ -17,6 +17,28 @@ export function AncillariesProvider({ children }) {
   const originalAncData = useRef(null);
   const originalTextData = useRef(null);
 
+  // Auto-load from localStorage if Home page cached the files
+  useEffect(() => {
+    try {
+      const ancContent = localStorage.getItem('m2tw_anc_file');
+      const ancName = localStorage.getItem('m2tw_anc_file_name');
+      if (ancContent) {
+        const parsed = parseAncillariesFile(ancContent);
+        originalAncData.current = JSON.stringify(parsed);
+        setAncData(parsed);
+        if (ancName) setAncFilename(ancName);
+      }
+      const txtContent = localStorage.getItem('m2tw_anctxt_file');
+      const txtName = localStorage.getItem('m2tw_anctxt_file_name');
+      if (txtContent) {
+        const parsed = parseTextFile(txtContent);
+        originalTextData.current = JSON.stringify(parsed);
+        setTextData(parsed);
+        if (txtName) setTextFilename(txtName);
+      }
+    } catch {}
+  }, []);
+
   const loadAncFile = useCallback((content, filename) => {
     const parsed = parseAncillariesFile(content);
     originalAncData.current = JSON.stringify(parsed);
