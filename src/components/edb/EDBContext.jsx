@@ -167,6 +167,7 @@ export function EDBProvider({ children }) {
 
   const value = {
     edbData, setEdbData, loadEDB, exportEDB,
+    loadTextFile, exportTextFile,
     selectedBuilding, setSelectedBuilding,
     selectedLevel, setSelectedLevel,
     updateBuilding, updateLevel,
