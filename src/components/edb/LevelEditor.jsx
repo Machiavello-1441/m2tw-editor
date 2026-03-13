@@ -1,5 +1,4 @@
 import React from 'react';
-import React from 'react';
 import { useEDB } from './EDBContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,7 +50,7 @@ function LevelImages({ levelName }) {
 }
 
 export default function LevelEditor() {
-  const { edbData, selectedBuilding, selectedLevel, updateLevel, updateBuilding } = useEDB();
+  const { edbData, selectedBuilding, selectedLevel, updateLevel } = useEDB();
 
   if (!edbData || !selectedBuilding) {
     return (
@@ -73,16 +72,6 @@ export default function LevelEditor() {
   if (!level) return null;
 
   const update = (field, value) => updateLevel(selectedBuilding, selectedLevel, { [field]: value });
-
-  const otherLevels = building.levels
-    .map((l, i) => ({ name: l.name, index: i }))
-    .filter(l => l.name !== selectedLevel);
-
-
-
-  const buildingOptions = edbData.buildings
-    .filter(b => b.name !== selectedBuilding)
-    .map(b => ({ value: b.name, label: b.name }));
 
   return (
     <ScrollArea className="h-full">
