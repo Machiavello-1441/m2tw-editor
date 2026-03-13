@@ -203,12 +203,14 @@ export default function Home() {
           </label>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt"    status={fileStatus.edb} />
-            <FileStatus label="Building Text"   hint="text\export_buildings.txt"     status={fileStatus.txt} />
-            <FileStatus label="Factions"        hint="descr_sm_factions.txt"         status={fileStatus.fac} />
-            <FileStatus label="Resources"       hint="descr_sm_resources.txt"        status={fileStatus.res} />
-            <FileStatus label="Units"           hint="export_descr_unit.txt"         status={fileStatus.unit} />
-            <FileStatus label="Events"          hint="descr_events.txt"              status={fileStatus.ev} />
+            <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt"        status={fileStatus.edb} />
+            <FileStatus label="Building Text"   hint="text\export_buildings.txt"         status={fileStatus.txt} />
+            <FileStatus label="Factions"        hint="descr_sm_factions.txt"             status={fileStatus.fac} />
+            <FileStatus label="Resources"       hint="descr_sm_resources.txt"            status={fileStatus.res} />
+            <FileStatus label="Units"           hint="export_descr_unit.txt"             status={fileStatus.unit} />
+            <FileStatus label="Events"          hint="descr_events.txt"                  status={fileStatus.ev} />
+            <FileStatus label="Traits (EDCT)"   hint="export_descr_character_traits.txt" status={fileStatus.traits} />
+            <FileStatus label="Ancillaries"     hint="export_descr_ancillaries.txt"      status={fileStatus.anc} />
           </div>
         </div>
       </div>
