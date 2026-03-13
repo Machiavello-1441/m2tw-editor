@@ -14,7 +14,7 @@ import ValidationDashboard from '../components/export/ValidationDashboard';
 // via a shared ref stored on window by CampaignMapContext.
 
 export default function Export() {
-  const { edbData, exportEDB, textData, fileName } = useEDB();
+  const { edbData, exportEDB, textData, exportTextFile } = useEDB();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
 
