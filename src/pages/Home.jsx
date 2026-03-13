@@ -122,12 +122,6 @@ export default function Home() {
     r.readAsText(file);
   });
 
-  const readBinary = (file) => new Promise((resolve) => {
-    const r = new FileReader();
-    r.onload = e => resolve(e.target.result);
-    r.readAsArrayBuffer(file);
-  });
-
   const handleDataFolder = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
