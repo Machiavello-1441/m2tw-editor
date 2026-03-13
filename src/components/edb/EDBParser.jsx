@@ -743,6 +743,39 @@ export function parseUnitsFile(text) {
   return units;
 }
 
+// ─── export_buildings.txt Parser & Serializer ────────────────────────────────
+
+/**
+ * Parses export_buildings.txt into a flat key→value map.
+ * Format: {key}value  (one entry per line, value is everything after the closing brace)
+ * Also handles the UCS/UTF-16 BOM that M2TW sometimes uses.
+ */
+export function parseTextFile(text) {
+  // Strip UTF-16 LE BOM if present (the file sometimes uses it)
+  const cleaned = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
+  const result = {};
+  for (const line of cleaned.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith(';')) continue;
+    const match = trimmed.match(/^\{([^}]+)\}(.*)$/);
+    if (match) {
+      result[match[1]] = match[2];
+    }
+  }
+  return result;
+}
+
+/**
+ * Serializes the key→value map back into export_buildings.txt format.
+ */
+export function serializeTextFile(textData) {
+  let out = '';
+  for (const [key, value] of Object.entries(textData)) {
+    out += `{${key}}${value}\n`;
+  }
+  return out;
+}
+
 // Create a new level with defaults
 export function createDefaultLevel(baseName, index) {
   return {
