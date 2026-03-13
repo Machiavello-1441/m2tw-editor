@@ -3,22 +3,16 @@ import { useEDB } from '../components/edb/EDBContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Download, Package, FileText, Map, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Download, Package, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
 import JSZip from 'jszip';
-
 import ValidationDashboard from '../components/export/ValidationDashboard';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
-
-// We read layers from CampaignMapContext if it's mounted — access via global event bus
-// Since CampaignMapProvider only wraps the CampaignMap page, we collect layer data
-// via a shared ref stored on window by CampaignMapContext.
 
 export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile } = useEDB();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
 
-  // Gather the mod name from localStorage (set on Home page)
   const modName = (() => {
     try { return localStorage.getItem('m2tw_mod_name') || 'my_mod'; } catch { return 'my_mod'; }
   })();
@@ -30,33 +24,16 @@ export default function Export() {
     const zip = new JSZip();
     const dataFolder = zip.folder(`${modName}/data`);
 
-    // 1. EDB file
     if (edbData) {
       const edbText = exportEDB();
       dataFolder.file('export_descr_buildings.txt', edbText);
     }
 
-    // 2. Text file (export_buildings.txt)
     if (textData && Object.keys(textData).length > 0) {
       const textOut = exportTextFile();
       dataFolder.folder('text').file('export_buildings.txt', textOut);
     }
 
-    // 3. Campaign map TGA files — read from window.__campaignLayers if available
-    const campaignLayers = window.__campaignLayers || {};
-    const campaignFolder = dataFolder.folder('world/maps/campaign/imperial_campaign');
-
-    for (const key of LAYER_ORDER) {
-      const layer = campaignLayers[key];
-      if (!layer) continue;
-      const pixelData = layer.edited || layer.data;
-      if (!pixelData) continue;
-      const tgaBuf = encodeTGA(layer.width, layer.height, pixelData);
-      const filename = LAYER_DEFS[key].filename;
-      campaignFolder.file(filename, tgaBuf);
-    }
-
-    // Generate and download
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -71,13 +48,6 @@ export default function Export() {
 
   const hasEDB = !!edbData;
   const hasText = textData && Object.keys(textData).length > 0;
-  const campaignLayers = window.__campaignLayers || {};
-  const loadedMapLayers = LAYER_ORDER.filter(k => campaignLayers[k]);
-  const dirtyMapLayers = loadedMapLayers.filter(k => {
-    const l = campaignLayers[k];
-    return l?.edited && l.edited !== l.data;
-  });
-
   const edbStats = edbData ? {
     buildings: edbData.buildings.length,
     levels: edbData.buildings.reduce((s, b) => s + b.levels.length, 0),
@@ -93,29 +63,22 @@ export default function Export() {
       <ScrollArea className="flex-1">
         <div className="p-6 max-w-2xl mx-auto space-y-5">
 
-          {/* Mod folder path */}
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
               <Package className="w-5 h-5 text-primary shrink-0" />
               <div className="flex-1">
                 <p className="text-xs font-semibold text-foreground">Output path inside zip</p>
-                <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                  {modName}/data/
-                </p>
+                <p className="text-[11px] font-mono text-muted-foreground mt-0.5">{modName}/data/</p>
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Set mod name on the Home page
-              </p>
+              <p className="text-[10px] text-muted-foreground">Set mod name on the Home page</p>
             </CardContent>
           </Card>
 
-          {/* What will be included */}
           <Card>
             <CardHeader className="p-4 pb-2">
               <CardTitle className="text-sm">Files to include in zip</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-2">
-
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-primary/70" />}
                 label="export_descr_buildings.txt"
@@ -123,7 +86,6 @@ export default function Export() {
                 status={hasEDB ? 'ready' : 'missing'}
                 detail={edbStats ? `${edbStats.buildings} buildings, ${edbStats.levels} levels` : 'No EDB loaded'}
               />
-
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-chart-4/70" />}
                 label="export_buildings.txt"
@@ -131,32 +93,12 @@ export default function Export() {
                 status={hasText ? 'ready' : 'skip'}
                 detail={hasText ? `${Object.keys(textData).length} text entries` : 'No text data — will be skipped'}
               />
-
-              {LAYER_ORDER.map(key => {
-                const layer = campaignLayers[key];
-                const def = LAYER_DEFS[key];
-                const status = layer ? 'ready' : 'skip';
-                return (
-                  <ExportRow
-                    key={key}
-                    icon={<Map className="w-4 h-4 text-chart-2/70" />}
-                    label={def.filename}
-                    path={`${modName}/data/world/maps/campaign/imperial_campaign/`}
-                    status={status}
-                    detail={layer ? `${layer.width}×${layer.height}` : 'Not loaded — will be skipped'}
-                  />
-                );
-              })}
             </CardContent>
           </Card>
 
-          {/* Validation Dashboard */}
           <ValidationDashboard edbData={edbData} />
-
-          {/* Trigger Validation */}
           <TriggerValidationPanel />
 
-          {/* Download button */}
           <Button
             className="w-full h-12 text-base gap-2"
             onClick={handleExportZip}
@@ -195,17 +137,12 @@ export default function Export() {
 }
 
 function ExportRow({ icon, label, path, status, detail }) {
-  const statusStyle = {
-    ready:   'text-green-400',
-    skip:    'text-muted-foreground',
-    missing: 'text-destructive',
-  };
+  const statusStyle = { ready: 'text-green-400', skip: 'text-muted-foreground', missing: 'text-destructive' };
   const statusIcon = {
     ready:   <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />,
     skip:    <div className="w-3.5 h-3.5 rounded-full border border-border shrink-0" />,
     missing: <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />,
   };
-
   return (
     <div className={`flex items-center gap-3 p-2.5 rounded-lg bg-accent/30 ${status === 'skip' ? 'opacity-50' : ''}`}>
       {icon}
@@ -214,9 +151,7 @@ function ExportRow({ icon, label, path, status, detail }) {
         <p className="text-[10px] text-muted-foreground truncate font-mono">{path}</p>
       </div>
       <div className="text-right shrink-0">
-        <div className="flex items-center gap-1 justify-end">
-          {statusIcon[status]}
-        </div>
+        <div className="flex items-center gap-1 justify-end">{statusIcon[status]}</div>
         <p className={`text-[10px] mt-0.5 ${statusStyle[status]}`}>{detail}</p>
       </div>
     </div>
