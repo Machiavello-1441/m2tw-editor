@@ -142,27 +142,46 @@ function parseRequirements(reqStr) {
 }
 
 
-// Inline group definitions (mirrors CapabilityEditor.jsx — no require() in browser)
-const _CIVILIAN_BONUS_GROUPS = {
-  'Construction bonuses': ['construction_cost_bonus_defensive','construction_cost_bonus_military','construction_cost_bonus_other','construction_cost_bonus_religious','construction_cost_bonus_stone','construction_time_bonus_defensive','construction_time_bonus_military','construction_time_bonus_other','construction_time_bonus_religious'],
-  'Economic bonuses': ['trade_base_income_bonus','trade_level_bonus','trade_fleet','taxable_income_bonus','mine_resource','farming_level','road_level','free_upkeep'],
-  'Population bonuses': ['population_health_bonus','population_growth_bonus','happiness_bonus','law_bonus'],
-  'Religious bonuses': ['religious_belief','religious_order','religious_conversion'],
-  'Entertainment': ['stage_games','stage_races'],
+// All known capability codes (with "bonus" suffix where needed), grouped for UI
+// This mirrors CapabilityEditor.jsx CIVILIAN_SUBTYPES / MILITARY_SUBTYPES
+const _CIVILIAN_GROUPS = {
+  'Construction bonus': [
+    'construction_cost_bonus_defensive bonus','construction_cost_bonus_military bonus','construction_cost_bonus_other bonus',
+    'construction_cost_bonus_religious bonus','construction_cost_bonus_stone bonus','construction_cost_bonus_wooden bonus',
+    'construction_time_bonus_defensive bonus','construction_time_bonus_military bonus','construction_time_bonus_other bonus',
+    'construction_time_bonus_religious bonus','construction_time_bonus_stone bonus','construction_time_bonus_wooden bonus',
+  ],
+  'Economic bonus': [
+    'income_bonus bonus','taxable_income_bonus bonus','trade_base_income_bonus bonus',
+    'trade_fleet','trade_level_bonus bonus',
+  ],
+  'Infrastructure bonus': ['farming_level','mine_resource','road_level'],
+  'Population bonus': [
+    'fire_risk','happiness_bonus bonus','law_bonus bonus',
+    'population_growth_bonus bonus','population_health_bonus bonus','population_loyalty_bonus bonus',
+    'stage_games','stage_races',
+  ],
+  'Religious bonus': ['amplify_religion_level','pope_approval','pope_disapproval','religion_level bonus'],
 };
-const _MILITARY_BONUS_GROUPS = {
-  'Weapons & Armour': ['armour','weapon_simple','weapon_bladed','weapon_missile','weapon_siege','weapon_other','weapon_naval_gunpowder'],
-  'Unit bonuses': ['archer_bonus','cavalry_bonus','heavy_cavalry_bonus','gun_bonus','navy_bonus','body_guard'],
-  'Recruitment': ['recruitment_slots'],
-  'Infrastructure': ['wall_level','tower_level','gate_strength','gate_defences'],
+const _MILITARY_GROUPS = {
+  'Defence bonus': ['gate_defences','gate_strength','gun_bonus','tower_level','wall_level'],
+  'Recruitment bonus': [
+    'free_upkeep bonus','recruitment_cost_bonus_naval bonus','recruitment_slots',
+    'recruits_exp_bonus bonus','recruits_morale_bonus bonus','retrain_cost_bonus bonus',
+  ],
+  'Unit bonus': ['navy_bonus','archer_bonus','armour','cavalry_bonus','heavy_cavalry_bonus bonus','upgrade_bodyguard'],
+  'Weapon bonus': [
+    'weapon_artillery_gunpowder','weapon_artillery_mechanical','weapon_melee_blade','weapon_melee_simple',
+    'weapon_missile_gunpowder','weapon_missile_mechanical','weapon_naval_gunpowder','weapon_projectile',
+  ],
 };
 
-function findGroupForIdentifier(identifier) {
-  for (const [groupKey, items] of Object.entries(_CIVILIAN_BONUS_GROUPS)) {
-    if (items.includes(identifier)) return { type: 'civilian', key: groupKey };
+function findGroupForCode(code) {
+  for (const [groupKey, codes] of Object.entries(_CIVILIAN_GROUPS)) {
+    if (codes.includes(code)) return { category: 'civilian', key: groupKey };
   }
-  for (const [groupKey, items] of Object.entries(_MILITARY_BONUS_GROUPS)) {
-    if (items.includes(identifier)) return { type: 'military', key: groupKey };
+  for (const [groupKey, codes] of Object.entries(_MILITARY_GROUPS)) {
+    if (codes.includes(code)) return { category: 'military', key: groupKey };
   }
   return null;
 }
