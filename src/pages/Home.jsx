@@ -73,15 +73,7 @@ const DATA_FILE_MAP = {
   'export_ancillaries.txt':             'anctxt',
 };
 
-// TGA map files (campaign or base maps folder)
-const MAP_TGA_FILES = [
-  'map_heights.tga',
-  'map_ground_types.tga',
-  'map_climates.tga',
-  'map_regions.tga',
-  'map_features.tga',
-  'map_fog.tga',
-];
+
 
 function FileStatus({ label, hint, status }) {
   const colors = {
@@ -114,8 +106,6 @@ export default function Home() {
   const [fileStatus, setFileStatus] = useState({
     edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle', txt: 'idle',
     traits: 'idle', anc: 'idle', vnvs: 'idle', anctxt: 'idle',
-    map_heights: 'idle', map_ground_types: 'idle', map_climates: 'idle',
-    map_regions: 'idle', map_features: 'idle', map_fog: 'idle',
     anc_images: 'idle',
   });
 
@@ -124,7 +114,6 @@ export default function Home() {
   });
   const [ancImgCount, setAncImgCount] = useState(0);
   const dataFolderRef = useRef();
-  const mapFolderRef = useRef();
   const ancImagesFolderRef = useRef();
 
   const readText = (file) => new Promise((resolve) => {
@@ -181,27 +170,6 @@ export default function Home() {
     }
   };
 
-  const handleMapFolder = async (e) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-
-    for (const file of files) {
-      const name = file.name.toLowerCase();
-      if (!name.endsWith('.tga')) continue;
-      const tgaKey = name.replace('.tga', '').replace('map_', 'map_');
-      // status key: map_heights, map_ground_types, etc.
-      const statusKey = name.replace('.tga', '');
-      if (MAP_TGA_FILES.includes(name)) {
-        setFileStatus(prev => ({ ...prev, [statusKey]: 'loading' }));
-      }
-      const buf = await readBinary(file);
-      window.dispatchEvent(new CustomEvent('load-map-tga', { detail: { fileName: name, data: buf } }));
-      if (MAP_TGA_FILES.includes(name)) {
-        setFileStatus(prev => ({ ...prev, [statusKey]: 'ok' }));
-      }
-    }
-  };
-
   const handleAncImagesFolder = async (e) => {
     const files = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.tga'));
     e.target.value = '';
@@ -222,7 +190,6 @@ export default function Home() {
   };
 
   const edbLoaded = fileStatus.edb === 'ok';
-  const anyMapLoaded = MAP_TGA_FILES.some(f => fileStatus[f.replace('.tga', '')] === 'ok');
 
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-start gap-6 pt-12">
