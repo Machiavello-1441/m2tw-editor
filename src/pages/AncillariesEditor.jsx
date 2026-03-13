@@ -34,9 +34,9 @@ function AncillariesEditorInner() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col" style={{ height: '100vh' }}>
       <AncillariesFileLoader />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Sidebar */}
         <div className="w-64 shrink-0 border-r border-border overflow-hidden flex flex-col">
           <div className="px-3 py-2 border-b border-border flex items-center gap-2">
