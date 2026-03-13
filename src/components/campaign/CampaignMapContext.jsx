@@ -94,7 +94,9 @@ export function CampaignMapProvider({ children }) {
     setLayers(prev => {
       const layer = prev[layerKey];
       if (!layer) return prev;
-      return { ...prev, [layerKey]: { ...layer, data: new Uint8ClampedArray(layer.edited) } };
+      const next = { ...prev, [layerKey]: { ...layer, data: new Uint8ClampedArray(layer.edited) } };
+      window.__campaignLayers = next;
+      return next;
     });
     setIsDirty(prev => ({ ...prev, [layerKey]: false }));
   }, []);
