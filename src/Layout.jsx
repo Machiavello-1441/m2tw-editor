@@ -25,7 +25,7 @@ export default function Layout({ children, currentPageName }) {
                 </div>
                 <div className="hidden lg:block">
                   <h1 className="text-sm font-bold text-foreground leading-none">M2TW</h1>
-                  <p className="text-[10px] text-muted-foreground">Building Editor</p>
+                  <p className="text-[10px] text-muted-foreground">Mod Editor</p>
                 </div>
               </div>
             </div>
