@@ -65,5 +65,6 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </EDBProvider>
     </RefDataProvider>
+    </VnVProvider>
   );
 }
