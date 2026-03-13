@@ -44,6 +44,18 @@ export default function Export() {
       dataFolder.folder('text').file('export_buildings.txt', textOut);
     }
 
+    // 3. Trait file
+    if (traitData) {
+      const traitText = exportTraitFile();
+      dataFolder.file('export_descr_character_traits.txt', traitText);
+    }
+
+    // 4. Ancillary file
+    if (ancData) {
+      const ancText = exportAncFile();
+      dataFolder.file('export_descr_ancillaries.txt', ancText);
+    }
+
     // 3. Campaign map TGA files — read from window.__campaignLayers if available
     const campaignLayers = window.__campaignLayers || {};
     const campaignFolder = dataFolder.folder('world/maps/campaign/imperial_campaign');
