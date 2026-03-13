@@ -16,7 +16,6 @@ const textareaCls = 'w-full mt-1 text-xs bg-background border border-border roun
 
 export default function TraitEditor() {
   const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry } = useTraits();
-
   const [expandedLevel, setExpandedLevel] = useState(0);
 
   if (selectedTrait === null || !traitsData) {
