@@ -264,42 +264,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Step 2 — map folder */}
-      <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-border bg-accent/10">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Map className="w-4 h-4 text-primary" />
-            Step 2 — Load Campaign Map Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
-          </h2>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Point to <code className="text-xs font-mono">data\world\maps\campaign\imperial_campaign\</code> or your base_maps folder — loads all TGA map layers.
-          </p>
-        </div>
-        <div className="p-4 space-y-3">
-          <label className="cursor-pointer">
-            <input ref={mapFolderRef} type="file" className="hidden"
-              webkitdirectory="" directory="" multiple onChange={handleMapFolder} />
-            <Button asChild variant="outline"
-              className="w-full h-11 pointer-events-none gap-2">
-              <span>
-                <FolderOpen className="w-4 h-4" />
-                Browse to campaign / base_maps folder
-              </span>
-            </Button>
-          </label>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <FileStatus label="Heights"      hint="map_heights.tga"      status={fileStatus['map_heights']} />
-            <FileStatus label="Ground Types" hint="map_ground_types.tga" status={fileStatus['map_ground_types']} />
-            <FileStatus label="Climates"     hint="map_climates.tga"     status={fileStatus['map_climates']} />
-            <FileStatus label="Regions"      hint="map_regions.tga"      status={fileStatus['map_regions']} />
-            <FileStatus label="Features"     hint="map_features.tga"     status={fileStatus['map_features']} />
-            <FileStatus label="Fog of War"   hint="map_fog.tga"          status={fileStatus['map_fog']} />
-          </div>
-        </div>
-      </div>
-
-      {/* Step 3 — Ancillaries UI images */}
+      {/* Step 2 — Ancillaries UI images */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -348,15 +313,6 @@ export default function Home() {
               <Castle className="w-4 h-4" />
               Open EDB Editor
               {fileName && <span className="text-xs opacity-60 font-mono">({fileName})</span>}
-              <ArrowRight className="w-4 h-4 ml-auto" />
-            </Button>
-          </Link>
-        )}
-        {anyMapLoaded && (
-          <Link to={createPageUrl('CampaignMap')}>
-            <Button variant="outline" className="w-full h-11 gap-2">
-              <Map className="w-4 h-4" />
-              Open Campaign Map Editor
               <ArrowRight className="w-4 h-4 ml-auto" />
             </Button>
           </Link>
