@@ -194,11 +194,8 @@ export default function Home() {
             Step 1 — Load <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\</code> Folder
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Finds: <span className="font-mono text-foreground/80">export_descr_buildings.txt</span>,{' '}
-            <span className="font-mono text-foreground/80">text\export_buildings.txt</span>,{' '}
-            <span className="font-mono text-foreground/80">descr_sm_factions.txt</span>,{' '}
-            <span className="font-mono text-foreground/80">descr_sm_resources.txt</span>,{' '}
-            and more — just browse the whole <code className="text-[10px] font-mono bg-accent px-1 rounded">data\</code> folder.
+            Finds buildings, traits, ancillaries, factions, resources, units, events and text files — just browse the whole <code className="text-[10px] font-mono bg-accent px-1 rounded">data\</code> folder.
+            Traits &amp; ancillaries files are cached and auto-loaded when you open their editors.
           </p>
         </div>
         <div className="p-4 space-y-3">
