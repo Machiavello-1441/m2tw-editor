@@ -142,30 +142,6 @@ function parseRequirements(reqStr) {
 }
 
 
-// Inline group definitions (mirrors CapabilityEditor.jsx — no require() in browser)
-const _CIVILIAN_BONUS_GROUPS = {
-  'Construction bonuses': ['construction_cost_bonus_defensive','construction_cost_bonus_military','construction_cost_bonus_other','construction_cost_bonus_religious','construction_cost_bonus_stone','construction_time_bonus_defensive','construction_time_bonus_military','construction_time_bonus_other','construction_time_bonus_religious'],
-  'Economic bonuses': ['trade_base_income_bonus','trade_level_bonus','trade_fleet','taxable_income_bonus','mine_resource','farming_level','road_level','free_upkeep'],
-  'Population bonuses': ['population_health_bonus','population_growth_bonus','happiness_bonus','law_bonus'],
-  'Religious bonuses': ['religious_belief','religious_order','religious_conversion'],
-  'Entertainment': ['stage_games','stage_races'],
-};
-const _MILITARY_BONUS_GROUPS = {
-  'Weapons & Armour': ['armour','weapon_simple','weapon_bladed','weapon_missile','weapon_siege','weapon_other','weapon_naval_gunpowder'],
-  'Unit bonuses': ['archer_bonus','cavalry_bonus','heavy_cavalry_bonus','gun_bonus','navy_bonus','body_guard'],
-  'Recruitment': ['recruitment_slots'],
-  'Infrastructure': ['wall_level','tower_level','gate_strength','gate_defences'],
-};
-
-function findGroupForIdentifier(identifier) {
-  for (const [groupKey, items] of Object.entries(_CIVILIAN_BONUS_GROUPS)) {
-    if (items.includes(identifier)) return { type: 'civilian', key: groupKey };
-  }
-  for (const [groupKey, items] of Object.entries(_MILITARY_BONUS_GROUPS)) {
-    if (items.includes(identifier)) return { type: 'military', key: groupKey };
-  }
-  return null;
-}
 
 function parseCapabilityLine(line) {
   line = line.trim();
