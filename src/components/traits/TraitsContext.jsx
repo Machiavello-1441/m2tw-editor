@@ -41,16 +41,20 @@ export function TraitsProvider({ children }) {
     const parsed = parseTraitsFile(content);
     originalTraitsData.current = JSON.stringify(parsed);
     setTraitsData(parsed);
-    setTraitsFilename(filename || 'export_descr_character_traits.txt');
+    const fn = filename || 'export_descr_character_traits.txt';
+    setTraitsFilename(fn);
     setSelectedTrait(null);
     setIsDirty(false);
+    try { localStorage.setItem('m2tw_traits_file', content); localStorage.setItem('m2tw_traits_file_name', fn); } catch {}
   }, []);
 
   const loadTextFile = useCallback((content, filename) => {
     const parsed = parseTextFile(content);
     originalTextData.current = JSON.stringify(parsed);
     setTextData(parsed);
-    setTextFilename(filename || 'export_VnVs.txt');
+    const fn = filename || 'export_VnVs.txt';
+    setTextFilename(fn);
+    try { localStorage.setItem('m2tw_vnvs_file', content); localStorage.setItem('m2tw_vnvs_file_name', fn); } catch {}
   }, []);
 
   const updateTrait = useCallback((index, updated) => {
