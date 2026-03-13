@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, ImageOff } from 'lucide-react';
 import EffectAttributeSelect from '../shared/EffectAttributeSelect';
-import { AncillaryTriggersEditor } from '../shared/TriggerEditor.jsx';
+import TriggerEditor from '../shared/TriggerEditor';
 
 const ANCILLARY_TYPES = [
   'Academic', 'Court', 'Diplomacy', 'Entertain', 'Family',
@@ -16,17 +16,23 @@ const CULTURES = ['northern_european', 'eastern_european', 'southern_european', 
 
 const inputCls = 'h-8 text-xs font-mono mt-1 text-white bg-background';
 const selectCls = 'w-full h-8 mt-1 text-xs bg-card border border-border rounded px-2 text-white';
-const textareaCls = 'w-full mt-1 text-xs bg-background border border-border rounded px-2 py-1.5 text-white resize-none focus:outline-none focus:ring-1 focus:ring-primary';
+const textareaCls = 'w-full mt-1 text-xs bg-background border border-border rounded px-2 py-1.5 text-white resize-y focus:outline-none focus:ring-1 focus:ring-primary';
 
-function renderPreviewText(text) {
+// \n\n is M2TW strings.bin line break
+function PreviewText({ text }) {
   if (!text) return null;
-  return text.split('\\n\\n').map((part, i, arr) => (
-    <React.Fragment key={i}>{part}{i < arr.length - 1 && <br />}</React.Fragment>
-  ));
+  const parts = text.split('\\n\\n');
+  return (
+    <span>
+      {parts.map((p, i) => (
+        <React.Fragment key={i}>{p}{i < parts.length - 1 && <br />}</React.Fragment>
+      ))}
+    </span>
+  );
 }
 
 export default function AncillaryEditor() {
-  const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, updateTriggers } = useAncillaries();
+  const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
 
   if (selectedAnc === null || !ancData) {
     return (
@@ -60,6 +66,12 @@ export default function AncillaryEditor() {
   const displayName = getText(anc.name) || getText(anc.description?.replace('_desc', ''));
   const tgaDataUrl = getTgaImage(anc.image);
 
+  // All triggers that acquire this ancillary
+  const allTriggers = ancData.triggers || [];
+  const relatedTriggerIndices = allTriggers
+    .map((t, i) => ({ t, i }))
+    .filter(({ t }) => t.acquireAncillary?.name === anc.name);
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-4 space-y-5">
@@ -79,12 +91,12 @@ export default function AncillaryEditor() {
             }
             {descText && (
               <p className="text-xs text-muted-foreground mt-0.5 italic">
-                {renderPreviewText(descText)}
+                <PreviewText text={descText} />
               </p>
             )}
             {effectsText && (
               <p className="text-[10px] text-muted-foreground mt-1">
-                {renderPreviewText(effectsText)}
+                <PreviewText text={effectsText} />
               </p>
             )}
             {!tgaDataUrl && anc.image && (
@@ -153,8 +165,8 @@ export default function AncillaryEditor() {
               disabled={!anc.description}
             />
             {descText && (
-              <p className="mt-1 text-[10px] text-muted-foreground italic bg-muted/20 rounded px-2 py-1">
-                {renderPreviewText(descText)}
+              <p className="text-[10px] text-muted-foreground mt-1 bg-muted/20 rounded px-2 py-1 italic leading-relaxed">
+                <PreviewText text={descText} />
               </p>
             )}
           </div>
@@ -202,12 +214,11 @@ export default function AncillaryEditor() {
           <div className="space-y-1.5">
             {anc.effects.map((effect, i) => (
               <div key={i} className="flex items-center gap-2 bg-card/50 rounded border border-border px-2 py-1.5">
-                <div className="flex-1">
-                  <EffectAttributeSelect
-                    value={effect.attribute}
-                    onChange={v => updateEffect(i, 'attribute', v)}
-                  />
-                </div>
+                <EffectAttributeSelect
+                  value={effect.attribute}
+                  onChange={v => updateEffect(i, 'attribute', v)}
+                  className="flex-1"
+                />
                 <Input type="number" value={effect.value}
                   onChange={e => updateEffect(i, 'value', parseInt(e.target.value) || 0)}
                   className="h-6 text-xs w-20 text-white bg-background" />
@@ -223,14 +234,14 @@ export default function AncillaryEditor() {
         </div>
 
         {/* Triggers */}
-        <div className="border-t border-border pt-4">
-          <AncillaryTriggersEditor
-            triggers={ancData.triggers || []}
-            ancName={anc.name}
-            onUpdateTriggers={updateTriggers}
-          />
-        </div>
-
+        <TriggerEditor
+          triggers={relatedTriggerIndices.map(({ t }) => t)}
+          onUpdate={(localIdx, updated) => updateTrigger(relatedTriggerIndices[localIdx].i, updated)}
+          onAdd={addTrigger}
+          onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
+          entityName={anc.name}
+          mode="ancillary"
+        />
       </div>
     </div>
   );
