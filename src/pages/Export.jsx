@@ -154,6 +154,9 @@ export default function Export() {
           {/* Validation Dashboard */}
           <ValidationDashboard edbData={edbData} />
 
+          {/* Trigger Validation */}
+          <TriggerValidationPanel />
+
           {/* Download button */}
           <Button
             className="w-full h-12 text-base gap-2"
