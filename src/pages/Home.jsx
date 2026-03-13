@@ -202,6 +202,25 @@ export default function Home() {
     }
   };
 
+  const handleAncImagesFolder = async (e) => {
+    const files = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.tga'));
+    e.target.value = '';
+    if (files.length === 0) return;
+    setFileStatus(prev => ({ ...prev, anc_images: 'loading' }));
+    const images = {};
+    for (const file of files) {
+      const buf = await file.arrayBuffer();
+      const dataUrl = decodeTgaToDataUrl(buf);
+      if (dataUrl) {
+        const key = file.name.replace(/\.tga$/i, '').toLowerCase();
+        images[key] = dataUrl;
+      }
+    }
+    window.dispatchEvent(new CustomEvent('load-anc-tga-batch', { detail: images }));
+    setAncImgCount(Object.keys(images).length);
+    setFileStatus(prev => ({ ...prev, anc_images: 'ok' }));
+  };
+
   const edbLoaded = fileStatus.edb === 'ok';
   const anyMapLoaded = MAP_TGA_FILES.some(f => fileStatus[f.replace('.tga', '')] === 'ok');
 
