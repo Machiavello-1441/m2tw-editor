@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Settings, Shield, Swords, ImageIcon } from 'lucide-react';
+import { Settings, Shield, Swords } from 'lucide-react';
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor.jsx';
 import RequirementBuilder from './RequirementBuilder';
