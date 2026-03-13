@@ -139,6 +139,8 @@ export default function Home() {
   };
 
   const edbLoaded = fileStatus.edb === 'ok';
+  const traitsLoaded = fileStatus.traits === 'ok';
+  const ancLoaded = fileStatus.anc === 'ok';
   const anyMapLoaded = MAP_TGA_FILES.some(f => fileStatus[f.replace('.tga', '')] === 'ok');
 
   return (
