@@ -99,6 +99,14 @@ export default function Home() {
       txt: loadTextFile,
     };
 
+    // Storage keys for traits/ancillaries files (loaded by their own editors)
+    const storeKeys = {
+      traits:  'm2tw_traits_file',
+      anc:     'm2tw_anc_file',
+      vnvs:    'm2tw_vnvs_file',
+      anctxt:  'm2tw_anctxt_file',
+    };
+
     for (const file of files) {
       const name = file.name.toLowerCase();
       const key = DATA_FILE_MAP[name];
@@ -108,6 +116,12 @@ export default function Home() {
       const text = await readText(file);
       if (key === 'edb') {
         loadEDB(text, file.name);
+      } else if (storeKeys[key]) {
+        // Persist in localStorage so the dedicated editors can pick it up
+        try {
+          localStorage.setItem(storeKeys[key], text);
+          localStorage.setItem(storeKeys[key] + '_name', file.name);
+        } catch {}
       } else {
         loaderMap[key]?.(text);
       }
