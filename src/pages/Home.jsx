@@ -154,7 +154,11 @@ export default function Home() {
         <input
           type="text"
           value={modName}
-          onChange={e => setModName(e.target.value.replace(/[^a-zA-Z0-9_\-]/g, '_'))}
+          onChange={e => {
+            const v = e.target.value.replace(/[^a-zA-Z0-9_\-]/g, '_');
+            setModName(v);
+            try { localStorage.setItem('m2tw_mod_name', v); } catch {}
+          }}
           placeholder="my_mod"
           className="flex-1 h-8 px-3 text-xs bg-background border border-border rounded-md text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
         />
