@@ -212,10 +212,17 @@ export function serializeAncillariesFile(data) {
     lines.push('');
 
     for (const trigger of triggers) {
-      if (trigger.rawLines && trigger.rawLines.length > 0) {
-        for (const rl of trigger.rawLines) lines.push(rl);
-        lines.push('');
+      lines.push(`Trigger ${trigger.name}`);
+      if (trigger.whenToTest) lines.push(`    WhenToTest ${trigger.whenToTest}`);
+      lines.push('');
+      for (const cond of (trigger.conditions || [])) {
+        lines.push(`    ${cond}`);
       }
+      if ((trigger.conditions || []).length > 0) lines.push('');
+      if (trigger.acquireAncillary) {
+        lines.push(`    AcquireAncillary ${trigger.acquireAncillary.name}  Chance  ${trigger.acquireAncillary.chance} `);
+      }
+      lines.push('');
     }
   }
 
