@@ -69,8 +69,11 @@ export function validateEDB(edbData) {
           issues.push({ severity: 'error', building: bn, level: ln, message: `Upgrade "${up}" not found in this building` });
         }
       }
-      if (level.convertTo && !allLevelNames.has(level.convertTo) && isNaN(Number(level.convertTo))) {
-        issues.push({ severity: 'warning', building: bn, level: ln, message: `convert_to "${level.convertTo}" not found in any level` });
+      // Level convert_to must be a number (index into the paired building tree)
+      if (level.convertTo !== null && level.convertTo !== undefined && level.convertTo !== '') {
+        if (isNaN(Number(level.convertTo))) {
+          issues.push({ severity: 'warning', building: bn, level: ln, message: `convert_to "${level.convertTo}" should be a numeric index (0-based position in the target building)` });
+        }
       }
       for (const cap of (level.capabilities || [])) {
         if (cap.type === 'recruit_pool' && !cap.unitName) {
