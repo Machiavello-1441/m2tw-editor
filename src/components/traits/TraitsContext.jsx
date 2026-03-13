@@ -66,6 +66,11 @@ export function TraitsProvider({ children }) {
     setIsDirty(true);
   }, []);
 
+  const updateTriggers = useCallback((triggers) => {
+    setTraitsData(prev => ({ ...prev, triggers }));
+    setIsDirty(true);
+  }, []);
+
   const addTrait = useCallback(() => {
     const newTrait = {
       name: 'NewTrait',
