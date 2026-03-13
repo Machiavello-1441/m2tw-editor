@@ -4,10 +4,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 
 const CHARACTER_TYPES = ['family', 'spy', 'assassin', 'diplomat', 'admiral', 'merchant', 'priest', 'all'];
 const CULTURES = ['northern_european', 'eastern_european', 'southern_european', 'greek', 'middle_eastern', 'mesoamerican'];
+
+const inputCls = 'h-8 text-xs font-mono mt-1 text-white bg-background';
+const inputSmCls = 'h-7 text-xs mt-0.5 text-white bg-background';
+const inputMonoCls = 'h-7 text-xs font-mono mt-0.5 text-white bg-background';
+const inputEffectCls = 'h-6 text-xs font-mono flex-1 text-white bg-background';
+const inputEffectNumCls = 'h-6 text-xs w-20 text-white bg-background';
 
 export default function TraitEditor() {
   const { traitsData, selectedTrait, updateTrait, getText } = useTraits();
@@ -45,9 +51,7 @@ export default function TraitEditor() {
       name: `${trait.name}_Level${trait.levels.length + 1}`,
       description: `${trait.name}_Level${trait.levels.length + 1}_desc`,
       effectsDescription: `${trait.name}_Level${trait.levels.length + 1}_effects_desc`,
-      gainMessage: '',
-      loseMessage: '',
-      epithet: '',
+      gainMessage: '', loseMessage: '', epithet: '',
       threshold: (trait.levels[trait.levels.length - 1]?.threshold || 0) * 2 || 1,
       effects: [],
     };
@@ -61,9 +65,7 @@ export default function TraitEditor() {
     update('levels', levels);
   };
 
-  const deleteLevel = (li) => {
-    update('levels', trait.levels.filter((_, i) => i !== li));
-  };
+  const deleteLevel = (li) => update('levels', trait.levels.filter((_, i) => i !== li));
 
   const addEffect = (li) => {
     const levels = trait.levels.map((l, i) =>
@@ -92,23 +94,19 @@ export default function TraitEditor() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-4 space-y-5">
-        {/* Header */}
+
+        {/* Header fields */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-[10px] text-muted-foreground">Trait Name (ID)</Label>
-            <Input
-              value={trait.name}
-              onChange={e => update('name', e.target.value)}
-              className="h-8 text-xs font-mono mt-1"
-            />
+            <Input value={trait.name} onChange={e => update('name', e.target.value)} className={inputCls} />
           </div>
           <div>
             <Label className="text-[10px] text-muted-foreground">Anti-Traits (comma separated)</Label>
             <Input
               value={trait.antiTraits.join(', ')}
               onChange={e => update('antiTraits', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-              className="h-8 text-xs font-mono mt-1"
-              placeholder="e.g. BadCommander"
+              className={inputCls} placeholder="e.g. BadCommander"
             />
           </div>
         </div>
@@ -118,41 +116,29 @@ export default function TraitEditor() {
           <Label className="text-[10px] text-muted-foreground">Characters</Label>
           <div className="flex flex-wrap gap-1 mt-1">
             {CHARACTER_TYPES.map(char => (
-              <button
-                key={char}
-                onClick={() => toggleCharacter(char)}
+              <button key={char} onClick={() => toggleCharacter(char)}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
                   trait.characters.includes(char)
                     ? 'bg-primary/20 border-primary text-primary'
                     : 'bg-card border-border text-muted-foreground hover:border-foreground'
-                }`}
-              >
+                }`}>
                 {char}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Options row */}
+        {/* Options */}
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={trait.hidden}
-              onChange={e => update('hidden', e.target.checked)}
-              className="rounded"
-            />
-            <span className="text-xs text-muted-foreground">Hidden</span>
+            <input type="checkbox" checked={trait.hidden} onChange={e => update('hidden', e.target.checked)} className="rounded" />
+            <span className="text-xs text-white">Hidden</span>
           </label>
           <div className="flex items-center gap-2">
             <Label className="text-[10px] text-muted-foreground">NoGoingBackLevel</Label>
-            <Input
-              type="number"
-              value={trait.noGoingBackLevel ?? ''}
+            <Input type="number" value={trait.noGoingBackLevel ?? ''}
               onChange={e => update('noGoingBackLevel', e.target.value ? parseInt(e.target.value) : null)}
-              className="h-7 w-20 text-xs"
-              placeholder="none"
-            />
+              className="h-7 w-20 text-xs text-white bg-background" placeholder="none" />
           </div>
         </div>
 
@@ -161,15 +147,12 @@ export default function TraitEditor() {
           <Label className="text-[10px] text-muted-foreground">Exclude Cultures</Label>
           <div className="flex flex-wrap gap-1 mt-1">
             {CULTURES.map(culture => (
-              <button
-                key={culture}
-                onClick={() => toggleCulture(culture)}
+              <button key={culture} onClick={() => toggleCulture(culture)}
                 className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${
                   trait.excludeCultures.includes(culture)
                     ? 'bg-destructive/20 border-destructive text-destructive'
                     : 'bg-card border-border text-muted-foreground hover:border-foreground'
-                }`}
-              >
+                }`}>
                 {culture}
               </button>
             ))}
@@ -180,7 +163,7 @@ export default function TraitEditor() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Levels ({trait.levels.length})</Label>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={addLevel}>
+            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] text-white" onClick={addLevel}>
               <Plus className="w-3 h-3 mr-1" /> Add Level
             </Button>
           </div>
@@ -191,18 +174,14 @@ export default function TraitEditor() {
               const descText = getText(level.description);
               return (
                 <div key={li} className="rounded border border-border bg-card/50 overflow-hidden">
-                  <div
-                    className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/50"
-                    onClick={() => setExpandedLevel(isExpanded ? null : li)}
-                  >
+                  <div className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/50"
+                    onClick={() => setExpandedLevel(isExpanded ? null : li)}>
                     {isExpanded ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
-                    <span className="text-xs font-mono font-medium flex-1 truncate">{level.name}</span>
+                    <span className="text-xs font-mono font-medium flex-1 truncate text-white">{level.name}</span>
                     <Badge variant="outline" className="text-[10px] h-4 px-1.5">T:{level.threshold}</Badge>
                     <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{level.effects.length} fx</Badge>
-                    <button
-                      onClick={e => { e.stopPropagation(); deleteLevel(li); }}
-                      className="p-0.5 hover:bg-destructive/20 rounded shrink-0"
-                    >
+                    <button onClick={e => { e.stopPropagation(); deleteLevel(li); }}
+                      className="p-0.5 hover:bg-destructive/20 rounded shrink-0">
                       <Trash2 className="w-3 h-3 text-destructive" />
                     </button>
                   </div>
@@ -215,39 +194,33 @@ export default function TraitEditor() {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-[10px] text-muted-foreground">Level Name (ID)</Label>
-                          <Input value={level.name} onChange={e => updateLevel(li, 'name', e.target.value)}
-                            className="h-7 text-xs font-mono mt-0.5" />
+                          <Input value={level.name} onChange={e => updateLevel(li, 'name', e.target.value)} className={inputMonoCls} />
                         </div>
                         <div>
                           <Label className="text-[10px] text-muted-foreground">Threshold</Label>
                           <Input type="number" value={level.threshold}
                             onChange={e => updateLevel(li, 'threshold', parseInt(e.target.value) || 0)}
-                            className="h-7 text-xs mt-0.5" />
+                            className={inputSmCls} />
                         </div>
                         <div>
                           <Label className="text-[10px] text-muted-foreground">Description key</Label>
-                          <Input value={level.description} onChange={e => updateLevel(li, 'description', e.target.value)}
-                            className="h-7 text-xs font-mono mt-0.5" />
+                          <Input value={level.description} onChange={e => updateLevel(li, 'description', e.target.value)} className={inputMonoCls} />
                         </div>
                         <div>
                           <Label className="text-[10px] text-muted-foreground">Effects Desc key</Label>
-                          <Input value={level.effectsDescription} onChange={e => updateLevel(li, 'effectsDescription', e.target.value)}
-                            className="h-7 text-xs font-mono mt-0.5" />
+                          <Input value={level.effectsDescription} onChange={e => updateLevel(li, 'effectsDescription', e.target.value)} className={inputMonoCls} />
                         </div>
                         <div>
                           <Label className="text-[10px] text-muted-foreground">Gain Message key</Label>
-                          <Input value={level.gainMessage} onChange={e => updateLevel(li, 'gainMessage', e.target.value)}
-                            className="h-7 text-xs font-mono mt-0.5" placeholder="optional" />
+                          <Input value={level.gainMessage} onChange={e => updateLevel(li, 'gainMessage', e.target.value)} className={inputMonoCls} placeholder="optional" />
                         </div>
                         <div>
                           <Label className="text-[10px] text-muted-foreground">Lose Message key</Label>
-                          <Input value={level.loseMessage} onChange={e => updateLevel(li, 'loseMessage', e.target.value)}
-                            className="h-7 text-xs font-mono mt-0.5" placeholder="optional" />
+                          <Input value={level.loseMessage} onChange={e => updateLevel(li, 'loseMessage', e.target.value)} className={inputMonoCls} placeholder="optional" />
                         </div>
                         <div className="col-span-2">
                           <Label className="text-[10px] text-muted-foreground">Epithet key</Label>
-                          <Input value={level.epithet} onChange={e => updateLevel(li, 'epithet', e.target.value)}
-                            className="h-7 text-xs font-mono mt-0.5" placeholder="optional" />
+                          <Input value={level.epithet} onChange={e => updateLevel(li, 'epithet', e.target.value)} className={inputMonoCls} placeholder="optional" />
                         </div>
                       </div>
 
@@ -255,25 +228,19 @@ export default function TraitEditor() {
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <Label className="text-[10px] text-muted-foreground">Effects</Label>
-                          <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px]" onClick={() => addEffect(li)}>
+                          <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px] text-white" onClick={() => addEffect(li)}>
                             <Plus className="w-2.5 h-2.5 mr-0.5" /> Add
                           </Button>
                         </div>
                         <div className="space-y-1">
                           {level.effects.map((effect, ei) => (
                             <div key={ei} className="flex items-center gap-1.5">
-                              <Input
-                                value={effect.attribute}
+                              <Input value={effect.attribute}
                                 onChange={e => updateEffect(li, ei, 'attribute', e.target.value)}
-                                className="h-6 text-xs font-mono flex-1"
-                                placeholder="Attribute"
-                              />
-                              <Input
-                                type="number"
-                                value={effect.value}
+                                className={inputEffectCls} placeholder="Attribute" />
+                              <Input type="number" value={effect.value}
                                 onChange={e => updateEffect(li, ei, 'value', parseInt(e.target.value) || 0)}
-                                className="h-6 text-xs w-20"
-                              />
+                                className={inputEffectNumCls} />
                               <button onClick={() => deleteEffect(li, ei)}
                                 className="p-0.5 hover:bg-destructive/20 rounded shrink-0">
                                 <Trash2 className="w-3 h-3 text-destructive" />
