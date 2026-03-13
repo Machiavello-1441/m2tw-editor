@@ -84,6 +84,11 @@ export function AncillariesProvider({ children }) {
     setIsDirty(true);
   }, []);
 
+  const updateTriggers = useCallback((triggers) => {
+    setAncData(prev => ({ ...prev, triggers }));
+    setIsDirty(true);
+  }, []);
+
   const addAncillary = useCallback(() => {
     const newAnc = {
       name: 'new_ancillary', type: 'Court', transferable: 0,
