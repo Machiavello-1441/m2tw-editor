@@ -256,6 +256,8 @@ export default function LevelEditor() {
             />
           </CardContent>
         </Card>
+
+        <LevelTextEditor levelName={level.name} />
       </div>
     </ScrollArea>
   );
