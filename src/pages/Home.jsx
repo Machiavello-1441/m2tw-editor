@@ -6,23 +6,30 @@ import { Badge } from '@/components/ui/badge';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
-  Castle, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Users, Package, Zap, ArrowRight, Info, BookOpen, Swords
+  Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
+  FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle
 } from 'lucide-react';
 
-const REF_FILE_MAP = {
-  'descr_sm_factions.txt': 'fac',
-  'descr_sm_resources.txt': 'res',
-  'descr_events.txt': 'ev',
-  'export_descr_unit.txt': 'unit',
+// Files we look for in the data\ folder
+const DATA_FILE_MAP = {
+  'export_descr_buildings.txt': 'edb',
+  'descr_sm_factions.txt':      'fac',
+  'descr_sm_resources.txt':     'res',
+  'export_descr_unit.txt':      'unit',
+  'descr_events.txt':           'ev',
 };
 
-const CAMPAIGN_FILE_MAP = {
-  'descr_events.txt': 'ev',
-};
+// TGA map files (campaign or base maps folder)
+const MAP_TGA_FILES = [
+  'map_heights.tga',
+  'map_ground_types.tga',
+  'map_climates.tga',
+  'map_regions.tga',
+  'map_features.tga',
+  'map_fog.tga',
+];
 
-function FileStatus({ label, hint, status, icon: FileIconComp }) {
-  const Icon = FileIconComp || null;
+function FileStatus({ label, hint, status }) {
   const colors = {
     idle:    'border-border bg-card text-muted-foreground',
     ok:      'border-green-500/40 bg-green-500/5 text-green-400',
@@ -30,7 +37,7 @@ function FileStatus({ label, hint, status, icon: FileIconComp }) {
     loading: 'border-primary/30 bg-primary/5 text-primary',
   };
   const icons = {
-    idle:    <Clock className="w-3.5 h-3.5 shrink-0" />,
+    idle:    <Clock className="w-3.5 h-3.5 shrink-0 opacity-40" />,
     ok:      <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-400" />,
     error:   <AlertCircle className="w-3.5 h-3.5 shrink-0 text-destructive" />,
     loading: <div className="w-3.5 h-3.5 shrink-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />,
@@ -38,10 +45,9 @@ function FileStatus({ label, hint, status, icon: FileIconComp }) {
   return (
     <div className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all ${colors[status]}`}>
       {icons[status]}
-      {Icon && <Icon className="w-3.5 h-3.5 shrink-0 opacity-60" />}
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold leading-none">{label}</p>
-        <p className="text-[10px] opacity-70 mt-0.5 truncate">{hint}</p>
+        <p className="text-[10px] opacity-60 mt-0.5 truncate font-mono">{hint}</p>
       </div>
     </div>
   );
@@ -50,12 +56,16 @@ function FileStatus({ label, hint, status, icon: FileIconComp }) {
 export default function Home() {
   const { loadEDB, edbData, fileName } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
+
   const [fileStatus, setFileStatus] = useState({
-    edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle'
+    edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle',
+    map_heights: 'idle', map_ground_types: 'idle', map_climates: 'idle',
+    map_regions: 'idle', map_features: 'idle', map_fog: 'idle',
   });
+
+  const [modName, setModName] = useState('my_mod');
   const dataFolderRef = useRef();
-  const campaignFolderRef = useRef();
-  const baseMapsFolderRef = useRef();
+  const mapFolderRef = useRef();
 
   const readText = (file) => new Promise((resolve) => {
     const r = new FileReader();
@@ -73,24 +83,6 @@ export default function Home() {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
 
-    // Show loading for expected files
-    const foundKeys = {};
-    for (const file of files) {
-      const name = file.name.toLowerCase();
-      const key = REF_FILE_MAP[name];
-      if (key) foundKeys[key] = file;
-      if (name === 'export_descr_buildings.txt') foundKeys['edb'] = file;
-    }
-
-    // Update status for what we found
-    setFileStatus(prev => {
-      const next = { ...prev };
-      for (const k of ['edb', 'fac', 'res', 'ev', 'unit']) {
-        next[k] = foundKeys[k] ? 'loading' : 'idle';
-      }
-      return next;
-    });
-
     const loaderMap = {
       fac: loadFactionsFile,
       res: loadResourcesFile,
@@ -98,7 +90,12 @@ export default function Home() {
       unit: loadUnitsFile,
     };
 
-    for (const [key, file] of Object.entries(foundKeys)) {
+    for (const file of files) {
+      const name = file.name.toLowerCase();
+      const key = DATA_FILE_MAP[name];
+      if (!key) continue;
+
+      setFileStatus(prev => ({ ...prev, [key]: 'loading' }));
       const text = await readText(file);
       if (key === 'edb') {
         loadEDB(text, file.name);
@@ -109,68 +106,72 @@ export default function Home() {
     }
   };
 
-  const handleCampaignFolder = async (e) => {
+  const handleMapFolder = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
 
     for (const file of files) {
       const name = file.name.toLowerCase();
-      if (name === 'descr_events.txt') {
-        setFileStatus(prev => ({ ...prev, ev: 'loading' }));
-        const text = await readText(file);
-        loadEventsFile(text);
-        setFileStatus(prev => ({ ...prev, ev: 'ok' }));
-      } else if (name.endsWith('.tga')) {
-        // Load TGA map files
-        const buf = await readBinary(file);
-        window.dispatchEvent(new CustomEvent('load-map-tga', { detail: { fileName: name, data: buf } }));
+      if (!name.endsWith('.tga')) continue;
+      const tgaKey = name.replace('.tga', '').replace('map_', 'map_');
+      // status key: map_heights, map_ground_types, etc.
+      const statusKey = name.replace('.tga', '');
+      if (MAP_TGA_FILES.includes(name)) {
+        setFileStatus(prev => ({ ...prev, [statusKey]: 'loading' }));
+      }
+      const buf = await readBinary(file);
+      window.dispatchEvent(new CustomEvent('load-map-tga', { detail: { fileName: name, data: buf } }));
+      if (MAP_TGA_FILES.includes(name)) {
+        setFileStatus(prev => ({ ...prev, [statusKey]: 'ok' }));
       }
     }
   };
 
-  const handleBaseMapFolder = async (e) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-
-    for (const file of files) {
-      const name = file.name.toLowerCase();
-      if (name.endsWith('.tga')) {
-        const buf = await readBinary(file);
-        window.dispatchEvent(new CustomEvent('load-map-tga', { detail: { fileName: name, data: buf } }));
-      }
-    }
-  };
-
-  const allLoaded = fileStatus.edb === 'ok';
-  const coreReady = ['fac', 'res', 'unit'].every(k => fileStatus[k] === 'ok');
+  const edbLoaded = fileStatus.edb === 'ok';
+  const anyMapLoaded = MAP_TGA_FILES.some(f => fileStatus[f.replace('.tga', '')] === 'ok');
 
   return (
-    <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-start gap-6 pt-16">
+    <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-start gap-6 pt-12">
 
       {/* Header */}
       <div className="text-center space-y-2 max-w-xl">
         <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto mb-4">
-          <Castle className="w-7 h-7 text-primary" />
+          <Swords className="w-7 h-7 text-primary" />
         </div>
-        <h1 className="text-2xl font-bold text-foreground">M2TW Building Editor</h1>
+        <h1 className="text-2xl font-bold text-foreground">M2TW Mod Editor</h1>
         <p className="text-sm text-muted-foreground">
-          Load your M2TW mod files to get started. Point to the <code className="text-xs bg-accent px-1 py-0.5 rounded">data\</code> folder
-          and the editor will automatically find all required files.
+          Load your mod's files to begin editing. Use the Export page when done to download a complete
+          <code className="text-xs bg-accent px-1 py-0.5 rounded mx-1">[mod name]\data\</code>folder ready to drop into your M2TW mods directory.
         </p>
       </div>
 
-      {/* Main load card */}
+      {/* Mod Name */}
+      <div className="w-full max-w-2xl bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+        <Package className="w-4 h-4 text-primary shrink-0" />
+        <label className="text-xs font-semibold text-foreground whitespace-nowrap">Mod Name</label>
+        <input
+          type="text"
+          value={modName}
+          onChange={e => setModName(e.target.value.replace(/[^a-zA-Z0-9_\-]/g, '_'))}
+          placeholder="my_mod"
+          className="flex-1 h-8 px-3 text-xs bg-background border border-border rounded-md text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <span className="text-[10px] text-muted-foreground whitespace-nowrap">Used in the exported zip path</span>
+      </div>
+
+      {/* Step 1 — data folder */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-primary" />
-            Step 1 — Load M2TW <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\</code> Folder
+            <Castle className="w-4 h-4 text-primary" />
+            Step 1 — Load <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\</code> Folder
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Automatically finds: <span className="font-mono text-foreground">export_descr_buildings.txt</span>,{' '}
-            <span className="font-mono text-foreground">descr_sm_factions.txt</span>,{' '}
-            <span className="font-mono text-foreground">descr_sm_resources.txt</span>,{' '}
-            <span className="font-mono text-foreground">export_descr_unit.txt</span>
+            Finds: <span className="font-mono text-foreground/80">export_descr_buildings.txt</span>,{' '}
+            <span className="font-mono text-foreground/80">descr_sm_factions.txt</span>,{' '}
+            <span className="font-mono text-foreground/80">descr_sm_resources.txt</span>,{' '}
+            <span className="font-mono text-foreground/80">export_descr_unit.txt</span>,{' '}
+            <span className="font-mono text-foreground/80">descr_events.txt</span>
           </p>
         </div>
         <div className="p-4 space-y-3">
@@ -186,151 +187,89 @@ export default function Home() {
             </Button>
           </label>
 
-          <div className="grid grid-cols-2 gap-2">
-            <FileStatus label="EDB File" hint="export_descr_buildings.txt" status={fileStatus.edb} icon={Castle} />
-            <FileStatus label="Factions" hint="descr_sm_factions.txt" status={fileStatus.fac} icon={Users} />
-            <FileStatus label="Resources" hint="descr_sm_resources.txt" status={fileStatus.res} icon={Package} />
-            <FileStatus label="Units" hint="export_descr_unit.txt" status={fileStatus.unit} icon={Swords} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt" status={fileStatus.edb} />
+            <FileStatus label="Factions"        hint="descr_sm_factions.txt"      status={fileStatus.fac} />
+            <FileStatus label="Resources"       hint="descr_sm_resources.txt"     status={fileStatus.res} />
+            <FileStatus label="Units"           hint="export_descr_unit.txt"      status={fileStatus.unit} />
+            <FileStatus label="Events"          hint="descr_events.txt"           status={fileStatus.ev} />
           </div>
-        </div>
-
-        {/* Campaign & Map files */}
-        <div className="p-4 border-t border-border bg-accent/5 space-y-3">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-primary" />
-              Step 2 — Load Campaign Files <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
-            </h2>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Load <code className="text-xs font-mono">descr_events.txt</code> and TGA map files from either base maps or campaign folder
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="cursor-pointer">
-              <input ref={campaignFolderRef} type="file" className="hidden"
-                webkitdirectory="" directory="" multiple onChange={handleCampaignFolder} />
-              <Button asChild variant="outline"
-                className="w-full h-9 pointer-events-none gap-2 text-xs">
-                <span>
-                  <FolderOpen className="w-3.5 h-3.5" />
-                  Browse to campaign folder (default: imperial_campaign)
-                </span>
-              </Button>
-            </label>
-
-            <label className="cursor-pointer">
-              <input ref={baseMapsFolderRef} type="file" className="hidden"
-                webkitdirectory="" directory="" multiple onChange={handleBaseMapFolder} />
-              <Button asChild variant="outline"
-                className="w-full h-9 pointer-events-none gap-2 text-xs text-muted-foreground">
-                <span>
-                  <FolderOpen className="w-3.5 h-3.5" />
-                  Browse to base maps folder
-                </span>
-              </Button>
-            </label>
-          </div>
-
-          <FileStatus label="Events" hint="descr_events.txt" status={fileStatus.ev} icon={Zap} />
         </div>
       </div>
 
-      {/* Manual upload fallback */}
-      <div className="w-full max-w-2xl">
-        <details className="group">
-          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 select-none">
-            <span className="group-open:rotate-90 inline-block transition-transform">▶</span>
-            Load individual files manually
-          </summary>
-          <div className="mt-2 p-3 bg-card border border-border rounded-lg">
-            <ManualFileLoader setFileStatus={setFileStatus} />
+      {/* Step 2 — map folder */}
+      <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-border bg-accent/10">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Map className="w-4 h-4 text-primary" />
+            Step 2 — Load Campaign Map Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Point to <code className="text-xs font-mono">data\world\maps\campaign\imperial_campaign\</code> or your base_maps folder — loads all TGA map layers.
+          </p>
+        </div>
+        <div className="p-4 space-y-3">
+          <label className="cursor-pointer">
+            <input ref={mapFolderRef} type="file" className="hidden"
+              webkitdirectory="" directory="" multiple onChange={handleMapFolder} />
+            <Button asChild variant="outline"
+              className="w-full h-11 pointer-events-none gap-2">
+              <span>
+                <FolderOpen className="w-4 h-4" />
+                Browse to campaign / base_maps folder
+              </span>
+            </Button>
+          </label>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <FileStatus label="Heights"      hint="map_heights.tga"      status={fileStatus['map_heights']} />
+            <FileStatus label="Ground Types" hint="map_ground_types.tga" status={fileStatus['map_ground_types']} />
+            <FileStatus label="Climates"     hint="map_climates.tga"     status={fileStatus['map_climates']} />
+            <FileStatus label="Regions"      hint="map_regions.tga"      status={fileStatus['map_regions']} />
+            <FileStatus label="Features"     hint="map_features.tga"     status={fileStatus['map_features']} />
+            <FileStatus label="Fog of War"   hint="map_fog.tga"          status={fileStatus['map_fog']} />
           </div>
-        </details>
+        </div>
       </div>
 
-      {/* Info block */}
+      {/* Info */}
       <div className="w-full max-w-2xl flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
         <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Folder permissions:</strong> Browsers can read files from a selected folder but cannot write back to disk.
-          Edited files are downloaded via the <strong className="text-foreground">Export</strong> page.
-          Only the files matching the expected names are read; all others are ignored.
+          Browsers can read but not write to disk. When you're done editing, go to <strong className="text-foreground">Export</strong> to download a zip of your
+          complete <code className="text-[10px] font-mono bg-accent px-1 rounded">{modName || 'my_mod'}\data\</code> folder.
         </p>
       </div>
 
-      {/* Proceed button */}
-      {allLoaded && (
-        <Link to={createPageUrl('EDBEditor')} className="w-full max-w-2xl">
-          <Button className="w-full h-12 text-base gap-2">
-            Open EDB Editor
-            {fileName && <span className="text-xs opacity-70 font-mono">({fileName})</span>}
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        </Link>
-      )}
-      {!allLoaded && (
-        <div className="text-[11px] text-muted-foreground text-center">
-          Load the <code className="font-mono bg-accent px-1 rounded">data\</code> folder above to enable the editor
-        </div>
-      )}
-
-      {/* Summary badges */}
-      {edbData && (
-        <div className="flex gap-2 flex-wrap justify-center">
-          <Badge variant="outline" className="text-[10px]">
-            {edbData.buildings.length} buildings
-          </Badge>
-          <Badge variant="outline" className="text-[10px]">
-            {edbData.buildings.reduce((s, b) => s + b.levels.length, 0)} levels
-          </Badge>
-          <Badge variant="outline" className="text-[10px]">
-            {edbData.hiddenResources.length} hidden resources
-          </Badge>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ManualFileLoader({ setFileStatus }) {
-  const { loadEDB } = useEDB();
-  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
-
-  const readAndLoad = (key, loader) => (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const r = new FileReader();
-    r.onload = ev => {
-      loader(ev.target.result, file.name);
-      setFileStatus(p => ({ ...p, [key]: 'ok' }));
-    };
-    r.readAsText(file);
-    e.target.value = '';
-  };
-
-  const files = [
-    { key: 'edb',  label: 'EDB',       hint: 'export_descr_buildings.txt', loader: loadEDB },
-    { key: 'fac',  label: 'Factions',  hint: 'descr_sm_factions.txt',      loader: loadFactionsFile },
-    { key: 'res',  label: 'Resources', hint: 'descr_sm_resources.txt',      loader: loadResourcesFile },
-    { key: 'ev',   label: 'Events',    hint: 'descr_events.txt',            loader: loadEventsFile },
-    { key: 'unit', label: 'Units',     hint: 'export_descr_unit.txt',       loader: loadUnitsFile },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-      {files.map(f => (
-        <label key={f.key} className="cursor-pointer">
-          <input type="file" accept=".txt" className="hidden" onChange={readAndLoad(f.key, f.loader)} />
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-border bg-accent/30 hover:bg-accent/60 transition-colors">
-            <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-[10px] font-semibold">{f.label}</p>
-              <p className="text-[9px] text-muted-foreground truncate">{f.hint}</p>
-            </div>
+      {/* Actions */}
+      <div className="w-full max-w-2xl flex flex-col gap-2">
+        {edbLoaded && (
+          <Link to={createPageUrl('EDBEditor')}>
+            <Button className="w-full h-11 gap-2">
+              <Castle className="w-4 h-4" />
+              Open EDB Editor
+              {fileName && <span className="text-xs opacity-60 font-mono">({fileName})</span>}
+              <ArrowRight className="w-4 h-4 ml-auto" />
+            </Button>
+          </Link>
+        )}
+        {anyMapLoaded && (
+          <Link to={createPageUrl('CampaignMap')}>
+            <Button variant="outline" className="w-full h-11 gap-2">
+              <Map className="w-4 h-4" />
+              Open Campaign Map Editor
+              <ArrowRight className="w-4 h-4 ml-auto" />
+            </Button>
+          </Link>
+        )}
+        {edbLoaded && (
+          <div className="flex gap-2 flex-wrap justify-center pt-1">
+            <Badge variant="outline" className="text-[10px]">{edbData.buildings.length} buildings</Badge>
+            <Badge variant="outline" className="text-[10px]">{edbData.buildings.reduce((s, b) => s + b.levels.length, 0)} levels</Badge>
+            <Badge variant="outline" className="text-[10px]">{edbData.hiddenResources.length} hidden resources</Badge>
           </div>
-        </label>
-      ))}
+        )}
+      </div>
     </div>
   );
 }

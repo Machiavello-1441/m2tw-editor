@@ -2,60 +2,87 @@ import React, { useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
-import { Download, FileText, ImageIcon, Package, Eye, Copy, Check } from 'lucide-react';
+import { Download, Package, FileText, Map, AlertCircle, CheckCircle2 } from 'lucide-react';
+import JSZip from 'jszip';
+import { encodeTGA } from '../components/campaign/TgaLoader';
+import { LAYER_DEFS, LAYER_ORDER } from '../components/campaign/MapLayerDefs';
+
+// We read layers from CampaignMapContext if it's mounted — access via global event bus
+// Since CampaignMapProvider only wraps the CampaignMap page, we collect layer data
+// via a shared ref stored on window by CampaignMapContext.
 
 export default function Export() {
-  const { edbData, exportEDB, textData, imageData, fileName } = useEDB();
-  const [preview, setPreview] = useState('');
-  const [copied, setCopied] = useState(false);
+  const { edbData, exportEDB, textData, fileName } = useEDB();
+  const [building, setBuilding] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const handlePreview = () => {
-    if (!edbData) return;
-    const text = exportEDB();
-    setPreview(text);
-  };
+  // Gather the mod name from localStorage (set on Home page)
+  const modName = (() => {
+    try { return localStorage.getItem('m2tw_mod_name') || 'my_mod'; } catch { return 'my_mod'; }
+  })();
 
-  const handleDownloadEDB = () => {
-    if (!edbData) return;
-    const text = exportEDB();
-    downloadFile(text, 'export_descr_buildings.txt', 'text/plain');
-  };
+  const handleExportZip = async () => {
+    setBuilding(true);
+    setDone(false);
 
-  const handleDownloadTexts = () => {
-    let text = '';
-    for (const [key, value] of Object.entries(textData)) {
-      text += `{${key}}${value}\n`;
+    const zip = new JSZip();
+    const dataFolder = zip.folder(`${modName}/data`);
+
+    // 1. EDB file
+    if (edbData) {
+      const edbText = exportEDB();
+      dataFolder.file('export_descr_buildings.txt', edbText);
     }
-    downloadFile(text, 'export_buildings.txt', 'text/plain');
-  };
 
-  const handleCopy = () => {
-    if (preview) {
-      navigator.clipboard.writeText(preview);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    // 2. Text file (export_buildings.txt)
+    if (textData && Object.keys(textData).length > 0) {
+      let textOut = '';
+      for (const [key, value] of Object.entries(textData)) {
+        textOut += `{${key}}${value}\n`;
+      }
+      dataFolder.folder('text').file('export_buildings.txt', textOut);
     }
-  };
 
-  const downloadFile = (content, filename, type) => {
-    const blob = new Blob([content], { type });
+    // 3. Campaign map TGA files — read from window.__campaignLayers if available
+    const campaignLayers = window.__campaignLayers || {};
+    const campaignFolder = dataFolder.folder('world/maps/campaign/imperial_campaign');
+
+    for (const key of LAYER_ORDER) {
+      const layer = campaignLayers[key];
+      if (!layer) continue;
+      const pixelData = layer.edited || layer.data;
+      if (!pixelData) continue;
+      const tgaBuf = encodeTGA(layer.width, layer.height, pixelData);
+      const filename = LAYER_DEFS[key].filename;
+      campaignFolder.file(filename, tgaBuf);
+    }
+
+    // Generate and download
+    const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = `${modName}_data.zip`;
     a.click();
     URL.revokeObjectURL(url);
+
+    setBuilding(false);
+    setDone(true);
   };
 
-  const stats = edbData ? {
+  const hasEDB = !!edbData;
+  const hasText = textData && Object.keys(textData).length > 0;
+  const campaignLayers = window.__campaignLayers || {};
+  const loadedMapLayers = LAYER_ORDER.filter(k => campaignLayers[k]);
+  const dirtyMapLayers = loadedMapLayers.filter(k => {
+    const l = campaignLayers[k];
+    return l?.edited && l.edited !== l.data;
+  });
+
+  const edbStats = edbData ? {
     buildings: edbData.buildings.length,
-    levels: edbData.buildings.reduce((sum, b) => sum + b.levels.length, 0),
-    hiddenResources: edbData.hiddenResources.length,
-    textEntries: Object.keys(textData).length,
-    images: Object.keys(imageData).length,
+    levels: edbData.buildings.reduce((s, b) => s + b.levels.length, 0),
   } : null;
 
   return (
@@ -66,139 +93,128 @@ export default function Export() {
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-6 max-w-3xl mx-auto space-y-6">
-          {!edbData ? (
-            <div className="text-center text-sm text-muted-foreground py-20">
-              No EDB data loaded. Go to the Editor to load a file first.
-            </div>
-          ) : (
-            <>
-              {/* Stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                {[
-                  { label: 'Buildings', value: stats.buildings, color: 'text-primary' },
-                  { label: 'Levels', value: stats.levels, color: 'text-chart-2' },
-                  { label: 'Hidden Res.', value: stats.hiddenResources, color: 'text-chart-3' },
-                  { label: 'Text Entries', value: stats.textEntries, color: 'text-chart-4' },
-                  { label: 'Images', value: stats.images, color: 'text-chart-5' },
-                ].map(stat => (
-                  <Card key={stat.label}>
-                    <CardContent className="p-3 text-center">
-                      <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                      <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+        <div className="p-6 max-w-2xl mx-auto space-y-5">
+
+          {/* Mod folder path */}
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <Package className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-foreground">Output path inside zip</p>
+                <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                  {modName}/data/
+                </p>
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                Set mod name on the Home page
+              </p>
+            </CardContent>
+          </Card>
 
-              {/* Download buttons */}
-              <Card>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Package className="w-4 h-4 text-primary" />
-                    Download Files
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-2 space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
-                    <FileText className="w-5 h-5 text-primary/60 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-foreground">export_descr_buildings.txt</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        The main EDB file with all building definitions
-                      </p>
-                    </div>
-                    <Button size="sm" className="h-7 text-xs" onClick={handleDownloadEDB}>
-                      <Download className="w-3 h-3 mr-1" /> Download
-                    </Button>
-                  </div>
+          {/* What will be included */}
+          <Card>
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm">Files to include in zip</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-2">
 
-                  {Object.keys(textData).length > 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
-                      <FileText className="w-5 h-5 text-chart-4/60 shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-foreground">export_buildings.txt</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          Building names and descriptions ({Object.keys(textData).length} entries)
-                        </p>
-                      </div>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleDownloadTexts}>
-                        <Download className="w-3 h-3 mr-1" /> Download
-                      </Button>
-                    </div>
-                  )}
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-primary/70" />}
+                label="export_descr_buildings.txt"
+                path={`${modName}/data/`}
+                status={hasEDB ? 'ready' : 'missing'}
+                detail={edbStats ? `${edbStats.buildings} buildings, ${edbStats.levels} levels` : 'No EDB loaded'}
+              />
 
-                  {Object.keys(imageData).length > 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
-                      <ImageIcon className="w-5 h-5 text-chart-5/60 shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-foreground">Building Images</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {Object.keys(imageData).length} images uploaded. Download individually from the Image Manager.
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="text-[10px]">{Object.keys(imageData).length} files</Badge>
-                    </div>
-                  )}
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-chart-4/70" />}
+                label="export_buildings.txt"
+                path={`${modName}/data/text/`}
+                status={hasText ? 'ready' : 'skip'}
+                detail={hasText ? `${Object.keys(textData).length} text entries` : 'No text data — will be skipped'}
+              />
 
-                  {/* Mod folder structure info */}
-                  <div className="mt-4 p-3 rounded-lg border border-border">
-                    <p className="text-xs font-semibold text-foreground mb-2">Expected Mod Folder Structure:</p>
-                    <pre className="text-[10px] text-muted-foreground font-mono leading-relaxed">
-{`your_mod/
-├── data/
-│   ├── export_descr_buildings.txt
-│   ├── text/
-│   │   └── export_buildings.txt
-│   └── ui/
-│       └── <culture>/
-│           └── buildings/
-│               ├── #<culture>_<building>.tga
-│               ├── #<culture>_<building>_constructed.tga
-│               └── construction/
-│                   └── #<culture>_<building>.tga`}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
+              {LAYER_ORDER.map(key => {
+                const layer = campaignLayers[key];
+                const def = LAYER_DEFS[key];
+                const status = layer ? 'ready' : 'skip';
+                return (
+                  <ExportRow
+                    key={key}
+                    icon={<Map className="w-4 h-4 text-chart-2/70" />}
+                    label={def.filename}
+                    path={`${modName}/data/world/maps/campaign/imperial_campaign/`}
+                    status={status}
+                    detail={layer ? `${layer.width}×${layer.height}` : 'Not loaded — will be skipped'}
+                  />
+                );
+              })}
+            </CardContent>
+          </Card>
 
-              {/* Preview */}
-              <Card>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-primary" />
-                    EDB Preview
-                    <div className="ml-auto flex gap-2">
-                      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handlePreview}>
-                        <Eye className="w-3 h-3 mr-1" /> Generate Preview
-                      </Button>
-                      {preview && (
-                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleCopy}>
-                          {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
-                          {copied ? 'Copied!' : 'Copy'}
-                        </Button>
-                      )}
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-2">
-                  {preview ? (
-                    <Textarea
-                      className="font-mono text-[10px] min-h-[400px] bg-background"
-                      value={preview}
-                      readOnly
-                    />
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center py-8">
-                      Click "Generate Preview" to see the output file
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </>
+          {/* Download button */}
+          <Button
+            className="w-full h-12 text-base gap-2"
+            onClick={handleExportZip}
+            disabled={building || !hasEDB}
+          >
+            {building ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Building zip…
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                Download {modName}_data.zip
+              </>
+            )}
+          </Button>
+
+          {done && (
+            <div className="flex items-center gap-2 text-green-400 text-xs justify-center">
+              <CheckCircle2 className="w-4 h-4" />
+              Zip downloaded! Drop the <code className="font-mono bg-accent px-1 rounded">{modName}/</code> folder into your M2TW <code className="font-mono bg-accent px-1 rounded">mods/</code> directory.
+            </div>
+          )}
+
+          {!hasEDB && (
+            <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
+              <AlertCircle className="w-3.5 h-3.5" />
+              Load the EDB file on the Home page first to enable export.
+            </div>
           )}
         </div>
       </ScrollArea>
+    </div>
+  );
+}
+
+function ExportRow({ icon, label, path, status, detail }) {
+  const statusStyle = {
+    ready:   'text-green-400',
+    skip:    'text-muted-foreground',
+    missing: 'text-destructive',
+  };
+  const statusIcon = {
+    ready:   <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />,
+    skip:    <div className="w-3.5 h-3.5 rounded-full border border-border shrink-0" />,
+    missing: <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />,
+  };
+
+  return (
+    <div className={`flex items-center gap-3 p-2.5 rounded-lg bg-accent/30 ${status === 'skip' ? 'opacity-50' : ''}`}>
+      {icon}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-foreground font-mono">{label}</p>
+        <p className="text-[10px] text-muted-foreground truncate font-mono">{path}</p>
+      </div>
+      <div className="text-right shrink-0">
+        <div className="flex items-center gap-1 justify-end">
+          {statusIcon[status]}
+        </div>
+        <p className={`text-[10px] mt-0.5 ${statusStyle[status]}`}>{detail}</p>
+      </div>
     </div>
   );
 }
