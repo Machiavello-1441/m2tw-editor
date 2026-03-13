@@ -54,7 +54,7 @@ export default function Layout({ children, currentPageName }) {
             </div>
             <div className="p-3 border-t border-border">
               <p className="text-[10px] text-muted-foreground text-center hidden lg:block">
-                Based on Ultimate Docudemons 2.0
+                Based on Ultimate Docudemons 5.5
               </p>
             </div>
           </nav>
