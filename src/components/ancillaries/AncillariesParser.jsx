@@ -218,9 +218,9 @@ export function serializeAncillariesFile(data) {
       for (const cond of (trigger.conditions || [])) {
         lines.push(`    ${cond}`);
       }
-      if ((trigger.conditions || []).length > 0) lines.push('');
+      if (trigger.conditions && trigger.conditions.length > 0) lines.push('');
       if (trigger.acquireAncillary) {
-        lines.push(`    AcquireAncillary ${trigger.acquireAncillary.name}  Chance  ${trigger.acquireAncillary.chance} `);
+        lines.push(`    AcquireAncillary ${trigger.acquireAncillary.name}  chance  ${trigger.acquireAncillary.chance} `);
       }
       lines.push('');
     }
