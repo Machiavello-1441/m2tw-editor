@@ -91,6 +91,7 @@ export default function Home() {
       res: loadResourcesFile,
       ev: loadEventsFile,
       unit: loadUnitsFile,
+      txt: loadTextFile,
     };
 
     for (const file of files) {
