@@ -3,7 +3,8 @@ import { useAncillaries } from './AncillariesContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, ImageOff } from 'lucide-react';
+import { Plus, Trash2, ImageOff, Zap } from 'lucide-react';
+import EffectAttributeSelect from '../shared/EffectAttributeSelect';
 
 const ANCILLARY_TYPES = [
   'Academic', 'Court', 'Diplomacy', 'Entertain', 'Family',
@@ -14,9 +15,10 @@ const CULTURES = ['northern_european', 'eastern_european', 'southern_european', 
 
 const inputCls = 'h-8 text-xs font-mono mt-1 text-white bg-background';
 const selectCls = 'w-full h-8 mt-1 text-xs bg-card border border-border rounded px-2 text-white';
+const textareaCls = 'w-full mt-1 text-xs bg-background border border-border rounded px-2 py-1.5 text-white resize-none focus:outline-none focus:ring-1 focus:ring-primary';
 
 export default function AncillaryEditor() {
-  const { ancData, selectedAnc, updateAncillary, getText, getTgaImage } = useAncillaries();
+  const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, textData, updateTextEntry } = useAncillaries();
 
   if (selectedAnc === null || !ancData) {
     return (
@@ -39,12 +41,10 @@ export default function AncillaryEditor() {
   };
 
   const addEffect = () => update('effects', [...anc.effects, { attribute: 'Command', value: 1 }]);
-
   const updateEffect = (i, field, value) => {
     const effects = anc.effects.map((e, j) => j === i ? { ...e, [field]: value } : e);
     update('effects', effects);
   };
-
   const deleteEffect = (i) => update('effects', anc.effects.filter((_, j) => j !== i));
 
   const descText = getText(anc.description);
@@ -52,13 +52,17 @@ export default function AncillaryEditor() {
   const displayName = getText(anc.name) || getText(anc.description?.replace('_desc', ''));
   const tgaDataUrl = getTgaImage(anc.image);
 
+  // Triggers that grant this ancillary
+  const relatedTriggers = (ancData.triggers || []).filter(t =>
+    t.acquireAncillary?.name === anc.name
+  );
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-4 space-y-5">
 
         {/* Preview banner */}
         <div className="bg-primary/10 border border-primary/20 rounded px-3 py-2 flex items-start gap-3">
-          {/* TGA image preview */}
           <div className="shrink-0 w-14 h-14 rounded border border-border bg-card/50 flex items-center justify-center overflow-hidden">
             {tgaDataUrl
               ? <img src={tgaDataUrl} alt={anc.image} className="w-full h-full object-contain" />
@@ -98,14 +102,6 @@ export default function AncillaryEditor() {
               className={inputCls} placeholder="e.g. court_noble.tga" />
           </div>
           <div>
-            <Label className="text-[10px] text-muted-foreground">Description key</Label>
-            <Input value={anc.description} onChange={e => update('description', e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <Label className="text-[10px] text-muted-foreground">Effects Desc key</Label>
-            <Input value={anc.effectsDescription} onChange={e => update('effectsDescription', e.target.value)} className={inputCls} />
-          </div>
-          <div>
             <Label className="text-[10px] text-muted-foreground">Excluded Ancillaries</Label>
             <Input
               value={anc.excludedAncillaries.join(', ')}
@@ -128,6 +124,38 @@ export default function AncillaryEditor() {
             <input type="checkbox" checked={anc.unique} onChange={e => update('unique', e.target.checked)} className="rounded" />
             <span className="text-xs text-white">Unique</span>
           </label>
+        </div>
+
+        {/* Text fields — edit actual text, not the key */}
+        <div className="space-y-3">
+          <div>
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] text-muted-foreground">Description</Label>
+              <span className="text-[9px] text-muted-foreground/50 font-mono">{anc.description}</span>
+            </div>
+            <textarea
+              rows={2}
+              className={textareaCls}
+              value={descText}
+              onChange={e => anc.description && updateTextEntry(anc.description, e.target.value)}
+              placeholder={anc.description ? 'Enter description text…' : 'No description key set'}
+              disabled={!anc.description}
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] text-muted-foreground">Effects Description</Label>
+              <span className="text-[9px] text-muted-foreground/50 font-mono">{anc.effectsDescription}</span>
+            </div>
+            <textarea
+              rows={2}
+              className={textareaCls}
+              value={effectsText}
+              onChange={e => anc.effectsDescription && updateTextEntry(anc.effectsDescription, e.target.value)}
+              placeholder={anc.effectsDescription ? 'Enter effects description text…' : 'No effects description key set'}
+              disabled={!anc.effectsDescription}
+            />
+          </div>
         </div>
 
         {/* Exclude Cultures */}
@@ -158,9 +186,11 @@ export default function AncillaryEditor() {
           <div className="space-y-1.5">
             {anc.effects.map((effect, i) => (
               <div key={i} className="flex items-center gap-2 bg-card/50 rounded border border-border px-2 py-1.5">
-                <Input value={effect.attribute}
-                  onChange={e => updateEffect(i, 'attribute', e.target.value)}
-                  className="h-6 text-xs font-mono flex-1 text-white bg-background" placeholder="Attribute name" />
+                <EffectAttributeSelect
+                  value={effect.attribute}
+                  onChange={v => updateEffect(i, 'attribute', v)}
+                  className="flex-1"
+                />
                 <Input type="number" value={effect.value}
                   onChange={e => updateEffect(i, 'value', parseInt(e.target.value) || 0)}
                   className="h-6 text-xs w-20 text-white bg-background" />
@@ -174,7 +204,46 @@ export default function AncillaryEditor() {
             )}
           </div>
         </div>
+
+        {/* Triggers */}
+        {relatedTriggers.length > 0 && (
+          <div>
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-2">
+              <Zap className="w-3 h-3" /> How it is gained ({relatedTriggers.length} trigger{relatedTriggers.length > 1 ? 's' : ''})
+            </Label>
+            <div className="space-y-2">
+              {relatedTriggers.map((t, i) => (
+                <TriggerBlock key={i} trigger={t} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function TriggerBlock({ trigger }) {
+  return (
+    <div className="rounded border border-border bg-card/40 px-3 py-2 space-y-1">
+      <p className="text-[11px] font-mono font-semibold text-primary">{trigger.name}</p>
+      {trigger.whenToTest && (
+        <p className="text-[10px] text-muted-foreground">
+          <span className="text-foreground/60">When: </span>{trigger.whenToTest}
+        </p>
+      )}
+      {trigger.acquireAncillary && (
+        <p className="text-[10px] text-muted-foreground">
+          <span className="text-foreground/60">Chance: </span>{trigger.acquireAncillary.chance}%
+        </p>
+      )}
+      {trigger.conditions.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {trigger.conditions.map((c, i) => (
+            <p key={i} className="text-[10px] font-mono text-muted-foreground bg-muted/30 rounded px-1.5 py-0.5">{c}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
