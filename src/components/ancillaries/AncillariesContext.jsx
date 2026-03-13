@@ -17,6 +17,17 @@ export function AncillariesProvider({ children }) {
   const originalAncData = useRef(null);
   const originalTextData = useRef(null);
 
+  // Listen for TGA images broadcast from Home page
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail && typeof e.detail === 'object') {
+        setTgaImages(prev => ({ ...prev, ...e.detail }));
+      }
+    };
+    window.addEventListener('load-anc-tga-batch', handler);
+    return () => window.removeEventListener('load-anc-tga-batch', handler);
+  }, []);
+
   // Auto-load from localStorage if Home page cached the files
   useEffect(() => {
     try {
