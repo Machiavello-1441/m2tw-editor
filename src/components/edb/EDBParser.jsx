@@ -186,16 +186,15 @@ function parseCapabilityLine(line) {
     }
   }
   
-  // bonus-style capabilities: "identifier bonus N" or "identifier N"
+  // bonus-style capabilities: "identifier bonus N"
   const bonusMatch = line.match(/^(\S+)\s+bonus\s+([-\d.]+)/);
   if (bonusMatch) {
     const identifier = bonusMatch[1];
-    const group = findGroupForIdentifier(identifier);
     return {
       type: 'bonus',
       identifier,
+      needsBonus: true,
       value: parseFloat(bonusMatch[2]),
-      groupKey: group?.key || null
     };
   }
   
@@ -203,12 +202,11 @@ function parseCapabilityLine(line) {
   const simpleMatch = line.match(/^(\S+)\s+([-\d.]+)/);
   if (simpleMatch) {
     const identifier = simpleMatch[1];
-    const group = findGroupForIdentifier(identifier);
     return {
-      type: 'simple',
+      type: 'bonus',
       identifier,
+      needsBonus: false,
       value: parseFloat(simpleMatch[2]),
-      groupKey: group?.key || null
     };
   }
   
