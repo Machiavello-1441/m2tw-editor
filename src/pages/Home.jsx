@@ -60,9 +60,11 @@ function FileStatus({ label, hint, status }) {
 export default function Home() {
   const { loadEDB, edbData, fileName, loadTextFile } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
+  const { loadTraitFile, loadAncFile } = useVnV();
 
   const [fileStatus, setFileStatus] = useState({
     edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle', txt: 'idle',
+    traits: 'idle', anc: 'idle',
     map_heights: 'idle', map_ground_types: 'idle', map_climates: 'idle',
     map_regions: 'idle', map_features: 'idle', map_fog: 'idle',
   });
