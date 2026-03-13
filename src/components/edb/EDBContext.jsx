@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { parseEDB, serializeEDB, createDefaultBuilding, createDefaultLevel } from './EDBParser';
+import { parseEDB, serializeEDB, createDefaultBuilding, createDefaultLevel, parseTextFile, serializeTextFile } from './EDBParser';
 
 const EDBContext = createContext(null);
 
