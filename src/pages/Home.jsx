@@ -63,7 +63,9 @@ export default function Home() {
     map_regions: 'idle', map_features: 'idle', map_fog: 'idle',
   });
 
-  const [modName, setModName] = useState('my_mod');
+  const [modName, setModName] = useState(() => {
+    try { return localStorage.getItem('m2tw_mod_name') || 'my_mod'; } catch { return 'my_mod'; }
+  });
   const dataFolderRef = useRef();
   const mapFolderRef = useRef();
 
