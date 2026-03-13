@@ -43,16 +43,20 @@ export function AncillariesProvider({ children }) {
     const parsed = parseAncillariesFile(content);
     originalAncData.current = JSON.stringify(parsed);
     setAncData(parsed);
-    setAncFilename(filename || 'export_descr_ancillaries.txt');
+    const fn = filename || 'export_descr_ancillaries.txt';
+    setAncFilename(fn);
     setSelectedAnc(null);
     setIsDirty(false);
+    try { localStorage.setItem('m2tw_anc_file', content); localStorage.setItem('m2tw_anc_file_name', fn); } catch {}
   }, []);
 
   const loadTextFile = useCallback((content, filename) => {
     const parsed = parseTextFile(content);
     originalTextData.current = JSON.stringify(parsed);
     setTextData(parsed);
-    setTextFilename(filename || 'export_ancillaries.txt');
+    const fn = filename || 'export_ancillaries.txt';
+    setTextFilename(fn);
+    try { localStorage.setItem('m2tw_anctxt_file', content); localStorage.setItem('m2tw_anctxt_file_name', fn); } catch {}
   }, []);
 
   const loadTgaImages = useCallback((images) => {
