@@ -1,13 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
 import { useRefData } from '../components/edb/RefDataContext';
+import { useVnV } from '../components/vnv/VnVContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle
+  FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle, Shield
 } from 'lucide-react';
 
 // Files we look for in the data\ folder (matched by filename only, regardless of subfolder)
