@@ -17,6 +17,7 @@ const navItems = [
 
 export default function Layout({ children, currentPageName }) {
   return (
+    <VnVProvider>
     <RefDataProvider>
       <EDBProvider>
         <div className="dark min-h-screen bg-background flex">
