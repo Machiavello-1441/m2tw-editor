@@ -286,10 +286,17 @@ export function serializeTraitsFile(data) {
     lines.push('');
 
     for (const trigger of triggers) {
-      if (trigger.rawLines && trigger.rawLines.length > 0) {
-        for (const rl of trigger.rawLines) lines.push(rl);
-        lines.push('');
+      lines.push(`Trigger ${trigger.name}`);
+      if (trigger.whenToTest) lines.push(`    WhenToTest ${trigger.whenToTest}`);
+      lines.push('');
+      for (const cond of (trigger.conditions || [])) {
+        lines.push(`    ${cond}`);
       }
+      if ((trigger.conditions || []).length > 0) lines.push('');
+      for (const a of (trigger.affects || [])) {
+        lines.push(`    Affects ${a.trait}  ${a.value}  Chance  ${a.chance} `);
+      }
+      lines.push('');
     }
   }
 
