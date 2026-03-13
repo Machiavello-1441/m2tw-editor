@@ -15,6 +15,28 @@ export function TraitsProvider({ children }) {
   const originalTraitsData = useRef(null);
   const originalTextData = useRef(null);
 
+  // Auto-load from localStorage if Home page cached the files
+  useEffect(() => {
+    try {
+      const traitsContent = localStorage.getItem('m2tw_traits_file');
+      const traitsName = localStorage.getItem('m2tw_traits_file_name');
+      if (traitsContent) {
+        const parsed = parseTraitsFile(traitsContent);
+        originalTraitsData.current = JSON.stringify(parsed);
+        setTraitsData(parsed);
+        if (traitsName) setTraitsFilename(traitsName);
+      }
+      const vnvsContent = localStorage.getItem('m2tw_vnvs_file');
+      const vnvsName = localStorage.getItem('m2tw_vnvs_file_name');
+      if (vnvsContent) {
+        const parsed = parseTextFile(vnvsContent);
+        originalTextData.current = JSON.stringify(parsed);
+        setTextData(parsed);
+        if (vnvsName) setTextFilename(vnvsName);
+      }
+    } catch {}
+  }, []);
+
   const loadTraitsFile = useCallback((content, filename) => {
     const parsed = parseTraitsFile(content);
     originalTraitsData.current = JSON.stringify(parsed);
