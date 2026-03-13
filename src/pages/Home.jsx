@@ -10,13 +10,14 @@ import {
   FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle
 } from 'lucide-react';
 
-// Files we look for in the data\ folder
+// Files we look for in the data\ folder (matched by filename only, regardless of subfolder)
 const DATA_FILE_MAP = {
   'export_descr_buildings.txt': 'edb',
   'descr_sm_factions.txt':      'fac',
   'descr_sm_resources.txt':     'res',
   'export_descr_unit.txt':      'unit',
   'descr_events.txt':           'ev',
+  'export_buildings.txt':       'txt',
 };
 
 // TGA map files (campaign or base maps folder)
