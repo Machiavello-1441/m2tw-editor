@@ -122,6 +122,7 @@ function checkBrokenConvertTo(buildings) {
   const allBuildingNames = new Set(buildings.map(b => b.name));
 
   for (const b of buildings) {
+    // Building-level convert_to references another building by name
     if (b.convertTo && !allBuildingNames.has(b.convertTo)) {
       issues.push({
         id: `bad_convert_building_${b.name}`,
@@ -131,17 +132,8 @@ function checkBrokenConvertTo(buildings) {
         detail: `convert_to references a building that does not exist in the EDB.`,
       });
     }
-    for (const l of b.levels) {
-      if (l.convertTo && !allBuildingNames.has(l.convertTo)) {
-        issues.push({
-          id: `bad_convert_level_${b.name}_${l.name}`,
-          severity: 'error',
-          category: 'EDB',
-          title: `Level "${l.name}" in "${b.name}" converts to unknown building "${l.convertTo}"`,
-          detail: `convert_to references a building that does not exist in the EDB.`,
-        });
-      }
-    }
+    // Level-level convert_to is an integer index into the target building's level list
+    // — it is NOT a building or level name, so no cross-reference check needed here.
   }
   return issues;
 }
