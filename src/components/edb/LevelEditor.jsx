@@ -137,11 +137,6 @@ export default function LevelEditor() {
               currentLevelName={selectedLevel}
               edbData={edbData}
             />
-
-            <div>
-              <Label className="text-[10px] text-muted-foreground mb-1 block">Images</Label>
-              <LevelImages levelName={level.name} />
-            </div>
           </CardContent>
         </Card>
 
