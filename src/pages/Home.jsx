@@ -1,26 +1,23 @@
 import React, { useRef, useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
 import { useRefData } from '../components/edb/RefDataContext';
-import { useVnV } from '../components/vnv/VnVContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle, Shield
+  FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle
 } from 'lucide-react';
 
 // Files we look for in the data\ folder (matched by filename only, regardless of subfolder)
 const DATA_FILE_MAP = {
-  'export_descr_buildings.txt':        'edb',
-  'descr_sm_factions.txt':             'fac',
-  'descr_sm_resources.txt':            'res',
-  'export_descr_unit.txt':             'unit',
-  'descr_events.txt':                  'ev',
-  'export_buildings.txt':              'txt',
-  'export_descr_character_traits.txt': 'traits',
-  'export_descr_ancillaries.txt':      'anc',
+  'export_descr_buildings.txt': 'edb',
+  'descr_sm_factions.txt':      'fac',
+  'descr_sm_resources.txt':     'res',
+  'export_descr_unit.txt':      'unit',
+  'descr_events.txt':           'ev',
+  'export_buildings.txt':       'txt',
 };
 
 // TGA map files (campaign or base maps folder)
@@ -60,11 +57,9 @@ function FileStatus({ label, hint, status }) {
 export default function Home() {
   const { loadEDB, edbData, fileName, loadTextFile } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
-  const { loadTraitFile, loadAncFile } = useVnV();
 
   const [fileStatus, setFileStatus] = useState({
     edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle', txt: 'idle',
-    traits: 'idle', anc: 'idle',
     map_heights: 'idle', map_ground_types: 'idle', map_climates: 'idle',
     map_regions: 'idle', map_features: 'idle', map_fog: 'idle',
   });
@@ -97,8 +92,6 @@ export default function Home() {
       ev: loadEventsFile,
       unit: loadUnitsFile,
       txt: loadTextFile,
-      traits: (t) => loadTraitFile(t, 'export_descr_character_traits.txt'),
-      anc: (t) => loadAncFile(t, 'export_descr_ancillaries.txt'),
     };
 
     for (const file of files) {
@@ -139,8 +132,6 @@ export default function Home() {
   };
 
   const edbLoaded = fileStatus.edb === 'ok';
-  const traitsLoaded = fileStatus.traits === 'ok';
-  const ancLoaded = fileStatus.anc === 'ok';
   const anyMapLoaded = MAP_TGA_FILES.some(f => fileStatus[f.replace('.tga', '')] === 'ok');
 
   return (
@@ -205,14 +196,12 @@ export default function Home() {
           </label>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt"        status={fileStatus.edb} />
-            <FileStatus label="Building Text"   hint="text\export_buildings.txt"         status={fileStatus.txt} />
-            <FileStatus label="Factions"        hint="descr_sm_factions.txt"             status={fileStatus.fac} />
-            <FileStatus label="Resources"       hint="descr_sm_resources.txt"            status={fileStatus.res} />
-            <FileStatus label="Units"           hint="export_descr_unit.txt"             status={fileStatus.unit} />
-            <FileStatus label="Events"          hint="descr_events.txt"                  status={fileStatus.ev} />
-            <FileStatus label="Traits (EDCT)"   hint="export_descr_character_traits.txt" status={fileStatus.traits} />
-            <FileStatus label="Ancillaries"     hint="export_descr_ancillaries.txt"      status={fileStatus.anc} />
+            <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt"    status={fileStatus.edb} />
+            <FileStatus label="Building Text"   hint="text\export_buildings.txt"     status={fileStatus.txt} />
+            <FileStatus label="Factions"        hint="descr_sm_factions.txt"         status={fileStatus.fac} />
+            <FileStatus label="Resources"       hint="descr_sm_resources.txt"        status={fileStatus.res} />
+            <FileStatus label="Units"           hint="export_descr_unit.txt"         status={fileStatus.unit} />
+            <FileStatus label="Events"          hint="descr_events.txt"              status={fileStatus.ev} />
           </div>
         </div>
       </div>
@@ -269,24 +258,6 @@ export default function Home() {
               <Castle className="w-4 h-4" />
               Open EDB Editor
               {fileName && <span className="text-xs opacity-60 font-mono">({fileName})</span>}
-              <ArrowRight className="w-4 h-4 ml-auto" />
-            </Button>
-          </Link>
-        )}
-        {traitsLoaded && (
-          <Link to={createPageUrl('TraitEditor')}>
-            <Button variant="outline" className="w-full h-11 gap-2">
-              <Shield className="w-4 h-4" />
-              Open Trait Editor
-              <ArrowRight className="w-4 h-4 ml-auto" />
-            </Button>
-          </Link>
-        )}
-        {ancLoaded && (
-          <Link to={createPageUrl('AncillaryEditor')}>
-            <Button variant="outline" className="w-full h-11 gap-2">
-              <Package className="w-4 h-4" />
-              Open Ancillary Editor
               <ArrowRight className="w-4 h-4 ml-auto" />
             </Button>
           </Link>

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
-import { useVnV } from '../components/vnv/VnVContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,7 +15,6 @@ import ValidationDashboard from '../components/export/ValidationDashboard';
 
 export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile } = useEDB();
-  const { traitData, exportTraitFile, ancData, exportAncFile } = useVnV();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -44,19 +42,7 @@ export default function Export() {
       dataFolder.folder('text').file('export_buildings.txt', textOut);
     }
 
-    // 3. Trait file
-    if (traitData) {
-      const traitText = exportTraitFile();
-      dataFolder.file('export_descr_character_traits.txt', traitText);
-    }
-
-    // 4. Ancillary file
-    if (ancData) {
-      const ancText = exportAncFile();
-      dataFolder.file('export_descr_ancillaries.txt', ancText);
-    }
-
-    // 5. Campaign map TGA files — read from window.__campaignLayers if available
+    // 3. Campaign map TGA files — read from window.__campaignLayers if available
     const campaignLayers = window.__campaignLayers || {};
     const campaignFolder = dataFolder.folder('world/maps/campaign/imperial_campaign');
 
@@ -85,8 +71,6 @@ export default function Export() {
 
   const hasEDB = !!edbData;
   const hasText = textData && Object.keys(textData).length > 0;
-  const hasTraits = !!traitData;
-  const hasAnc = !!ancData;
   const campaignLayers = window.__campaignLayers || {};
   const loadedMapLayers = LAYER_ORDER.filter(k => campaignLayers[k]);
   const dirtyMapLayers = loadedMapLayers.filter(k => {

@@ -5,8 +5,6 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import CampaignMap from './pages/CampaignMap';
-import TraitEditor from './pages/TraitEditor';
-import AncillaryEditor from './pages/AncillaryEditor';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -61,8 +59,6 @@ const AuthenticatedApp = () => {
         />
       ))}
       <Route path="/CampaignMap" element={<LayoutWrapper currentPageName="CampaignMap"><CampaignMap /></LayoutWrapper>} />
-      <Route path="/TraitEditor" element={<LayoutWrapper currentPageName="TraitEditor"><TraitEditor /></LayoutWrapper>} />
-      <Route path="/AncillaryEditor" element={<LayoutWrapper currentPageName="AncillaryEditor"><AncillaryEditor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
