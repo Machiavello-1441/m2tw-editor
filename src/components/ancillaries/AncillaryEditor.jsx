@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, ImageOff } from 'lucide-react';
 import EffectAttributeSelect from '../shared/EffectAttributeSelect';
-import { AncillaryTriggersEditor } from '../shared/TriggerEditor';
+import { AncillaryTriggersEditor } from '../shared/TriggerEditor.jsx';
 
 const ANCILLARY_TYPES = [
   'Academic', 'Court', 'Diplomacy', 'Entertain', 'Family',
