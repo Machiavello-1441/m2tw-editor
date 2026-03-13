@@ -85,6 +85,8 @@ export default function Export() {
 
   const hasEDB = !!edbData;
   const hasText = textData && Object.keys(textData).length > 0;
+  const hasTraits = !!traitData;
+  const hasAnc = !!ancData;
   const campaignLayers = window.__campaignLayers || {};
   const loadedMapLayers = LAYER_ORDER.filter(k => campaignLayers[k]);
   const dirtyMapLayers = loadedMapLayers.filter(k => {
