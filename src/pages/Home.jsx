@@ -7,7 +7,7 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle, Shield, Image
+  FileText, Package, ArrowRight, Info, Castle, Image
 } from 'lucide-react';
 
 function decodeTgaToDataUrl(buffer) {
@@ -269,7 +269,7 @@ export default function Home() {
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Image className="w-4 h-4 text-primary" />
-            Step 3 — Load Ancillary UI Images <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+            Step 2 — Load Ancillary UI Images <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
             Browse to <code className="text-[10px] font-mono bg-accent px-1 rounded">data\ui\ancillaries\</code> to load all <code className="text-[10px] font-mono bg-accent px-1 rounded">.tga</code> images for live previews in the Ancillaries editor.
