@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Package, FileText, Map, AlertCircle, CheckCircle2 } from 'lucide-react';
 import JSZip from 'jszip';
-import { encodeTGA } from '../components/campaign/TgaLoader';
-import { LAYER_DEFS, LAYER_ORDER } from '../components/campaign/MapLayerDefs';
+
 import ValidationDashboard from '../components/export/ValidationDashboard';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 
