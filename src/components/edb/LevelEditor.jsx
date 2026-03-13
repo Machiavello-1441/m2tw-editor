@@ -314,6 +314,8 @@ function BuildingOverview({ building, edbData }) {
           </CardContent>
         </Card>
 
+        <BuildingTreeTextEditor buildingName={building.name} />
+
         <p className="text-xs text-muted-foreground text-center pt-4">
           Select a level from the tree to edit its details
         </p>
