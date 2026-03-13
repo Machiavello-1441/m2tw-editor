@@ -189,7 +189,7 @@ function findGroupForCode(code) {
 function parseCapabilityLine(line) {
   line = line.trim();
   
-  // recruit_pool parsing
+  // recruit_pool
   if (line.startsWith('recruit_pool')) {
     const match = line.match(/recruit_pool\s+"([^"]+)"\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s+requires\s+(.*))?/);
     if (match) {
@@ -205,45 +205,31 @@ function parseCapabilityLine(line) {
     }
   }
   
-  // bonus-style capabilities: "identifier bonus N" or "identifier N"
-  const bonusMatch = line.match(/^(\S+)\s+bonus\s+([-\d.]+)/);
-  if (bonusMatch) {
-    const identifier = bonusMatch[1];
-    const group = findGroupForIdentifier(identifier);
-    return {
-      type: 'bonus',
-      identifier,
-      value: parseFloat(bonusMatch[2]),
-      groupKey: group?.key || null
-    };
-  }
-  
-  // simple value capabilities: "identifier N"
-  const simpleMatch = line.match(/^(\S+)\s+([-\d.]+)/);
-  if (simpleMatch) {
-    const identifier = simpleMatch[1];
-    const group = findGroupForIdentifier(identifier);
-    return {
-      type: 'simple',
-      identifier,
-      value: parseFloat(simpleMatch[2]),
-      groupKey: group?.key || null
-    };
-  }
-  
-  // agent-style: "agent merchant" or "agent_limit merchant 1"
+  // agent_limit / agent
   if (line.startsWith('agent_limit')) {
     const parts = line.split(/\s+/);
-    return { type: 'agent_limit', identifier: 'agent_limit', agentType: parts[1], value: parseInt(parts[2] || 1) };
+    return { type: 'agent_limit', agentType: parts[1], value: parseInt(parts[2] || 1) };
   }
   if (line.startsWith('agent ')) {
     const parts = line.split(/\s+/);
-    return { type: 'agent', identifier: 'agent', agentType: parts[1] };
+    return { type: 'agent', agentType: parts[1], value: 1 };
+  }
+
+  // "identifier bonus N"  →  code = "identifier bonus"
+  const bonusMatch = line.match(/^(\S+)\s+bonus\s+([-\d.]+)/);
+  if (bonusMatch) {
+    const code = bonusMatch[1] + ' bonus';
+    const group = findGroupForCode(code);
+    return { type: 'civilian_bonus', code, value: parseFloat(bonusMatch[2]), groupKey: group?.key || null };
   }
   
-  // body_guard
-  if (line.startsWith('body_guard')) {
-    return { type: 'raw', text: line };
+  // "identifier N"  →  code = "identifier"
+  const simpleMatch = line.match(/^(\S+)\s+([-\d.]+)/);
+  if (simpleMatch) {
+    const code = simpleMatch[1];
+    const group = findGroupForCode(code);
+    const category = group?.category || 'military';
+    return { type: category + '_bonus', code, value: parseFloat(simpleMatch[2]), groupKey: group?.key || null };
   }
   
   return { type: 'raw', text: line };
