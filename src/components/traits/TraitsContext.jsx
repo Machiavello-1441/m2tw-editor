@@ -66,8 +66,32 @@ export function TraitsProvider({ children }) {
     setIsDirty(true);
   }, []);
 
-  const updateTriggers = useCallback((triggers) => {
-    setTraitsData(prev => ({ ...prev, triggers }));
+  const updateTrigger = useCallback((index, updated) => {
+    setTraitsData(prev => {
+      const triggers = [...prev.triggers];
+      triggers[index] = updated;
+      return { ...prev, triggers };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const addTrigger = useCallback((traitName) => {
+    const newTrigger = {
+      name: `Trigger_${traitName}_New`,
+      whenToTest: 'PostBattle',
+      conditions: ['Condition IsGeneral true'],
+      affects: [{ trait: traitName, value: 1, chance: 10 }],
+      rawLines: [],
+    };
+    setTraitsData(prev => ({ ...prev, triggers: [...(prev.triggers || []), newTrigger] }));
+    setIsDirty(true);
+  }, []);
+
+  const deleteTrigger = useCallback((index) => {
+    setTraitsData(prev => {
+      const triggers = prev.triggers.filter((_, i) => i !== index);
+      return { ...prev, triggers };
+    });
     setIsDirty(true);
   }, []);
 
