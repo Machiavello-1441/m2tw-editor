@@ -176,10 +176,10 @@ export default function Home() {
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
             Finds: <span className="font-mono text-foreground/80">export_descr_buildings.txt</span>,{' '}
+            <span className="font-mono text-foreground/80">text\export_buildings.txt</span>,{' '}
             <span className="font-mono text-foreground/80">descr_sm_factions.txt</span>,{' '}
             <span className="font-mono text-foreground/80">descr_sm_resources.txt</span>,{' '}
-            <span className="font-mono text-foreground/80">export_descr_unit.txt</span>,{' '}
-            <span className="font-mono text-foreground/80">descr_events.txt</span>
+            and more — just browse the whole <code className="text-[10px] font-mono bg-accent px-1 rounded">data\</code> folder.
           </p>
         </div>
         <div className="p-4 space-y-3">
