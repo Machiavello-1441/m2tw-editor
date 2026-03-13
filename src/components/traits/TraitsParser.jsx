@@ -292,9 +292,9 @@ export function serializeTraitsFile(data) {
       for (const cond of (trigger.conditions || [])) {
         lines.push(`    ${cond}`);
       }
-      if ((trigger.conditions || []).length > 0) lines.push('');
-      for (const a of (trigger.affects || [])) {
-        lines.push(`    Affects ${a.trait}  ${a.value}  Chance  ${a.chance} `);
+      if (trigger.conditions && trigger.conditions.length > 0) lines.push('');
+      for (const aff of (trigger.affects || [])) {
+        lines.push(`    Affects ${aff.trait}  ${aff.value}  chance  ${aff.chance} `);
       }
       lines.push('');
     }
