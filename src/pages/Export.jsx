@@ -56,7 +56,7 @@ export default function Export() {
       dataFolder.file('export_descr_ancillaries.txt', ancText);
     }
 
-    // 3. Campaign map TGA files — read from window.__campaignLayers if available
+    // 5. Campaign map TGA files — read from window.__campaignLayers if available
     const campaignLayers = window.__campaignLayers || {};
     const campaignFolder = dataFolder.folder('world/maps/campaign/imperial_campaign');
 
