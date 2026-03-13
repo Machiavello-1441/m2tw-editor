@@ -7,17 +7,21 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle
+  FileText, Users, Package, Zap, ArrowRight, Info, Map, Castle, Shield
 } from 'lucide-react';
 
 // Files we look for in the data\ folder (matched by filename only, regardless of subfolder)
 const DATA_FILE_MAP = {
-  'export_descr_buildings.txt': 'edb',
-  'descr_sm_factions.txt':      'fac',
-  'descr_sm_resources.txt':     'res',
-  'export_descr_unit.txt':      'unit',
-  'descr_events.txt':           'ev',
-  'export_buildings.txt':       'txt',
+  'export_descr_buildings.txt':         'edb',
+  'descr_sm_factions.txt':              'fac',
+  'descr_sm_resources.txt':             'res',
+  'export_descr_unit.txt':              'unit',
+  'descr_events.txt':                   'ev',
+  'export_buildings.txt':               'txt',
+  'export_descr_character_traits.txt':  'traits',
+  'export_descr_ancillaries.txt':       'anc',
+  'export_vnvs.txt':                    'vnvs',   // lower-cased for matching
+  'export_ancillaries.txt':             'anctxt',
 };
 
 // TGA map files (campaign or base maps folder)
