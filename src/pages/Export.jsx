@@ -38,10 +38,7 @@ export default function Export() {
 
     // 2. Text file (export_buildings.txt)
     if (textData && Object.keys(textData).length > 0) {
-      let textOut = '';
-      for (const [key, value] of Object.entries(textData)) {
-        textOut += `{${key}}${value}\n`;
-      }
+      const textOut = exportTextFile();
       dataFolder.folder('text').file('export_buildings.txt', textOut);
     }
 
