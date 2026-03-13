@@ -1,18 +1,25 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { parseAncillariesFile, serializeAncillariesFile, parseTextFile, serializeTextFile } from './AncillariesParser';
 
 const AncillariesContext = createContext(null);
 
 export function AncillariesProvider({ children }) {
-  const [ancData, setAncData] = useState(null);       // { ancillaries, triggers }
-  const [textData, setTextData] = useState(null);     // { [key]: value }
+  const [ancData, setAncData] = useState(null);
+  const [textData, setTextData] = useState(null);
   const [ancFilename, setAncFilename] = useState('export_descr_ancillaries.txt');
   const [textFilename, setTextFilename] = useState('export_ancillaries.txt');
   const [isDirty, setIsDirty] = useState(false);
   const [selectedAnc, setSelectedAnc] = useState(null);
+  // tgaImages: { [filename_no_ext]: dataUrl }
+  const [tgaImages, setTgaImages] = useState({});
+
+  // Snapshots for revert
+  const originalAncData = useRef(null);
+  const originalTextData = useRef(null);
 
   const loadAncFile = useCallback((content, filename) => {
     const parsed = parseAncillariesFile(content);
+    originalAncData.current = JSON.stringify(parsed);
     setAncData(parsed);
     setAncFilename(filename || 'export_descr_ancillaries.txt');
     setSelectedAnc(null);
@@ -21,8 +28,14 @@ export function AncillariesProvider({ children }) {
 
   const loadTextFile = useCallback((content, filename) => {
     const parsed = parseTextFile(content);
+    originalTextData.current = JSON.stringify(parsed);
     setTextData(parsed);
     setTextFilename(filename || 'export_ancillaries.txt');
+  }, []);
+
+  const loadTgaImages = useCallback((images) => {
+    // images: { [key]: dataUrl }
+    setTgaImages(prev => ({ ...prev, ...images }));
   }, []);
 
   const updateAncillary = useCallback((index, updated) => {
@@ -36,16 +49,10 @@ export function AncillariesProvider({ children }) {
 
   const addAncillary = useCallback(() => {
     const newAnc = {
-      name: 'new_ancillary',
-      type: 'Court',
-      transferable: 0,
-      image: 'court_noble.tga',
-      unique: false,
-      excludedAncillaries: [],
-      excludeCultures: [],
-      description: 'new_ancillary_desc',
-      effectsDescription: 'new_ancillary_effects_desc',
-      effects: [],
+      name: 'new_ancillary', type: 'Court', transferable: 0,
+      image: 'court_noble.tga', unique: false, excludedAncillaries: [],
+      excludeCultures: [], description: 'new_ancillary_desc',
+      effectsDescription: 'new_ancillary_effects_desc', effects: [],
     };
     setAncData(prev => ({ ...prev, ancillaries: [...(prev?.ancillaries || []), newAnc] }));
     setIsDirty(true);
@@ -59,6 +66,19 @@ export function AncillariesProvider({ children }) {
     setSelectedAnc(null);
     setIsDirty(true);
   }, []);
+
+  const revertAncillaries = useCallback(() => {
+    if (originalAncData.current) setAncData(JSON.parse(originalAncData.current));
+    if (originalTextData.current) setTextData(JSON.parse(originalTextData.current));
+    setSelectedAnc(null);
+    setIsDirty(false);
+  }, []);
+
+  const saveAncillaries = useCallback(() => {
+    if (ancData) originalAncData.current = JSON.stringify(ancData);
+    if (textData) originalTextData.current = JSON.stringify(textData);
+    setIsDirty(false);
+  }, [ancData, textData]);
 
   const updateTextEntry = useCallback((key, value) => {
     setTextData(prev => ({ ...prev, [key]: value }));
@@ -80,17 +100,24 @@ export function AncillariesProvider({ children }) {
     return textData[key] || '';
   }, [textData]);
 
+  const getTgaImage = useCallback((filename) => {
+    if (!filename) return null;
+    const key = filename.replace(/\.tga$/i, '').toLowerCase();
+    return tgaImages[key] || null;
+  }, [tgaImages]);
+
   return (
     <AncillariesContext.Provider value={{
-      ancData, textData,
+      ancData, textData, tgaImages,
       ancFilename, textFilename,
       isDirty, selectedAnc,
       setSelectedAnc,
-      loadAncFile, loadTextFile,
+      loadAncFile, loadTextFile, loadTgaImages,
       updateAncillary, addAncillary, deleteAncillary,
+      revertAncillaries, saveAncillaries,
       updateTextEntry,
       exportAncFile, exportTextFile,
-      getText,
+      getText, getTgaImage,
     }}>
       {children}
     </AncillariesContext.Provider>
