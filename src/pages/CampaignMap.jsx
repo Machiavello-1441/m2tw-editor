@@ -103,12 +103,12 @@ export default function CampaignMap() {
   const jumpRef = useRef(null);
   const folderInputRef = useRef();
 
-  // Auto-load files pre-staged from Home page
+  // Auto-load files pre-staged from Home page (keep them in window for re-navigation)
   React.useEffect(() => {
     const cached = window._m2tw_map_files;
     if (cached && cached.length > 0) {
+      // Don't null it out — keep it so re-visiting the page reloads the TGA layers
       handleFolderImport({ files: cached, target: { value: '' } });
-      window._m2tw_map_files = null;
     }
     const handler = (e) => {
       if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
