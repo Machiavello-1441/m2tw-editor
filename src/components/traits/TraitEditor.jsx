@@ -33,6 +33,7 @@ function PreviewText({ text }) {
 
 export default function TraitEditor() {
   const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useTraits();
+  const { traitAttributeNames } = useModData();
   const [expandedLevel, setExpandedLevel] = useState(0);
 
   if (selectedTrait === null || !traitsData) {
