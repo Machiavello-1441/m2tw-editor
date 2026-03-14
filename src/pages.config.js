@@ -48,23 +48,23 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AncillariesEditor from './pages/AncillariesEditor';
+import CampaignMap from './pages/CampaignMap';
 import EDBEditor from './pages/EDBEditor';
 import Export from './pages/Export';
 import Home from './pages/Home';
 import TextEditor from './pages/TextEditor';
 import TraitsEditor from './pages/TraitsEditor';
-import CampaignMap from './pages/CampaignMap';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AncillariesEditor": AncillariesEditor,
+    "CampaignMap": CampaignMap,
     "EDBEditor": EDBEditor,
     "Export": Export,
     "Home": Home,
     "TextEditor": TextEditor,
     "TraitsEditor": TraitsEditor,
-    "CampaignMap": CampaignMap,
 }
 
 export const pagesConfig = {

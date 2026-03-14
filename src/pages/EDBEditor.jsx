@@ -8,6 +8,7 @@ import HiddenResourceEditor from '../components/edb/HiddenResourceEditor';
 import RefFileLoader from '../components/edb/RefFileLoader';
 import { Button } from '@/components/ui/button';
 import { Castle, Code2, Image } from 'lucide-react';
+import AutoSavePanel from '../components/edb/AutoSavePanel';
 
 function decodeTgaToDataUrl(buffer) {
   const data = new Uint8Array(buffer);
