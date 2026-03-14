@@ -64,7 +64,7 @@ function PresetPicker({ layerId, paintColor, onColorChange }) {
   );
 }
 
-export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onRevert, onExport, hasUnsaved, dirtyLayers }) {
+export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onRevert, onExport, hasUnsaved, dirtyLayers, hasSavePoint }) {
   const { active, layerId, paintColor, tool, brushSize } = paintState;
   const [showPresets, setShowPresets] = useState(false);
 
