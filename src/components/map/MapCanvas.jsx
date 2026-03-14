@@ -70,7 +70,7 @@ export function floodFillRGB(data, width, height, sx, sy, nr, ng, nb, tolerance 
 function drawPixelGrid(ctx, layerW, layerH, mapW, mapH, scale, color = 'rgba(255,255,255,0.15)') {
   const pxW = mapW / layerW * scale;
   const pxH = mapH / layerH * scale;
-  if (pxW < 4 || pxH < 4) return;
+  if (pxW < 2 || pxH < 2) return;
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = 0.5 / scale;
