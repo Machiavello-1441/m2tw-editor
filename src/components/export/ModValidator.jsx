@@ -2,8 +2,6 @@
 // Returns: { errors: Issue[], warnings: Issue[] }
 // Issue: { id, severity, category, title, detail, context? }
 
-import { LAYER_DEFS, LAYER_ORDER } from '../campaign/MapLayerDefs';
-
 // ─── EDB Checks ─────────────────────────────────────────────────────────────
 
 function checkDuplicateBuildingNames(buildings) {
