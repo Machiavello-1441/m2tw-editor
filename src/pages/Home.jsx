@@ -103,10 +103,22 @@ export default function Home() {
   const { loadEDB, edbData, fileName, loadTextFile } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
 
-  const [fileStatus, setFileStatus] = useState({
-    edb: 'idle', fac: 'idle', res: 'idle', ev: 'idle', unit: 'idle', txt: 'idle',
-    traits: 'idle', anc: 'idle', vnvs: 'idle', anctxt: 'idle',
-    anc_images: 'idle',
+  const [fileStatus, setFileStatus] = useState(() => {
+    // Show 'ok' for files already cached in localStorage from a previous session
+    const ls = (k) => { try { return !!localStorage.getItem(k); } catch { return false; } };
+    return {
+      edb:      ls('m2tw_edb_file')        ? 'ok' : 'idle',
+      fac:      ls('m2tw_factions_file')   ? 'ok' : 'idle',
+      res:      ls('m2tw_resources_file')  ? 'ok' : 'idle',
+      ev:       ls('m2tw_events_file')     ? 'ok' : 'idle',
+      unit:     ls('m2tw_units_file')      ? 'ok' : 'idle',
+      txt:      ls('m2tw_edb_txt_file')    ? 'ok' : 'idle',
+      traits:   ls('m2tw_traits_file')     ? 'ok' : 'idle',
+      anc:      ls('m2tw_anc_file')        ? 'ok' : 'idle',
+      vnvs:     ls('m2tw_vnvs_file')       ? 'ok' : 'idle',
+      anctxt:   ls('m2tw_anctxt_file')     ? 'ok' : 'idle',
+      anc_images: 'idle',
+    };
   });
 
   const [modName, setModName] = useState(() => {
@@ -136,13 +148,12 @@ export default function Home() {
       txt: loadTextFile,
     };
 
-    // Storage keys for traits/ancillaries/units files (loaded by their own editors)
+    // Storage keys for traits/ancillaries files (loaded by their own editors)
     const storeKeys = {
       traits:  'm2tw_traits_file',
       anc:     'm2tw_anc_file',
       vnvs:    'm2tw_vnvs_file',
       anctxt:  'm2tw_anctxt_file',
-      unit:    'm2tw_edu_file',
     };
 
     for (const file of files) {
@@ -160,8 +171,6 @@ export default function Home() {
           localStorage.setItem(storeKeys[key], text);
           localStorage.setItem(storeKeys[key] + '_name', file.name);
         } catch {}
-        // Also load via context method if available (for immediate UI updates)
-        loaderMap[key]?.(text);
       } else {
         loaderMap[key]?.(text);
       }
