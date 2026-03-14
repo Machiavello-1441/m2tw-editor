@@ -254,11 +254,52 @@ export default function CampaignMap() {
   };
 
   // ── Save / Revert / Export TGA ─────────────────────────────────────────────
-  const handleSave = () => setDirtyLayers(new Set());
-  const handleRevert = () => {
-    // Reset dirty layers to their original bitmaps — for simplicity tell user to reload
+  const handleSave = useCallback(() => {
+    // Snapshot current layer pixel data + overlay items
+    const layerSnap = {};
+    for (const [id, layer] of Object.entries(layers)) {
+      if (layer?.data) {
+        layerSnap[id] = {
+          data: new Uint8ClampedArray(layer.data),
+          width: layer.width,
+          height: layer.height,
+        };
+      }
+    }
+    savedSnapshot.current = {
+      layers: layerSnap,
+      overlayItems: JSON.parse(JSON.stringify(overlayItems)),
+      stratRaw: stratData?.raw ?? null,
+    };
     setDirtyLayers(new Set());
-  };
+  }, [layers, overlayItems, stratData]);
+
+  const handleRevert = useCallback(() => {
+    const snap = savedSnapshot.current;
+    if (!snap) return;
+    // Restore layer pixel data + bitmaps
+    const promises = Object.entries(snap.layers).map(([id, { data, width, height }]) =>
+      createImageBitmap(new ImageData(new Uint8ClampedArray(data), width, height)).then(bitmap => ({ id, data, width, height, bitmap }))
+    );
+    Promise.all(promises).then(results => {
+      setLayers(prev => {
+        const next = { ...prev };
+        for (const { id, data, width, height, bitmap } of results) {
+          next[id] = { ...prev[id], data: new Uint8ClampedArray(data), width, height, bitmap };
+        }
+        return next;
+      });
+    });
+    // Restore overlay items
+    const restoredItems = JSON.parse(JSON.stringify(snap.overlayItems));
+    setOverlayItems(restoredItems);
+    if (snap.stratRaw) {
+      try { sessionStorage.setItem('m2tw_strat_raw', snap.stratRaw); } catch {}
+      setStratDataRaw(prev => prev ? { ...prev, items: restoredItems, raw: snap.stratRaw } : prev);
+    }
+    setSelectedItem(null);
+    setDirtyLayers(new Set());
+  }, []);
   const handleExportTGA = () => {
     dirtyLayers.forEach(layerId => {
       const layer = layers[layerId];
