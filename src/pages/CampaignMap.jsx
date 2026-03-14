@@ -304,6 +304,7 @@ export default function CampaignMap() {
     }
     setSelectedItem(null);
     setDirtyLayers(new Set());
+    setOverlayDirty(false);
   }, []);
   const handleExportTGA = () => {
     dirtyLayers.forEach(layerId => {
