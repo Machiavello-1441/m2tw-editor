@@ -193,15 +193,31 @@ export default function CampaignMap() {
     }
   }, []);
 
-  // ── Canvas click (for placing strat items) ─────────────────────────────────
+  // Derive map dimensions from loaded layers
+  const mapH = (() => {
+    const reg = layers['regions'];
+    if (reg?.bitmap) return reg.bitmap.height;
+    for (const def of LAYER_DEFS) { const s = layers[def.id]; if (s?.bitmap) return s.bitmap.height; }
+    return 0;
+  })();
+  const mapW2 = (() => {
+    const reg = layers['regions'];
+    if (reg?.bitmap) return reg.bitmap.width;
+    for (const def of LAYER_DEFS) { const s = layers[def.id]; if (s?.bitmap) return s.bitmap.width; }
+    return 0;
+  })();
+
+  // ── Canvas click (for placing strat items) — Y is flipped ─────────────────
   const handleRegionClick = useCallback((rx, ry) => {
     if (!pendingPlace) return;
-    const newItem = { ...pendingPlace, id: Date.now(), x: rx, y: ry };
+    // ry from MapCanvas is in pixel-space (y=0 top), flip to M2TW space
+    const stratY = mapH > 0 ? mapH - 1 - ry : ry;
+    const newItem = { ...pendingPlace, id: Date.now(), x: rx, y: stratY };
     setOverlayItems(prev => [...prev, newItem]);
     setStratData(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
     setPendingPlace(null);
     setSelectedItem(newItem);
-  }, [pendingPlace]);
+  }, [pendingPlace, mapH]);
 
   const handleAddItem = (itemTemplate) => {
     setPendingPlace(itemTemplate);
