@@ -130,8 +130,8 @@ const inputCls = 'h-6 px-2 rounded border border-border bg-background text-[11px
 const selectCls = 'h-6 px-1 rounded border border-border bg-background text-[11px] font-mono text-white focus:outline-none';
 
 // ── Main ConditionRow ────────────────────────────────────────────────────────
-// Props: condStr, onChange, onDelete, isFirst, buildingNames, buildingLevelNames, traitNames, factionNames, traitAttributeNames
-export default function ConditionRow({ condStr, onChange, onDelete, isFirst, buildingNames = [], buildingLevelNames = [], traitNames = [], factionNames = [], traitAttributeNames = [] }) {
+export default function ConditionRow({ condStr, onChange, onDelete, isFirst }) {
+  const { buildingNames, buildingLevelNames, traitNames, factionNames, traitAttributeNames } = useModData();
   const cond = parseConditionString(condStr);
   const def = CONDITION_DEFS.find(d => d.key === cond.type);
 
