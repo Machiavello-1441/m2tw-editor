@@ -141,11 +141,6 @@ export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, ent
                           key={ci}
                           condStr={cond}
                           isFirst={ci === 0}
-                          buildingNames={buildingNames}
-                          buildingLevelNames={buildingLevelNames}
-                          traitNames={traitNames}
-                          factionNames={factionNames}
-                          traitAttributeNames={traitAttributeNames}
                           onChange={newStr => {
                             const conds = [...t.conditions];
                             conds[ci] = newStr;
