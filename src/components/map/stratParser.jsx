@@ -81,8 +81,8 @@ export function parseDescrStrat(text) {
     const line = lines[i].replace(/;.*$/, '').trim();
     if (!line) continue;
 
-    // Resources: "resource coal, x 123, y 456"
-    const resMatch = line.match(/^resource\s+(\w+),\s*x\s+(\d+),\s*y\s+(\d+)/);
+    // Resources: "resource coal, x 123, y 456" or "resource coal x 123 y 456"
+    const resMatch = line.match(/^resource\s+(\w+)[,\s]+x\s+(\d+)[,\s]+y\s+(\d+)/);
     if (resMatch) {
       items.push({ id: id++, category: 'resource', type: resMatch[1], x: parseInt(resMatch[2]), y: parseInt(resMatch[3]) });
       continue;
