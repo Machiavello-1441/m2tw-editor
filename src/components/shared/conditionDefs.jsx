@@ -86,7 +86,7 @@ export const CONDITION_DEFS = [
   { key: 'InBattle',              label: 'InBattle',               argType: 'bool' },
 
   // ─── Faction / Culture ──────────────────────────────────────────────────────
-  { key: 'FactionType',           label: 'FactionType',            argType: 'string',       hint: 'faction internal name' },
+  { key: 'FactionType',           label: 'FactionType',            argType: 'faction',      hint: 'faction internal name' },
   { key: 'IsLocalFaction',        label: 'IsLocalFaction',         argType: 'bool' },
   { key: 'FactionIsAtWar',        label: 'FactionIsAtWar',         argType: 'bool' },
   { key: 'Culture',               label: 'Culture',                argType: 'culture' },
@@ -97,12 +97,16 @@ export const CONDITION_DEFS = [
   { key: 'AncillaryExists',       label: 'AncillaryExists',        argType: 'string',       hint: 'ancillary internal name' },
   { key: 'CharacterHasAncillary', label: 'CharacterHasAncillary',  argType: 'string' },
 
+  // ─── Building Finished ──────────────────────────────────────────────────────
+  { key: 'SettlementBuildingFinished', label: 'SettlementBuildingFinished', argType: 'compare_building', hint: '>= building_level_name' },
+
   // ─── Misc ───────────────────────────────────────────────────────────────────
   { key: 'IsExecutioner',         label: 'IsExecutioner',          argType: 'bool' },
   { key: 'IsTorturer',            label: 'IsTorturer',             argType: 'bool' },
   { key: 'EndedInSiege',          label: 'EndedInSiege',           argType: 'bool' },
   { key: 'Random',                label: 'Random',                 argType: 'int',          hint: 'percentage (0–100)' },
-  { key: 'AgentType',             label: 'AgentType',              argType: 'string',       hint: 'spy/assassin/merchant/...' },
+  { key: 'AgentType',             label: 'AgentType',              argType: 'agent',        hint: 'spy/assassin/merchant/...' },
+  { key: 'Attribute',             label: 'Attribute',              argType: 'compare_attribute', hint: 'TraitAttribute >= value' },
   { key: 'CharacterReligion',     label: 'CharacterReligion',      argType: 'religion' },
 ];
 
