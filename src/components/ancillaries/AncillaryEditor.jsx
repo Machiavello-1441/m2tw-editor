@@ -4,9 +4,11 @@ import { useEDB } from '../edb/EDBContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, ImageOff } from 'lucide-react';
+import { Plus, Trash2, ImageOff, Wand2 } from 'lucide-react';
 import EffectAttributeSelect from '../shared/EffectAttributeSelect';
 import TriggerEditor from '../shared/TriggerEditor';
+import ValidationPanel from '../shared/ValidationPanel';
+import { buildEffectsDescription, validateAncillariesData } from '../shared/effectsDescriptionBuilder';
 
 const ANCILLARY_TYPES = [
   'Academic', 'Court', 'Diplomacy', 'Entertain', 'Family',
