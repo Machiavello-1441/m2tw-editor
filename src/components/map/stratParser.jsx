@@ -113,18 +113,26 @@ export function parseDescrStrat(text) {
       continue;
     }
 
-    // Characters: look for "character <name>, <type>, ..." lines with a "coordinates x, y" line following
-    const charMatch = line.match(/^character\s+(.+),\s*(general|admiral|spy|merchant|diplomat|priest|assassin|princess|heretic|witch|inquisitor|named character)/i);
+    // Characters: "character <name>, <type>, ..." optionally with inline x/y or a following "coordinates x y" line
+    const charMatch = line.match(/^character\s+(.+?),\s*(general|admiral|spy|merchant|diplomat|priest|assassin|princess|heretic|witch|inquisitor|named character)/i);
     if (charMatch) {
       const charName = charMatch[1].trim();
       const charType = charMatch[2].toLowerCase();
-      // Look ahead for coordinates
-      for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
-        const cl = lines[j].replace(/;.*$/, '').trim();
-        const coordMatch = cl.match(/^coordinates\s+(\d+),?\s*(\d+)/);
-        if (coordMatch) {
-          items.push({ id: id++, category: 'character', charType, name: charName, x: parseInt(coordMatch[1]), y: parseInt(coordMatch[2]) });
-          break;
+      // Check for inline coordinates: "x 123, y 456" on same line
+      const inlineCoord = line.match(/[,\s]+x\s+(\d+)[,\s]+y\s+(\d+)/i);
+      if (inlineCoord) {
+        items.push({ id: id++, category: 'character', charType, name: charName, x: parseInt(inlineCoord[1]), y: parseInt(inlineCoord[2]) });
+      } else {
+        // Look ahead for coordinates
+        for (let j = i + 1; j < Math.min(i + 20, lines.length); j++) {
+          const cl = lines[j].replace(/;.*$/, '').trim();
+          const coordMatch = cl.match(/^coordinates\s+(\d+)[,\s]+(\d+)/);
+          if (coordMatch) {
+            items.push({ id: id++, category: 'character', charType, name: charName, x: parseInt(coordMatch[1]), y: parseInt(coordMatch[2]) });
+            break;
+          }
+          // Stop if we hit another top-level keyword
+          if (/^(character|agent|settlement|resource|fort|watchtower|end)\b/.test(cl)) break;
         }
       }
       continue;
