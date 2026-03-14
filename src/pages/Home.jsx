@@ -243,6 +243,7 @@ export default function Home() {
             <Castle className="w-4 h-4 text-primary" />
             Step 1 — Load <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\</code> Folder
           </h2>
+
           <p className="text-[11px] text-muted-foreground mt-1">
             Finds buildings, traits, ancillaries, factions, resources, units, events and text files — just browse the whole <code className="text-[10px] font-mono bg-accent px-1 rounded">data\</code> folder.
             Traits &amp; ancillaries files are cached and auto-loaded when you open their editors.
@@ -326,7 +327,7 @@ export default function Home() {
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Image className="w-4 h-4 text-primary" />
-            Step 2 — Load Ancillary UI Images <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+            Step 3 — Load Ancillary UI Images <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
             Browse to <code className="text-[10px] font-mono bg-accent px-1 rounded">data\ui\ancillaries\</code> to load all <code className="text-[10px] font-mono bg-accent px-1 rounded">.tga</code> images for live previews in the Ancillaries editor.
