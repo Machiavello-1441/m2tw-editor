@@ -3,13 +3,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Trash2, ChevronDown, ChevronRight, Zap } from 'lucide-react';
+import WhenToTestSelect from './WhenToTestSelect';
+import ConditionRow from './ConditionRow';
+import { serializeCondition } from './conditionDefs';
 
 const inputCls = 'h-7 text-xs font-mono bg-background text-white';
-const textareaCls = 'w-full text-xs bg-background border border-border rounded px-2 py-1.5 text-white font-mono resize-none focus:outline-none focus:ring-1 focus:ring-primary';
 
 // mode: 'trait' | 'ancillary'
-export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode }) {
+export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode, buildings = [], traits = [] }) {
   const [expanded, setExpanded] = useState(null);
+
+  const addCondition = (trigger, i) => {
+    const isFirst = (trigger.conditions || []).length === 0;
+    const newCond = isFirst
+      ? serializeCondition({ prefix: 'Condition', condName: 'IsGeneral', operator: '', value1: 'true', value2: '' })
+      : serializeCondition({ prefix: 'and', condName: 'IsGeneral', operator: '', value1: 'true', value2: '' });
+    onUpdate(i, { ...trigger, conditions: [...(trigger.conditions || []), newCond] });
+  };
 
   return (
     <div>
@@ -47,39 +57,41 @@ export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, ent
                     <Input value={t.name} onChange={e => onUpdate(i, { ...t, name: e.target.value })} className={inputCls + ' mt-0.5'} />
                   </div>
 
-                  {/* WhenToTest */}
+                  {/* WhenToTest — searchable dropdown */}
                   <div>
                     <Label className="text-[10px] text-muted-foreground">WhenToTest</Label>
-                    <Input value={t.whenToTest} onChange={e => onUpdate(i, { ...t, whenToTest: e.target.value })}
-                      className={inputCls + ' mt-0.5'} placeholder="e.g. PostBattle" />
+                    <WhenToTestSelect value={t.whenToTest} onChange={v => onUpdate(i, { ...t, whenToTest: v })} />
                   </div>
 
                   {/* Conditions */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-1.5">
                       <Label className="text-[10px] text-muted-foreground">Conditions</Label>
-                      <button className="text-[10px] text-primary hover:underline"
-                        onClick={() => onUpdate(i, { ...t, conditions: [...(t.conditions || []), 'Condition '] })}>
-                        + Add line
+                      <button className="text-[10px] text-primary hover:underline" onClick={() => addCondition(t, i)}>
+                        + Add condition
                       </button>
                     </div>
                     <div className="space-y-1">
                       {(t.conditions || []).map((cond, ci) => (
-                        <div key={ci} className="flex items-center gap-1">
-                          <Input value={cond}
-                            onChange={e => {
-                              const conds = [...t.conditions];
-                              conds[ci] = e.target.value;
-                              onUpdate(i, { ...t, conditions: conds });
-                            }}
-                            className={inputCls + ' flex-1'} />
-                          <button onClick={() => {
+                        <ConditionRow
+                          key={ci}
+                          rawValue={cond}
+                          isFirst={ci === 0}
+                          buildings={buildings}
+                          traits={traits}
+                          onChange={newRaw => {
+                            const conds = [...t.conditions];
+                            conds[ci] = newRaw;
+                            onUpdate(i, { ...t, conditions: conds });
+                          }}
+                          onDelete={() => {
                             onUpdate(i, { ...t, conditions: t.conditions.filter((_, j) => j !== ci) });
-                          }} className="p-0.5 hover:bg-destructive/20 rounded shrink-0">
-                            <Trash2 className="w-3 h-3 text-destructive" />
-                          </button>
-                        </div>
+                          }}
+                        />
                       ))}
+                      {(t.conditions || []).length === 0 && (
+                        <p className="text-[10px] text-muted-foreground italic">No conditions — click + Add condition</p>
+                      )}
                     </div>
                   </div>
 
