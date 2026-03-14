@@ -36,7 +36,7 @@ function PreviewText({ text }) {
 
 export default function AncillaryEditor() {
   const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
-  useModData(); // ensure context is consumed (data flows through TriggerEditor via useModData)
+  const { traitNames, traitAttributeNames } = useModData();
 
   if (selectedAnc === null || !ancData) {
     return (
@@ -257,12 +257,10 @@ export default function AncillaryEditor() {
           onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
           entityName={anc.name}
           mode="ancillary"
-          traitNames={traitNames}
-          traitAttributeNames={traitAttributeNames}
         />
 
         {/* Validation */}
-        <ValidationPanel onValidate={() => validateAncillariesData(ancData, getText)} />
+        <ValidationPanel onValidate={() => validateAncillariesData(ancData, getText)} watchData={ancData} />
       </div>
     </div>
   );
