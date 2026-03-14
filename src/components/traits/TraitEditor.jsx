@@ -351,7 +351,11 @@ export default function TraitEditor() {
           entityName={trait.name}
           mode="trait"
           traitNames={(traitsData?.traits || []).map(tr => tr.name)}
+          traitAttributeNames={traitAttributeNames}
         />
+
+        {/* Validation */}
+        <ValidationPanel onValidate={() => validateTraitsData(traitsData, getText)} />
       </div>
     </div>
   );
