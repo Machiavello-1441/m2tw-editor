@@ -66,6 +66,7 @@ const AuthenticatedApp = () => {
       <Route path="/TraitsEditor" element={<LayoutWrapper currentPageName="TraitsEditor"><TraitsEditor /></LayoutWrapper>} />
       <Route path="/AncillariesEditor" element={<LayoutWrapper currentPageName="AncillariesEditor"><AncillariesEditor /></LayoutWrapper>} />
       <Route path="/LuaScripts" element={<LayoutWrapper currentPageName="LuaScripts"><LuaScripts /></LayoutWrapper>} />
+      <Route path="/UnitEditor" element={<LayoutWrapper currentPageName="UnitEditor"><UnitEditor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
