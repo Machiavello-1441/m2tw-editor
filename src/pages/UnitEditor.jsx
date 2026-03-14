@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Swords, Upload, Download, Plus, FileText, CheckCircle2, Copy } from 'lucide-react';
 import UnitList from '../components/units/UnitList';
 import UnitEditorPanel from '../components/units/UnitEditor';
-import { parseEDU, serializeEDU, createDefaultUnit } from '../components/units/EDUParser';
+import { parseEDU, serializeEDU, serializeUnit, createDefaultUnit } from '../components/units/EDUParser';
 
 const STORAGE_KEY = 'm2tw_edu_units';
 
@@ -81,7 +81,6 @@ export default function UnitEditorPage() {
 
   const handleCopyUnit = () => {
     if (!active) return;
-    const { serializeUnit } = require('../components/units/EDUParser');
     navigator.clipboard.writeText(serializeUnit(active));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
