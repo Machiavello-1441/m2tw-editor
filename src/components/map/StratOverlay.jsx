@@ -200,7 +200,7 @@ export default function StratOverlay({
                 stroke="black" strokeWidth={2} paintOrder="stroke"
                 style={{ pointerEvents: 'none', userSelect: 'none' }}
               >
-                {item => item.type || item.charType}
+                {displayItem.type || displayItem.charType}
               </text>
             )}
           </g>
