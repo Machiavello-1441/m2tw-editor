@@ -57,22 +57,18 @@ export function TraitsProvider({ children }) {
     try { localStorage.setItem('m2tw_vnvs_file', content); localStorage.setItem('m2tw_vnvs_file_name', fn); } catch {}
   }, []);
 
-  // Persist to localStorage whenever traitsData or textData changes
+  // Persist to localStorage whenever traitsData or textData changes (crash protection)
   useEffect(() => {
     if (!traitsData) return;
     try {
-      const { serializeTraitsFile } = require('./TraitsParser');
-      const content = serializeTraitsFile(traitsData);
-      localStorage.setItem('m2tw_traits_file', content);
+      localStorage.setItem('m2tw_traits_file', serializeTraitsFile(traitsData));
     } catch {}
   }, [traitsData]);
 
   useEffect(() => {
     if (!textData) return;
     try {
-      const { serializeTextFile } = require('./TraitsParser');
-      const content = serializeTextFile(textData);
-      localStorage.setItem('m2tw_vnvs_file', content);
+      localStorage.setItem('m2tw_vnvs_file', serializeTextFile(textData));
     } catch {}
   }, [textData]);
 
