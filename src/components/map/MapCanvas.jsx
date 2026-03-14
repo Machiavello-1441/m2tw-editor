@@ -319,8 +319,8 @@ export default function MapCanvas({
       const mapX = (sx - transform.x) / transform.scale;
       const mapY = (sy - transform.y) / transform.scale;
       const regL = layers['regions'];
-      const rx = Math.round(mapX * ((regL?.width || mapW) / mapW));
-      const ry = Math.round(mapY * ((regL?.height || mapH) / mapH));
+      const rx = Math.floor(mapX * ((regL?.width || mapW) / mapW));
+      const ry = Math.floor(mapY * ((regL?.height || mapH) / mapH));
       onRegionClick(rx, ry);
     }
   }, [mapW, onRegionClick, transform, layers]);
