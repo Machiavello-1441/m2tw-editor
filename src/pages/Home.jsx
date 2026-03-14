@@ -136,12 +136,13 @@ export default function Home() {
       txt: loadTextFile,
     };
 
-    // Storage keys for traits/ancillaries files (loaded by their own editors)
+    // Storage keys for traits/ancillaries/units files (loaded by their own editors)
     const storeKeys = {
       traits:  'm2tw_traits_file',
       anc:     'm2tw_anc_file',
       vnvs:    'm2tw_vnvs_file',
       anctxt:  'm2tw_anctxt_file',
+      unit:    'm2tw_edu_file',
     };
 
     for (const file of files) {
@@ -159,6 +160,8 @@ export default function Home() {
           localStorage.setItem(storeKeys[key], text);
           localStorage.setItem(storeKeys[key] + '_name', file.name);
         } catch {}
+        // Also load via context method if available (for immediate UI updates)
+        loaderMap[key]?.(text);
       } else {
         loaderMap[key]?.(text);
       }
