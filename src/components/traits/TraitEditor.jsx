@@ -30,6 +30,7 @@ function PreviewText({ text }) {
 
 export default function TraitEditor() {
   const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useTraits();
+  // traitsData already available above — used for traitNames in TriggerEditor
   const [expandedLevel, setExpandedLevel] = useState(0);
 
   if (selectedTrait === null || !traitsData) {
