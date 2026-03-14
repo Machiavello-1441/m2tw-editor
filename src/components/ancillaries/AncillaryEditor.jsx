@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAncillaries } from './AncillariesContext';
+import { useEDB } from '../edb/EDBContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,11 @@ function PreviewText({ text }) {
 
 export default function AncillaryEditor() {
   const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
+  const { edbData } = useEDB();
+  // Building tree names for SettlementBuildingExists condition dropdown
+  const buildingNames = edbData?.buildings?.map(b => b.name) ?? [];
+  // Trait names from ancillaries file Trait conditions (ancillaries don't have their own trait list, use raw ancillary names)
+  const traitNames = [];
 
   if (selectedAnc === null || !ancData) {
     return (
@@ -241,6 +247,8 @@ export default function AncillaryEditor() {
           onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
           entityName={anc.name}
           mode="ancillary"
+          buildings={buildingNames}
+          traits={traitNames}
         />
       </div>
     </div>
