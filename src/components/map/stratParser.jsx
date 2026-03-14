@@ -88,10 +88,28 @@ export function parseDescrStrat(text) {
       continue;
     }
 
-    // Fortifications: "fort x 123, y 456" or "watchtower x 123, y 456"
-    const fortMatch = line.match(/^(fort|watchtower)\s+x\s+(\d+),\s*y\s+(\d+)/);
+    // Fortifications: "fort x 123, y 456" or multiline with x_pos/y_pos
+    const fortMatch = line.match(/^(fort|watchtower)\s+x\s+(\d+),?\s*y\s+(\d+)/);
     if (fortMatch) {
       items.push({ id: id++, category: 'fortification', type: fortMatch[1], x: parseInt(fortMatch[2]), y: parseInt(fortMatch[3]) });
+      continue;
+    }
+    // Fortifications multiline format: "fort" or "watchtower" on its own line
+    const fortKeyMatch = line.match(/^(fort|watchtower)$/);
+    if (fortKeyMatch) {
+      const fortType = fortKeyMatch[1];
+      let fx = null, fy = null;
+      for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
+        const cl = lines[j].replace(/;.*$/, '').trim();
+        const xm = cl.match(/^x_?pos\s+(\d+)/i) || cl.match(/^x\s+(\d+)/i);
+        const ym = cl.match(/^y_?pos\s+(\d+)/i) || cl.match(/^y\s+(\d+)/i);
+        if (xm) fx = parseInt(xm[1]);
+        if (ym) fy = parseInt(ym[1]);
+        if (fx !== null && fy !== null) break;
+      }
+      if (fx !== null && fy !== null) {
+        items.push({ id: id++, category: 'fortification', type: fortType, x: fx, y: fy });
+      }
       continue;
     }
 
