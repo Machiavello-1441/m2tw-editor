@@ -74,9 +74,24 @@ function TraitNameSelect({ value, onChange, traitNames }) {
 }
 
 // mode: 'trait' | 'ancillary'
-export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode }) {
+export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode, traitNames = [], traitAttributeNames = [] }) {
   const [expanded, setExpanded] = useState(null);
-  const { traitNames, traitAttributeNames, factionNames, buildingNames, buildingLevelNames } = useModData();
+
+  let buildingNames = [];
+  let buildingLevelNames = [];
+  try {
+    const { edbData } = useEDB();
+    buildingNames = (edbData?.buildings || []).map(b => b.name);
+    // Collect all level names from all buildings
+    for (const b of (edbData?.buildings || [])) {
+      for (const lvl of (b.levels || [])) {
+        if (lvl.name) buildingLevelNames.push(lvl.name);
+      }
+    }
+  } catch {}
+
+  // Load faction names from cached descr_sm_factions.txt
+  const [factionNames] = useState(() => getFactionNames());
 
   const addCondition = (trigger, i) => {
     const newCond = serializeCondition({ connector: trigger.conditions.length === 0 ? 'Condition' : 'and', type: 'IsGeneral', boolVal: 'true' });
