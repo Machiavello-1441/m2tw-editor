@@ -75,6 +75,21 @@ export function AncillariesProvider({ children }) {
     setTgaImages(prev => ({ ...prev, ...images }));
   }, []);
 
+  // Persist to localStorage on every change (crash protection)
+  useEffect(() => {
+    if (!ancData) return;
+    try {
+      localStorage.setItem('m2tw_anc_file', serializeAncillariesFile(ancData));
+    } catch {}
+  }, [ancData]);
+
+  useEffect(() => {
+    if (!textData) return;
+    try {
+      localStorage.setItem('m2tw_anctxt_file', serializeTextFile(textData));
+    } catch {}
+  }, [textData]);
+
   const updateAncillary = useCallback((index, updated) => {
     setAncData(prev => {
       const ancillaries = [...prev.ancillaries];
