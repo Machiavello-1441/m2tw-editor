@@ -101,7 +101,7 @@ export function parseDescrStrat(text) {
       const charName = charMatch[1].trim();
       const charType = charMatch[2].toLowerCase();
       // Look ahead for coordinates
-      for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
+      for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
         const cl = lines[j].replace(/;.*$/, '').trim();
         const coordMatch = cl.match(/^coordinates\s+(\d+),?\s*(\d+)/);
         if (coordMatch) {
@@ -109,6 +109,23 @@ export function parseDescrStrat(text) {
           break;
         }
       }
+      continue;
+    }
+
+    // Agents: "agent <name>, <type>, ..." (separate from named character)
+    const agentMatch = line.match(/^agent\s+(.+),\s*(\w+)/i);
+    if (agentMatch) {
+      const agentName = agentMatch[1].trim();
+      const agentType = agentMatch[2].toLowerCase();
+      for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
+        const cl = lines[j].replace(/;.*$/, '').trim();
+        const coordMatch = cl.match(/^coordinates\s+(\d+),?\s*(\d+)/);
+        if (coordMatch) {
+          items.push({ id: id++, category: 'character', charType: agentType, name: agentName, x: parseInt(coordMatch[1]), y: parseInt(coordMatch[2]) });
+          break;
+        }
+      }
+      continue;
     }
   }
 

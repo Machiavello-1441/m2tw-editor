@@ -27,10 +27,10 @@ export function getItemIcon(item) {
 export default function StratOverlay({ items = [], transform, mapW, mapH, visibleCategories, selectedId, onSelect, onPlace, placingItem }) {
   if (!items.length && !placingItem) return null;
 
-  // Transform map coords → screen coords
+  // Transform map coords → screen coords, centered in the pixel
   const toScreen = (mx, my) => ({
-    sx: mx * transform.scale + transform.x,
-    sy: my * transform.scale + transform.y,
+    sx: mx * transform.scale + transform.x + transform.scale * 0.5,
+    sy: my * transform.scale + transform.y + transform.scale * 0.5,
   });
 
   return (
