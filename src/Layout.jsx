@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { EDBProvider } from './components/edb/EDBContext';
 import { RefDataProvider } from './components/edb/RefDataContext';
+import { TraitsProvider } from './components/traits/TraitsContext';
+import { AncillariesProvider } from './components/ancillaries/AncillariesContext';
+import { ModDataProvider } from './components/shared/ModDataContext';
 import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2 } from 'lucide-react';
 
 const navItems = [
