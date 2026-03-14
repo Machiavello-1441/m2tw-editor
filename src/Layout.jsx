@@ -24,10 +24,10 @@ const navItems = [
 export default function Layout({ children, currentPageName }) {
   return (
     <RefDataProvider>
-      <EDBProvider>
-      <TraitsProvider>
-      <AncillariesProvider>
-      <ModDataProvider>
+    <EDBProvider>
+    <TraitsProvider>
+    <AncillariesProvider>
+    <ModDataProvider>
         <div className="dark min-h-screen bg-background flex">
           <nav className="w-16 lg:w-56 border-r border-border bg-card flex flex-col shrink-0">
             <div className="p-3 lg:p-4 border-b border-border">
