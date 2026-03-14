@@ -58,6 +58,20 @@ export default function CampaignMap() {
   const jumpRef = useRef(null);
   const folderInputRef = useRef();
 
+  // Auto-load files pre-staged from Home page
+  React.useEffect(() => {
+    const cached = window._m2tw_map_files;
+    if (cached && cached.length > 0) {
+      handleFolderImport({ files: cached, target: { value: '' } });
+      window._m2tw_map_files = null;
+    }
+    const handler = (e) => {
+      if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
+    };
+    window.addEventListener('m2tw-map-folder-loaded', handler);
+    return () => window.removeEventListener('m2tw-map-folder-loaded', handler);
+  }, [handleFolderImport]);
+
   // ── Layer loading ──────────────────────────────────────────────────────────
   const loadLayerFile = useCallback(async (layerId, file) => {
     const buf = await file.arrayBuffer();
