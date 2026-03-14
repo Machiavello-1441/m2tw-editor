@@ -8,22 +8,11 @@ import ConditionRow from './ConditionRow';
 import { serializeCondition } from './conditionDefs';
 import { useEDB } from '../edb/EDBContext';
 
-// Try to get trait names from TraitsContext — optional, graceful fallback
-function useTraitNamesOptional() {
-  try {
-    // Dynamic require to avoid hard dependency
-    const { useTraits } = require('../traits/TraitsContext');
-    const ctx = useTraits();
-    return (ctx?.traitsData?.traits || []).map(t => t.name);
-  } catch {
-    return [];
-  }
-}
-
 const inputCls = 'h-7 text-xs font-mono bg-background text-white';
 
 // mode: 'trait' | 'ancillary'
-export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode }) {
+// traitNames: optional string[] passed from trait editor
+export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode, traitNames = [] }) {
   const [expanded, setExpanded] = useState(null);
 
   // Get building tree names from EDB for SettlementBuildingExists etc.
@@ -32,9 +21,6 @@ export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, ent
     const { edbData } = useEDB();
     buildingNames = (edbData?.buildings || []).map(b => b.name);
   } catch {}
-
-  // Get trait names — only works in trait editor context
-  const traitNames = useTraitNamesOptional();
 
   const addCondition = (trigger, i) => {
     const newCond = serializeCondition({ connector: trigger.conditions.length === 0 ? 'Condition' : 'and', type: 'IsGeneral', boolVal: 'true' });
