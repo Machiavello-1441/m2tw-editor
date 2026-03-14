@@ -154,9 +154,6 @@ export default function Home() {
       anc:     'm2tw_anc_file',
       vnvs:    'm2tw_vnvs_file',
       anctxt:  'm2tw_anctxt_file',
-      res:     'm2tw_resources_file',
-      ev:      'm2tw_events_file',
-      unit:    'm2tw_units_file',
     };
 
     for (const file of files) {
