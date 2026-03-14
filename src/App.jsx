@@ -7,6 +7,7 @@ import PageNotFound from './lib/PageNotFound';
 import CampaignMap from './pages/CampaignMap';
 import TraitsEditor from './pages/TraitsEditor';
 import AncillariesEditor from './pages/AncillariesEditor';
+import LuaScripts from './pages/LuaScripts';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -63,6 +64,7 @@ const AuthenticatedApp = () => {
       <Route path="/CampaignMap" element={<LayoutWrapper currentPageName="CampaignMap"><CampaignMap /></LayoutWrapper>} />
       <Route path="/TraitsEditor" element={<LayoutWrapper currentPageName="TraitsEditor"><TraitsEditor /></LayoutWrapper>} />
       <Route path="/AncillariesEditor" element={<LayoutWrapper currentPageName="AncillariesEditor"><AncillariesEditor /></LayoutWrapper>} />
+      <Route path="/LuaScripts" element={<LayoutWrapper currentPageName="LuaScripts"><LuaScripts /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
