@@ -267,7 +267,19 @@ export default function TraitEditor() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-[10px] text-muted-foreground">Effects Description</Label>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-[10px] text-muted-foreground">Effects Description</Label>
+                              {level.effectsDescription && level.effects.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateTextEntry(level.effectsDescription, buildEffectsDescription(level.effects))}
+                                  className="flex items-center gap-0.5 text-[9px] text-primary hover:underline"
+                                  title="Auto-generate from effects"
+                                >
+                                  <Wand2 className="w-2.5 h-2.5" /> Auto
+                                </button>
+                              )}
+                            </div>
                             <span className="text-[9px] text-muted-foreground/50 font-mono">{level.effectsDescription}</span>
                           </div>
                           <textarea rows={3} className={textareaCls}
