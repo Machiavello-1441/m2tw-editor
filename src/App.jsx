@@ -66,13 +66,13 @@ const AuthenticatedApp = () => {
         />
       ))}
       <Route path="/CampaignMap" element={<LayoutWrapper currentPageName="CampaignMap"><CampaignMap /></LayoutWrapper>} />
+      <Route path="/CampaignManager" element={<LayoutWrapper currentPageName="CampaignManager"><CampaignManager /></LayoutWrapper>} />
+      <Route path="/SoundEditor" element={<LayoutWrapper currentPageName="SoundEditor"><SoundEditor /></LayoutWrapper>} />
 
       <Route path="/TraitsEditor" element={<LayoutWrapper currentPageName="TraitsEditor"><TraitsEditor /></LayoutWrapper>} />
       <Route path="/AncillariesEditor" element={<LayoutWrapper currentPageName="AncillariesEditor"><AncillariesEditor /></LayoutWrapper>} />
       <Route path="/LuaScripts" element={<LayoutWrapper currentPageName="LuaScripts"><LuaScripts /></LayoutWrapper>} />
       <Route path="/UnitEditor" element={<LayoutWrapper currentPageName="UnitEditor"><UnitEditor /></LayoutWrapper>} />
-      <Route path="/CampaignManager" element={<LayoutWrapper currentPageName="CampaignManager"><CampaignManager /></LayoutWrapper>} />
-      <Route path="/SoundEditor" element={<LayoutWrapper currentPageName="SoundEditor"><SoundEditor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
