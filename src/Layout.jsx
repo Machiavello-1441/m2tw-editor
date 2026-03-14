@@ -71,10 +71,10 @@ export default function Layout({ children, currentPageName }) {
             {children}
           </main>
         </div>
-      </ModDataProvider>
-      </AncillariesProvider>
-      </TraitsProvider>
-      </EDBProvider>
+    </ModDataProvider>
+    </AncillariesProvider>
+    </TraitsProvider>
+    </EDBProvider>
     </RefDataProvider>
   );
 }
