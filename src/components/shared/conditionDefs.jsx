@@ -1,238 +1,251 @@
 /**
- * M2TW Trigger Condition Definitions
- * Each condition defines its name, argument type, and optional operator support.
- *
- * argumentType:
- *   'none'      – no extra argument (e.g. IsGeneral true/false → handled as boolean)
- *   'boolean'   – true / false
- *   'int_op'    – operator (>=, =, <=, >, <) + integer value
- *   'building'  – building tree name from EDB
- *   'trait_op'  – trait name + operator + integer
- *   'faction'   – faction name string
- *   'string'    – free string value
- *   'culture'   – culture string
+ * All known M2TW trigger condition types with their argument shapes.
+ * argType:
+ *   'none'        — no argument (e.g. IsGeneral)
+ *   'bool'        — true/false
+ *   'int'         — plain integer (e.g. I_NumberOfSettlements)
+ *   'compare_int' — operator (>=|=|<=|>|<) + integer (e.g. I_TurnNumber >= 50)
+ *   'compare_trait' — traitName + operator + integer (e.g. Trait StrategyDread > 0)
+ *   'building'    — = buildingTreeName (e.g. SettlementBuildingExists = university)
+ *   'faction'     — faction name string
+ *   'culture'     — culture name string
+ *   'string'      — free string value
+ *   'religion'    — religion name
  */
+export const CONDITION_DEFS = [
+  // ─── Character / General ───────────────────────────────────────────────────
+  { key: 'IsGeneral',             label: 'IsGeneral',              argType: 'bool',         hint: 'Is character a general?' },
+  { key: 'IsAdmiral',             label: 'IsAdmiral',              argType: 'bool' },
+  { key: 'IsSpy',                 label: 'IsSpy',                  argType: 'bool' },
+  { key: 'IsAssassin',            label: 'IsAssassin',             argType: 'bool' },
+  { key: 'IsMerchant',            label: 'IsMerchant',             argType: 'bool' },
+  { key: 'IsPriest',              label: 'IsPriest',               argType: 'bool' },
+  { key: 'IsHeretic',             label: 'IsHeretic',              argType: 'bool' },
+  { key: 'IsWitch',               label: 'IsWitch',                argType: 'bool' },
+  { key: 'IsFamilyMember',        label: 'IsFamilyMember',         argType: 'bool' },
+  { key: 'IsLeader',              label: 'IsLeader',               argType: 'bool' },
+  { key: 'IsHeir',                label: 'IsHeir',                 argType: 'bool' },
+  { key: 'IsFactionLeader',       label: 'IsFactionLeader',        argType: 'bool' },
+  { key: 'FactionIsLocal',        label: 'FactionIsLocal',         argType: 'bool' },
+  { key: 'CharacterIsLocal',      label: 'CharacterIsLocal',       argType: 'bool' },
+  { key: 'InSettlement',          label: 'InSettlement',           argType: 'bool' },
+  { key: 'IsYounger',             label: 'IsYounger',              argType: 'bool' },
+  { key: 'IsMarried',             label: 'IsMarried',              argType: 'bool' },
+  { key: 'IsOnCrusade',           label: 'IsOnCrusade',            argType: 'bool' },
+  { key: 'IsOnJihad',             label: 'IsOnJihad',              argType: 'bool' },
+  { key: 'OwnsBrother',           label: 'OwnsBrother',            argType: 'bool' },
+  { key: 'OwnsNephew',            label: 'OwnsNephew',             argType: 'bool' },
+  { key: 'OwnsUncle',             label: 'OwnsUncle',              argType: 'bool' },
+  { key: 'OwnsFather',            label: 'OwnsFather',             argType: 'bool' },
+  { key: 'OwnsSon',               label: 'OwnsSon',                argType: 'bool' },
+  { key: 'OwnsGrandson',          label: 'OwnsGrandson',           argType: 'bool' },
+  { key: 'OwnsDaughter',          label: 'OwnsDaughter',           argType: 'bool' },
+  { key: 'OwnsWife',              label: 'OwnsWife',               argType: 'bool' },
+  { key: 'HasNoBrother',          label: 'HasNoBrother',           argType: 'bool' },
+  { key: 'HasNoSon',              label: 'HasNoSon',               argType: 'bool' },
+  { key: 'OwnsAncillary',         label: 'OwnsAncillary',          argType: 'string',       hint: 'ancillary internal name' },
+
+  // ─── Trait-based ────────────────────────────────────────────────────────────
+  { key: 'Trait',                 label: 'Trait',                  argType: 'compare_trait', hint: 'TraitName > 0' },
+
+  // ─── Turn / Numeric ────────────────────────────────────────────────────────
+  { key: 'I_TurnNumber',          label: 'I_TurnNumber',           argType: 'compare_int',  hint: '>= 50' },
+  { key: 'I_NumberOfSettlements', label: 'I_NumberOfSettlements',  argType: 'compare_int' },
+  { key: 'I_NumberOfUnits',       label: 'I_NumberOfUnits',        argType: 'compare_int' },
+  { key: 'I_MapWidth',            label: 'I_MapWidth',             argType: 'compare_int' },
+  { key: 'I_MapHeight',           label: 'I_MapHeight',            argType: 'compare_int' },
+  { key: 'I_RegionCount',         label: 'I_RegionCount',          argType: 'compare_int' },
+  { key: 'I_SpottedRegionCount',  label: 'I_SpottedRegionCount',   argType: 'compare_int' },
+  { key: 'GeneralAge',            label: 'GeneralAge',             argType: 'compare_int' },
+  { key: 'YearsMarried',          label: 'YearsMarried',           argType: 'compare_int' },
+  { key: 'YearsInTrouble',        label: 'YearsInTrouble',         argType: 'compare_int' },
+  { key: 'HealthLevel',           label: 'HealthLevel',            argType: 'compare_int' },
+  { key: 'NumberOfChildren',      label: 'NumberOfChildren',       argType: 'compare_int' },
+  { key: 'NumberOfSons',          label: 'NumberOfSons',           argType: 'compare_int' },
+  { key: 'NumberOfFollowers',     label: 'NumberOfFollowers',      argType: 'compare_int' },
+  { key: 'GuildLevel',            label: 'GuildLevel',             argType: 'compare_int' },
+
+  // ─── Settlement / Building ──────────────────────────────────────────────────
+  { key: 'SettlementBuildingExists',   label: 'SettlementBuildingExists',   argType: 'building', hint: '= building_tree_name' },
+  { key: 'SettlementBuildingNotExists',label: 'SettlementBuildingNotExists',argType: 'building' },
+  { key: 'IsSettlement',               label: 'IsSettlement',               argType: 'bool' },
+  { key: 'SettlementIsReligion',       label: 'SettlementIsReligion',       argType: 'religion' },
+  { key: 'SettlementIsCulture',        label: 'SettlementIsCulture',        argType: 'culture' },
+  { key: 'FactionHasBuilding',         label: 'FactionHasBuilding',         argType: 'building' },
+  { key: 'SettlementLevel',            label: 'SettlementLevel',            argType: 'compare_int' },
+  { key: 'SettlementPopulace',         label: 'SettlementPopulace',         argType: 'compare_int' },
+
+  // ─── Battle / Combat ────────────────────────────────────────────────────────
+  { key: 'WonBattle',             label: 'WonBattle',              argType: 'bool' },
+  { key: 'LostBattle',            label: 'LostBattle',             argType: 'bool' },
+  { key: 'IsAttacker',            label: 'IsAttacker',             argType: 'bool' },
+  { key: 'IsDefender',            label: 'IsDefender',             argType: 'bool' },
+  { key: 'InBattleAt',            label: 'InBattleAt',             argType: 'bool' },
+  { key: 'BattleSuccess',         label: 'BattleSuccess',          argType: 'string',       hint: 'crushing/clear/close/marginal/defeat' },
+  { key: 'BattleType',            label: 'BattleType',             argType: 'string',       hint: 'field/siege/naval/...' },
+  { key: 'InBattle',              label: 'InBattle',               argType: 'bool' },
+
+  // ─── Faction / Culture ──────────────────────────────────────────────────────
+  { key: 'FactionType',           label: 'FactionType',            argType: 'string',       hint: 'faction internal name' },
+  { key: 'IsLocalFaction',        label: 'IsLocalFaction',         argType: 'bool' },
+  { key: 'FactionIsAtWar',        label: 'FactionIsAtWar',         argType: 'bool' },
+  { key: 'Culture',               label: 'Culture',                argType: 'culture' },
+  { key: 'ReligionInSettlement',  label: 'ReligionInSettlement',   argType: 'religion' },
+  { key: 'Religion',              label: 'Religion',               argType: 'religion' },
+
+  // ─── Ancillary ──────────────────────────────────────────────────────────────
+  { key: 'AncillaryExists',       label: 'AncillaryExists',        argType: 'string',       hint: 'ancillary internal name' },
+  { key: 'CharacterHasAncillary', label: 'CharacterHasAncillary',  argType: 'string' },
+
+  // ─── Misc ───────────────────────────────────────────────────────────────────
+  { key: 'IsExecutioner',         label: 'IsExecutioner',          argType: 'bool' },
+  { key: 'IsTorturer',            label: 'IsTorturer',             argType: 'bool' },
+  { key: 'EndedInSiege',          label: 'EndedInSiege',           argType: 'bool' },
+  { key: 'Random',                label: 'Random',                 argType: 'int',          hint: 'percentage (0–100)' },
+  { key: 'AgentType',             label: 'AgentType',              argType: 'string',       hint: 'spy/assassin/merchant/...' },
+  { key: 'CharacterReligion',     label: 'CharacterReligion',      argType: 'religion' },
+];
 
 export const WHEN_TO_TEST_OPTIONS = [
   'PostBattle',
   'PreBattle',
-  'StartOfTurn',
-  'EndOfTurn',
-  'GovernorGoverning',
-  'GovernorGoverningCapital',
-  'GeneralAssaultsGeneral',
-  'GeneralAssaultsTown',
-  'GeneralCapturedGeneral',
-  'GeneralCapturedTown',
-  'GeneralRouted',
-  'GeneralRouts',
-  'BecomesGeneral',
-  'BecomesGovernor',
-  'GeneralEntersSettlement',
-  'GeneralLeavesSettlement',
-  'AgentCreated',
-  'AgentIntercepted',
-  'AgentMissionCriticalSuccess',
-  'AgentMissionSuccess',
-  'AgentMissionFail',
-  'AgentMissionCriticalFail',
-  'DiplomatMission',
-  'Married',
-  'NewChild',
-  'NewHeirBorn',
-  'NewHeirDesignated',
-  'HeirDesignated',
-  'NotHeirDesignated',
-  'PersonalityTendency',
-  'Coronation',
-  'BecomesFactionLeader',
-  'BecomesFactionHeir',
-  'FactionLeaderCaptures',
-  'SettlementRaided',
-  'SettlementSacked',
-  'CityRioting',
-  'CityRebelsinh',
-  'DiplomatBribes',
-  'DiplomatBribed',
-  'CaptureAncillary',
-  'AncillaryRemoved',
-  'LevelUp',
-  'TraitAdded',
-  'TraitRemoved',
-  'AmbassadorReceived',
-  'InquisitorTests',
-  'InquisitorBurns',
-  'RandomOnTurnStart',
+  'PostBattleAfterResults',
+  'OnGeneral',
+  'OnCharacterTurnEnd',
+  'OnCharacterTurnStart',
+  'OnCharacterComesOfAge',
+  'OnCharacterMarriage',
+  'OnCharacterDeath',
+  'OnCharacterBecomesFactionLeader',
+  'OnCharacterLooted',
+  'OnMakingAlliance',
+  'OnBreakingAlliance',
+  'OnSmallestArmyWinsBattle',
+  'OnSuccessfulMission',
+  'OnFailedMission',
+  'OnBribeSuccess',
+  'OnBribeFailure',
+  'OnConstructBuilding',
+  'OnHereticBurned',
+  'OnHereticConverted',
+  'OnCharacterEndsTurnInSettlement',
+  'OnEnteringCity',
+  'OnLeavingCity',
+  'OnCaptureSettlement',
+  'OnSiegeSuccessful',
+  'OnSiegeFailed',
+  'OnAssassinationSuccess',
+  'OnAssassinationFailure',
+  'OnSpySuccess',
+  'OnSpyFailure',
+  'OnDiplomacySuccess',
+  'OnDiplomacyFailure',
+  'OnTradeSuccess',
+  'OnTradeFailure',
+  'InquisitionSuccess',
+  'InquisitionFailure',
+  'OnCrusade',
+  'OnJihad',
+  'OnCrusadeEnd',
+  'OnJihadEnd',
+  'Always',
 ];
 
-export const CONDITION_DEFS = [
-  // ── Boolean conditions ──────────────────────────────────────────────────
-  { name: 'IsGeneral',           argumentType: 'boolean', description: 'Is the character a general?' },
-  { name: 'IsGovernor',          argumentType: 'boolean', description: 'Is the character a governor?' },
-  { name: 'IsHeirApparent',      argumentType: 'boolean', description: 'Is heir apparent?' },
-  { name: 'IsFactionHeir',       argumentType: 'boolean', description: 'Is faction heir?' },
-  { name: 'IsFactionLeader',     argumentType: 'boolean', description: 'Is faction leader?' },
-  { name: 'IsMarried',           argumentType: 'boolean', description: 'Is the character married?' },
-  { name: 'CharacterIsLocal',    argumentType: 'boolean', description: 'Is the character local to their settlement?' },
-  { name: 'CharacterReligion',   argumentType: 'string',  description: 'Character religion name (e.g. catholic)' },
-  { name: 'IsOnCrusade',         argumentType: 'boolean', description: 'Is on crusade/jihad?' },
-  { name: 'IsCapital',           argumentType: 'boolean', description: 'Is the settlement a capital?' },
-  { name: 'SettlementIsPort',    argumentType: 'boolean', description: 'Settlement is a port?' },
-  { name: 'SettlementIsCoastal', argumentType: 'boolean', description: 'Settlement is coastal?' },
-  { name: 'InArmyWithLeader',    argumentType: 'boolean', description: 'Is in army with the faction leader?' },
-
-  // ── Integer operator conditions ─────────────────────────────────────────
-  { name: 'I_TurnNumber',         argumentType: 'int_op',  description: 'Current turn number' },
-  { name: 'I_NumberOfSettlements',argumentType: 'int_op',  description: 'Number of settlements owned by faction' },
-  { name: 'I_SettlementTaxLevel', argumentType: 'int_op',  description: 'Settlement tax level (0-3)' },
-  { name: 'I_CharacterRecord',    argumentType: 'int_op',  description: 'Character record value' },
-  { name: 'I_AgentType',          argumentType: 'string',  description: 'Agent type (e.g. spy, diplomat, assassin)' },
-  { name: 'CharacterAge',         argumentType: 'int_op',  description: 'Character age' },
-  { name: 'CitySize',             argumentType: 'int_op',  description: 'Settlement population size' },
-  { name: 'NumberOfChildren',     argumentType: 'int_op',  description: 'Number of children' },
-  { name: 'YearsMarried',         argumentType: 'int_op',  description: 'Years the character has been married' },
-  { name: 'ReligiousOrder',       argumentType: 'int_op',  description: 'Religious order level' },
-  { name: 'BattlesWon',           argumentType: 'int_op',  description: 'Battles won' },
-  { name: 'BattlesLost',          argumentType: 'int_op',  description: 'Battles lost' },
-  { name: 'TurnsAsLeader',        argumentType: 'int_op',  description: 'Turns as faction leader' },
-  { name: 'YearsInDevelopment',   argumentType: 'int_op',  description: 'Years in development' },
-  { name: 'DistanceCapital',      argumentType: 'int_op',  description: 'Distance from capital in regions' },
-  { name: 'DistanceFactionCapital', argumentType: 'int_op', description: 'Distance from faction capital' },
-  { name: 'SiegeEngineersLevel',  argumentType: 'int_op',  description: 'Siege engineers level' },
-  { name: 'ArmyUnitsStrength',    argumentType: 'int_op',  description: 'Army unit count' },
-  { name: 'ArmyMorale',          argumentType: 'int_op',  description: 'Army morale' },
-  { name: 'ArmyStrength',        argumentType: 'int_op',  description: 'Army strength score' },
-
-  // ── Settlement building ─────────────────────────────────────────────────
-  { name: 'SettlementBuildingExists', argumentType: 'building', description: 'A building tree exists in the settlement (use building tree name from EDB)' },
-  { name: 'SettlementBuildingFinished', argumentType: 'building', description: 'Building tree finished being built' },
-
-  // ── Trait check ─────────────────────────────────────────────────────────
-  { name: 'Trait', argumentType: 'trait_op', description: 'Character has trait at a given level (trait name from traits file)' },
-
-  // ── Ancillary check ─────────────────────────────────────────────────────
-  { name: 'Ancillary', argumentType: 'string', description: 'Character has the named ancillary' },
-
-  // ── Faction / Culture ───────────────────────────────────────────────────
-  { name: 'FactionType',    argumentType: 'faction', description: 'Faction type identifier (e.g. england, france)' },
-  { name: 'CultureType',    argumentType: 'culture', description: 'Culture type (e.g. northern_european, middle_eastern)' },
-  { name: 'FactionIsAtWar', argumentType: 'boolean', description: 'Is the faction at war with anyone?' },
-  { name: 'IsAlliedWith',   argumentType: 'faction', description: 'Faction is allied with (faction type)' },
-  { name: 'AtWarWith',      argumentType: 'faction', description: 'Faction is at war with (faction type)' },
-
-  // ── Miscellaneous ───────────────────────────────────────────────────────
-  { name: 'SettlementOwner',  argumentType: 'faction', description: 'Owner of the settlement' },
-  { name: 'SettlementReligion', argumentType: 'string', description: 'Settlement religion (e.g. catholic)' },
-  { name: 'RegionReligion',   argumentType: 'string',  description: 'Region religion name' },
-  { name: 'CharacterFaction', argumentType: 'faction', description: 'The faction the character belongs to' },
-  { name: 'EventCounter',     argumentType: 'int_op',  description: 'Named event counter value (prepend name after)' },
-  { name: 'IsOccupied',       argumentType: 'boolean', description: 'Settlement is occupied' },
-  { name: 'HasResource',      argumentType: 'string',  description: 'Region has a named resource' },
-  { name: 'InRegion',         argumentType: 'string',  description: 'Character is in the named region' },
-  { name: 'IsLocalPlayer',    argumentType: 'boolean', description: 'The faction is the local (human) player' },
+export const RELIGION_OPTIONS = [
+  'catholic', 'orthodox', 'islam', 'pagan', 'heretic',
+  'jewish', 'zoroastrian', 'hindu', 'buddhist',
 ];
 
-export const CONDITION_PREFIXES = ['Condition', 'and', 'or', 'and not'];
-export const INT_OPERATORS = ['>=', '<=', '=', '>', '<'];
+export const CULTURE_OPTIONS = [
+  'western_european', 'eastern_european', 'greek', 'middle_eastern',
+  'north_african', 'sub_saharan', 'steppe_nomad', 'mesoamerican',
+];
 
-/**
- * Parse a raw condition string like:
- *   "Condition IsGeneral true"
- *   "and Condition Trait StrategyDread >= 2"
- *   "or Condition SettlementBuildingExists = university"
- *   "and not Condition I_TurnNumber >= 10"
- *
- * Returns: { prefix, condName, operator, value1, value2 }
- *   - prefix: 'Condition' | 'and' | 'or' | 'and not'
- *   - condName: e.g. 'IsGeneral'
- *   - operator: '=' | '>=' | '<=' | '>' | '<' | '' (for boolean / building / string)
- *   - value1: first value (trait name, building name, bool string, faction, etc.)
- *   - value2: integer string for trait_op (the level)
- */
+export const COMPARE_OPS = ['>=', '<=', '>', '<', '='];
+
+// ── Parse a raw condition string into a structured object ─────────────────────
+// Raw examples:
+//   "Condition IsGeneral true"
+//   "and Condition Trait StrategyDread > 0"
+//   "or Condition SettlementBuildingExists = university"
+//   "and not Condition I_TurnNumber >= 50"
 export function parseConditionString(raw) {
-  if (!raw) return { prefix: 'Condition', condName: '', operator: '', value1: '', value2: '' };
+  const s = raw.trim();
 
-  let rest = raw.trim();
-  let prefix = 'Condition';
+  // Extract connector (first word if 'and', 'or', optionally followed by 'not')
+  let connector = 'Condition'; // first condition, no connector
+  let rest = s;
 
-  if (rest.startsWith('and not ')) {
-    prefix = 'and not';
-    rest = rest.slice('and not '.length).trim();
-  } else if (rest.startsWith('and ')) {
-    prefix = 'and';
-    rest = rest.slice('and '.length).trim();
-  } else if (rest.startsWith('or ')) {
-    prefix = 'or';
-    rest = rest.slice('or '.length).trim();
+  const andNotMatch = s.match(/^(and not|or not)\s+/i);
+  const connectorMatch = s.match(/^(and|or)\s+/i);
+
+  if (andNotMatch) {
+    connector = andNotMatch[1].toLowerCase(); // 'and not' | 'or not'
+    rest = s.slice(andNotMatch[0].length);
+  } else if (connectorMatch) {
+    connector = connectorMatch[1].toLowerCase();
+    rest = s.slice(connectorMatch[0].length);
   }
 
-  // Remove 'Condition ' keyword
-  if (rest.startsWith('Condition ')) {
-    rest = rest.slice('Condition '.length).trim();
+  // Strip leading "Condition " keyword
+  if (rest.startsWith('Condition ')) rest = rest.slice('Condition '.length).trim();
+
+  // Match Trait <name> <op> <int>
+  const traitMatch = rest.match(/^Trait\s+(\S+)\s*(>=|<=|>|<|=)\s*(-?\d+)$/i);
+  if (traitMatch) {
+    return { connector, type: 'Trait', traitName: traitMatch[1], op: traitMatch[2], value: traitMatch[3] };
   }
 
-  // Detect condition name
-  const tokens = rest.split(/\s+/);
-  const condName = tokens[0] || '';
-  const def = CONDITION_DEFS.find(d => d.name === condName);
-
-  if (!def) {
-    // Unknown — return raw remainder as value1
-    return { prefix, condName, operator: '', value1: tokens.slice(1).join(' '), value2: '' };
+  // Match I_TurnNumber (or other compare_int) <op> <int>
+  const compareIntMatch = rest.match(/^(\S+)\s+(>=|<=|>|<|=)\s*(-?\d+)$/);
+  if (compareIntMatch) {
+    return { connector, type: compareIntMatch[1], op: compareIntMatch[2], value: compareIntMatch[3] };
   }
 
-  if (def.argumentType === 'boolean') {
-    return { prefix, condName, operator: '', value1: tokens[1] || 'true', value2: '' };
+  // Match SettlementBuildingExists = <building>
+  const buildingMatch = rest.match(/^(\S+)\s*=\s*(.+)$/);
+  const def = CONDITION_DEFS.find(d => buildingMatch && d.key === buildingMatch[1]);
+  if (buildingMatch && def && def.argType === 'building') {
+    return { connector, type: buildingMatch[1], value: buildingMatch[2].trim() };
   }
 
-  if (def.argumentType === 'int_op') {
-    // e.g. "I_TurnNumber >= 10"
-    const op = INT_OPERATORS.find(o => tokens[1] === o) || '>=';
-    return { prefix, condName, operator: op, value1: tokens[2] || '0', value2: '' };
+  // Match bool: "IsGeneral true" or "IsGeneral false"
+  const boolMatch = rest.match(/^(\S+)\s+(true|false)$/i);
+  if (boolMatch) {
+    return { connector, type: boolMatch[1], boolVal: boolMatch[2].toLowerCase() };
   }
 
-  if (def.argumentType === 'building') {
-    // "SettlementBuildingExists = university"
-    const hasEq = tokens[1] === '=' || tokens[1] === '==';
-    return { prefix, condName, operator: '=', value1: hasEq ? tokens[2] || '' : tokens[1] || '', value2: '' };
+  // Generic: type + value separated by space
+  const spaceMatch = rest.match(/^(\S+)\s+(.+)$/);
+  if (spaceMatch) {
+    return { connector, type: spaceMatch[1], value: spaceMatch[2].trim() };
   }
 
-  if (def.argumentType === 'trait_op') {
-    // "Trait TraitName >= 2"
-    const traitName = tokens[1] || '';
-    const op = INT_OPERATORS.find(o => tokens[2] === o) || '>';
-    return { prefix, condName, operator: op, value1: traitName, value2: tokens[3] || '0' };
-  }
-
-  // string / faction / culture
-  return { prefix, condName, operator: '', value1: tokens.slice(1).join(' '), value2: '' };
+  // Just a type with no args
+  return { connector, type: rest, value: '' };
 }
 
-/**
- * Serialize a structured condition back to the raw string used in the file.
- */
-export function serializeCondition({ prefix, condName, operator, value1, value2 }) {
-  if (!condName) return '';
-  const def = CONDITION_DEFS.find(d => d.name === condName);
+// ── Serialize a structured condition back to a raw string ──────────────────────
+export function serializeCondition(cond) {
+  const { connector, type } = cond;
+  const def = CONDITION_DEFS.find(d => d.key === type);
 
-  let body = condName;
-
-  if (def) {
-    if (def.argumentType === 'boolean') {
-      body = `${condName} ${value1 || 'true'}`;
-    } else if (def.argumentType === 'int_op') {
-      body = `${condName} ${operator || '>='} ${value1 || '0'}`;
-    } else if (def.argumentType === 'building') {
-      body = `${condName} = ${value1}`;
-    } else if (def.argumentType === 'trait_op') {
-      body = `${condName} ${value1} ${operator || '>'} ${value2 || '0'}`;
-    } else {
-      body = `${condName} ${value1}`;
-    }
+  let body = '';
+  if (type === 'Trait') {
+    body = `Trait ${cond.traitName || ''} ${cond.op || '>'} ${cond.value ?? 0}`;
+  } else if (def?.argType === 'compare_int') {
+    body = `${type} ${cond.op || '>='} ${cond.value ?? 0}`;
+  } else if (def?.argType === 'building') {
+    body = `${type} = ${cond.value || ''}`;
+  } else if (def?.argType === 'bool') {
+    body = `${type} ${cond.boolVal ?? 'true'}`;
+  } else if (def?.argType === 'int') {
+    body = `${type} ${cond.value ?? 0}`;
   } else {
-    body = `${condName} ${value1}`;
+    body = `${type}${cond.value ? ' ' + cond.value : ''}`;
   }
 
-  const prefixStr = prefix === 'Condition' ? 'Condition' : `${prefix} Condition`;
-  return `${prefixStr} ${body}`;
+  const condStr = `Condition ${body}`;
+  if (connector === 'Condition') return condStr;
+  return `${connector} ${condStr}`;
 }
