@@ -4,6 +4,10 @@ import { useEDBAutoSave } from './useEDBAutoSave';
 
 const EDBContext = createContext(null);
 
+const EDB_LS_KEY = 'm2tw_edb_file';
+const EDB_LS_NAME_KEY = 'm2tw_edb_file_name';
+const EDB_TXT_LS_KEY = 'm2tw_edb_txt_file';
+
 export function EDBProvider({ children }) {
   const [edbData, setEdbData] = useState(null);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
@@ -12,6 +16,32 @@ export function EDBProvider({ children }) {
   const [imageData, setImageData] = useState({}); // { levelName_culture: { icon, constructed, construction } }
   const [isDirty, setIsDirty] = useState(false);
   const [fileName, setFileName] = useState('');
+
+  // Auto-restore from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(EDB_LS_KEY);
+      const name = localStorage.getItem(EDB_LS_NAME_KEY);
+      if (raw) {
+        const parsed = parseEDB(raw);
+        for (const building of parsed.buildings) {
+          if (building.convertTo) {
+            building.levels = building.levels.map((level, idx) => ({
+              ...level,
+              convertTo: level.convertTo !== null && level.convertTo !== undefined ? level.convertTo : String(idx)
+            }));
+          }
+        }
+        setEdbData(parsed);
+        setFileName(name || 'export_descr_buildings.txt');
+      }
+      const txtRaw = localStorage.getItem(EDB_TXT_LS_KEY);
+      if (txtRaw) {
+        const parsed = parseTextFile(txtRaw);
+        setTextData(prev => ({ ...prev, ...parsed }));
+      }
+    } catch {}
+  }, []);
 
   const loadEDB = useCallback((text, name) => {
     const parsed = parseEDB(text);
