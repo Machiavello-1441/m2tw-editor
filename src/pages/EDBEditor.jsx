@@ -128,6 +128,7 @@ export default function EDBEditor() {
           <Image className="w-3 h-3" />
           <span className="hidden lg:block">Load Images (.tga)</span>
         </Button>
+        <AutoSavePanel onSaveNow={saveNow} />
         <Button
           size="sm"
           variant={showCode ? 'default' : 'ghost'}
