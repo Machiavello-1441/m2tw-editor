@@ -357,10 +357,10 @@ export default function CampaignMap() {
                   regionsData={regionsData}
                   settlementNames={settlementNames}
                   factionColors={factionColors}
-                  onStratLoad={(text) => { const p = parseDescrStrat(text); setStratData(p); setOverlayItems(p.items); }}
-                  onRegionsLoad={(text) => setRegionsData(parseDescrRegions(text))}
-                  onNamesLoad={(text) => setSettlementNames(parseSettlementNames(text))}
-                  onFactionsLoad={(text) => setFactionColors(parseDescrSmFactions(text))}
+                  onStratLoad={(text) => { try { sessionStorage.setItem('m2tw_strat_raw', text); } catch {} const p = parseDescrStrat(text); setStratDataRaw(p); setOverlayItems(p.items); }}
+                  onRegionsLoad={(text) => { try { sessionStorage.setItem('m2tw_regions_raw', text); } catch {} setRegionsDataRaw(parseDescrRegions(text)); }}
+                  onNamesLoad={(text) => { try { sessionStorage.setItem('m2tw_names_raw', text); } catch {} setSettlementNamesRaw(parseSettlementNames(text)); }}
+                  onFactionsLoad={(text) => { try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {} setFactionColorsRaw(parseDescrSmFactions(text)); }}
                   overlayItems={overlayItems}
                   selectedItem={selectedItem}
                   onSelectItem={(item) => { setSelectedItem(item); if (jumpRef.current) jumpRef.current(item.x, item.y); }}
