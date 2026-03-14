@@ -335,7 +335,7 @@ export default function MapCanvas({
   const dispH = regLayer?.height || mapH;
 
   return (
-    <div ref={containerRef} className="relative w-full h-full bg-slate-950 overflow-hidden select-none">
+    <div ref={containerRef} className="relative w-full h-full bg-slate-950 select-none">
       {!anyLoaded && (
         <div className="absolute inset-0 flex items-center justify-center text-slate-600 text-sm flex-col gap-3">
           <div className="text-4xl">🗺️</div>
