@@ -170,6 +170,17 @@ export function EDBProvider({ children }) {
     setImageData(prev => ({ ...prev, ...images }));
   }, []);
 
+  const restoreSnapshot = useCallback((snap) => {
+    setEdbData(snap.edbData);
+    setTextData(snap.textData || {});
+    setFileName(snap.fileName || 'export_descr_buildings.txt');
+    setSelectedBuilding(null);
+    setSelectedLevel(null);
+    setIsDirty(false);
+  }, []);
+
+  const { saveNow } = useEDBAutoSave(edbData, textData, fileName);
+
   const value = {
     edbData, setEdbData, loadEDB, exportEDB,
     loadTextFile, exportTextFile,
