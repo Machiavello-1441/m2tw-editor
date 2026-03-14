@@ -198,7 +198,5 @@ export function TraitsProvider({ children }) {
 }
 
 export function useTraits() {
-  const ctx = useContext(TraitsContext);
-  if (!ctx) throw new Error('useTraits must be used within TraitsProvider');
-  return ctx;
+  return useContext(TraitsContext);
 }
