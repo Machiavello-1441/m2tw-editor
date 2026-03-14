@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Swords, Upload, Download, Plus, FileText, CheckCircle2, Copy } from 'lucide-react';
 import UnitList from '../components/units/UnitList';
@@ -6,6 +6,8 @@ import UnitEditorPanel from '../components/units/UnitEditor';
 import { parseEDU, serializeEDU, serializeUnit, createDefaultUnit } from '../components/units/EDUParser';
 
 const STORAGE_KEY = 'm2tw_edu_units';
+const EDU_FILE_KEY = 'm2tw_edu_file';
+const EDU_FILE_NAME_KEY = 'm2tw_edu_file_name';
 
 function loadUnits() {
   try {
@@ -24,6 +26,19 @@ export default function UnitEditorPage() {
   const [filename, setFilename] = useState('export_descr_unit.txt');
   const [copied, setCopied] = useState(false);
   const fileRef = useRef();
+
+  // Auto-load from EDU file if Home page cached it
+  useEffect(() => {
+    try {
+      const eduContent = localStorage.getItem(EDU_FILE_KEY);
+      const eduName = localStorage.getItem(EDU_FILE_NAME_KEY);
+      if (eduContent && units.length === 0) {
+        const parsed = parseEDU(eduContent);
+        setUnits(parsed);
+        if (eduName) setFilename(eduName);
+      }
+    } catch {}
+  }, []);
 
   const active = units[activeIndex] || null;
 
