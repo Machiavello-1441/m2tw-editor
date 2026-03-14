@@ -168,7 +168,7 @@ export default function StratPanel({
               <button key={item.id} onClick={() => onSelectItem(item)}
                 className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-left transition-colors ${selectedItem?.id === item.id ? 'bg-amber-500/20 text-amber-300' : 'hover:bg-slate-800/40 text-slate-400'}`}>
                 <span className="text-sm">{getItemIcon(item)}</span>
-                <span className="text-[10px] font-mono flex-1 truncate">{item.type || item.charType}</span>
+                <span className="text-[10px] font-mono flex-1 truncate">{item.name || item.type || item.charType}</span>
                 <span className="text-[9px] text-slate-600 font-mono">{item.x},{item.y}</span>
               </button>
             ))}
