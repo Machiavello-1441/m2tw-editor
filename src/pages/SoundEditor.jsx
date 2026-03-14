@@ -1,281 +1,376 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
-  Music, FolderOpen, FileText, Download, Search,
-  ChevronRight, Plus, Trash2, Save, Info, Volume2
+  Volume2, FolderOpen, Download, Search, Plus, Trash2,
+  ChevronDown, ChevronRight, FileText, RefreshCw, Save
 } from 'lucide-react';
+import JSZip from 'jszip';
 
+// Known M2TW sound script files
 const KNOWN_SOUND_FILES = [
-  { key: 'descr_sounds', label: 'Main Sounds', desc: 'General sound event definitions' },
-  { key: 'descr_sounds_accents', label: 'Accents', desc: 'Accent/voice variety mappings' },
-  { key: 'descr_sounds_advice', label: 'Advice', desc: 'Advisor voiceover events' },
-  { key: 'descr_sounds_battle_events', label: 'Battle Events', desc: 'Battle event sounds' },
-  { key: 'descr_sounds_engine', label: 'Engine', desc: 'Engine-level sound definitions' },
-  { key: 'descr_sounds_enviro', label: 'Environment', desc: 'Environmental ambient sounds' },
-  { key: 'descr_sounds_events', label: 'Events', desc: 'Campaign event sounds' },
-  { key: 'descr_sounds_generic', label: 'Generic', desc: 'Generic/UI sounds' },
-  { key: 'descr_sounds_interface', label: 'Interface', desc: 'UI/interface click sounds' },
-  { key: 'descr_sounds_music', label: 'Music', desc: 'Music track definitions' },
-  { key: 'descr_sounds_narration', label: 'Narration', desc: 'Campaign narration audio' },
-  { key: 'descr_sounds_prebattle', label: 'Pre-Battle', desc: 'Pre-battle speech audio' },
-  { key: 'descr_sounds_stratmap', label: 'Stratmap', desc: 'Strategy map ambient sounds' },
-  { key: 'descr_sounds_stratmap_voice', label: 'Stratmap Voice', desc: 'Strategy map general voice' },
-  { key: 'descr_sounds_structures', label: 'Structures', desc: 'Building/structure sounds' },
-  { key: 'descr_sounds_units', label: 'Units', desc: 'Unit voice and sound effects' },
+  'descr_sounds_animals.txt',
+  'descr_sounds_battles.txt',
+  'descr_sounds_building_battle.txt',
+  'descr_sounds_building_construction.txt',
+  'descr_sounds_environment.txt',
+  'descr_sounds_frontend.txt',
+  'descr_sounds_missiles.txt',
+  'descr_sounds_music.txt',
+  'descr_sounds_strat.txt',
+  'descr_sounds_units.txt',
+  'descr_sounds_units_voice.txt',
+  'descr_sounds_weapons.txt',
+  'descr_sounds_siege.txt',
+  'descr_sounds_ui.txt',
 ];
 
 function parseSoundFile(text) {
-  // Parse M2TW sound file format: blocks with identifiers and properties
-  const blocks = [];
+  // Each entry starts with a label line, followed by key value lines, ends on blank or next label
   const lines = text.split('\n');
+  const entries = [];
   let current = null;
-  for (const rawLine of lines) {
-    const line = rawLine.trimEnd();
-    const trimmed = line.trim();
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+
     if (!trimmed || trimmed.startsWith(';')) {
-      if (current) current.lines.push(line);
-      else blocks.push({ type: 'comment', content: line });
+      if (current) {
+        if (!trimmed.startsWith(';')) {
+          entries.push(current);
+          current = null;
+        } else {
+          current.comments = (current.comments || '') + raw + '\n';
+        }
+      } else if (trimmed.startsWith(';')) {
+        // top-level comment
+        entries.push({ type: 'comment', raw });
+      }
       continue;
     }
-    // Block opener (non-indented identifier)
-    if (!line.startsWith(' ') && !line.startsWith('\t') && trimmed !== '{' && trimmed !== '}') {
-      if (current) blocks.push(current);
-      current = { type: 'block', name: trimmed, lines: [line] };
+
+    // Check if this looks like a block start (no leading spaces / tabs, not a key=value)
+    if (!raw.startsWith('\t') && !raw.startsWith(' ') && !trimmed.includes(' ') && trimmed !== '{' && trimmed !== '}') {
+      if (current) entries.push(current);
+      current = { type: 'entry', label: trimmed, lines: [], raw: raw + '\n', comments: '' };
     } else if (current) {
-      current.lines.push(line);
+      current.lines.push({ key: trimmed, raw });
+      current.raw += raw + '\n';
     } else {
-      blocks.push({ type: 'raw', content: line });
+      entries.push({ type: 'raw', raw });
     }
   }
-  if (current) blocks.push(current);
-  return blocks;
+  if (current) entries.push(current);
+  return entries;
+}
+
+function serializeEntries(entries) {
+  return entries.map(e => {
+    if (e.type === 'comment' || e.type === 'raw') return e.raw;
+    if (e.type === 'entry') {
+      let out = e.comments || '';
+      out += e.label + '\n';
+      out += e.lines.map(l => l.raw).join('\n');
+      return out;
+    }
+    return '';
+  }).join('\n');
+}
+
+function SoundEntry({ entry, onUpdate, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [lines, setLines] = useState(entry.lines.map(l => l.raw));
+
+  const handleLineChange = (i, val) => {
+    const updated = [...lines];
+    updated[i] = val;
+    setLines(updated);
+  };
+
+  const handleSave = () => {
+    onUpdate({ ...entry, lines: lines.map(raw => ({ key: raw.trim(), raw })) });
+  };
+
+  const handleAddLine = () => {
+    setLines(prev => [...prev, '\t']);
+  };
+
+  if (entry.type === 'comment') {
+    return <div className="text-[10px] font-mono text-muted-foreground/50 px-3 py-0.5">{entry.raw}</div>;
+  }
+  if (entry.type === 'raw') {
+    return <div className="text-[10px] font-mono text-muted-foreground/40 px-3 py-0.5">{entry.raw}</div>;
+  }
+
+  return (
+    <div className="border border-border rounded-lg overflow-hidden mb-1">
+      <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-accent/20 cursor-pointer" onClick={() => setOpen(o => !o)}>
+        {open ? <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />}
+        <code className="text-xs font-mono text-primary flex-1 truncate">{entry.label}</code>
+        <span className="text-[10px] text-muted-foreground shrink-0">{entry.lines.length} line{entry.lines.length !== 1 ? 's' : ''}</span>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+      {open && (
+        <div className="border-t border-border bg-accent/10 p-3 space-y-2">
+          <div className="space-y-1">
+            {lines.map((line, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  value={line}
+                  onChange={e => handleLineChange(i, e.target.value)}
+                  className="flex-1 h-6 px-2 text-[11px] font-mono bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={handleAddLine}>
+              <Plus className="w-3 h-3" /> Add line
+            </Button>
+            <Button size="sm" className="h-6 text-[10px] gap-1" onClick={handleSave}>
+              <Save className="w-3 h-3" /> Apply
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SoundEditor() {
-  const [files, setFiles] = useState({}); // { key: rawText }
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isDirty, setIsDirty] = useState({});
-  const folderInputRef = useRef();
+  const [files, setFiles] = useState({}); // filename -> { text, entries }
+  const [activeFile, setActiveFile] = useState(null);
+  const [search, setSearch] = useState('');
+  const [newEntryLabel, setNewEntryLabel] = useState('');
+  const folderRef = useRef();
 
-  const handleFolderLoad = useCallback(async (e) => {
+  const handleFolderLoad = (e) => {
     const fileList = Array.from(e.target.files || []);
     e.target.value = '';
-    const newFiles = {};
-    for (const f of fileList) {
-      const lower = f.name.toLowerCase().replace('.txt', '');
-      if (lower.startsWith('descr_sounds')) {
-        const text = await f.text();
-        newFiles[lower] = text;
-      }
-    }
-    setFiles(prev => ({ ...prev, ...newFiles }));
-    // Auto-select first loaded
-    const firstKey = Object.keys(newFiles)[0];
-    if (firstKey && !selectedFile) setSelectedFile(firstKey);
-  }, [selectedFile]);
+    const soundFiles = fileList.filter(f => f.name.toLowerCase().startsWith('descr_sounds') && f.name.toLowerCase().endsWith('.txt'));
+    if (soundFiles.length === 0) return;
 
-  const handleTextChange = (text) => {
-    if (!selectedFile) return;
-    setFiles(prev => ({ ...prev, [selectedFile]: text }));
-    setIsDirty(prev => ({ ...prev, [selectedFile]: true }));
+    const readers = soundFiles.map(f => new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = ev => resolve({ name: f.name.toLowerCase(), text: ev.target.result });
+      reader.readAsText(f);
+    }));
+
+    Promise.all(readers).then(results => {
+      const newFiles = {};
+      results.forEach(({ name, text }) => {
+        newFiles[name] = { text, entries: parseSoundFile(text) };
+      });
+      setFiles(prev => ({ ...prev, ...newFiles }));
+      if (!activeFile && results.length > 0) setActiveFile(results[0].name);
+    });
   };
 
-  const handleDownload = (key) => {
-    const text = files[key] || '';
+  const currentFile = activeFile ? files[activeFile] : null;
+
+  const filteredEntries = useMemo(() => {
+    if (!currentFile) return [];
+    if (!search) return currentFile.entries;
+    return currentFile.entries.filter(e => {
+      if (e.type !== 'entry') return false;
+      return e.label.toLowerCase().includes(search.toLowerCase()) ||
+        e.lines.some(l => l.raw.toLowerCase().includes(search.toLowerCase()));
+    });
+  }, [currentFile, search]);
+
+  const handleUpdateEntry = (idx, updated) => {
+    if (!activeFile) return;
+    setFiles(prev => {
+      const entries = [...prev[activeFile].entries];
+      // find real index
+      const real = prev[activeFile].entries.indexOf(currentFile.entries[idx]);
+      if (real !== -1) entries[real] = updated;
+      return { ...prev, [activeFile]: { ...prev[activeFile], entries } };
+    });
+  };
+
+  const handleDeleteEntry = (idx) => {
+    if (!activeFile) return;
+    setFiles(prev => {
+      const entries = prev[activeFile].entries.filter((_, i) => i !== idx);
+      return { ...prev, [activeFile]: { ...prev[activeFile], entries } };
+    });
+  };
+
+  const handleAddEntry = () => {
+    if (!newEntryLabel.trim() || !activeFile) return;
+    const newEntry = { type: 'entry', label: newEntryLabel.trim(), lines: [], raw: newEntryLabel.trim() + '\n', comments: '' };
+    setFiles(prev => ({
+      ...prev,
+      [activeFile]: { ...prev[activeFile], entries: [...prev[activeFile].entries, newEntry] }
+    }));
+    setNewEntryLabel('');
+  };
+
+  const handleExportAll = async () => {
+    const zip = new JSZip();
+    const folder = zip.folder('data/sounds/');
+    Object.entries(files).forEach(([name, { entries }]) => {
+      folder.file(name, serializeEntries(entries));
+    });
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'descr_sounds_modified.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportSingle = () => {
+    if (!activeFile || !currentFile) return;
+    const text = serializeEntries(currentFile.entries);
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${key}.txt`;
+    a.download = activeFile;
     a.click();
     URL.revokeObjectURL(url);
-    setIsDirty(prev => ({ ...prev, [key]: false }));
   };
-
-  const handleDownloadAll = () => {
-    // Download as zip
-    import('jszip').then(({ default: JSZip }) => {
-      const zip = new JSZip();
-      const folder = zip.folder('descr_sounds');
-      Object.entries(files).forEach(([k, v]) => {
-        folder.file(`${k}.txt`, v);
-      });
-      zip.generateAsync({ type: 'blob' }).then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'descr_sounds.zip';
-        a.click();
-        URL.revokeObjectURL(url);
-      });
-    });
-  };
-
-  const currentText = selectedFile ? (files[selectedFile] || '') : '';
-  const filteredBlocks = selectedFile ? parseSoundFile(currentText).filter(b => {
-    if (!searchTerm) return true;
-    return (b.name || b.content || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (b.lines || []).some(l => l.toLowerCase().includes(searchTerm.toLowerCase()));
-  }) : [];
 
   const loadedCount = Object.keys(files).length;
-  const selectedInfo = KNOWN_SOUND_FILES.find(f => f.key === selectedFile);
 
   return (
     <div className="h-screen flex flex-col">
-      {/* Header */}
+      {/* Toolbar */}
       <div className="h-10 border-b border-border flex items-center px-4 gap-3 shrink-0 bg-card/50">
-        <Music className="w-4 h-4 text-primary shrink-0" />
+        <Volume2 className="w-4 h-4 text-primary shrink-0" />
         <span className="text-xs font-semibold text-foreground">Sound Files Editor</span>
         <span className="text-[10px] text-muted-foreground">— descr_sounds_*.txt</span>
         <div className="ml-auto flex items-center gap-2">
           {loadedCount > 0 && (
-            <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5" onClick={handleDownloadAll}>
-              <Download className="w-3.5 h-3.5" /> Export All ({loadedCount})
-            </Button>
+            <>
+              <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={handleExportSingle} disabled={!activeFile}>
+                <Download className="w-3 h-3" /> This file
+              </Button>
+              <Button size="sm" className="h-7 text-[11px] gap-1" onClick={handleExportAll}>
+                <Download className="w-3 h-3" /> Export all (.zip)
+              </Button>
+            </>
           )}
           <label className="cursor-pointer">
-            <input ref={folderInputRef} type="file" className="hidden"
-              webkitdirectory="" directory="" multiple onChange={handleFolderLoad} />
-            <Button size="sm" asChild className="h-7 text-[11px] gap-1.5 pointer-events-none">
-              <span><FolderOpen className="w-3.5 h-3.5" /> Load Sound Folder</span>
+            <input ref={folderRef} type="file" className="hidden" webkitdirectory="" directory="" multiple onChange={handleFolderLoad} />
+            <Button asChild variant="outline" size="sm" className="h-7 text-[11px] gap-1 pointer-events-none">
+              <span><FolderOpen className="w-3 h-3" /> Load sounds folder</span>
             </Button>
           </label>
         </div>
       </div>
 
-      <div className="flex-1 flex min-h-0">
-        {/* File list sidebar */}
-        <div className="w-52 border-r border-border flex flex-col bg-card/30 shrink-0">
+      <div className="flex flex-1 min-h-0">
+        {/* Left: file list */}
+        <div className="w-52 border-r border-border flex flex-col shrink-0">
           <div className="p-2 border-b border-border">
-            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide px-1">
-              Sound Files {loadedCount > 0 ? `(${loadedCount} loaded)` : ''}
-            </p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1">Sound Files</p>
+            {loadedCount === 0 && (
+              <p className="text-[10px] text-muted-foreground px-1">Load your mod's <code className="font-mono bg-accent px-1 rounded">sounds/</code> folder to begin.</p>
+            )}
           </div>
           <ScrollArea className="flex-1">
-            <div className="p-1 space-y-0.5">
-              {KNOWN_SOUND_FILES.map(f => {
-                const loaded = !!files[f.key];
-                const dirty = isDirty[f.key];
-                return (
-                  <button
-                    key={f.key}
-                    onClick={() => loaded && setSelectedFile(f.key)}
-                    className={`w-full text-left px-2.5 py-2 rounded-md text-xs transition-colors flex items-center gap-2 group ${selectedFile === f.key ? 'bg-primary/15 text-primary' : loaded ? 'text-foreground hover:bg-accent' : 'text-muted-foreground/40 cursor-default'}`}
-                  >
-                    <Volume2 className={`w-3.5 h-3.5 shrink-0 ${loaded ? (selectedFile === f.key ? 'text-primary' : 'text-muted-foreground') : 'text-muted-foreground/30'}`} />
-                    <span className="flex-1 truncate font-medium text-[11px]">{f.label}</span>
-                    {dirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Unsaved changes" />}
-                    {!loaded && <span className="text-[9px] text-muted-foreground/40">—</span>}
-                  </button>
-                );
-              })}
+            <div className="p-1.5 space-y-0.5">
+              {/* Loaded files */}
+              {Object.keys(files).map(fname => (
+                <button
+                  key={fname}
+                  onClick={() => setActiveFile(fname)}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-[11px] transition-colors ${activeFile === fname ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-accent/30'}`}
+                >
+                  <FileText className="w-3 h-3 shrink-0" />
+                  <span className="truncate font-mono">{fname.replace('descr_sounds_', '').replace('.txt', '')}</span>
+                </button>
+              ))}
+              {/* Known files not yet loaded */}
+              {KNOWN_SOUND_FILES.filter(f => !files[f]).map(fname => (
+                <div
+                  key={fname}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground/40"
+                >
+                  <FileText className="w-3 h-3 shrink-0" />
+                  <span className="truncate font-mono">{fname.replace('descr_sounds_', '').replace('.txt', '')}</span>
+                </div>
+              ))}
             </div>
           </ScrollArea>
-
-          {loadedCount === 0 && (
-            <div className="p-3 border-t border-border">
-              <div className="flex items-start gap-2 text-[10px] text-muted-foreground">
-                <Info className="w-3 h-3 shrink-0 mt-0.5" />
-                <span>Browse to <code className="font-mono">data/sounds/</code> to load sound definition files</span>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Editor pane */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {!selectedFile || !files[selectedFile] ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
-              <Music className="w-12 h-12 text-muted-foreground/20" />
-              <div>
-                <p className="text-sm font-medium text-foreground mb-1">Load Sound Files</p>
-                <p className="text-xs text-muted-foreground max-w-sm">
-                  Browse to your mod's <code className="font-mono text-[10px] bg-accent px-1 rounded">data/sounds/</code> folder to load and edit the M2TW sound definition files.
-                </p>
-              </div>
-              <label className="cursor-pointer">
-                <input type="file" className="hidden"
-                  webkitdirectory="" directory="" multiple onChange={handleFolderLoad} />
-                <Button asChild className="gap-2 pointer-events-none">
-                  <span><FolderOpen className="w-4 h-4" /> Browse Sound Folder</span>
-                </Button>
-              </label>
-              <div className="mt-2 text-[10px] text-muted-foreground">
-                Reference files: <a href="https://github.com/RiritoNinigaya/M2TW-TextSoundFiles" target="_blank" rel="noreferrer" className="text-primary underline">RiritoNinigaya/M2TW-TextSoundFiles</a>
-              </div>
+        {/* Right: editor */}
+        <div className="flex-1 flex flex-col min-h-0">
+          {!currentFile ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 p-8">
+              <Volume2 className="w-12 h-12 opacity-15" />
+              <p className="text-sm font-medium">No sound file loaded</p>
+              <p className="text-xs text-center max-w-sm">
+                Click <strong>Load sounds folder</strong> and browse to your mod's <code className="font-mono bg-accent px-1 rounded">data/sounds/</code> directory. The M2TW base sound files are available at{' '}
+                <a href="https://github.com/RiritoNinigaya/M2TW-TextSoundFiles" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                  github.com/RiritoNinigaya/M2TW-TextSoundFiles
+                </a>.
+              </p>
             </div>
           ) : (
             <>
-              {/* File toolbar */}
-              <div className="border-b border-border px-3 py-1.5 flex items-center gap-2 shrink-0 bg-card/20">
-                <FileText className="w-3.5 h-3.5 text-primary" />
-                <span className="text-[11px] font-mono text-foreground">{selectedFile}.txt</span>
-                {selectedInfo && <span className="text-[10px] text-muted-foreground">— {selectedInfo.desc}</span>}
-                <div className="ml-auto flex items-center gap-1.5">
-                  {isDirty[selectedFile] && (
-                    <span className="text-[10px] text-amber-400">● Unsaved</span>
-                  )}
-                  <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => handleDownload(selectedFile)}>
-                    <Download className="w-3 h-3" /> Save File
-                  </Button>
+              {/* Search + add */}
+              <div className="border-b border-border px-3 py-2 flex items-center gap-2 shrink-0">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search entries…"
+                    className="w-full h-7 pl-7 pr-3 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
                 </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {filteredEntries.filter(e => e.type === 'entry').length} entries
+                </span>
               </div>
 
-              {/* Search */}
-              <div className="border-b border-border px-3 py-1.5 flex items-center gap-2 shrink-0">
-                <Search className="w-3.5 h-3.5 text-muted-foreground" />
+              {/* Add entry */}
+              <div className="border-b border-border px-3 py-2 flex items-center gap-2 shrink-0">
                 <input
-                  className="flex-1 bg-transparent text-[11px] text-foreground placeholder-muted-foreground focus:outline-none"
-                  placeholder="Search entries…"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
+                  value={newEntryLabel}
+                  onChange={e => setNewEntryLabel(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddEntry()}
+                  placeholder="New entry label…"
+                  className="flex-1 h-7 px-2 text-[11px] font-mono bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
                 />
-                {searchTerm && (
-                  <button onClick={() => setSearchTerm('')} className="text-[10px] text-muted-foreground hover:text-foreground">clear</button>
-                )}
+                <Button size="sm" className="h-7 text-[10px] gap-1" onClick={handleAddEntry} disabled={!newEntryLabel.trim()}>
+                  <Plus className="w-3 h-3" /> Add
+                </Button>
               </div>
 
-              {/* Content: raw text editor with block highlights */}
-              <div className="flex flex-1 min-h-0">
-                {/* Raw editor */}
-                <textarea
-                  className="flex-1 bg-background font-mono text-[11px] text-foreground p-3 resize-none focus:outline-none border-r border-border"
-                  value={currentText}
-                  onChange={e => handleTextChange(e.target.value)}
-                  spellCheck={false}
-                  style={{ minHeight: 0 }}
-                />
-
-                {/* Block overview panel */}
-                {!searchTerm && (
-                  <div className="w-48 border-l border-border flex flex-col bg-card/10 shrink-0">
-                    <div className="p-2 border-b border-border">
-                      <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wide">Blocks ({parseSoundFile(currentText).filter(b => b.type === 'block').length})</p>
-                    </div>
-                    <ScrollArea className="flex-1">
-                      <div className="p-1 space-y-0.5">
-                        {parseSoundFile(currentText).filter(b => b.type === 'block').map((b, i) => (
-                          <div key={i} className="px-2 py-1 rounded text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground cursor-default truncate font-mono">
-                            {b.name}
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-              </div>
+              {/* Entries */}
+              <ScrollArea className="flex-1">
+                <div className="p-3">
+                  {filteredEntries.map((entry, i) => (
+                    <SoundEntry
+                      key={i}
+                      entry={entry}
+                      onUpdate={(updated) => handleUpdateEntry(i, updated)}
+                      onDelete={() => handleDeleteEntry(currentFile.entries.indexOf(entry))}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
 
               {/* Footer */}
-              <div className="h-6 border-t border-border flex items-center px-3 gap-3 shrink-0 bg-card/30">
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {currentText.split('\n').length} lines · {parseSoundFile(currentText).filter(b => b.type === 'block').length} blocks
+              <div className="h-7 border-t border-border flex items-center px-3 shrink-0 bg-card/30">
+                <span className="text-[10px] font-mono text-muted-foreground">{activeFile}</span>
+                <span className="ml-auto text-[10px] text-muted-foreground">
+                  {currentFile.entries.filter(e => e.type === 'entry').length} entries
                 </span>
-                {searchTerm && (
-                  <span className="text-[10px] text-primary">{filteredBlocks.filter(b => b.type === 'block').length} matching</span>
-                )}
               </div>
             </>
           )}
