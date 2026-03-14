@@ -37,8 +37,15 @@ export default function AncillaryEditor() {
   const { edbData } = useEDB();
   // Building tree names for SettlementBuildingExists condition dropdown
   const buildingNames = edbData?.buildings?.map(b => b.name) ?? [];
-  // Trait names from ancillaries file Trait conditions (ancillaries don't have their own trait list, use raw ancillary names)
-  const traitNames = [];
+  // Trait names: try to read from cached traits file in localStorage
+  const traitNames = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('m2tw_traits_file');
+      if (!raw) return [];
+      const matches = raw.match(/^Trait\s+(\S+)/gm) || [];
+      return matches.map(m => m.replace(/^Trait\s+/, '').trim());
+    } catch { return []; }
+  }, []);
 
   if (selectedAnc === null || !ancData) {
     return (
