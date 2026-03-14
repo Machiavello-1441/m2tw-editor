@@ -145,18 +145,23 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
         {/* Save / Revert / Export — always visible when there are dirty layers */}
         <div className="ml-auto flex items-center gap-1.5">
           {hasUnsaved && (
-            <>
-              <button onClick={onRevert} title="Revert all unsaved changes"
-                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-700/60 hover:bg-slate-700 border border-slate-600/40 text-slate-300 transition-colors">
-                <RotateCcw className="w-3 h-3" /> Revert
-              </button>
-              <button onClick={onSave} title="Mark changes as saved"
-                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-green-700/60 hover:bg-green-700/80 border border-green-600/40 text-green-300 font-semibold transition-colors">
-                <Save className="w-3 h-3" /> Save
-              </button>
-            </>
+            <span className="text-[10px] text-amber-400/70 font-mono">● unsaved</span>
           )}
-          {dirtyLayers && dirtyLayers.size > 0 && (
+          {hasSavePoint && hasUnsaved && (
+            <button onClick={onRevert} title="Revert to last save"
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-700/60 hover:bg-slate-700 border border-slate-600/40 text-slate-300 transition-colors">
+              <RotateCcw className="w-3 h-3" /> Revert
+            </button>
+          )}
+          <button onClick={onSave} title="Save current state as checkpoint"
+            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] border font-semibold transition-colors ${
+              hasUnsaved
+                ? 'bg-green-700/60 hover:bg-green-700/80 border-green-600/40 text-green-300'
+                : 'bg-slate-800 border-slate-600/40 text-slate-500 hover:text-slate-300'
+            }`}>
+            <Save className="w-3 h-3" /> Save
+          </button>
+          {dirtyLayers && [...dirtyLayers].some(id => id !== '__strat__') && (
             <button onClick={onExport} title="Export modified layers as TGA files"
               className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 border border-amber-500/40 text-slate-900 font-semibold transition-colors">
               <Download className="w-3 h-3" /> Export TGA
