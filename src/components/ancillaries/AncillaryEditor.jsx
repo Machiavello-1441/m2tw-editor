@@ -191,7 +191,19 @@ export default function AncillaryEditor() {
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-[10px] text-muted-foreground">Effects Description</Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-[10px] text-muted-foreground">Effects Description</Label>
+                {anc.effectsDescription && anc.effects.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => updateTextEntry(anc.effectsDescription, buildEffectsDescription(anc.effects))}
+                    className="flex items-center gap-0.5 text-[9px] text-primary hover:underline"
+                    title="Auto-generate from effects"
+                  >
+                    <Wand2 className="w-2.5 h-2.5" /> Auto
+                  </button>
+                )}
+              </div>
               <span className="text-[9px] text-muted-foreground/50 font-mono">{anc.effectsDescription}</span>
             </div>
             <textarea
