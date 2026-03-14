@@ -5,8 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Plus, Trash2, ChevronDown, ChevronRight, Zap, Search } from 'lucide-react';
 import WhenToTestSelect from './WhenToTestSelect';
 import ConditionRow from './ConditionRow';
-import { serializeCondition, getFactionNames, getBuildingLevelNames } from './conditionDefs';
-import { useEDB } from '../edb/EDBContext';
+import { serializeCondition } from './conditionDefs';
+import { useModData } from './ModDataContext';
 
 const inputCls = 'h-7 text-xs font-mono bg-background text-white';
 
