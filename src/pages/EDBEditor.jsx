@@ -73,7 +73,7 @@ function decodeTgaToDataUrl(buffer) {
 }
 
 export default function EDBEditor() {
-  const { edbData, fileName, loadTgaImages } = useEDB();
+  const { edbData, fileName, loadTgaImages, saveNow } = useEDB();
   const [showCode, setShowCode] = useState(false);
   const tgaFolderRef = useRef();
 
