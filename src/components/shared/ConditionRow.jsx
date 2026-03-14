@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CONDITION_DEFS, COMPARE_OPS, RELIGION_OPTIONS, CULTURE_OPTIONS, AGENT_TYPES, parseConditionString, serializeCondition } from './conditionDefs';
 import { Trash2, ChevronDown, Search } from 'lucide-react';
+import { useModData } from './ModDataContext';
 
 const CONNECTORS = ['and', 'or', 'and not', 'or not'];
 
