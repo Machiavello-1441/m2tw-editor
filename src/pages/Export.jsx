@@ -3,10 +3,14 @@ import { useEDB } from '../components/edb/EDBContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2 } from 'lucide-react';
+import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2, Globe2, Layers } from 'lucide-react';
 import JSZip from 'jszip';
 import ValidationDashboard from '../components/export/ValidationDashboard';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
+
+function getCampaigns() {
+  try { const s = localStorage.getItem('m2tw_campaigns'); return s ? JSON.parse(s) : []; } catch { return []; }
+}
 
 function getLuaScripts() {
   try {
@@ -29,8 +33,11 @@ export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile } = useEDB();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
+  const [exportingTwemp, setExportingTwemp] = useState(false);
   const luaScripts = getLuaScripts();
   const hasLua = luaScripts.length > 0;
+  const campaigns = getCampaigns();
+  const hasCampaigns = campaigns.length > 0;
 
   const modName = (() => {
     try { return localStorage.getItem('m2tw_mod_name') || 'my_mod'; } catch { return 'my_mod'; }
@@ -60,6 +67,18 @@ export default function Export() {
       zip.folder(`${modName}/eopData/eopScripts`).file('luaPluginScript.lua', mergedLua);
     }
 
+    // Include campaigns
+    const campaigns = getCampaigns();
+    for (const c of campaigns) {
+      const campFolder = zip.folder(`${modName}/data/world/maps/campaign/custom/${c.name}`);
+      campFolder.file('descr_strat.txt', c.descrStrat || `campaign\t${c.name}\n`);
+    }
+    if (campaigns.length > 0) {
+      // Merge all campaign descriptions into one file
+      const allDescs = campaigns.map(c => c.descriptions || '').join('\n');
+      dataFolder.folder('text').file('campaign_descriptions.txt', `¬\n${allDescs}`);
+    }
+
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -70,6 +89,31 @@ export default function Export() {
 
     setBuilding(false);
     setDone(true);
+  };
+
+  // OpenTWEMP preset export
+  const handleExportTwemp = async () => {
+    setExportingTwemp(true);
+    const preset = {
+      ModName: modName,
+      ModFolder: modName,
+      GameVersion: 'M2TW',
+      SupportedVersion: '1.52',
+      Description: `${modName} - Created with M2TW Mod Editor`,
+      Author: 'Mod Author',
+      Version: '1.0',
+      LaunchParams: `@M2TW.exe -mod:mods/${modName} -show_err`,
+      EopEnabled: hasLua,
+      Campaigns: getCampaigns().map(c => ({ name: c.name, displayName: c.displayName || c.name })),
+    };
+    const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${modName}_twemp_preset.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExportingTwemp(false);
   };
 
   const hasEDB = !!edbData;
@@ -126,11 +170,42 @@ export default function Export() {
                 status={hasLua ? 'ready' : 'skip'}
                 detail={hasLua ? `${luaScripts.length} script(s) merged` : 'No Lua scripts — edit on Lua Scripts page'}
               />
+              <ExportRow
+                icon={<Globe2 className="w-4 h-4 text-blue-400/70" />}
+                label="Custom Campaigns"
+                path={`${modName}/data/world/maps/campaign/custom/`}
+                status={hasCampaigns ? 'ready' : 'skip'}
+                detail={hasCampaigns ? `${campaigns.length} campaign(s) — descr_strat.txt per campaign` : 'No campaigns — edit on Campaigns page'}
+              />
             </CardContent>
           </Card>
 
           <ValidationDashboard edbData={edbData} />
           <TriggerValidationPanel />
+
+          {/* OpenTWEMP Integration */}
+          <Card>
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" /> OpenTWEMP Integration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-2">
+              <p className="text-[11px] text-muted-foreground">
+                Export a preset JSON file compatible with the{' '}
+                <a href="https://github.com/OpenTWEMP/OpenTWEMP-Community-Browser" target="_blank" rel="noreferrer" className="text-primary underline">OpenTWEMP Community Browser</a>{' '}
+                launcher so your mod appears in the mod list with correct launch parameters.
+              </p>
+              <Button
+                variant="outline" className="w-full h-9 text-xs gap-2"
+                onClick={handleExportTwemp}
+                disabled={exportingTwemp}
+              >
+                <Download className="w-4 h-4" />
+                Export OpenTWEMP Preset ({modName}_twemp_preset.json)
+              </Button>
+            </CardContent>
+          </Card>
 
           <Button
             className="w-full h-12 text-base gap-2"
