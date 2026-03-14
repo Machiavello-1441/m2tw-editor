@@ -5,6 +5,8 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import CampaignMap from './pages/CampaignMap';
+import CampaignManager from './pages/CampaignManager';
+import SoundEditor from './pages/SoundEditor';
 
 import TraitsEditor from './pages/TraitsEditor';
 import AncillariesEditor from './pages/AncillariesEditor';
@@ -69,6 +71,8 @@ const AuthenticatedApp = () => {
       <Route path="/AncillariesEditor" element={<LayoutWrapper currentPageName="AncillariesEditor"><AncillariesEditor /></LayoutWrapper>} />
       <Route path="/LuaScripts" element={<LayoutWrapper currentPageName="LuaScripts"><LuaScripts /></LayoutWrapper>} />
       <Route path="/UnitEditor" element={<LayoutWrapper currentPageName="UnitEditor"><UnitEditor /></LayoutWrapper>} />
+      <Route path="/CampaignManager" element={<LayoutWrapper currentPageName="CampaignManager"><CampaignManager /></LayoutWrapper>} />
+      <Route path="/SoundEditor" element={<LayoutWrapper currentPageName="SoundEditor"><SoundEditor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

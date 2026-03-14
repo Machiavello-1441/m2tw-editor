@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { EDBProvider } from './components/edb/EDBContext';
 import { RefDataProvider } from './components/edb/RefDataContext';
-import { Castle, Download, Home, Shield, Package, Code2, Swords, Map } from 'lucide-react';
+import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe2, Music } from 'lucide-react';
 
 const navItems = [
   { name: 'Home', icon: Home, page: 'Home' },
@@ -12,6 +12,8 @@ const navItems = [
   { name: 'Ancillaries', icon: Package, page: 'AncillariesEditor' },
   { name: 'Unit Editor', icon: Swords, page: 'UnitEditor' },
   { name: 'Campaign Map', icon: Map, page: 'CampaignMap' },
+  { name: 'Campaigns', icon: Globe2, page: 'CampaignManager' },
+  { name: 'Sound Files', icon: Music, page: 'SoundEditor' },
   { name: 'Lua Scripts', icon: Code2, page: 'LuaScripts' },
   { name: 'Export', icon: Download, page: 'Export' },
 ];
