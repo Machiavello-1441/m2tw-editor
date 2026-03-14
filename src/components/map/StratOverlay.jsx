@@ -112,8 +112,6 @@ export default function StratOverlay({
       ref={svgRef}
       className="absolute inset-0 w-full h-full"
       style={{ zIndex: 10, pointerEvents: 'none' }}
-      onMouseMove={handleSvgMouseMove}
-      onMouseUp={handleSvgMouseUp}
     >
       {[...groups.entries()].map(([key, groupItems]) => {
         const first = groupItems[0];
