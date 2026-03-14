@@ -57,5 +57,9 @@ function AncillariesEditorInner() {
 }
 
 export default function AncillariesEditor() {
-  return <AncillariesEditorInner />;
+  return (
+    <AncillariesProvider>
+      <AncillariesEditorInner />
+    </AncillariesProvider>
+  );
 }
