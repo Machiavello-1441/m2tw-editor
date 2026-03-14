@@ -81,28 +81,47 @@ export function parseDescrStrat(text) {
     const line = lines[i].replace(/;.*$/, '').trim();
     if (!line) continue;
 
-    // Resources: "resource coal, x 123, y 456" or "resource coal x 123 y 456"
-    const resMatch = line.match(/^resource\s+(\w+)[,\s]+x\s+(\d+)[,\s]+y\s+(\d+)/);
+    // Resources: multiple formats
+    // "resource coal, x 123, y 456" or "resource coal x 123 y 456"
+    let resMatch = line.match(/^resource\s+(\w+)[\s,]+x[\s,]*(\d+)[\s,]+y[\s,]*(\d+)/i);
     if (resMatch) {
       items.push({ id: id++, category: 'resource', type: resMatch[1], x: parseInt(resMatch[2]), y: parseInt(resMatch[3]) });
       continue;
     }
+    // Multiline resource: "resource <type>" followed by "x" and "y" lines
+    const resKeyMatch = line.match(/^resource\s+(\w+)$/i);
+    if (resKeyMatch) {
+      const resType = resKeyMatch[1];
+      let rx = null, ry = null;
+      for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
+        const cl = lines[j].replace(/;.*$/, '').trim();
+        const xm = cl.match(/^x[\s,]*(\d+)/i);
+        const ym = cl.match(/^y[\s,]*(\d+)/i);
+        if (xm) rx = parseInt(xm[1]);
+        if (ym) ry = parseInt(ym[1]);
+        if (rx !== null && ry !== null) break;
+      }
+      if (rx !== null && ry !== null) {
+        items.push({ id: id++, category: 'resource', type: resType, x: rx, y: ry });
+      }
+      continue;
+    }
 
-    // Fortifications: "fort x 123, y 456" or multiline with x_pos/y_pos
-    const fortMatch = line.match(/^(fort|watchtower)\s+x\s+(\d+),?\s*y\s+(\d+)/);
+    // Fortifications: "fort x 123, y 456" or "watchtower x 456, y 789"
+    let fortMatch = line.match(/^(fort|watchtower)\s+x[\s,]*(\d+)[\s,]+y[\s,]*(\d+)/i);
     if (fortMatch) {
       items.push({ id: id++, category: 'fortification', type: fortMatch[1], x: parseInt(fortMatch[2]), y: parseInt(fortMatch[3]) });
       continue;
     }
     // Fortifications multiline format: "fort" or "watchtower" on its own line
-    const fortKeyMatch = line.match(/^(fort|watchtower)$/);
+    const fortKeyMatch = line.match(/^(fort|watchtower)$/i);
     if (fortKeyMatch) {
       const fortType = fortKeyMatch[1];
       let fx = null, fy = null;
       for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
         const cl = lines[j].replace(/;.*$/, '').trim();
-        const xm = cl.match(/^x_?pos\s+(\d+)/i) || cl.match(/^x\s+(\d+)/i);
-        const ym = cl.match(/^y_?pos\s+(\d+)/i) || cl.match(/^y\s+(\d+)/i);
+        const xm = cl.match(/^x[\s,]*(\d+)/i);
+        const ym = cl.match(/^y[\s,]*(\d+)/i);
         if (xm) fx = parseInt(xm[1]);
         if (ym) fy = parseInt(ym[1]);
         if (fx !== null && fy !== null) break;
