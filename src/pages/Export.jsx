@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2 } from 'lucide-react';
 import JSZip from 'jszip';
+import ValidationDashboard from '../components/export/ValidationDashboard';
+import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 
 function getLuaScripts() {
   try {
@@ -22,8 +24,6 @@ function buildMergedLua(scripts) {
   if (custom.length) { out += '\n\n-- ═══ Custom Scripts ═══\n'; custom.forEach(s => { out += `\n-- ${s.name}\n${s.code}`; }); }
   return out;
 }
-import ValidationDashboard from '../components/export/ValidationDashboard';
-import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 
 export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile } = useEDB();
