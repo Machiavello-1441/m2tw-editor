@@ -103,6 +103,10 @@ export default function CampaignMap() {
   const jumpRef = useRef(null);
   const folderInputRef = useRef();
 
+  // ── Save/Revert snapshot ───────────────────────────────────────────────────
+  // savedSnapshot holds deep copies of layers pixel data + overlayItems at last save
+  const savedSnapshot = useRef(null);
+
   // Auto-load files pre-staged from Home page (keep them in window for re-navigation)
   React.useEffect(() => {
     const cached = window._m2tw_map_files;
