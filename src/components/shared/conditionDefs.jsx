@@ -248,6 +248,19 @@ export function parseConditionString(raw) {
     return { connector, type: compareIntMatch[1], op: compareIntMatch[2], value: compareIntMatch[3] };
   }
 
+  // Match SettlementBuildingFinished >= <level> (compare_building)
+  const compareBuildingMatch = rest.match(/^(\S+)\s+(>=|<=|>|<|=)\s*(.+)$/);
+  const defCB = CONDITION_DEFS.find(d => compareBuildingMatch && d.key === compareBuildingMatch[1]);
+  if (compareBuildingMatch && defCB && defCB.argType === 'compare_building') {
+    return { connector, type: compareBuildingMatch[1], op: compareBuildingMatch[2], value: compareBuildingMatch[3].trim() };
+  }
+
+  // Match Attribute <name> >= <int> (compare_attribute)
+  const attrMatch = rest.match(/^Attribute\s+(\S+)\s+(>=|<=|>|<|=)\s*(-?\d+)$/i);
+  if (attrMatch) {
+    return { connector, type: 'Attribute', attrName: attrMatch[1], op: attrMatch[2], value: attrMatch[3] };
+  }
+
   // Match SettlementBuildingExists = <building>
   const buildingMatch = rest.match(/^(\S+)\s*=\s*(.+)$/);
   const def = CONDITION_DEFS.find(d => buildingMatch && d.key === buildingMatch[1]);
