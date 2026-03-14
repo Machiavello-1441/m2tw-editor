@@ -39,7 +39,6 @@ export default function CampaignMap() {
     Object.fromEntries(LAYER_DEFS.map(d => [d.id, { visible: d.defaultVisible, opacity: d.defaultOpacity }]))
   );
   const [dirtyLayers, setDirtyLayers] = useState(new Set());
-  const [overlayDirty, setOverlayDirty] = useState(false);
   const [paintState, setPaintState] = useState(INITIAL_PAINT);
   const [activeTab, setActiveTab] = useState('layers');
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
@@ -222,6 +221,7 @@ export default function CampaignMap() {
     setStratData(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
     setPendingPlace(null);
     setSelectedItem(newItem);
+    setDirtyLayers(prev => new Set([...prev, '__strat__']));
   }, [pendingPlace, mapH]);
 
   const handleAddItem = (itemTemplate) => {
@@ -233,7 +233,7 @@ export default function CampaignMap() {
     setOverlayItems(prev => prev.filter(i => i.id !== id));
     setStratData(prev => prev ? { ...prev, items: (prev.items || []).filter(i => i.id !== id) } : prev);
     setSelectedItem(null);
-    setOverlayDirty(true);
+    setDirtyLayers(prev => new Set([...prev, '__strat__']));
   };
 
   // ── Move item (drag or click-to-reposition) ────────────────────────────────
