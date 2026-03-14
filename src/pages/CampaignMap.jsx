@@ -392,7 +392,7 @@ export default function CampaignMap() {
                   onFactionsLoad={(text) => { try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {} setFactionColorsRaw(parseDescrSmFactions(text)); }}
                   overlayItems={overlayItems}
                   selectedItem={selectedItem}
-                  onSelectItem={(item) => { setSelectedItem(item); if (jumpRef.current) jumpRef.current(item.x, item.y); }}
+                  onSelectItem={(item) => { setSelectedItem(item); if (jumpRef.current) jumpRef.current(item.x, mapH > 0 ? mapH - 1 - item.y : item.y); }}
                   visibleCategories={visibleCategories}
                   onToggleCategory={handleToggleCategory}
                   onDeleteItem={handleDeleteItem}
