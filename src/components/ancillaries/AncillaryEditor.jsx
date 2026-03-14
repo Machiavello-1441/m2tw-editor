@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAncillaries } from './AncillariesContext';
 import { useEDB } from '../edb/EDBContext';
 import { Input } from '@/components/ui/input';
