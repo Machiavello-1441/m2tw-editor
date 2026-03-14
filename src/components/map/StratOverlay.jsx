@@ -73,33 +73,36 @@ export default function StratOverlay({
   // Group by pixel for stack display
   const groups = groupByPixel(visible);
 
-  // Handle drag-to-move
+  // Handle drag-to-move via window events so the SVG doesn't need pointer-events
   const handleDragStart = useCallback((e, item) => {
+    e.preventDefault();
     e.stopPropagation();
     draggingRef.current = item;
   }, []);
 
-  const handleSvgMouseMove = useCallback((e) => {
-    if (!draggingRef.current || !onMoveItem) return;
-    const svg = svgRef.current;
-    const rect = svg.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const mx = Math.floor((sx - transform.x) / transform.scale);
-    const my = Math.floor(mapH - 1 - (sy - transform.y) / transform.scale);
-    onMoveItem(draggingRef.current.id, mx, my);
-  }, [transform, mapH, onMoveItem]);
-
-  const handleSvgMouseUp = useCallback((e) => {
-    if (!draggingRef.current || !onMoveItem) { draggingRef.current = null; return; }
-    const svg = svgRef.current;
-    const rect = svg.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const mx = Math.floor((sx - transform.x) / transform.scale);
-    const my = Math.floor(mapH - 1 - (sy - transform.y) / transform.scale);
-    onMoveItem(draggingRef.current.id, mx, my, true); // true = commit
-    draggingRef.current = null;
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!draggingRef.current || !onMoveItem || !svgRef.current) return;
+      const rect = svgRef.current.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const mx = Math.floor((sx - transform.x) / transform.scale);
+      const my = Math.floor(mapH - 1 - (sy - transform.y) / transform.scale);
+      onMoveItem(draggingRef.current.id, mx, my, false);
+    };
+    const onUp = (e) => {
+      if (!draggingRef.current || !onMoveItem || !svgRef.current) { draggingRef.current = null; return; }
+      const rect = svgRef.current.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const mx = Math.floor((sx - transform.x) / transform.scale);
+      const my = Math.floor(mapH - 1 - (sy - transform.y) / transform.scale);
+      onMoveItem(draggingRef.current.id, mx, my, true);
+      draggingRef.current = null;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, [transform, mapH, onMoveItem]);
 
   const showLabel = transform.scale > 1.5;
