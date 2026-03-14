@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CONDITION_DEFS, COMPARE_OPS, RELIGION_OPTIONS, CULTURE_OPTIONS, parseConditionString, serializeCondition } from './conditionDefs';
+import { CONDITION_DEFS, COMPARE_OPS, RELIGION_OPTIONS, CULTURE_OPTIONS, AGENT_TYPES, parseConditionString, serializeCondition } from './conditionDefs';
 import { Trash2, ChevronDown, Search } from 'lucide-react';
 
-const CONNECTORS = ['Condition', 'and', 'or', 'and not', 'or not'];
+const CONNECTORS = ['and', 'or', 'and not', 'or not'];
 
 // ── Searchable type dropdown ─────────────────────────────────────────────────
 function TypeSelect({ value, onChange }) {
@@ -65,7 +65,7 @@ function TypeSelect({ value, onChange }) {
   );
 }
 
-// ── Searchable value dropdown (for buildings, traits, etc.) ──────────────────
+// ── Searchable value dropdown ─────────────────────────────────────────────────
 function SearchableValueSelect({ value, onChange, options, placeholder }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -129,7 +129,8 @@ const inputCls = 'h-6 px-2 rounded border border-border bg-background text-[11px
 const selectCls = 'h-6 px-1 rounded border border-border bg-background text-[11px] font-mono text-white focus:outline-none';
 
 // ── Main ConditionRow ────────────────────────────────────────────────────────
-export default function ConditionRow({ condStr, onChange, onDelete, isFirst, buildingNames, traitNames }) {
+// Props: condStr, onChange, onDelete, isFirst, buildingNames, buildingLevelNames, traitNames, factionNames, traitAttributeNames
+export default function ConditionRow({ condStr, onChange, onDelete, isFirst, buildingNames = [], buildingLevelNames = [], traitNames = [], factionNames = [], traitAttributeNames = [] }) {
   const cond = parseConditionString(condStr);
   const def = CONDITION_DEFS.find(d => d.key === cond.type);
 
@@ -140,13 +141,14 @@ export default function ConditionRow({ condStr, onChange, onDelete, isFirst, bui
   const handleTypeChange = (newType) => {
     const newDef = CONDITION_DEFS.find(d => d.key === newType);
     const base = { ...cond, type: newType };
-    // Reset args when type changes
-    if (newDef?.argType === 'bool') { base.boolVal = 'true'; delete base.value; delete base.op; delete base.traitName; }
-    else if (newDef?.argType === 'compare_int') { base.op = '>='; base.value = '0'; delete base.boolVal; delete base.traitName; }
-    else if (newDef?.argType === 'compare_trait') { base.traitName = ''; base.op = '>'; base.value = '0'; delete base.boolVal; }
-    else if (newDef?.argType === 'building') { base.value = ''; delete base.boolVal; delete base.op; delete base.traitName; }
-    else if (newDef?.argType === 'int') { base.value = '50'; delete base.boolVal; delete base.op; delete base.traitName; }
-    else { base.value = ''; delete base.boolVal; delete base.op; delete base.traitName; }
+    if (newDef?.argType === 'bool') { base.boolVal = 'true'; delete base.value; delete base.op; delete base.traitName; delete base.attrName; }
+    else if (newDef?.argType === 'compare_int') { base.op = '>='; base.value = '0'; delete base.boolVal; delete base.traitName; delete base.attrName; }
+    else if (newDef?.argType === 'compare_trait') { base.traitName = ''; base.op = '>'; base.value = '0'; delete base.boolVal; delete base.attrName; }
+    else if (newDef?.argType === 'compare_building') { base.op = '>='; base.value = ''; delete base.boolVal; delete base.traitName; delete base.attrName; }
+    else if (newDef?.argType === 'compare_attribute') { base.attrName = ''; base.op = '>='; base.value = '0'; delete base.boolVal; delete base.traitName; }
+    else if (newDef?.argType === 'building') { base.value = ''; delete base.boolVal; delete base.op; delete base.traitName; delete base.attrName; }
+    else if (newDef?.argType === 'int') { base.value = '50'; delete base.boolVal; delete base.op; delete base.traitName; delete base.attrName; }
+    else { base.value = ''; delete base.boolVal; delete base.op; delete base.traitName; delete base.attrName; }
     onChange(serializeCondition(base));
   };
 
@@ -161,7 +163,7 @@ export default function ConditionRow({ condStr, onChange, onDelete, isFirst, bui
           onChange={e => update({ connector: e.target.value })}
           className={selectCls + ' w-20 shrink-0'}
         >
-          {CONNECTORS.filter(c => c !== 'Condition').map(c => (
+          {CONNECTORS.map(c => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
@@ -217,11 +219,54 @@ export default function ConditionRow({ condStr, onChange, onDelete, isFirst, bui
         </>
       )}
 
+      {/* compare_attribute: Attribute <attrName> >= <int> */}
+      {def?.argType === 'compare_attribute' && (
+        <>
+          {traitAttributeNames?.length > 0
+            ? <SearchableValueSelect value={cond.attrName || ''} onChange={v => update({ attrName: v })} options={traitAttributeNames} placeholder="Attribute name" />
+            : <input value={cond.attrName || ''} onChange={e => update({ attrName: e.target.value })}
+                placeholder="AttributeName" className={inputCls + ' w-32'} />
+          }
+          <select value={cond.op || '>='} onChange={e => update({ op: e.target.value })} className={selectCls + ' w-14'}>
+            {COMPARE_OPS.map(op => <option key={op} value={op}>{op}</option>)}
+          </select>
+          <input type="number" value={cond.value ?? ''} onChange={e => update({ value: e.target.value })}
+            className={inputCls + ' w-20'} placeholder="0" />
+        </>
+      )}
+
+      {/* compare_building: SettlementBuildingFinished >= <level> */}
+      {def?.argType === 'compare_building' && (
+        <>
+          <select value={cond.op || '>='} onChange={e => update({ op: e.target.value })} className={selectCls + ' w-14'}>
+            {COMPARE_OPS.map(op => <option key={op} value={op}>{op}</option>)}
+          </select>
+          {buildingLevelNames?.length > 0
+            ? <SearchableValueSelect value={cond.value || ''} onChange={v => update({ value: v })} options={buildingLevelNames} placeholder="building level" />
+            : <input value={cond.value || ''} onChange={e => update({ value: e.target.value })}
+                placeholder="building_level_name" className={inputCls + ' flex-1'} />
+          }
+        </>
+      )}
+
       {def?.argType === 'building' && (
         buildingNames?.length > 0
           ? <SearchableValueSelect value={cond.value || ''} onChange={v => update({ value: v })} options={buildingNames} placeholder="building tree" />
           : <input value={cond.value || ''} onChange={e => update({ value: e.target.value })}
               placeholder="building_tree_name" className={inputCls + ' flex-1'} />
+      )}
+
+      {/* agent: fixed list dropdown */}
+      {def?.argType === 'agent' && (
+        <SearchableValueSelect value={cond.value || ''} onChange={v => update({ value: v })} options={AGENT_TYPES} placeholder="agent type" />
+      )}
+
+      {/* faction: from descr_sm_factions.txt */}
+      {def?.argType === 'faction' && (
+        factionNames?.length > 0
+          ? <SearchableValueSelect value={cond.value || ''} onChange={v => update({ value: v })} options={factionNames} placeholder="faction name" />
+          : <input value={cond.value || ''} onChange={e => update({ value: e.target.value })}
+              placeholder="faction_name" className={inputCls + ' flex-1'} />
       )}
 
       {def?.argType === 'religion' && (
