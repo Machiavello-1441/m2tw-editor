@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { parseEDB, serializeEDB, createDefaultBuilding, createDefaultLevel, parseTextFile, serializeTextFile } from './EDBParser';
 import { useEDBAutoSave } from './useEDBAutoSave';
 
@@ -59,6 +59,10 @@ export function EDBProvider({ children }) {
     setSelectedBuilding(null);
     setSelectedLevel(null);
     setIsDirty(false);
+    try {
+      localStorage.setItem(EDB_LS_KEY, text);
+      localStorage.setItem(EDB_LS_NAME_KEY, name || 'export_descr_buildings.txt');
+    } catch {}
   }, []);
 
   const exportEDB = useCallback(() => {
@@ -69,6 +73,7 @@ export function EDBProvider({ children }) {
   const loadTextFile = useCallback((text) => {
     const parsed = parseTextFile(text);
     setTextData(prev => ({ ...prev, ...parsed }));
+    try { localStorage.setItem(EDB_TXT_LS_KEY, text); } catch {}
   }, []);
 
   const exportTextFile = useCallback(() => {
