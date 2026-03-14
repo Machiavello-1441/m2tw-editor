@@ -213,7 +213,7 @@ export default function Home() {
     window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: mapTgaFiles } }));
   };
 
-  const edbLoaded = fileStatus.edb === 'ok';
+  const edbLoaded = fileStatus.edb === 'ok' || !!edbData;
 
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-start gap-6 pt-12">
