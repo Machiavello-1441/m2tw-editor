@@ -36,22 +36,7 @@ function PreviewText({ text }) {
 
 export default function AncillaryEditor() {
   const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
-  const { edbData } = useEDB();
-  // Building tree names for SettlementBuildingExists condition dropdown
-  const buildingNames = edbData?.buildings?.map(b => b.name) ?? [];
-  // Trait names and attributes from cached traits file in localStorage
-  const { traitNames, traitAttributeNames } = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('m2tw_traits_file');
-      if (!raw) return { traitNames: [], traitAttributeNames: [] };
-      const nameMatches = raw.match(/^Trait\s+(\S+)/gm) || [];
-      const names = nameMatches.map(m => m.replace(/^Trait\s+/, '').trim());
-      // Extract attribute names from "Effect <attr> <val>" lines
-      const attrMatches = raw.match(/^\s+Effect\s+(\S+)/gm) || [];
-      const attrs = [...new Set(attrMatches.map(m => m.trim().replace(/^Effect\s+/, '').split(/\s+/)[0]))];
-      return { traitNames: names, traitAttributeNames: attrs };
-    } catch { return { traitNames: [], traitAttributeNames: [] }; }
-  }, []);
+  useModData(); // ensure context is consumed (data flows through TriggerEditor via useModData)
 
   if (selectedAnc === null || !ancData) {
     return (
