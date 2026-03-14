@@ -1,74 +1,63 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { CONDITION_DEFS, COMPARE_OPS, RELIGION_OPTIONS, CULTURE_OPTIONS, parseConditionString, serializeCondition } from './conditionDefs';
 import { Trash2, ChevronDown, Search } from 'lucide-react';
-import {
-  CONDITION_DEFS,
-  CONDITION_PREFIXES,
-  INT_OPERATORS,
-  parseConditionString,
-  serializeCondition,
-} from './conditionDefs';
 
-const inputCls = 'h-7 px-2 rounded bg-background border border-border text-xs font-mono text-white focus:outline-none focus:ring-1 focus:ring-primary';
-const selectCls = 'h-7 px-1 rounded bg-background border border-border text-xs font-mono text-white focus:outline-none focus:ring-1 focus:ring-primary';
+const CONNECTORS = ['Condition', 'and', 'or', 'and not', 'or not'];
 
-/** Small inline searchable dropdown */
-function SearchableSelect({ value, options, onChange, placeholder = 'Select…', className = '' }) {
+// ── Searchable type dropdown ─────────────────────────────────────────────────
+function TypeSelect({ value, onChange }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
   const ref = useRef(null);
 
   useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const filtered = options.filter(o => {
-    const label = typeof o === 'string' ? o : o.label;
-    return label.toLowerCase().includes(query.toLowerCase());
-  });
-
-  const getLabel = (v) => {
-    const opt = options.find(o => (typeof o === 'string' ? o : o.value) === v);
-    return opt ? (typeof opt === 'string' ? opt : opt.label) : v;
-  };
-
-  const select = (v) => { onChange(v); setOpen(false); setQuery(''); };
+  const filtered = CONDITION_DEFS.filter(d =>
+    d.key.toLowerCase().includes(search.toLowerCase()) ||
+    (d.hint || '').toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div ref={ref} className={`relative ${className}`}>
+    <div ref={ref} className="relative flex-1 min-w-0">
       <button
         type="button"
-        onClick={() => setOpen(p => !p)}
-        className={`w-full flex items-center justify-between ${inputCls}`}
+        onClick={() => { setOpen(o => !o); setSearch(''); }}
+        className="w-full h-6 flex items-center justify-between px-2 rounded border border-border bg-background text-[11px] font-mono text-white hover:border-primary/50 focus:outline-none"
       >
-        <span className={value ? 'text-white truncate' : 'text-muted-foreground'}>{value ? getLabel(value) : placeholder}</span>
+        <span className="truncate">{value || 'Select condition…'}</span>
         <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 ml-1" />
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 left-0 min-w-full bg-card border border-border rounded shadow-xl overflow-hidden" style={{ minWidth: '180px' }}>
-          <div className="flex items-center gap-1 px-2 py-1 border-b border-border">
+        <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-card border border-border rounded-md shadow-xl overflow-hidden">
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border">
             <Search className="w-3 h-3 text-muted-foreground shrink-0" />
             <input
               autoFocus
-              className="flex-1 bg-transparent text-xs text-white placeholder-muted-foreground focus:outline-none"
-              placeholder="Search…"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search conditions…"
+              className="flex-1 bg-transparent text-[11px] text-white placeholder-muted-foreground focus:outline-none"
             />
           </div>
-          <div className="max-h-52 overflow-y-auto">
-            {filtered.length === 0 && <p className="text-[11px] text-muted-foreground px-3 py-1.5">No matches</p>}
-            {filtered.map(opt => {
-              const v = typeof opt === 'string' ? opt : opt.value;
-              const l = typeof opt === 'string' ? opt : opt.label;
-              return (
-                <button key={v} type="button" onClick={() => select(v)}
-                  className={`w-full text-left px-3 py-1 text-xs font-mono hover:bg-accent transition-colors ${v === value ? 'bg-primary/15 text-primary' : 'text-white'}`}>
-                  {l}
-                </button>
-              );
-            })}
+          <div className="max-h-56 overflow-y-auto">
+            {filtered.map(d => (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => { onChange(d.key); setOpen(false); }}
+                className={`w-full text-left px-3 py-1.5 hover:bg-accent transition-colors ${value === d.key ? 'text-primary bg-primary/10' : ''}`}
+              >
+                <span className="text-[11px] font-mono text-white">{d.key}</span>
+                {d.hint && <span className="ml-2 text-[10px] text-muted-foreground">{d.hint}</span>}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-2 text-[11px] text-muted-foreground">No matches</p>
+            )}
           </div>
         </div>
       )}
@@ -76,159 +65,180 @@ function SearchableSelect({ value, options, onChange, placeholder = 'Select…',
   );
 }
 
-/**
- * ConditionRow
- * Renders one structured condition line.
- *
- * Props:
- *   rawValue   – raw condition string (e.g. "Condition IsGeneral true")
- *   onChange   – (newRawString) => void
- *   onDelete   – () => void
- *   isFirst    – boolean (first condition must always be 'Condition', not and/or)
- *   buildings  – string[] of building tree names from EDB
- *   traits     – string[] of trait names from traits file
- */
-export default function ConditionRow({ rawValue, onChange, onDelete, isFirst, buildings = [], traits = [] }) {
-  const parsed = parseConditionString(rawValue);
-  const { prefix, condName, operator, value1, value2 } = parsed;
+// ── Searchable value dropdown (for buildings, traits, etc.) ──────────────────
+function SearchableValueSelect({ value, onChange, options, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef(null);
 
-  const def = CONDITION_DEFS.find(d => d.name === condName);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-  const update = (patch) => {
-    onChange(serializeCondition({ prefix, condName, operator, value1, value2, ...patch }));
-  };
-
-  const condOptions = CONDITION_DEFS.map(d => ({
-    value: d.name,
-    label: `${d.name}  —  ${d.description}`,
-  }));
-
-  // Building options from EDB (with fallback)
-  const buildingOptions = buildings.length > 0 ? buildings : [];
-
-  // Trait options from traits file (with fallback)
-  const traitOptions = traits.length > 0 ? traits : [];
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  const showCustom = search && !options.some(o => o.toLowerCase() === search.toLowerCase());
 
   return (
-    <div className="flex flex-wrap items-center gap-1 p-1.5 rounded border border-border/60 bg-background/60">
-      {/* Prefix selector */}
+    <div ref={ref} className="relative flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={() => { setOpen(o => !o); setSearch(''); }}
+        className="w-full h-6 flex items-center justify-between px-2 rounded border border-border bg-background text-[11px] font-mono text-white hover:border-primary/50 focus:outline-none truncate"
+      >
+        <span className="truncate">{value || placeholder || 'Select…'}</span>
+        <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 ml-1" />
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 w-56 bg-card border border-border rounded-md shadow-xl overflow-hidden">
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border">
+            <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="flex-1 bg-transparent text-[11px] text-white placeholder-muted-foreground focus:outline-none"
+            />
+          </div>
+          <div className="max-h-44 overflow-y-auto">
+            {filtered.map(opt => (
+              <button key={opt} type="button"
+                onClick={() => { onChange(opt); setOpen(false); }}
+                className={`w-full text-left px-3 py-1.5 text-[11px] font-mono hover:bg-accent ${value === opt ? 'text-primary' : 'text-white'}`}
+              >{opt}</button>
+            ))}
+            {showCustom && (
+              <button type="button"
+                onClick={() => { onChange(search); setOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-[11px] font-mono text-yellow-400 hover:bg-accent"
+              >Use: "{search}"</button>
+            )}
+            {filtered.length === 0 && !showCustom && (
+              <p className="px-3 py-2 text-[11px] text-muted-foreground">No matches</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const inputCls = 'h-6 px-2 rounded border border-border bg-background text-[11px] font-mono text-white focus:outline-none focus:ring-1 focus:ring-primary';
+const selectCls = 'h-6 px-1 rounded border border-border bg-background text-[11px] font-mono text-white focus:outline-none';
+
+// ── Main ConditionRow ────────────────────────────────────────────────────────
+export default function ConditionRow({ condStr, onChange, onDelete, isFirst, buildingNames, traitNames }) {
+  const cond = parseConditionString(condStr);
+  const def = CONDITION_DEFS.find(d => d.key === cond.type);
+
+  const update = (patch) => {
+    onChange(serializeCondition({ ...cond, ...patch }));
+  };
+
+  const handleTypeChange = (newType) => {
+    const newDef = CONDITION_DEFS.find(d => d.key === newType);
+    const base = { ...cond, type: newType };
+    // Reset args when type changes
+    if (newDef?.argType === 'bool') { base.boolVal = 'true'; delete base.value; delete base.op; delete base.traitName; }
+    else if (newDef?.argType === 'compare_int') { base.op = '>='; base.value = '0'; delete base.boolVal; delete base.traitName; }
+    else if (newDef?.argType === 'compare_trait') { base.traitName = ''; base.op = '>'; base.value = '0'; delete base.boolVal; }
+    else if (newDef?.argType === 'building') { base.value = ''; delete base.boolVal; delete base.op; delete base.traitName; }
+    else if (newDef?.argType === 'int') { base.value = '50'; delete base.boolVal; delete base.op; delete base.traitName; }
+    else { base.value = ''; delete base.boolVal; delete base.op; delete base.traitName; }
+    onChange(serializeCondition(base));
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Connector */}
       {isFirst ? (
-        <span className="text-[10px] font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded shrink-0">Condition</span>
+        <span className="text-[10px] text-muted-foreground font-mono w-16 shrink-0 text-right pr-1">IF</span>
       ) : (
         <select
-          value={prefix}
-          onChange={e => update({ prefix: e.target.value })}
-          className={`${selectCls} w-24 shrink-0`}
+          value={cond.connector}
+          onChange={e => update({ connector: e.target.value })}
+          className={selectCls + ' w-20 shrink-0'}
         >
-          {CONDITION_PREFIXES.filter(p => p !== 'Condition').map(p => (
-            <option key={p} value={p}>{p}</option>
+          {CONNECTORS.filter(c => c !== 'Condition').map(c => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
       )}
 
-      {/* Condition name searchable dropdown */}
-      <SearchableSelect
-        value={condName}
-        options={condOptions}
-        onChange={v => update({ condName: v, operator: '', value1: '', value2: '' })}
-        placeholder="Choose condition…"
-        className="flex-1 min-w-32"
-      />
+      {/* Type dropdown */}
+      <TypeSelect value={cond.type} onChange={handleTypeChange} />
 
-      {/* Argument fields depending on type */}
-      {def?.argumentType === 'boolean' && (
-        <select value={value1 || 'true'} onChange={e => update({ value1: e.target.value })} className={`${selectCls} w-20`}>
+      {/* Arguments based on type */}
+      {!def && (
+        <input
+          value={cond.value || ''}
+          onChange={e => update({ value: e.target.value })}
+          placeholder="value"
+          className={inputCls + ' flex-1 min-w-0 w-24'}
+        />
+      )}
+
+      {def?.argType === 'bool' && (
+        <select value={cond.boolVal ?? 'true'} onChange={e => update({ boolVal: e.target.value })} className={selectCls + ' w-20'}>
           <option value="true">true</option>
           <option value="false">false</option>
         </select>
       )}
 
-      {def?.argumentType === 'int_op' && (
+      {def?.argType === 'int' && (
+        <input type="number" value={cond.value ?? ''} onChange={e => update({ value: e.target.value })}
+          className={inputCls + ' w-20'} placeholder="0" />
+      )}
+
+      {def?.argType === 'compare_int' && (
         <>
-          <select value={operator || '>='} onChange={e => update({ operator: e.target.value })} className={`${selectCls} w-14`}>
-            {INT_OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
+          <select value={cond.op || '>='} onChange={e => update({ op: e.target.value })} className={selectCls + ' w-14'}>
+            {COMPARE_OPS.map(op => <option key={op} value={op}>{op}</option>)}
           </select>
-          <input
-            type="number"
-            value={value1}
-            onChange={e => update({ value1: e.target.value })}
-            className={`${inputCls} w-20`}
-            placeholder="0"
-          />
+          <input type="number" value={cond.value ?? ''} onChange={e => update({ value: e.target.value })}
+            className={inputCls + ' w-20'} placeholder="0" />
         </>
       )}
 
-      {def?.argumentType === 'building' && (
-        buildingOptions.length > 0 ? (
-          <SearchableSelect
-            value={value1}
-            options={buildingOptions}
-            onChange={v => update({ value1: v })}
-            placeholder="Building tree…"
-            className="flex-1 min-w-28"
-          />
-        ) : (
-          <input
-            value={value1}
-            onChange={e => update({ value1: e.target.value })}
-            className={`${inputCls} flex-1 min-w-28`}
-            placeholder="building_tree_name"
-          />
-        )
-      )}
-
-      {def?.argumentType === 'trait_op' && (
+      {def?.argType === 'compare_trait' && (
         <>
-          {traitOptions.length > 0 ? (
-            <SearchableSelect
-              value={value1}
-              options={traitOptions}
-              onChange={v => update({ value1: v })}
-              placeholder="Trait name…"
-              className="flex-1 min-w-28"
-            />
-          ) : (
-            <input
-              value={value1}
-              onChange={e => update({ value1: e.target.value })}
-              className={`${inputCls} flex-1 min-w-28`}
-              placeholder="TraitName"
-            />
-          )}
-          <select value={operator || '>'} onChange={e => update({ operator: e.target.value })} className={`${selectCls} w-14`}>
-            {INT_OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
+          {traitNames?.length > 0
+            ? <SearchableValueSelect value={cond.traitName || ''} onChange={v => update({ traitName: v })} options={traitNames} placeholder="Trait name" />
+            : <input value={cond.traitName || ''} onChange={e => update({ traitName: e.target.value })}
+                placeholder="TraitName" className={inputCls + ' w-32'} />
+          }
+          <select value={cond.op || '>'} onChange={e => update({ op: e.target.value })} className={selectCls + ' w-14'}>
+            {COMPARE_OPS.map(op => <option key={op} value={op}>{op}</option>)}
           </select>
-          <input
-            type="number"
-            value={value2}
-            onChange={e => update({ value2: e.target.value })}
-            className={`${inputCls} w-16`}
-            placeholder="0"
-          />
+          <input type="number" value={cond.value ?? ''} onChange={e => update({ value: e.target.value })}
+            className={inputCls + ' w-20'} placeholder="0" />
         </>
       )}
 
-      {(def?.argumentType === 'string' || def?.argumentType === 'faction' || def?.argumentType === 'culture') && (
-        <input
-          value={value1}
-          onChange={e => update({ value1: e.target.value })}
-          className={`${inputCls} flex-1 min-w-28`}
-          placeholder={def.description}
-        />
+      {def?.argType === 'building' && (
+        buildingNames?.length > 0
+          ? <SearchableValueSelect value={cond.value || ''} onChange={v => update({ value: v })} options={buildingNames} placeholder="building tree" />
+          : <input value={cond.value || ''} onChange={e => update({ value: e.target.value })}
+              placeholder="building_tree_name" className={inputCls + ' flex-1'} />
       )}
 
-      {!def && condName && (
-        // Unknown / free-form condition — show raw value input
-        <input
-          value={value1}
-          onChange={e => update({ value1: e.target.value })}
-          className={`${inputCls} flex-1 min-w-28`}
-          placeholder="arguments…"
-        />
+      {def?.argType === 'religion' && (
+        <SearchableValueSelect value={cond.value || ''} onChange={v => update({ value: v })} options={RELIGION_OPTIONS} placeholder="religion" />
+      )}
+
+      {def?.argType === 'culture' && (
+        <SearchableValueSelect value={cond.value || ''} onChange={v => update({ value: v })} options={CULTURE_OPTIONS} placeholder="culture" />
+      )}
+
+      {def?.argType === 'string' && (
+        <input value={cond.value || ''} onChange={e => update({ value: e.target.value })}
+          placeholder={def.hint || 'value'} className={inputCls + ' flex-1 min-w-0 w-28'} />
       )}
 
       {/* Delete */}
-      <button onClick={onDelete} className="p-0.5 hover:bg-destructive/20 rounded shrink-0 ml-auto">
+      <button onClick={onDelete} className="p-0.5 hover:bg-destructive/20 rounded shrink-0">
         <Trash2 className="w-3 h-3 text-destructive" />
       </button>
     </div>
