@@ -60,8 +60,6 @@ export default function StratOverlay({
   items = [], transform, mapH = 0,
   visibleCategories, selectedId, onSelect, onMoveItem,
 }) {
-  if (!items.length) return null;
-
   const svgRef = useRef(null);
   const draggingRef = useRef(null);
 
