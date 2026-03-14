@@ -3,7 +3,7 @@ import { useTraits } from '../components/traits/TraitsContext';
 import TraitsFileLoader from '../components/traits/TraitsFileLoader';
 import TraitList from '../components/traits/TraitList';
 import TraitEditor from '../components/traits/TraitEditor';
-import { Shield } from 'lucide-react';
+import { Shield, FileText } from 'lucide-react';
 
 function TraitsEditorInner() {
   const { traitsData } = useTraits();

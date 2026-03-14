@@ -1,5 +1,5 @@
 import React from 'react';
-import { AncillariesProvider, useAncillaries } from '../components/ancillaries/AncillariesContext';
+import { useAncillaries } from '../components/ancillaries/AncillariesContext';
 import AncillariesFileLoader from '../components/ancillaries/AncillariesFileLoader';
 import AncillaryList from '../components/ancillaries/AncillaryList';
 import AncillaryEditor from '../components/ancillaries/AncillaryEditor';
@@ -57,9 +57,5 @@ function AncillariesEditorInner() {
 }
 
 export default function AncillariesEditor() {
-  return (
-    <AncillariesProvider>
-      <AncillariesEditorInner />
-    </AncillariesProvider>
-  );
+  return <AncillariesEditorInner />;
 }
