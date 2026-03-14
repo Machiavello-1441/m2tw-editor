@@ -36,7 +36,7 @@ function PreviewText({ text }) {
 
 export default function AncillaryEditor() {
   const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
-  const { traitNames, traitAttributeNames } = useModData();
+  useModData(); // ensure context is consumed (data flows through TriggerEditor via useModData)
 
   if (selectedAnc === null || !ancData) {
     return (
@@ -260,7 +260,7 @@ export default function AncillaryEditor() {
         />
 
         {/* Validation */}
-        <ValidationPanel onValidate={() => validateAncillariesData(ancData, getText)} watchData={ancData} />
+        <ValidationPanel onValidate={() => validateAncillariesData(ancData, getText)} />
       </div>
     </div>
   );
