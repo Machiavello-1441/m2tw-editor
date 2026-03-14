@@ -105,6 +105,8 @@ export default function StratOverlay({
 
   const showLabel = transform.scale > 1.5;
 
+  if (!items.length) return null;
+
   return (
     <svg
       ref={svgRef}
