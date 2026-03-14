@@ -191,7 +191,8 @@ export function EDBProvider({ children }) {
     addLevel, deleteLevel,
     textData, setTextData,
     imageData, setImageData, loadTgaImages,
-    isDirty, fileName
+    isDirty, fileName,
+    restoreSnapshot, saveNow
   };
 
   return <EDBContext.Provider value={value}>{children}</EDBContext.Provider>;
