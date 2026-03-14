@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTraits } from './TraitsContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Wand2 } from 'lucide-react';
 import EffectAttributeSelect from '../shared/EffectAttributeSelect';
 import TriggerEditor from '../shared/TriggerEditor';
+import ValidationPanel from '../shared/ValidationPanel';
+import { buildEffectsDescription, validateTraitsData } from '../shared/effectsDescriptionBuilder';
 
 const CHARACTER_TYPES = ['family', 'spy', 'assassin', 'diplomat', 'admiral', 'merchant', 'priest', 'all'];
 const CULTURES = ['northern_european', 'eastern_european', 'southern_european', 'greek', 'middle_eastern', 'mesoamerican'];
