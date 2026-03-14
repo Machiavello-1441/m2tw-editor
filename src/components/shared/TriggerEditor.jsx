@@ -76,7 +76,7 @@ function TraitNameSelect({ value, onChange, traitNames }) {
 // mode: 'trait' | 'ancillary'
 export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode }) {
   const [expanded, setExpanded] = useState(null);
-  const { traitNames, traitAttributeNames, factionNames, buildingNames, buildingLevelNames } = useModData();
+  const { traitNames } = useModData();
 
   const addCondition = (trigger, i) => {
     const newCond = serializeCondition({ connector: trigger.conditions.length === 0 ? 'Condition' : 'and', type: 'IsGeneral', boolVal: 'true' });
