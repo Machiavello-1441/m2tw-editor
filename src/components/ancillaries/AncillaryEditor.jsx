@@ -257,8 +257,6 @@ export default function AncillaryEditor() {
           onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
           entityName={anc.name}
           mode="ancillary"
-          traitNames={traitNames}
-          traitAttributeNames={traitAttributeNames}
         />
 
         {/* Validation */}
