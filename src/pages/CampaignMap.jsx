@@ -130,8 +130,8 @@ export default function CampaignMap() {
 
   // ── Bulk folder import ─────────────────────────────────────────────────────
   const handleFolderImport = useCallback(async (e) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
+    const files = Array.from(e.files || e.target?.files || []);
+    try { if (e.target) e.target.value = ''; } catch {}
 
     for (const file of files) {
       const name = file.name.toLowerCase();
