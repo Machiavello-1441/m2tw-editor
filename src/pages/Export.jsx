@@ -29,6 +29,8 @@ export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile } = useEDB();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
+  const luaScripts = getLuaScripts();
+  const hasLua = luaScripts.length > 0;
 
   const modName = (() => {
     try { return localStorage.getItem('m2tw_mod_name') || 'my_mod'; } catch { return 'my_mod'; }
@@ -116,6 +118,13 @@ export default function Export() {
                 path={`${modName}/data/text/`}
                 status={hasText ? 'ready' : 'skip'}
                 detail={hasText ? `${Object.keys(textData).length} text entries` : 'No text data — will be skipped'}
+              />
+              <ExportRow
+                icon={<Code2 className="w-4 h-4 text-green-500/70" />}
+                label="luaPluginScript.lua"
+                path={`${modName}/eopData/eopScripts/`}
+                status={hasLua ? 'ready' : 'skip'}
+                detail={hasLua ? `${luaScripts.length} script(s) merged` : 'No Lua scripts — edit on Lua Scripts page'}
               />
             </CardContent>
           </Card>
