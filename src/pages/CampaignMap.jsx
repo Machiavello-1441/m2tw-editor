@@ -45,15 +45,60 @@ export default function CampaignMap() {
   const [showPixelGrid, setShowPixelGrid] = useState(false);
   const [regionsMode, setRegionsMode] = useState('fill');
 
-  // Strat overlay state
-  const [stratData, setStratData] = useState(null);
-  const [regionsData, setRegionsData] = useState(null);
-  const [settlementNames, setSettlementNames] = useState(null);
-  const [factionColors, setFactionColors] = useState(null);
-  const [overlayItems, setOverlayItems] = useState([]);
+  // Strat overlay state — initialize from sessionStorage if available
+  const [stratData, setStratDataRaw] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_strat_raw');
+      if (raw) { const p = parseDescrStrat(raw); return p; }
+    } catch {}
+    return null;
+  });
+  const [regionsData, setRegionsDataRaw] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_regions_raw');
+      if (raw) return parseDescrRegions(raw);
+    } catch {}
+    return null;
+  });
+  const [settlementNames, setSettlementNamesRaw] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_names_raw');
+      if (raw) return parseSettlementNames(raw);
+    } catch {}
+    return null;
+  });
+  const [factionColors, setFactionColorsRaw] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_factions_raw');
+      if (raw) return parseDescrSmFactions(raw);
+    } catch {}
+    return null;
+  });
+  const [overlayItems, setOverlayItems] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_strat_raw');
+      if (raw) { const p = parseDescrStrat(raw); return p.items || []; }
+    } catch {}
+    return [];
+  });
   const [selectedItem, setSelectedItem] = useState(null);
   const [visibleCategories, setVisibleCategories] = useState(new Set(['resource', 'character', 'fortification']));
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
+
+  // Wrappers that also persist to sessionStorage
+  const setStratData = (data) => {
+    setStratDataRaw(data);
+    try { if (data?.raw) sessionStorage.setItem('m2tw_strat_raw', data.raw); } catch {}
+  };
+  const setRegionsData = (data) => {
+    setRegionsDataRaw(data);
+  };
+  const setSettlementNames = (data) => {
+    setSettlementNamesRaw(data);
+  };
+  const setFactionColors = (data) => {
+    setFactionColorsRaw(data);
+  };
 
   const jumpRef = useRef(null);
   const folderInputRef = useRef();
