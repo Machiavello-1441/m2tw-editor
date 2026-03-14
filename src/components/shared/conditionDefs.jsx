@@ -167,6 +167,48 @@ export const CULTURE_OPTIONS = [
 
 export const COMPARE_OPS = ['>=', '<=', '>', '<', '='];
 
+export const AGENT_TYPES = [
+  'spy', 'assassin', 'merchant', 'diplomat', 'princess',
+  'priest', 'heretic', 'witch', 'admiral', 'general',
+];
+
+// Load faction names from localStorage (descr_sm_factions.txt parsed on Home page)
+export function getFactionNames() {
+  try {
+    const raw = localStorage.getItem('m2tw_factions_file');
+    if (!raw) return [];
+    // Match "faction <name>" lines
+    const matches = [...raw.matchAll(/^faction\s+(\S+)/gim)];
+    return matches.map(m => m[1]).filter(Boolean);
+  } catch { return []; }
+}
+
+// Get all building level names from EDB data (passed in)
+export function getBuildingLevelNames(edbData) {
+  if (!edbData?.buildings) return [];
+  const levels = [];
+  for (const b of edbData.buildings) {
+    for (const lvl of b.levels || []) {
+      if (lvl.name) levels.push(lvl.name);
+    }
+  }
+  return levels;
+}
+
+// Get all trait attribute names from traits data
+export function getTraitAttributeNames(traitsData) {
+  if (!traitsData?.traits) return [];
+  const attrs = new Set();
+  for (const trait of traitsData.traits) {
+    for (const level of trait.levels || []) {
+      for (const effect of level.effects || []) {
+        if (effect.attribute) attrs.add(effect.attribute);
+      }
+    }
+  }
+  return [...attrs];
+}
+
 // ── Parse a raw condition string into a structured object ─────────────────────
 // Raw examples:
 //   "Condition IsGeneral true"
