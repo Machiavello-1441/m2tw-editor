@@ -1,12 +1,10 @@
 /**
- * ModDataContext — single source of truth for cross-editor reference data.
+ * ModDataContext — single live source of truth for cross-editor reference data.
  *
- * Must be rendered INSIDE EDBProvider, RefDataProvider, TraitsProvider, and
- * AncillariesProvider. See layout.jsx for usage.
- *
- * Consumers call useModData() to get always-live:
- *   traitNames, traitAttributeNames, ancillaryNames,
- *   factionNames, buildingNames, buildingLevelNames
+ * Sits INSIDE all four providers (EDB, RefData, Traits, Ancillaries).
+ * Every sub-editor calls useModData() to get always-up-to-date lists of
+ * trait names, ancillary names, faction names, building names, etc. —
+ * so changes made in one editor are immediately visible in all others.
  */
 import React, { createContext, useContext, useMemo } from 'react';
 import { useEDB } from '../edb/EDBContext';
@@ -17,18 +15,16 @@ import { useAncillaries } from '../ancillaries/AncillariesContext';
 const ModDataContext = createContext(null);
 
 export function ModDataProvider({ children }) {
-  let edbData = null, factions = [], traitsData = null, ancData = null;
-
-  // Each hook may throw if its provider isn't mounted yet — swallow gracefully
-  try { ({ edbData } = useEDB()); } catch {}
-  try { ({ factions } = useRefData()); } catch {}
-  try { ({ traitsData } = useTraits()); } catch {}
-  try { ({ ancData } = useAncillaries()); } catch {}
+  const { edbData } = useEDB();
+  const { factions } = useRefData();
+  const { traitsData } = useTraits();
+  const { ancData } = useAncillaries();
 
   const value = useMemo(() => {
-    // ── Traits ──────────────────────────────────────────────────────────────
+    // Trait names from live TraitsContext
     const traitNames = (traitsData?.traits || []).map(t => t.name);
 
+    // Trait attribute names from live TraitsContext
     const attrSet = new Set();
     for (const t of traitsData?.traits || []) {
       for (const lvl of t.levels || []) {
@@ -39,11 +35,12 @@ export function ModDataProvider({ children }) {
     }
     const traitAttributeNames = [...attrSet];
 
-    // ── Ancillaries ──────────────────────────────────────────────────────────
+    // Ancillary names from live AncillariesContext
     const ancillaryNames = (ancData?.ancillaries || []).map(a => a.name);
 
-    // ── Factions — live first, then localStorage fallback ────────────────────
-    let factionNames = (factions || []);
+    // Faction names from live RefDataContext (factions is string[] or object[])
+    let factionNames = (factions || []).map(f => (typeof f === 'string' ? f : f?.name)).filter(Boolean);
+    // Fall back to localStorage if factions file hasn't been loaded this session
     if (factionNames.length === 0) {
       try {
         const raw = localStorage.getItem('m2tw_factions_file');
@@ -53,8 +50,10 @@ export function ModDataProvider({ children }) {
       } catch {}
     }
 
-    // ── Buildings (EDB) ──────────────────────────────────────────────────────
+    // Building tree names from live EDBContext
     const buildingNames = (edbData?.buildings || []).map(b => b.name);
+
+    // Building level names from live EDBContext
     const buildingLevelNames = [];
     for (const b of edbData?.buildings || []) {
       for (const lvl of b.levels || []) {
@@ -71,6 +70,7 @@ export function ModDataProvider({ children }) {
 export function useModData() {
   const ctx = useContext(ModDataContext);
   if (!ctx) {
+    // Graceful fallback — components won't crash if used outside provider
     return {
       traitNames: [], traitAttributeNames: [], ancillaryNames: [],
       factionNames: [], buildingNames: [], buildingLevelNames: [],
