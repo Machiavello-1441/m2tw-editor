@@ -1,22 +1,12 @@
 import React, { useMemo } from 'react';
 import { useAncillaries } from './AncillariesContext';
+import { useEDB } from '../edb/EDBContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, ImageOff } from 'lucide-react';
 import EffectAttributeSelect from '../shared/EffectAttributeSelect';
 import TriggerEditor from '../shared/TriggerEditor';
-
-function useTraitNamesFromStorage() {
-  return useMemo(() => {
-    try {
-      const raw = localStorage.getItem('m2tw_traits_file');
-      if (!raw) return [];
-      const matches = [...raw.matchAll(/^Trait\s+(\S+)/gm)];
-      return matches.map(m => m[1]);
-    } catch { return []; }
-  }, []);
-}
 
 const ANCILLARY_TYPES = [
   'Academic', 'Court', 'Diplomacy', 'Entertain', 'Family',
@@ -44,7 +34,18 @@ function PreviewText({ text }) {
 
 export default function AncillaryEditor() {
   const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
-  const traitNames = useTraitNamesFromStorage();
+  const { edbData } = useEDB();
+  // Building tree names for SettlementBuildingExists condition dropdown
+  const buildingNames = edbData?.buildings?.map(b => b.name) ?? [];
+  // Trait names: try to read from cached traits file in localStorage
+  const traitNames = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('m2tw_traits_file');
+      if (!raw) return [];
+      const matches = raw.match(/^Trait\s+(\S+)/gm) || [];
+      return matches.map(m => m.replace(/^Trait\s+/, '').trim());
+    } catch { return []; }
+  }, []);
 
   if (selectedAnc === null || !ancData) {
     return (
@@ -253,7 +254,8 @@ export default function AncillaryEditor() {
           onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
           entityName={anc.name}
           mode="ancillary"
-          traitNames={traitNames}
+          buildings={buildingNames}
+          traits={traitNames}
         />
       </div>
     </div>
