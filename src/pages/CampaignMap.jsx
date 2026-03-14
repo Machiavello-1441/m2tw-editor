@@ -142,21 +142,25 @@ export default function CampaignMap() {
       }
       if (name === 'descr_strat.txt') {
         const text = await file.text();
+        try { sessionStorage.setItem('m2tw_strat_raw', text); } catch {}
         const parsed = parseDescrStrat(text);
-        setStratData(parsed);
+        setStratDataRaw(parsed);
         setOverlayItems(parsed.items);
       }
       if (name === 'descr_regions.txt') {
         const text = await file.text();
-        setRegionsData(parseDescrRegions(text));
+        try { sessionStorage.setItem('m2tw_regions_raw', text); } catch {}
+        setRegionsDataRaw(parseDescrRegions(text));
       }
       if (name === 'descr_sm_factions.txt') {
         const text = await file.text();
-        setFactionColors(parseDescrSmFactions(text));
+        try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {}
+        setFactionColorsRaw(parseDescrSmFactions(text));
       }
       if (name.endsWith('_regions_and_settlement_names.txt')) {
         const text = await file.text();
-        setSettlementNames(parseSettlementNames(text));
+        try { sessionStorage.setItem('m2tw_names_raw', text); } catch {}
+        setSettlementNamesRaw(parseSettlementNames(text));
       }
     }
   }, []);
