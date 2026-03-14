@@ -230,6 +230,17 @@ export default function CampaignMap() {
     setSelectedItem(null);
   };
 
+  // ── Move item (drag or click-to-reposition) ────────────────────────────────
+  const handleMoveItem = useCallback((id, mx, my, commit = false) => {
+    const clampedX = Math.max(0, mx);
+    const clampedY = Math.max(0, my);
+    setOverlayItems(prev => prev.map(i => i.id === id ? { ...i, x: clampedX, y: clampedY } : i));
+    setSelectedItem(prev => prev?.id === id ? { ...prev, x: clampedX, y: clampedY } : prev);
+    if (commit) {
+      setStratDataRaw(prev => prev ? { ...prev, items: (prev.items || []).map(i => i.id === id ? { ...i, x: clampedX, y: clampedY } : i) } : prev);
+    }
+  }, []);
+
   const handleToggleCategory = (catId) => {
     setVisibleCategories(prev => {
       const next = new Set(prev);
