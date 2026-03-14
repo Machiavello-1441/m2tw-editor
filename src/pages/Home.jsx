@@ -7,7 +7,7 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Package, ArrowRight, Info, Castle, Image
+  FileText, Package, ArrowRight, Info, Castle, Image, Map
 } from 'lucide-react';
 
 function decodeTgaToDataUrl(buffer) {
@@ -113,8 +113,10 @@ export default function Home() {
     try { return localStorage.getItem('m2tw_mod_name') || 'my_mod'; } catch { return 'my_mod'; }
   });
   const [ancImgCount, setAncImgCount] = useState(0);
+  const [mapFileCount, setMapFileCount] = useState(0);
   const dataFolderRef = useRef();
   const ancImagesFolderRef = useRef();
+  const mapFolderRef = useRef();
 
   const readText = (file) => new Promise((resolve) => {
     const r = new FileReader();
@@ -181,6 +183,22 @@ export default function Home() {
     window.dispatchEvent(new CustomEvent('load-anc-tga-batch', { detail: images }));
     setAncImgCount(Object.keys(images).length);
     setFileStatus(prev => ({ ...prev, anc_images: 'ok' }));
+  };
+
+  const handleMapFolder = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    const mapTgaFiles = files.filter(f => f.name.toLowerCase().endsWith('.tga') || f.name.toLowerCase().endsWith('.txt'));
+    if (mapTgaFiles.length === 0) return;
+    // Store raw files in sessionStorage key for CampaignMap to pick up
+    // We dispatch a custom event so CampaignMap can react if open, or store names for reference
+    const tgaNames = mapTgaFiles.filter(f => f.name.toLowerCase().endsWith('.tga')).map(f => f.name.toLowerCase());
+    const txtNames = mapTgaFiles.filter(f => f.name.toLowerCase().endsWith('.txt')).map(f => f.name.toLowerCase());
+    setMapFileCount(mapTgaFiles.length);
+    setFileStatus(prev => ({ ...prev, map_folder: 'ok' }));
+    // Cache files globally so CampaignMap page can load them
+    window._m2tw_map_files = mapTgaFiles;
+    window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: mapTgaFiles } }));
   };
 
   const edbLoaded = fileStatus.edb === 'ok';
@@ -258,7 +276,52 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Step 2 — Ancillaries UI images */}
+      {/* Step 2 — Campaign Map folder */}
+      <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-border bg-accent/10">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Map className="w-4 h-4 text-primary" />
+            Step 2 — Load Campaign Map Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Browse to your mod's <code className="text-[10px] font-mono bg-accent px-1 rounded">data\world\maps\campaign\[campaign_name]\</code> or the
+            <code className="text-[10px] font-mono bg-accent px-1 rounded ml-1">base\</code> folder.
+            Loads <code className="text-[10px] font-mono bg-accent px-1 rounded">map_*.tga</code>,{' '}
+            <code className="text-[10px] font-mono bg-accent px-1 rounded">descr_strat.txt</code>, and <code className="text-[10px] font-mono bg-accent px-1 rounded">descr_regions.txt</code> into the Campaign Map editor.
+          </p>
+        </div>
+        <div className="p-4 space-y-3">
+          <label className="cursor-pointer">
+            <input ref={mapFolderRef} type="file" className="hidden"
+              webkitdirectory="" directory="" multiple onChange={handleMapFolder} />
+            <Button asChild variant="outline"
+              className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
+              <span>
+                <FolderOpen className="w-4 h-4" />
+                Browse to <code className="text-xs font-mono">…\maps\campaign\[name]\</code> folder
+              </span>
+            </Button>
+          </label>
+          <div className="grid grid-cols-1 gap-2">
+            <FileStatus
+              label="Campaign Map Files"
+              hint={fileStatus.map_folder === 'ok' ? `${mapFileCount} files loaded — open Campaign Map editor to start editing` : 'map_*.tga, descr_strat.txt, descr_regions.txt'}
+              status={fileStatus.map_folder || 'idle'}
+            />
+          </div>
+          {fileStatus.map_folder === 'ok' && (
+            <Link to="/CampaignMap">
+              <Button className="w-full h-10 gap-2" variant="outline">
+                <Map className="w-4 h-4" />
+                Open Campaign Map Editor
+                <ArrowRight className="w-4 h-4 ml-auto" />
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Step 3 — Ancillaries UI images */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
