@@ -17,6 +17,8 @@ export function RefDataProvider({ children }) {
     const result = parseFactionsFile(text);
     if (result.factions) setFactions(result.factions);
     if (result.cultures) setCultures(result.cultures);
+    // Cache raw file so condition dropdowns can read faction names
+    try { localStorage.setItem('m2tw_factions_file', text); } catch {}
   }, []);
 
   const loadResourcesFile = useCallback((text) => {
