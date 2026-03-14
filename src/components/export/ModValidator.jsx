@@ -222,7 +222,7 @@ function checkMissingFactionRequirements(buildings) {
 
 // ─── Main entry point ────────────────────────────────────────────────────────
 
-export function validateMod(edbData, campaignLayers = {}) {
+export function validateMod(edbData) {
   const errors = [];
   const warnings = [];
 
@@ -241,19 +241,6 @@ export function validateMod(edbData, campaignLayers = {}) {
       ...checkMissingFactionRequirements(buildings),
     ];
     for (const issue of allIssues) {
-      if (issue.severity === 'error') errors.push(issue);
-      else warnings.push(issue);
-    }
-  }
-
-  if (Object.keys(campaignLayers).length > 0) {
-    const mapIssues = [
-      ...checkMapLayerDimensions(campaignLayers),
-      ...checkMapMissingLayers(campaignLayers),
-      ...checkMapHeightsSeaRatio(campaignLayers),
-      ...checkMapInvalidColors(campaignLayers),
-    ];
-    for (const issue of mapIssues) {
       if (issue.severity === 'error') errors.push(issue);
       else warnings.push(issue);
     }
