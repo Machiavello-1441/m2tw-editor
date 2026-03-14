@@ -6,18 +6,38 @@ import { Plus, Trash2, ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import WhenToTestSelect from './WhenToTestSelect';
 import ConditionRow from './ConditionRow';
 import { serializeCondition } from './conditionDefs';
+import { useEDB } from '../edb/EDBContext';
+
+// Try to get trait names from TraitsContext — optional, graceful fallback
+function useTraitNamesOptional() {
+  try {
+    // Dynamic require to avoid hard dependency
+    const { useTraits } = require('../traits/TraitsContext');
+    const ctx = useTraits();
+    return (ctx?.traitsData?.traits || []).map(t => t.name);
+  } catch {
+    return [];
+  }
+}
 
 const inputCls = 'h-7 text-xs font-mono bg-background text-white';
 
 // mode: 'trait' | 'ancillary'
-export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode, buildings = [], traits = [] }) {
+export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, entityName, mode }) {
   const [expanded, setExpanded] = useState(null);
 
+  // Get building tree names from EDB for SettlementBuildingExists etc.
+  let buildingNames = [];
+  try {
+    const { edbData } = useEDB();
+    buildingNames = (edbData?.buildings || []).map(b => b.name);
+  } catch {}
+
+  // Get trait names — only works in trait editor context
+  const traitNames = useTraitNamesOptional();
+
   const addCondition = (trigger, i) => {
-    const isFirst = (trigger.conditions || []).length === 0;
-    const newCond = isFirst
-      ? serializeCondition({ prefix: 'Condition', condName: 'IsGeneral', operator: '', value1: 'true', value2: '' })
-      : serializeCondition({ prefix: 'and', condName: 'IsGeneral', operator: '', value1: 'true', value2: '' });
+    const newCond = serializeCondition({ connector: trigger.conditions.length === 0 ? 'Condition' : 'and', type: 'IsGeneral', boolVal: 'true' });
     onUpdate(i, { ...trigger, conditions: [...(trigger.conditions || []), newCond] });
   };
 
@@ -60,10 +80,12 @@ export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, ent
                   {/* WhenToTest — searchable dropdown */}
                   <div>
                     <Label className="text-[10px] text-muted-foreground">WhenToTest</Label>
-                    <WhenToTestSelect value={t.whenToTest} onChange={v => onUpdate(i, { ...t, whenToTest: v })} />
+                    <div className="mt-0.5">
+                      <WhenToTestSelect value={t.whenToTest} onChange={v => onUpdate(i, { ...t, whenToTest: v })} />
+                    </div>
                   </div>
 
-                  {/* Conditions */}
+                  {/* Conditions — structured rows */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <Label className="text-[10px] text-muted-foreground">Conditions</Label>
@@ -71,22 +93,20 @@ export default function TriggerEditor({ triggers, onUpdate, onAdd, onDelete, ent
                         + Add condition
                       </button>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       {(t.conditions || []).map((cond, ci) => (
                         <ConditionRow
                           key={ci}
-                          rawValue={cond}
+                          condStr={cond}
                           isFirst={ci === 0}
-                          buildings={buildings}
-                          traits={traits}
-                          onChange={newRaw => {
+                          buildingNames={buildingNames}
+                          traitNames={traitNames}
+                          onChange={newStr => {
                             const conds = [...t.conditions];
-                            conds[ci] = newRaw;
+                            conds[ci] = newStr;
                             onUpdate(i, { ...t, conditions: conds });
                           }}
-                          onDelete={() => {
-                            onUpdate(i, { ...t, conditions: t.conditions.filter((_, j) => j !== ci) });
-                          }}
+                          onDelete={() => onUpdate(i, { ...t, conditions: t.conditions.filter((_, j) => j !== ci) })}
                         />
                       ))}
                       {(t.conditions || []).length === 0 && (
