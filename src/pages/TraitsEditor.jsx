@@ -57,9 +57,5 @@ function TraitsEditorInner() {
 }
 
 export default function TraitsEditor() {
-  return (
-    <TraitsProvider>
-      <TraitsEditorInner />
-    </TraitsProvider>
-  );
+  return <TraitsEditorInner />;
 }
