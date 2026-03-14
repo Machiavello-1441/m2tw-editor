@@ -4,7 +4,7 @@
  *
  * Y-axis: M2TW uses y=0 at bottom, screen uses y=0 at top — we invert.
  */
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 
 export const ITEM_ICON = {
   'named character': '⚔️', general: '⚔️', admiral: '⚓', spy: '👁️',
