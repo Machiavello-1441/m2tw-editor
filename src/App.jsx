@@ -8,6 +8,7 @@ import CampaignMap from './pages/CampaignMap';
 import TraitsEditor from './pages/TraitsEditor';
 import AncillariesEditor from './pages/AncillariesEditor';
 import LuaScripts from './pages/LuaScripts';
+import UnitEditor from './pages/UnitEditor';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
