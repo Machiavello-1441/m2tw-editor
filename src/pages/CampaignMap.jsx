@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Map, Layers, CheckSquare, Globe, FolderOpen } from 'lucide-react';
 import MapCanvas, { floodFillRGB } from '../components/map/MapCanvas';
 import MapLayerPanel from '../components/map/MapLayerPanel';
@@ -70,7 +70,7 @@ export default function CampaignMap() {
     };
     window.addEventListener('m2tw-map-folder-loaded', handler);
     return () => window.removeEventListener('m2tw-map-folder-loaded', handler);
-  }, [handleFolderImport]);
+  }, []); // eslint-disable-line
 
   // ── Layer loading ──────────────────────────────────────────────────────────
   const loadLayerFile = useCallback(async (layerId, file) => {
