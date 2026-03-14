@@ -292,6 +292,10 @@ export function serializeCondition(cond) {
   let body = '';
   if (type === 'Trait') {
     body = `Trait ${cond.traitName || ''} ${cond.op || '>'} ${cond.value ?? 0}`;
+  } else if (type === 'Attribute') {
+    body = `Attribute ${cond.attrName || ''} ${cond.op || '>='} ${cond.value ?? 0}`;
+  } else if (def?.argType === 'compare_building') {
+    body = `${type} ${cond.op || '>='} ${cond.value || ''}`;
   } else if (def?.argType === 'compare_int') {
     body = `${type} ${cond.op || '>='} ${cond.value ?? 0}`;
   } else if (def?.argType === 'building') {
