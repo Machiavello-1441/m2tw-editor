@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Download, Copy, CheckCircle2, Code2, Info } from 'lucide-react';
+import { Download, Copy, CheckCircle2, Code2, Info, Wand2, Loader2, X } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import LuaCodeEditor from '../components/lua/LuaCodeEditor';
 import LuaApiReference from '../components/lua/LuaApiReference';
 import LuaScriptManager from '../components/lua/LuaScriptManager';
@@ -30,6 +31,10 @@ export default function LuaScripts() {
   const [activeId, setActiveId] = useState('plugin');
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('editor'); // 'editor' | 'imgui' | 'api'
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiResult, setAiResult] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
 
   const activeScript = scripts.find(s => s.id === activeId) || scripts[0];
   const activeIsImgui = activeScript?.type === 'imgui';
@@ -66,6 +71,33 @@ export default function LuaScripts() {
 
   const handleInsertFromRef = (text) => {
     updateCode(activeScript.code + '\n' + text);
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    setAiResult('');
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are an expert M2TWEOP (Medieval 2 Total War Engine Overhaul Project) Lua scripter.
+The user wants you to write Lua code for their EOP plugin script.
+
+Context:
+- Scripts go in <mod>/eopData/eopScripts/luaPluginScript.lua
+- All EOP functions are in the M2TWEOP namespace (e.g. M2TWEOP.setAncillariesLimit)
+- Events are callbacks like function onGeneralAssaultsGeneral(eventData) ... end
+- Other common functions: spawnUnit, playSound, showWindow, hasTrait, getFaction, getSettlement, etc.
+- ImGUI is available for custom UIs
+
+User request: ${aiPrompt}
+
+Write clean, well-commented Lua code. Only output the code, no extra explanation.`,
+      });
+      setAiResult(typeof result === 'string' ? result : result?.text || '-- Error generating code');
+    } catch {
+      setAiResult('-- AI generation failed. Please try again.');
+    }
+    setAiLoading(false);
   };
 
   const handleCopy = () => {
@@ -131,6 +163,10 @@ export default function LuaScripts() {
             <Download className="w-3 h-3" />
             This file
           </button>
+          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1.5 border-purple-500/40 text-purple-400 hover:bg-purple-500/10" onClick={() => setShowAiPanel(p => !p)}>
+            <Wand2 className="w-3.5 h-3.5" />
+            AI Assistant
+          </Button>
           <Button size="sm" className="h-7 text-[11px] gap-1.5" onClick={handleDownloadAll}>
             <Download className="w-3.5 h-3.5" />
             Download luaPluginScript.lua
@@ -199,6 +235,50 @@ export default function LuaScripts() {
           <LuaApiReference onInsert={handleInsertFromRef} />
         </div>
       </div>
+
+      {/* AI Assistant Panel */}
+      {showAiPanel && (
+        <div className="border-t border-border bg-card/40 shrink-0 flex flex-col" style={{ maxHeight: '280px' }}>
+          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">
+            <Wand2 className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-xs font-semibold text-purple-300">M2TWEOP Lua AI Assistant</span>
+            <span className="text-[10px] text-muted-foreground">— Describe what you want to script</span>
+            <button onClick={() => setShowAiPanel(false)} className="ml-auto p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="flex gap-2 p-2 shrink-0">
+            <input
+              className="flex-1 bg-input border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-muted-foreground"
+              placeholder='e.g. "Spawn 3 units of English Longbowmen when a general dies" or "Show ImGUI window with faction treasury"'
+              value={aiPrompt}
+              onChange={e => setAiPrompt(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAiGenerate()}
+            />
+            <Button size="sm" className="h-8 text-[11px] gap-1.5 bg-purple-600 hover:bg-purple-700 text-white shrink-0" onClick={handleAiGenerate} disabled={aiLoading || !aiPrompt.trim()}>
+              {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              Generate
+            </Button>
+          </div>
+          {aiResult && (
+            <div className="flex-1 min-h-0 flex flex-col px-2 pb-2 gap-1.5 overflow-hidden">
+              <div className="flex items-center justify-between shrink-0">
+                <span className="text-[10px] text-muted-foreground">Generated code:</span>
+                <Button
+                  size="sm" variant="outline"
+                  className="h-6 text-[10px] gap-1 border-green-500/30 text-green-400 hover:bg-green-500/10"
+                  onClick={() => { updateCode(activeScript.code + '\n\n' + aiResult); setAiResult(''); setAiPrompt(''); }}
+                >
+                  <CheckCircle2 className="w-3 h-3" /> Insert into editor
+                </Button>
+              </div>
+              <pre className="flex-1 overflow-auto bg-background rounded-md p-2 text-[11px] font-mono text-green-300/90 whitespace-pre-wrap border border-border">
+                {aiResult}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
