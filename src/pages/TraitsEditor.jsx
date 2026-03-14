@@ -1,9 +1,9 @@
 import React from 'react';
-import { TraitsProvider, useTraits } from '../components/traits/TraitsContext';
+import { useTraits } from '../components/traits/TraitsContext';
 import TraitsFileLoader from '../components/traits/TraitsFileLoader';
 import TraitList from '../components/traits/TraitList';
 import TraitEditor from '../components/traits/TraitEditor';
-import { Shield, FileText } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 function TraitsEditorInner() {
   const { traitsData } = useTraits();
