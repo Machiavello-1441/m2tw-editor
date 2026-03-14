@@ -272,9 +272,12 @@ export default function AncillaryEditor() {
           onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
           entityName={anc.name}
           mode="ancillary"
-          buildings={buildingNames}
-          traits={traitNames}
+          traitNames={traitNames}
+          traitAttributeNames={traitAttributeNames}
         />
+
+        {/* Validation */}
+        <ValidationPanel onValidate={() => validateAncillariesData(ancData, getText)} />
       </div>
     </div>
   );
