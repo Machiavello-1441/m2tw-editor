@@ -341,9 +341,11 @@ export default function CampaignMap() {
           <StratOverlay
             items={overlayItems}
             transform={transform}
+            mapH={mapH}
             visibleCategories={visibleCategories}
             selectedId={selectedItem?.id}
             onSelect={setSelectedItem}
+            onMoveItem={handleMoveItem}
           />
         </div>
 
