@@ -260,7 +260,7 @@ export default function AncillaryEditor() {
         />
 
         {/* Validation */}
-        <ValidationPanel onValidate={() => validateAncillariesData(ancData, getText)} />
+        <ValidationPanel onValidate={() => validateAncillariesData(ancData, getText)} watchData={ancData} />
       </div>
     </div>
   );
