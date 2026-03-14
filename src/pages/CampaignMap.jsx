@@ -39,6 +39,7 @@ export default function CampaignMap() {
     Object.fromEntries(LAYER_DEFS.map(d => [d.id, { visible: d.defaultVisible, opacity: d.defaultOpacity }]))
   );
   const [dirtyLayers, setDirtyLayers] = useState(new Set());
+  const [overlayDirty, setOverlayDirty] = useState(false);
   const [paintState, setPaintState] = useState(INITIAL_PAINT);
   const [activeTab, setActiveTab] = useState('layers');
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
