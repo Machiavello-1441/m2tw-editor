@@ -108,7 +108,7 @@ export default function StratOverlay({
     <svg
       ref={svgRef}
       className="absolute inset-0 w-full h-full"
-      style={{ zIndex: 10, pointerEvents: draggingRef.current ? 'all' : 'none' }}
+      style={{ zIndex: 10, pointerEvents: 'none' }}
       onMouseMove={handleSvgMouseMove}
       onMouseUp={handleSvgMouseUp}
     >
