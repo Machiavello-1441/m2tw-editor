@@ -207,7 +207,5 @@ export function AncillariesProvider({ children }) {
 }
 
 export function useAncillaries() {
-  const ctx = useContext(AncillariesContext);
-  if (!ctx) throw new Error('useAncillaries must be used within AncillariesProvider');
-  return ctx;
+  return useContext(AncillariesContext);
 }
