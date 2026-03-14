@@ -369,7 +369,8 @@ export default function CampaignMap() {
         onSave={handleSave}
         onRevert={handleRevert}
         onExport={handleExportTGA}
-        hasUnsaved={dirtyLayers.size > 0}
+        hasUnsaved={dirtyLayers.size > 0 || overlayDirty}
+        hasSavedSnapshot={savedSnapshot.current !== null}
         dirtyLayers={dirtyLayers}
       />
 
