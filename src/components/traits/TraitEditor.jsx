@@ -338,8 +338,6 @@ export default function TraitEditor() {
           onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
           entityName={trait.name}
           mode="trait"
-          traitNames={(traitsData?.traits || []).map(tr => tr.name)}
-          traitAttributeNames={traitAttributeNames}
         />
 
         {/* Validation */}
