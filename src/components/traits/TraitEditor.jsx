@@ -35,6 +35,20 @@ export default function TraitEditor() {
   const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useTraits();
   const [expandedLevel, setExpandedLevel] = useState(0);
 
+  // All trait attribute names used across all traits (for Attribute condition dropdown)
+  const traitAttributeNames = useMemo(() => {
+    if (!traitsData?.traits) return [];
+    const attrs = new Set();
+    for (const t of traitsData.traits) {
+      for (const lvl of t.levels || []) {
+        for (const fx of lvl.effects || []) {
+          if (fx.attribute) attrs.add(fx.attribute);
+        }
+      }
+    }
+    return [...attrs];
+  }, [traitsData]);
+
   if (selectedTrait === null || !traitsData) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -337,6 +351,8 @@ export default function TraitEditor() {
           onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
           entityName={trait.name}
           mode="trait"
+          traitNames={(traitsData?.traits || []).map(tr => tr.name)}
+          traitAttributeNames={traitAttributeNames}
         />
 
         {/* Validation */}
