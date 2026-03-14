@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useTraits } from './TraitsContext';
-import { useEDB } from '../edb/EDBContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -31,13 +30,7 @@ function PreviewText({ text }) {
 
 export default function TraitEditor() {
   const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useTraits();
-  const { edbData } = useEDB();
   const [expandedLevel, setExpandedLevel] = useState(0);
-
-  // Collect building tree names from EDB for condition dropdowns
-  const buildingNames = edbData?.buildings?.map(b => b.name) ?? [];
-  // Collect trait names for Trait condition dropdown
-  const traitNames = traitsData?.traits?.map(t => t.name) ?? [];
 
   if (selectedTrait === null || !traitsData) {
     return (
@@ -329,8 +322,7 @@ export default function TraitEditor() {
           onDelete={(localIdx) => deleteTrigger(relatedTriggerIndices[localIdx].i)}
           entityName={trait.name}
           mode="trait"
-          buildings={buildingNames}
-          traits={traitNames}
+          traitNames={(traitsData?.traits || []).map(tr => tr.name)}
         />
       </div>
     </div>
