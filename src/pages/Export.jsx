@@ -3,8 +3,25 @@ import { useEDB } from '../components/edb/EDBContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Download, Package, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2 } from 'lucide-react';
 import JSZip from 'jszip';
+
+function getLuaScripts() {
+  try {
+    const saved = localStorage.getItem('m2tw_lua_scripts');
+    return saved ? JSON.parse(saved) : [];
+  } catch { return []; }
+}
+
+function buildMergedLua(scripts) {
+  const plugin = scripts.find(s => s.id === 'plugin');
+  const imgui = scripts.filter(s => s.type === 'imgui');
+  const custom = scripts.filter(s => s.type === 'custom');
+  let out = plugin ? plugin.code : '';
+  if (imgui.length) { out += '\n\n-- ═══ ImGUI Scripts ═══\n'; imgui.forEach(s => { out += `\n-- ${s.name}\n${s.code}`; }); }
+  if (custom.length) { out += '\n\n-- ═══ Custom Scripts ═══\n'; custom.forEach(s => { out += `\n-- ${s.name}\n${s.code}`; }); }
+  return out;
+}
 import ValidationDashboard from '../components/export/ValidationDashboard';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 
@@ -32,6 +49,13 @@ export default function Export() {
     if (textData && Object.keys(textData).length > 0) {
       const textOut = exportTextFile();
       dataFolder.folder('text').file('export_buildings.txt', textOut);
+    }
+
+    // Include Lua scripts
+    const luaScripts = getLuaScripts();
+    if (luaScripts.length > 0) {
+      const mergedLua = buildMergedLua(luaScripts);
+      zip.folder(`${modName}/eopData/eopScripts`).file('luaPluginScript.lua', mergedLua);
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });
