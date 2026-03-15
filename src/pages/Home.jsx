@@ -393,6 +393,40 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Step 4 — Unit UI Images */}
+      <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-border bg-accent/10">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Layers className="w-4 h-4 text-primary" />
+            Step 4 — Load Unit UI Images <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Browse to <code className="text-[10px] font-mono bg-accent px-1 rounded">data\ui\</code> to load unit card images
+            (<code className="text-[10px] font-mono bg-accent px-1 rounded">units\[faction]\#dict.tga</code>) and unit info images
+            (<code className="text-[10px] font-mono bg-accent px-1 rounded">unit_info\[faction]\dict_info.tga</code>) for previews in the Unit Editor.
+          </p>
+        </div>
+        <div className="p-4 space-y-3">
+          <label className="cursor-pointer">
+            <input ref={unitUiFolderRef} type="file" className="hidden"
+              webkitdirectory="" directory="" multiple onChange={handleUnitUiFolder} />
+            <Button asChild variant="outline" className="w-full h-11 pointer-events-none gap-2">
+              <span>
+                <FolderOpen className="w-4 h-4" />
+                Browse to <code className="text-xs font-mono">…\data\ui\</code> folder
+              </span>
+            </Button>
+          </label>
+          <div className="grid grid-cols-1 gap-2">
+            <FileStatus
+              label="Unit UI Images"
+              hint={fileStatus.unit_images === 'ok' ? `${unitImgCount} .tga images loaded` : 'data\\ui\\units\\ + data\\ui\\unit_info\\'}
+              status={fileStatus.unit_images}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Info */}
       <div className="w-full max-w-2xl flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
         <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
