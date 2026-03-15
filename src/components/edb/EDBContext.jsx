@@ -237,7 +237,7 @@ export function EDBProvider({ children }) {
     addBuilding, deleteBuilding,
     addLevel, deleteLevel,
     textData, setTextData,
-    imageData, setImageData, loadTgaImages,
+    imageData, setImageData, loadTgaImages, loadBuildingTgaImages,
     isDirty, fileName,
     restoreSnapshot, saveNow
   };
