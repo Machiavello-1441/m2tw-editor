@@ -311,6 +311,7 @@ export default function Home() {
             <FileStatus label="Traits Text"     hint="text\export_VnVs.txt"              status={fileStatus.vnvs} />
             <FileStatus label="Ancillaries"     hint="export_descr_ancillaries.txt"      status={fileStatus.anc} />
             <FileStatus label="Ancillaries Text" hint="text\export_ancillaries.txt"      status={fileStatus.anctxt} />
+            <FileStatus label="Unit Descriptions" hint="text\export_units.txt"           status={fileStatus.expunits} />
           </div>
         </div>
       </div>
