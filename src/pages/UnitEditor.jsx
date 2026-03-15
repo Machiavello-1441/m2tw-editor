@@ -115,7 +115,7 @@ export default function UnitEditorPage() {
   const [unitImages, setUnitImages] = useState(loadUnitImages);
   const fileRef = useRef();
 
-  // Auto-load from EDU file if Home page cached it
+  // Auto-load from EDU file and export_units.txt if Home page cached them
   useEffect(() => {
     try {
       const eduContent = localStorage.getItem(EDU_FILE_KEY);
@@ -126,6 +126,16 @@ export default function UnitEditorPage() {
         if (eduName) setFilename(eduName);
       }
     } catch {}
+  }, []);
+
+  // Listen for unit images loaded from Home page
+  useEffect(() => {
+    const handler = (e) => {
+      setUnitImages(e.detail);
+      try { localStorage.setItem(UNIT_IMAGES_KEY, JSON.stringify(e.detail)); } catch {}
+    };
+    window.addEventListener('load-unit-images', handler);
+    return () => window.removeEventListener('load-unit-images', handler);
   }, []);
 
   const active = units[activeIndex] || null;
