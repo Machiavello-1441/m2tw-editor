@@ -317,6 +317,8 @@ export default function UnitEditorPage() {
               descr={activeDescr}
               onDescrChange={handleDescrChange}
               unitImages={unitImages}
+              onImageUpload={handleImageUpload}
+              onImageDelete={handleImageDelete}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
