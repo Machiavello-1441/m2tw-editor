@@ -202,19 +202,31 @@ function CultureRow({ culture, levelName, allCultures, isBase }) {
         )}
       </div>
 
-      {/* Content: text left, images right */}
+      {/* Content */}
       <div className="flex gap-2 p-2">
-        {/* Text fields */}
+        {/* Text fields + built image between name and desc */}
         <div className="flex-1 space-y-1 min-w-0">
           <TextRow label="Name" textKey={textKeys.name} />
-          <TextRow label="Desc" textKey={textKeys.desc} />
-          <TextRow label="Short" textKey={textKeys.short} />
+          {!isBase && (
+            <div className="flex items-center gap-1.5 py-0.5">
+              {/* Built image inline between name and desc */}
+              <ImageSlot culture={culture} levelName={levelName} slot={IMAGE_SLOTS[2]} />
+              <div className="flex-1 space-y-1 min-w-0">
+                <TextRow label="Desc" textKey={textKeys.desc} />
+                <TextRow label="Short" textKey={textKeys.short} />
+              </div>
+            </div>
+          )}
+          {isBase && <>
+            <TextRow label="Desc" textKey={textKeys.desc} />
+            <TextRow label="Short" textKey={textKeys.short} />
+          </>}
         </div>
 
-        {/* Images */}
+        {/* Icon + Panel images on the right */}
         {!isBase && (
-          <div className="flex gap-1.5 shrink-0 items-start pt-5">
-            {IMAGE_SLOTS.map(slot => (
+          <div className="flex flex-col gap-1.5 shrink-0 items-center pt-1">
+            {IMAGE_SLOTS.slice(0, 2).map(slot => (
               <ImageSlot key={slot.type} culture={culture} levelName={levelName} slot={slot} />
             ))}
           </div>
