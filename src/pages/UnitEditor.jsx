@@ -139,8 +139,16 @@ export default function UnitEditorPage() {
   }, []);
 
   const active = units[activeIndex] || null;
+  const activeDescr = active ? (descrMap[active.dictionary] ?? null) : null;
 
   const update = (units) => { setUnits(units); saveUnits(units); };
+
+  const handleDescrChange = (val) => {
+    if (!active) return;
+    const updated = { ...descrMap, [active.dictionary]: val };
+    setDescrMap(updated);
+    try { localStorage.setItem(EXPORT_UNITS_KEY + '_parsed', JSON.stringify(updated)); } catch {}
+  };
 
   const handleFileLoad = (e) => {
     const file = e.target.files[0];
