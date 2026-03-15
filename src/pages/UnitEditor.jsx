@@ -130,15 +130,9 @@ export default function UnitEditorPage() {
   const [copied, setCopied] = useState(false);
   const [descrMap, setDescrMap] = useState(() => {
     try {
-      const parsed = localStorage.getItem(EXPORT_UNITS_KEY + '_parsed');
-      if (parsed) return JSON.parse(parsed);
+      // Always re-parse from raw to avoid stale cached parses
       const raw = localStorage.getItem(EXPORT_UNITS_KEY);
-      if (raw) {
-        const m = parseExportUnits(raw);
-        // cache it
-        try { localStorage.setItem(EXPORT_UNITS_KEY + '_parsed', JSON.stringify(m)); } catch {}
-        return m;
-      }
+      if (raw) return parseExportUnits(raw);
       return {};
     } catch { return {}; }
   });
