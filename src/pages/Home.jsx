@@ -296,8 +296,8 @@ export default function Home() {
           parsed.push({ path: file.webkitRelativePath || file.name, name: file.name, url });
         }
       }
-      loadBuildingTgaImages(parsed);
-      setBldImgCount((prev) => prev + parsed.length);
+      loadBuildingTgaImages(parsed, true); // replace=true clears stale images
+      setBldImgCount(parsed.length);
       setFileStatus((prev) => ({ ...prev, bld_images: 'ok' }));
     }
   };
