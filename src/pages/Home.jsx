@@ -536,48 +536,92 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Step 2 — Campaign Map folder */}
+      {/* Step 2 — Campaign Map */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Map className="w-4 h-4 text-primary" />
-            Step 2 — Load Campaign Map Folder <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+            Step 2 — Load Campaign Map <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Browse to your mod's <code className="text-[10px] font-mono bg-accent px-1 rounded">data\world\maps\campaign\[campaign_name]\</code> or the
-            <code className="text-[10px] font-mono bg-accent px-1 rounded ml-1">base\</code> folder.
-            Loads <code className="text-[10px] font-mono bg-accent px-1 rounded">map_*.tga</code>,{' '}
-            <code className="text-[10px] font-mono bg-accent px-1 rounded">descr_strat.txt</code>, and <code className="text-[10px] font-mono bg-accent px-1 rounded">descr_regions.txt</code> into the Campaign Map editor.
+            Base map files are auto-detected from <code className="text-[10px] font-mono bg-accent px-1 rounded">data\world\maps\base\</code> when loading the data folder.
+            Then optionally load a campaign folder (<code className="text-[10px] font-mono bg-accent px-1 rounded">imperial_campaign</code> or a custom campaign) to override the base maps.
           </p>
         </div>
         <div className="p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <FileStatus
+              label="Base Map (auto)"
+              hint={fileStatus.base_map === 'ok' ? 'Loaded from data\\world\\maps\\base\\' : 'data\\world\\maps\\base\\ (auto from Step 1)'}
+              status={fileStatus.base_map || 'idle'} />
+            <FileStatus
+              label="Campaign Override"
+              hint={fileStatus.campaign_folder === 'ok' ? `${campaignName || 'campaign'} — ${mapFileCount} files` : 'maps\\campaign\\[name]\\ (optional)'}
+              status={fileStatus.campaign_folder || 'idle'} />
+          </div>
+
+          {campaignError && (
+            <p className="text-[11px] text-destructive flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {campaignError}
+            </p>
+          )}
+
           <label className="cursor-pointer">
-            <input ref={mapFolderRef} type="file" className="hidden"
-            webkitdirectory="" directory="" multiple onChange={handleMapFolder} />
+            <input ref={campaignFolderRef} type="file" className="hidden"
+              webkitdirectory="" directory="" multiple onChange={handleCampaignFolder} />
             <Button asChild variant="outline"
-            className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
+              className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
               <span>
                 <FolderOpen className="w-4 h-4" />
                 Browse to <code className="text-xs font-mono">…\maps\campaign\[name]\</code> folder
               </span>
             </Button>
           </label>
-          <div className="grid grid-cols-1 gap-2">
-            <FileStatus
-              label="Campaign Map Files"
-              hint={fileStatus.map_folder === 'ok' ? `${mapFileCount} files loaded — open Campaign Map editor to start editing` : 'map_*.tga, descr_strat.txt, descr_regions.txt'}
-              status={fileStatus.map_folder || 'idle'} />
+          <p className="text-[10px] text-muted-foreground">
+            Must contain <code className="font-mono bg-accent px-1 rounded">descr_events.txt</code>. Campaign files override matching base map files.
+          </p>
 
-          </div>
-          {fileStatus.map_folder === 'ok' &&
-          <Link to="/CampaignMap">
+          {(fileStatus.base_map === 'ok' || fileStatus.campaign_folder === 'ok') && (
+            <Link to="/CampaignMap">
               <Button className="w-full h-10 gap-2" variant="outline">
                 <Map className="w-4 h-4" />
                 Open Campaign Map Editor
                 <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </Link>
-          }
+          )}
+        </div>
+      </div>
+
+      {/* Step 3 — Lua Scripts */}
+      <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-border bg-accent/10">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Layers className="w-4 h-4 text-primary" />
+            Step 3 — Load Lua Scripts <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Browse to your <code className="text-[10px] font-mono bg-accent px-1 rounded">eopData\eopScripts\</code> folder to load Lua scripts into the script editor.
+          </p>
+        </div>
+        <div className="p-4 space-y-3">
+          <label className="cursor-pointer">
+            <input ref={luaFolderRef} type="file" className="hidden"
+              webkitdirectory="" directory="" multiple onChange={handleLuaFolder} />
+            <Button asChild variant="outline"
+              className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
+              <span>
+                <FolderOpen className="w-4 h-4" />
+                Browse to <code className="text-xs font-mono">…\eopData\eopScripts\</code> folder
+              </span>
+            </Button>
+          </label>
+          <div className="grid grid-cols-1 gap-2">
+            <FileStatus
+              label="Lua Scripts"
+              hint={fileStatus.lua === 'ok' ? `${luaCount} scripts loaded` : '*.lua files'}
+              status={fileStatus.lua || 'idle'} />
+          </div>
         </div>
       </div>
 
