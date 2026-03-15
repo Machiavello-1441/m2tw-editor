@@ -132,6 +132,8 @@ export default function Home() {
   const [unitImgCount, setUnitImgCount] = useState(0);
   const [bldImgCount, setBldImgCount] = useState(0);
   const [luaCount, setLuaCount] = useState(0);
+  const [campaignName, setCampaignName] = useState('');
+  const [campaignError, setCampaignError] = useState('');
   const dataFolderRef = useRef();
   const ancImagesFolderRef = useRef();
   const campaignFolderRef = useRef();
