@@ -143,18 +143,28 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
         </div>
       )}
 
-      {req.type === 'hidden_resource' && (
-        <Select value={req.resource || ''} onValueChange={r => updateReq({ resource: r })}>
-          <SelectTrigger className="h-7 text-xs">
-            <SelectValue placeholder="Select resource..." />
-          </SelectTrigger>
-          <SelectContent>
-            {HIDDEN_RESOURCES_DEFAULT.map(r => (
-              <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      {req.type === 'hidden_resource' && (() => {
+        const hiddenList = [
+          ...new Set([
+            ...(edbData?.hiddenResources || []),
+            ...HIDDEN_RESOURCES_DEFAULT
+          ])
+        ];
+        return hiddenList.length > 0 ? (
+          <Select value={req.resource || ''} onValueChange={r => updateReq({ resource: r })}>
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue placeholder="Select resource..." />
+            </SelectTrigger>
+            <SelectContent>
+              {hiddenList.map(r => (
+                <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Input className="h-7 text-xs" placeholder="Hidden resource name" value={req.resource || ''} onChange={e => updateReq({ resource: e.target.value })} />
+        );
+      })()}
 
       {req.type === 'building_present_min_level' && (
         <div className="flex gap-2">
