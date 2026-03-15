@@ -223,6 +223,7 @@ export default function Home() {
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
+      window._m2tw_unit_images = images;
       window.dispatchEvent(new CustomEvent('load-unit-images', { detail: images }));
       setUnitImgCount(Object.keys(images).length);
       setFileStatus((prev) => ({ ...prev, unit_images: 'ok' }));
@@ -263,6 +264,7 @@ export default function Home() {
         images[key] = dataUrl;
       }
     }
+    window._m2tw_unit_images = images;
     window.dispatchEvent(new CustomEvent('load-unit-images', { detail: images }));
     setUnitImgCount(Object.keys(images).length);
     setFileStatus((prev) => ({ ...prev, unit_images: 'ok' }));
