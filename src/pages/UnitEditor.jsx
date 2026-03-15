@@ -108,6 +108,9 @@ export default function UnitEditorPage() {
   const [copied, setCopied] = useState(false);
   const [descrMap, setDescrMap] = useState(() => {
     try {
+      // First try pre-parsed edits, then fall back to raw file
+      const parsed = localStorage.getItem(EXPORT_UNITS_KEY + '_parsed');
+      if (parsed) return JSON.parse(parsed);
       const raw = localStorage.getItem(EXPORT_UNITS_KEY);
       return raw ? parseExportUnits(raw) : {};
     } catch { return {}; }
