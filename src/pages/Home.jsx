@@ -134,9 +134,10 @@ export default function Home() {
   const [luaCount, setLuaCount] = useState(0);
   const dataFolderRef = useRef();
   const ancImagesFolderRef = useRef();
-  const mapFolderRef = useRef();
+  const campaignFolderRef = useRef();
   const unitUiFolderRef = useRef();
   const bldImagesFolderRef = useRef();
+  const luaFolderRef = useRef();
 
   const readText = (file) => new Promise((resolve) => {
     const r = new FileReader();
