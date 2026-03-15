@@ -526,11 +526,6 @@ export default function Home() {
                 hint={fileStatus.bld_images === 'ok' ? `${bldImgCount} images loaded` : 'data\\ui\\[culture]\\buildings\\'}
                 status={fileStatus.bld_images || 'idle'} />
 
-              <FileStatus
-                label="Lua Scripts"
-                hint={fileStatus.lua === 'ok' ? `${luaCount} scripts loaded` : 'eopData\\eopScripts\\*.lua'}
-                status={fileStatus.lua || 'idle'} />
-
             </div>
           </div>
         </div>
