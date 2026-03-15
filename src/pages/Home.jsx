@@ -247,7 +247,7 @@ export default function Home() {
         }
       }
       loadBuildingTgaImages(parsed);
-      setBldImgCount(prev => prev + parsed.length);
+      setBldImgCount((prev) => prev + parsed.length);
       setFileStatus((prev) => ({ ...prev, bld_images: 'ok' }));
     }
   };
@@ -407,39 +407,39 @@ export default function Home() {
 
           {/* UI images */}
           <div className="space-y-2">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">UI Images <span className="normal-case font-normal">(optional)</span></p>
-            <div className="text-slate-100 grid grid-cols-2 gap-2">
-              <label className="cursor-pointer">
-                <input ref={ancImagesFolderRef} type="file" className="hidden"
-                webkitdirectory="" directory="" multiple onChange={handleAncImagesFolder} />
-                <Button asChild variant="outline" className="w-full h-11 pointer-events-none gap-2">
-                  <span>
-                    <Image className="w-4 h-4" />
-                    <code className="text-xs font-mono">…\ui\ancillaries\</code>
-                  </span>
-                </Button>
-              </label>
-              <label className="cursor-pointer">
-                <input ref={unitUiFolderRef} type="file" className="hidden"
-                webkitdirectory="" directory="" multiple onChange={handleUnitUiFolder} />
-                <Button asChild variant="outline" className="w-full h-11 pointer-events-none gap-2">
-                  <span>
-                    <Layers className="w-4 h-4" />
-                    <code className="text-xs font-mono">…\ui\</code> (units)
-                  </span>
-                </Button>
-              </label>
-              <label className="cursor-pointer">
-                <input ref={bldImagesFolderRef} type="file" className="hidden"
-                webkitdirectory="" directory="" multiple onChange={handleBldImagesFolder} />
-                <Button asChild variant="outline" className="w-full h-11 pointer-events-none gap-2">
-                  <span>
-                    <Castle className="w-4 h-4" />
-                    <code className="text-xs font-mono">…\ui\[culture]\buildings\</code>
-                  </span>
-                </Button>
-              </label>
-            </div>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">UI Images </p>
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <FileStatus
                 label="Ancillary Images"
