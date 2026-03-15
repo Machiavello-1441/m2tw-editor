@@ -187,6 +187,7 @@ export default function Home() {
     const ancTgaFiles = [];
     const unitTgaFiles = [];
     const bldTgaFiles = [];
+    const luaFiles = [];
 
     for (const file of files) {
       const name = file.name.toLowerCase();
