@@ -17,18 +17,18 @@ export default function HiddenResourceEditor() {
   const addResource = () => {
     const name = newResource.trim().replace(/\s+/g, '_');
     if (!name || resources.includes(name)) return;
-    setEdbData(prev => ({ ...prev, hiddenResources: [...prev.hiddenResources, name] }));
+    setEdbData((prev) => ({ ...prev, hiddenResources: [...prev.hiddenResources, name] }));
     setNewResource('');
   };
 
   const removeResource = (res) => {
-    setEdbData(prev => ({ ...prev, hiddenResources: prev.hiddenResources.filter(r => r !== res) }));
+    setEdbData((prev) => ({ ...prev, hiddenResources: prev.hiddenResources.filter((r) => r !== res) }));
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+        <Button variant="ghost" size="sm" className="text-slate-50 px-3 text-xs font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 gap-1">
           <Database className="w-3 h-3" />
           <span className="hidden xl:inline">Hidden Res</span>
           <span className="text-[10px] text-muted-foreground">({resources.length})</span>
@@ -46,32 +46,32 @@ export default function HiddenResourceEditor() {
             className="h-8 text-xs flex-1"
             placeholder="new_resource_name"
             value={newResource}
-            onChange={e => setNewResource(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addResource()}
-          />
+            onChange={(e) => setNewResource(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addResource()} />
+
           <Button size="sm" className="h-8" onClick={addResource} disabled={!newResource.trim()}>
             <Plus className="w-3 h-3 mr-1" /> Add
           </Button>
         </div>
         <ScrollArea className="h-72">
           <div className="grid grid-cols-2 gap-1">
-            {resources.map(res => (
-              <div key={res} className="flex items-center gap-1.5 px-2 py-1 rounded bg-accent/40 group">
+            {resources.map((res) =>
+            <div key={res} className="flex items-center gap-1.5 px-2 py-1 rounded bg-accent/40 group">
                 <span className="text-[10px] font-mono flex-1 truncate">{res}</span>
                 <button
-                  onClick={() => removeResource(res)}
-                  className="p-0.5 rounded hover:bg-destructive/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                >
+                onClick={() => removeResource(res)}
+                className="p-0.5 rounded hover:bg-destructive/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+
                   <X className="w-2.5 h-2.5 text-destructive" />
                 </button>
               </div>
-            ))}
-            {resources.length === 0 && (
-              <p className="col-span-2 text-xs text-muted-foreground text-center py-4">No hidden resources defined</p>
             )}
+            {resources.length === 0 &&
+            <p className="col-span-2 text-xs text-muted-foreground text-center py-4">No hidden resources defined</p>
+            }
           </div>
         </ScrollArea>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>);
+
 }
