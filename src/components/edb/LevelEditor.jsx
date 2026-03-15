@@ -6,48 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Settings, Shield, Swords, ImageIcon } from 'lucide-react';
+import { Settings, Shield, Swords } from 'lucide-react';
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor.jsx';
 import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
-import { useRefData } from './RefDataContext';
 import { BuildingTreeTextEditor, LevelTextEditor } from './BuildingTextEditor';
 import UpgradesEditor from './UpgradesEditor';
-
-function LevelImages({ levelName }) {
-  const { imageData } = useEDB();
-  const { cultures } = useRefData();
-  const IMAGE_TYPES = ['icon', 'constructed', 'construction'];
-  const IMAGE_LABELS = { icon: 'Icon', constructed: 'Info Pic', construction: 'Construction' };
-
-  const images = [];
-  for (const culture of cultures) {
-    for (const type of IMAGE_TYPES) {
-      const key = `${levelName}_${culture}_${type}`;
-      if (imageData[key]) images.push({ ...imageData[key], type, culture, key, label: IMAGE_LABELS[type] });
-    }
-  }
-
-  if (images.length === 0) return (
-    <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/30 border border-dashed border-border">
-      <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />
-      <span className="text-[10px] text-muted-foreground">No images uploaded yet — use the Images tab</span>
-    </div>
-  );
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {images.map(img => (
-        <div key={img.key} className="flex flex-col items-center gap-1">
-          <img src={img.url} alt={img.label} className="w-16 h-16 object-contain rounded border border-border bg-black/20" />
-          <span className="text-[9px] text-muted-foreground">{img.label}</span>
-          <span className="text-[9px] text-muted-foreground/60">{img.culture}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+import LevelImageSection from './LevelImageSection';
 
 export default function LevelEditor() {
   const { edbData, selectedBuilding, selectedLevel, updateLevel } = useEDB();
