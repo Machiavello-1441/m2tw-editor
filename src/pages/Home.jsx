@@ -187,6 +187,15 @@ export default function Home() {
       expunits: 'm2tw_export_units_file'
     };
 
+    // Filename storage keys (for context auto-load)
+    const nameKeys = {
+      traits: 'm2tw_traits_file_name',
+      anc: 'm2tw_anc_file_name',
+      vnvs: 'm2tw_vnvs_file_name',
+      anctxt: 'm2tw_anctxt_file_name',
+      expunits: 'm2tw_export_units_file_name'
+    };
+
     // Separate TGA files for auto image loading
     const ancTgaFiles = [];
     const unitTgaFiles = [];
