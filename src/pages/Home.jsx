@@ -167,6 +167,7 @@ export default function Home() {
     // Separate TGA files for auto image loading
     const ancTgaFiles = [];
     const unitTgaFiles = [];
+    const bldTgaFiles = [];
 
     for (const file of files) {
       const name = file.name.toLowerCase();
@@ -178,6 +179,8 @@ export default function Home() {
           ancTgaFiles.push(file);
         } else if (pathLower.includes('/ui/units/') || pathLower.includes('/ui/unit_info/')) {
           unitTgaFiles.push(file);
+        } else if (pathLower.includes('/ui/') && pathLower.includes('/buildings/')) {
+          bldTgaFiles.push(file);
         }
         continue;
       }
