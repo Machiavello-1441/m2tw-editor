@@ -697,6 +697,9 @@ export default function Home() {
             <Badge variant="outline" className="text-[10px]">{edbData.hiddenResources.length} hidden resources</Badge>
           </div>
         }
+        <Button variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={handleClearMemory}>
+          Clear All Cached Data & Reload
+        </Button>
       </div>
     </div>);
 
