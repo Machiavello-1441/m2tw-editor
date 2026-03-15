@@ -234,6 +234,22 @@ export default function Home() {
       setUnitImgCount(Object.keys(images).length);
       setFileStatus((prev) => ({ ...prev, unit_images: 'ok' }));
     }
+
+    // Auto-load building images from data\ui\[culture]\buildings\
+    if (bldTgaFiles.length > 0) {
+      setFileStatus((prev) => ({ ...prev, bld_images: 'loading' }));
+      const parsed = [];
+      for (const file of bldTgaFiles) {
+        const buf = await file.arrayBuffer();
+        const url = decodeTgaToDataUrl(buf);
+        if (url) {
+          parsed.push({ path: file.webkitRelativePath || file.name, name: file.name, url });
+        }
+      }
+      loadBuildingTgaImages(parsed);
+      setBldImgCount(prev => prev + parsed.length);
+      setFileStatus((prev) => ({ ...prev, bld_images: 'ok' }));
+    }
   };
 
   const handleAncImagesFolder = async (e) => {
