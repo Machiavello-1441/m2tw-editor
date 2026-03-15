@@ -16,7 +16,7 @@ export function TraitsProvider({ children }) {
   const originalTextData = useRef(null);
 
   // Auto-load from localStorage if Home page cached the files
-  useEffect(() => {
+  const loadFromStorage = useCallback(() => {
     try {
       const traitsContent = localStorage.getItem('m2tw_traits_file');
       const traitsName = localStorage.getItem('m2tw_traits_file_name');
@@ -36,6 +36,18 @@ export function TraitsProvider({ children }) {
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    loadFromStorage();
+    // Listen for Home page loading traits
+    const handler = () => loadFromStorage();
+    window.addEventListener('load-traits', handler);
+    window.addEventListener('load-vnvs', handler);
+    return () => {
+      window.removeEventListener('load-traits', handler);
+      window.removeEventListener('load-vnvs', handler);
+    };
+  }, [loadFromStorage]);
 
   const loadTraitsFile = useCallback((content, filename) => {
     const parsed = parseTraitsFile(content);
