@@ -73,7 +73,7 @@ function decodeTgaToDataUrl(buffer) {
 }
 
 export default function EDBEditor() {
-  const { edbData, fileName, loadTgaImages, saveNow } = useEDB();
+  const { edbData, fileName, loadBuildingTgaImages, saveNow } = useEDB();
   const [showCode, setShowCode] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
   const tgaFolderRef = useRef();
@@ -81,16 +81,15 @@ export default function EDBEditor() {
   const handleTgaFolder = async (e) => {
     const files = Array.from(e.target.files || []).filter((f) => f.name.toLowerCase().endsWith('.tga'));
     e.target.value = '';
-    const images = {};
+    const parsed = [];
     for (const file of files) {
       const buf = await file.arrayBuffer();
-      const dataUrl = decodeTgaToDataUrl(buf);
-      if (dataUrl) {
-        const key = file.name.replace(/\.tga$/i, '').toLowerCase();
-        images[key] = dataUrl;
+      const url = decodeTgaToDataUrl(buf);
+      if (url) {
+        parsed.push({ path: file.webkitRelativePath || file.name, name: file.name, url });
       }
     }
-    loadTgaImages(images);
+    loadBuildingTgaImages(parsed);
   };
 
   if (!edbData) {
