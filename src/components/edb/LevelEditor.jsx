@@ -11,9 +11,9 @@ import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
 import CapabilityEditor from './CapabilityEditor.jsx';
 import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
-import { BuildingTreeTextEditor, LevelTextEditor } from './BuildingTextEditor';
+import { BuildingTreeTextEditor } from './BuildingTextEditor';
 import UpgradesEditor from './UpgradesEditor';
-import LevelImageSection from './LevelImageSection';
+import LevelCultureEditor from './LevelCultureEditor';
 
 export default function LevelEditor() {
   const { edbData, selectedBuilding, selectedLevel, updateLevel } = useEDB();
