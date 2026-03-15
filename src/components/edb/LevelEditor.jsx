@@ -170,18 +170,7 @@ export default function LevelEditor() {
           </CardContent>
         </Card>
 
-        <LevelTextEditor levelName={level.name} />
-
-        <Card>
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
-              Images per Culture
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <LevelImageSection levelName={level.name} />
-          </CardContent>
-        </Card>
+        <LevelCultureEditor levelName={level.name} />
       </div>
     </ScrollArea>
   );
