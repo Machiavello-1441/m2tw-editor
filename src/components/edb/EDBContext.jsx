@@ -210,8 +210,8 @@ export function EDBProvider({ children }) {
     setImageData(prev => ({ ...prev, ...images }));
   }, []);
 
-  const loadBuildingTgaImages = useCallback((filesArray) => {
-    // filesArray: array of { path, name, buffer } from folder picker
+  const loadBuildingTgaImages = useCallback((filesArray, replace = false) => {
+    // filesArray: array of { path, name, url } from folder picker
     const structured = {};
     for (const f of filesArray) {
       const parsed = parseBuildingImageKey(f.path, f.name);
@@ -220,7 +220,7 @@ export function EDBProvider({ children }) {
       }
     }
     setImageData(prev => {
-      const next = { ...prev, ...structured };
+      const next = replace ? structured : { ...prev, ...structured };
       try { localStorage.setItem(EDB_IMG_LS_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
