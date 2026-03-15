@@ -203,34 +203,24 @@ function CultureRow({ culture, levelName, allCultures, isBase }) {
       </div>
 
       {/* Content */}
-      <div className="flex gap-2 p-2">
-        {/* Text fields + built image between name and desc */}
-        <div className="flex-1 space-y-1 min-w-0">
-          <TextRow label="Name" textKey={textKeys.name} />
-          {!isBase && (
-            <div className="flex items-center gap-1.5 py-0.5">
-              {/* Built image inline between name and desc */}
-              <ImageSlot culture={culture} levelName={levelName} slot={IMAGE_SLOTS[2]} />
-              <div className="flex-1 space-y-1 min-w-0">
-                <TextRow label="Desc" textKey={textKeys.desc} />
-                <TextRow label="Short" textKey={textKeys.short} />
-              </div>
-            </div>
-          )}
-          {isBase && <>
-            <TextRow label="Desc" textKey={textKeys.desc} />
-            <TextRow label="Short" textKey={textKeys.short} />
-          </>}
-        </div>
-
-        {/* Icon + Panel images on the right */}
+      <div className="p-2 space-y-2">
+        <TextRow label="Name" textKey={textKeys.name} />
         {!isBase && (
-          <div className="flex flex-col gap-1.5 shrink-0 items-center pt-1">
-            {IMAGE_SLOTS.slice(0, 2).map(slot => (
-              <ImageSlot key={slot.type} culture={culture} levelName={levelName} slot={slot} />
-            ))}
-          </div>
+          <>
+            {/* Large built image */}
+            <div className="flex justify-center">
+              <ImageSlot culture={culture} levelName={levelName} slot={IMAGE_SLOTS[2]} />
+            </div>
+            {/* Icon + Panel side by side */}
+            <div className="flex gap-3 justify-center">
+              {IMAGE_SLOTS.slice(0, 2).map(slot => (
+                <ImageSlot key={slot.type} culture={culture} levelName={levelName} slot={slot} />
+              ))}
+            </div>
+          </>
         )}
+        <TextRow label="Desc" textKey={textKeys.desc} />
+        <TextRow label="Short" textKey={textKeys.short} />
       </div>
     </div>
   );
