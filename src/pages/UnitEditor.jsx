@@ -8,6 +8,8 @@ import { parseEDU, serializeEDU, serializeUnit, createDefaultUnit } from '../com
 const STORAGE_KEY = 'm2tw_edu_units';
 const EDU_FILE_KEY = 'm2tw_edu_file';
 const EDU_FILE_NAME_KEY = 'm2tw_edu_file_name';
+const EXPORT_UNITS_KEY = 'm2tw_export_units_file';
+const UNIT_IMAGES_KEY = 'm2tw_unit_images';
 
 function loadUnits() {
   try {
@@ -18,6 +20,85 @@ function loadUnits() {
 }
 function saveUnits(units) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(units)); } catch {}
+}
+
+// Parse export_units.txt into a map: dictionary -> { name, long, short }
+function parseExportUnits(text) {
+  const map = {};
+  const lines = text.split('\n');
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    // Name line: {dict}\tDisplay Name
+    const nameMatch = line.match(/^\{([^}]+)\}\s*(.+)/);
+    if (nameMatch && !nameMatch[1].endsWith('_descr') && !nameMatch[1].endsWith('_descr_short')) {
+      const key = nameMatch[1].trim();
+      map[key] = map[key] || {};
+      map[key].name = nameMatch[2].trim();
+    }
+    // Long description: {dict_descr} on its own line, content follows
+    const descrMatch = line.match(/^\{([^}]+)_descr\}$/);
+    if (descrMatch) {
+      const key = descrMatch[1].trim();
+      map[key] = map[key] || {};
+      const parts = [];
+      i++;
+      while (i < lines.length) {
+        const dl = lines[i].trim();
+        if (dl.startsWith('{')) break;
+        parts.push(lines[i]);
+        i++;
+      }
+      map[key].long = parts.join('\n').trim();
+      continue;
+    }
+    // Short description: {dict_descr_short} on its own line, content follows
+    const shortMatch = line.match(/^\{([^}]+)_descr_short\}$/);
+    if (shortMatch) {
+      const key = shortMatch[1].trim();
+      map[key] = map[key] || {};
+      const parts = [];
+      i++;
+      while (i < lines.length) {
+        const dl = lines[i].trim();
+        if (dl.startsWith('{')) break;
+        parts.push(lines[i]);
+        i++;
+      }
+      map[key].short = parts.join('\n').trim();
+      continue;
+    }
+    i++;
+  }
+  return map;
+}
+
+// Serialize descriptions map back to export_units.txt text
+function serializeExportUnits(descrMap) {
+  const lines = [];
+  for (const [key, val] of Object.entries(descrMap)) {
+    lines.push(`{${key}}\t${val.name || ''}`);
+    lines.push('');
+    if (val.long) {
+      lines.push(`{${key}_descr}`);
+      lines.push(val.long);
+      lines.push('');
+    }
+    if (val.short) {
+      lines.push(`{${key}_descr_short}`);
+      lines.push(val.short);
+      lines.push('');
+    }
+  }
+  return lines.join('\n');
+}
+
+function loadUnitImages() {
+  try {
+    const s = localStorage.getItem(UNIT_IMAGES_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  return null;
 }
 
 export default function UnitEditorPage() {
