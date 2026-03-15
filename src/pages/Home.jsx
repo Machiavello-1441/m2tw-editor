@@ -101,7 +101,7 @@ function FileStatus({ label, hint, status }) {
 }
 
 export default function Home() {
-  const { loadEDB, edbData, fileName, loadTextFile } = useEDB();
+  const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
 
   const [fileStatus, setFileStatus] = useState(() => {
