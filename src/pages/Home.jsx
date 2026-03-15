@@ -225,6 +225,24 @@ export default function Home() {
     setFileStatus(prev => ({ ...prev, unit_images: 'ok' }));
   };
 
+  const handleBldImagesFolder = async (e) => {
+    const files = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.tga'));
+    e.target.value = '';
+    if (files.length === 0) return;
+    setFileStatus(prev => ({ ...prev, bld_images: 'loading' }));
+    const parsed = [];
+    for (const file of files) {
+      const buf = await file.arrayBuffer();
+      const url = decodeTgaToDataUrl(buf);
+      if (url) {
+        parsed.push({ path: file.webkitRelativePath || file.name, name: file.name, url });
+      }
+    }
+    loadBuildingTgaImages(parsed);
+    setBldImgCount(parsed.length);
+    setFileStatus(prev => ({ ...prev, bld_images: 'ok' }));
+  };
+
   const handleMapFolder = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
