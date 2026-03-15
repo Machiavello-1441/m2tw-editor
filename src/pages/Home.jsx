@@ -203,7 +203,15 @@ export default function Home() {
           unitTgaFiles.push(file);
         } else if (pathLower.includes('/ui/') && pathLower.includes('/buildings/')) {
           bldTgaFiles.push(file);
+        } else if (pathLower.includes('/maps/base/')) {
+          baseMapFiles.push(file);
         }
+        continue;
+      }
+
+      // Base map text files
+      if ((name === 'descr_strat.txt' || name === 'descr_regions.txt') && pathLower.includes('/maps/base/')) {
+        baseMapFiles.push(file);
         continue;
       }
 
