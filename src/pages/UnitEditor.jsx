@@ -174,7 +174,15 @@ export default function UnitEditorPage() {
     const handler = () => {
       try {
         const raw = localStorage.getItem(EXPORT_UNITS_KEY);
-        if (raw) setDescrMap(parseExportUnits(raw));
+        if (!raw) return;
+        const base = parseExportUnits(raw);
+        const editsRaw = localStorage.getItem(EXPORT_UNITS_KEY + '_edits');
+        const edits = editsRaw ? JSON.parse(editsRaw) : {};
+        const merged = { ...base };
+        for (const [k, v] of Object.entries(edits)) {
+          merged[k] = { ...(merged[k] || {}), ...v };
+        }
+        setDescrMap(merged);
       } catch {}
     };
     window.addEventListener('load-export-units', handler);
