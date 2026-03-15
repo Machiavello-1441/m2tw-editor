@@ -121,7 +121,7 @@ function checkBrokenConvertTo(buildings) {
   const allBuildingNames = new Set(buildings.map(b => b.name));
 
   for (const b of buildings) {
-    if (b.convertTo && !allBuildingNames.has(b.convertTo)) {
+    if (b.convertTo && !Number.isInteger(parseInt(b.convertTo)) && !allBuildingNames.has(b.convertTo)) {
       issues.push({
         id: `bad_convert_building_${b.name}`,
         severity: 'error',
@@ -131,7 +131,7 @@ function checkBrokenConvertTo(buildings) {
       });
     }
     for (const l of b.levels) {
-      if (l.convertTo && !allBuildingNames.has(l.convertTo)) {
+      if (l.convertTo && !Number.isInteger(parseInt(l.convertTo)) && !allBuildingNames.has(l.convertTo)) {
         issues.push({
           id: `bad_convert_level_${b.name}_${l.name}`,
           severity: 'error',
