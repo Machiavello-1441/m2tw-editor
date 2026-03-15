@@ -23,62 +23,73 @@ function saveUnits(units) {
 }
 
 // Parse export_units.txt into a map: dictionary -> { name, long, short }
+// M2TW format: {key}value on one line, or {key}\nvalue on next line, with ¬ or tab or no separator
 function parseExportUnits(text) {
   const map = {};
-  // Normalize line endings
   const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   let i = 0;
   while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
+    const trimmed = lines[i].trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith(';')) { i++; continue; }
 
-    // Skip comments and empty
-    if (!trimmed || trimmed.startsWith('//')) { i++; continue; }
+    // Must start with {
+    if (!trimmed.startsWith('{')) { i++; continue; }
 
-    // {key_descr_short} inline: {key_descr_short}¬text  OR key on own line
-    const shortInline = trimmed.match(/^\{([^}]+)_descr_short\}¬(.+)/);
-    if (shortInline) {
-      const key = shortInline[1].trim();
-      map[key] = map[key] || {};
-      map[key].short = shortInline[2].trim();
-      i++; continue;
-    }
-    const shortBlock = trimmed.match(/^\{([^}]+)_descr_short\}$/);
-    if (shortBlock) {
-      const key = shortBlock[1].trim();
-      map[key] = map[key] || {};
-      const parts = []; i++;
-      while (i < lines.length && !lines[i].trim().startsWith('{')) { parts.push(lines[i]); i++; }
-      map[key].short = parts.join('\n').trim();
-      continue;
-    }
+    // Extract the key between { }
+    const keyMatch = trimmed.match(/^\{([^}]+)\}/);
+    if (!keyMatch) { i++; continue; }
+    const fullKey = keyMatch[1].trim();
+    // Everything after the closing }
+    const afterBrace = trimmed.slice(keyMatch[0].length);
+    // Strip leading separator (¬, tab, space)
+    const inlineValue = afterBrace.replace(/^[¬\t ]/, '').trim();
 
-    // {key_descr} inline or block
-    const descrInline = trimmed.match(/^\{([^}]+)_descr\}¬(.+)/);
-    if (descrInline) {
-      const key = descrInline[1].trim();
-      map[key] = map[key] || {};
-      map[key].long = descrInline[2].trim();
-      i++; continue;
-    }
-    const descrBlock = trimmed.match(/^\{([^}]+)_descr\}$/);
-    if (descrBlock) {
-      const key = descrBlock[1].trim();
-      map[key] = map[key] || {};
-      const parts = []; i++;
-      while (i < lines.length && !lines[i].trim().startsWith('{')) { parts.push(lines[i]); i++; }
-      map[key].long = parts.join('\n').trim();
-      continue;
-    }
+    const isShort = fullKey.endsWith('_descr_short');
+    const isLong  = !isShort && fullKey.endsWith('_descr');
 
-    // {key}¬Name  or {key}\tName or {key} Name
-    const nameMatch = trimmed.match(/^\{([^}]+)\}[¬\t ](.+)/);
-    if (nameMatch) {
-      const key = nameMatch[1].trim();
-      map[key] = map[key] || {};
-      map[key].name = nameMatch[2].trim();
+    if (isShort) {
+      const baseKey = fullKey.slice(0, -'_descr_short'.length);
+      map[baseKey] = map[baseKey] || {};
+      if (inlineValue) {
+        map[baseKey].short = inlineValue;
+      } else {
+        // value on next line(s) until next {
+        const parts = []; i++;
+        while (i < lines.length && !lines[i].trim().startsWith('{')) {
+          parts.push(lines[i]); i++;
+        }
+        map[baseKey].short = parts.join('\n').trim();
+        continue;
+      }
+    } else if (isLong) {
+      const baseKey = fullKey.slice(0, -'_descr'.length);
+      map[baseKey] = map[baseKey] || {};
+      if (inlineValue) {
+        map[baseKey].long = inlineValue;
+      } else {
+        const parts = []; i++;
+        while (i < lines.length && !lines[i].trim().startsWith('{')) {
+          parts.push(lines[i]); i++;
+        }
+        map[baseKey].long = parts.join('\n').trim();
+        continue;
+      }
+    } else {
+      // Name entry
+      map[fullKey] = map[fullKey] || {};
+      if (inlineValue) {
+        map[fullKey].name = inlineValue;
+      } else {
+        // Next non-empty line is the name
+        i++;
+        while (i < lines.length && !lines[i].trim()) i++;
+        if (i < lines.length && !lines[i].trim().startsWith('{')) {
+          map[fullKey].name = lines[i].trim();
+          i++;
+        }
+        continue;
+      }
     }
-
     i++;
   }
   return map;
