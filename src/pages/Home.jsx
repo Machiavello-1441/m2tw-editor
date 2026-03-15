@@ -419,6 +419,34 @@ export default function Home() {
 
   const edbLoaded = fileStatus.edb === 'ok' || !!edbData?.buildings?.length;
 
+  const handleClearMemory = () => {
+    try {
+      localStorage.removeItem('m2tw_edb_file');
+      localStorage.removeItem('m2tw_edb_file_name');
+      localStorage.removeItem('m2tw_edb_txt_file');
+      localStorage.removeItem('m2tw_edb_images');
+      localStorage.removeItem('m2tw_factions_file');
+      localStorage.removeItem('m2tw_resources_file');
+      localStorage.removeItem('m2tw_events_file');
+      localStorage.removeItem('m2tw_units_file');
+      localStorage.removeItem('m2tw_traits_file');
+      localStorage.removeItem('m2tw_traits_file_name');
+      localStorage.removeItem('m2tw_anc_file');
+      localStorage.removeItem('m2tw_anc_file_name');
+      localStorage.removeItem('m2tw_vnvs_file');
+      localStorage.removeItem('m2tw_vnvs_file_name');
+      localStorage.removeItem('m2tw_anctxt_file');
+      localStorage.removeItem('m2tw_anctxt_file_name');
+      localStorage.removeItem('m2tw_export_units_file');
+      localStorage.removeItem('m2tw_export_units_file_name');
+      localStorage.removeItem('m2tw_lua_scripts');
+      localStorage.removeItem('m2tw_campaigns');
+      window._m2tw_map_files = [];
+      window._m2tw_unit_images = {};
+      window.location.reload();
+    } catch {}
+  };
+
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-start gap-6 pt-12">
 
