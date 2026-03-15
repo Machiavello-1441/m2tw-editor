@@ -225,6 +225,25 @@ export default function UnitEditorPage() {
     update(updated);
   };
 
+  const handleImageUpload = (key, dataUrl) => {
+    const updated = { ...(unitImages || {}), [key]: dataUrl };
+    window._m2tw_unit_images = updated;
+    setUnitImages(updated);
+    try { localStorage.setItem(UNIT_IMAGES_KEY, JSON.stringify(updated)); } catch {}
+  };
+
+  const handleImageDelete = (key) => {
+    const updated = { ...(unitImages || {}) };
+    // Try exact key and lowercase
+    delete updated[key];
+    for (const k of Object.keys(updated)) {
+      if (k.toLowerCase() === key.toLowerCase()) delete updated[k];
+    }
+    window._m2tw_unit_images = updated;
+    setUnitImages(updated);
+    try { localStorage.setItem(UNIT_IMAGES_KEY, JSON.stringify(updated)); } catch {}
+  };
+
   const handleDownload = () => {
     const text = serializeEDU(units);
     const blob = new Blob([text], { type: 'text/plain' });
