@@ -162,6 +162,18 @@ export default function UnitEditorPage() {
     return () => window.removeEventListener('load-unit-images', handler);
   }, []);
 
+  // Live-reload descriptions when Home page loads export_units.txt
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const raw = localStorage.getItem(EXPORT_UNITS_KEY);
+        if (raw) setDescrMap(parseExportUnits(raw));
+      } catch {}
+    };
+    window.addEventListener('load-export-units', handler);
+    return () => window.removeEventListener('load-export-units', handler);
+  }, []);
+
   const active = units[activeIndex] || null;
   const activeDescr = active ? (descrMap[active.dictionary] ?? null) : null;
 
