@@ -265,28 +265,12 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, unit_images: 'ok' }));
     }
 
-    // Auto-load Lua scripts
-    if (luaFiles.length > 0) {
-      const scripts = [];
-      for (const file of luaFiles) {
-        const text = await readText(file);
-        scripts.push({ name: file.name, code: text, path: file.webkitRelativePath || file.name });
-      }
-      try {
-        // Load into lua scripts storage so LuaScripts page picks them up
-        const existingRaw = localStorage.getItem('m2tw_lua_scripts');
-        const existing = existingRaw ? JSON.parse(existingRaw) : [];
-        const merged = [...scripts.map((s, i) => ({
-          id: `loaded_${i}_${s.name}`,
-          name: s.name,
-          type: 'custom',
-          code: s.code,
-        }))];
-        localStorage.setItem('m2tw_lua_scripts', JSON.stringify(merged));
-      } catch {}
-      window.dispatchEvent(new CustomEvent('lua-scripts-loaded', { detail: scripts }));
-      setFileStatus(prev => ({ ...prev, lua: 'ok' }));
-      setLuaCount(luaFiles.length);
+    // Auto-load base map files
+    if (baseMapFiles.length > 0) {
+      window._m2tw_map_files = (window._m2tw_map_files || []).concat(baseMapFiles);
+      window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: baseMapFiles, source: 'base' } }));
+      setMapFileCount(prev => prev + baseMapFiles.length);
+      setFileStatus(prev => ({ ...prev, base_map: 'ok' }));
     }
 
     // Auto-load building images from data\ui\[culture]\buildings\
