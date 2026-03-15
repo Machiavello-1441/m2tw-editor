@@ -18,8 +18,8 @@ function TextRow({ label, textKey }) {
       <span className="text-[10px] text-muted-foreground w-9 shrink-0 pt-1.5 text-right">{label}</span>
       {isDesc ? (
         <textarea
-          className={`${base} min-h-[42px]`}
-          rows={2}
+          className={`${base} min-h-[56px]`}
+          rows={label === 'Desc' ? 4 : 2}
           value={value}
           onChange={e => setTextData(prev => ({ ...prev, [textKey]: e.target.value }))}
         />
