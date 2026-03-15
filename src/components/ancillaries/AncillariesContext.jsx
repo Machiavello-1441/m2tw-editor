@@ -29,7 +29,7 @@ export function AncillariesProvider({ children }) {
   }, []);
 
   // Auto-load from localStorage if Home page cached the files
-  useEffect(() => {
+  const loadFromStorage = useCallback(() => {
     try {
       const ancContent = localStorage.getItem('m2tw_anc_file');
       const ancName = localStorage.getItem('m2tw_anc_file_name');
@@ -49,6 +49,18 @@ export function AncillariesProvider({ children }) {
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    loadFromStorage();
+    // Listen for Home page loading ancillaries
+    const handler = () => loadFromStorage();
+    window.addEventListener('load-ancillaries', handler);
+    window.addEventListener('load-anctxt', handler);
+    return () => {
+      window.removeEventListener('load-ancillaries', handler);
+      window.removeEventListener('load-anctxt', handler);
+    };
+  }, [loadFromStorage]);
 
   const loadAncFile = useCallback((content, filename) => {
     const parsed = parseAncillariesFile(content);
