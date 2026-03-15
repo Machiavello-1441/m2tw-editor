@@ -11,6 +11,11 @@ const VALID_WHEN_TO_TEST = [
   'OnCharacterBecomesDiplomat', 'OnCharacterBecomesHeretic', 'OnCharacterBecomesWitch',
   'OnCharacterBecomesInquisitor', 'OnCharacterBecomesPriest', 'OnCharacterBecomesMerchant',
   'OnCharacterComesOfAge', 'OnCharacterDies', 'ScriptedEvent', 'DoesSomething',
+  'OfferedForAdoption', 'OfferedForMarriage', 'BattleGeneralRouted', 'GeneralAssaultsGeneral',
+  'PreBattleWithdrawal', 'LeaderDestroyedFaction', 'CharacterDamagedByDisaster', 'BrotherAdopted',
+  'CharacterMarries', 'CharacterMarriesPrincess', 'CharacterBecomesAFather', 'SpyMission',
+  'LeaderOrderedSpyingMisssion', 'AssassinationMission', 'LeaderOrderedAssassination',
+  'SufferAssassinationAttempt', 'SabotageMission', 'LeaderOrderedSabotage',
 ];
 
 const VALID_CONDITION_PREFIXES = [
