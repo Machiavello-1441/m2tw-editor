@@ -193,6 +193,9 @@ export default function Home() {
         try {
           localStorage.setItem(storeKeys[key], text);
           localStorage.setItem(storeKeys[key] + '_name', file.name);
+          if (key === 'expunits') {
+            window.dispatchEvent(new CustomEvent('load-export-units'));
+          }
         } catch {}
       } else {
         loaderMap[key]?.(text);
