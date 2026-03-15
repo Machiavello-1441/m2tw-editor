@@ -796,8 +796,10 @@ export function parseBuildingImageKey(filePath, fileName) {
   const hasConstructedSuffix = nameLower.endsWith('_constructed');
   const nameWithoutHash = nameLower.replace(/^#/, '');
   const prefix = culture + '_';
-  if (!nameWithoutHash.startsWith(prefix)) return null;
-  const afterCulture = nameWithoutHash.slice(prefix.length);
+  // Allow files that don't carry the culture prefix (e.g. plain "civlib.tga")
+  const afterCulture = nameWithoutHash.startsWith(prefix)
+    ? nameWithoutHash.slice(prefix.length)
+    : nameWithoutHash;
   let levelName, type;
   if (inConstructedDir) {
     type = 'icon';
