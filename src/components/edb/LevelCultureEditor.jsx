@@ -102,13 +102,13 @@ function ImageSlot({ culture, levelName, slot }) {
   const displayImg = preview ? preview.dataUrl : img?.url;
 
   return (
-    <div className="flex flex-col items-center gap-0.5 group" style={{ width: 60 }}>
+    <div className="flex flex-col items-center gap-0.5 group" style={{ width: slot.w }}>
       <span className="text-[9px] text-muted-foreground">{slot.label}</span>
       {displayImg ? (
         <div className="relative">
           <img src={displayImg} alt={slot.label}
             className="rounded border border-border bg-black/30 object-contain"
-            style={{ width: 60, aspectRatio: `${slot.w}/${slot.h}` }} />
+            style={{ width: slot.w, height: slot.h }} />
           {preview ? (
             <div className="absolute -bottom-4 left-0 right-0 flex justify-center gap-1">
               <button className="text-[8px] text-green-400 hover:text-green-300" onClick={handleSave} title="Save as TGA">↓tga</button>
@@ -123,7 +123,7 @@ function ImageSlot({ culture, levelName, slot }) {
       ) : (
         <button
           className="border border-dashed border-border rounded flex flex-col items-center justify-center gap-0.5 hover:border-primary/40 hover:bg-primary/5 transition-colors text-muted-foreground"
-          style={{ width: 60, aspectRatio: `${slot.w}/${slot.h}` }}
+          style={{ width: slot.w, height: slot.h }}
           onClick={() => fileRef.current?.click()}
         >
           <Upload className="w-3 h-3" />
