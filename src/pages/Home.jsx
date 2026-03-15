@@ -460,7 +460,7 @@ export default function Home() {
             </Button>
           </Link>
         }
-        {edbLoaded &&
+        {edbLoaded && edbData &&
         <div className="flex gap-2 flex-wrap justify-center pt-1">
             <Badge variant="outline" className="text-[10px]">{edbData.buildings.length} buildings</Badge>
             <Badge variant="outline" className="text-[10px]">{edbData.buildings.reduce((s, b) => s + b.levels.length, 0)} levels</Badge>
