@@ -183,7 +183,8 @@ export default function UnitEditorPage() {
     if (!active) return;
     const updated = { ...descrMap, [active.dictionary]: val };
     setDescrMap(updated);
-    try { localStorage.setItem(EXPORT_UNITS_KEY + '_parsed', JSON.stringify(updated)); } catch {}
+    // Save edits back as a JSON overlay; the raw file is preserved separately
+    try { localStorage.setItem(EXPORT_UNITS_KEY + '_edits', JSON.stringify(updated)); } catch {}
   };
 
   const handleFileLoad = (e) => {
