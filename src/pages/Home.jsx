@@ -234,13 +234,25 @@ export default function Home() {
       if (key === 'edb') {
         loadEDB(text, file.name);
       } else if (storeKeys[key]) {
-        try {
-          localStorage.setItem(storeKeys[key], text);
-          localStorage.setItem(storeKeys[key] + '_name', file.name);
-          if (key === 'expunits') {
-            window.dispatchEvent(new CustomEvent('load-export-units'));
-          }
-        } catch {}
+       try {
+         localStorage.setItem(storeKeys[key], text);
+         localStorage.setItem(nameKeys[key], file.name);
+         if (key === 'expunits') {
+           window.dispatchEvent(new CustomEvent('load-export-units'));
+         }
+         if (key === 'traits') {
+           window.dispatchEvent(new CustomEvent('load-traits'));
+         }
+         if (key === 'vnvs') {
+           window.dispatchEvent(new CustomEvent('load-vnvs'));
+         }
+         if (key === 'anc') {
+           window.dispatchEvent(new CustomEvent('load-ancillaries'));
+         }
+         if (key === 'anctxt') {
+           window.dispatchEvent(new CustomEvent('load-anctxt'));
+         }
+       } catch {}
       } else {
         loaderMap[key]?.(text);
       }
