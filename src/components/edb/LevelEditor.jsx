@@ -135,11 +135,6 @@ export default function LevelEditor() {
               currentLevelName={selectedLevel}
               edbData={edbData}
             />
-
-            <div>
-              <Label className="text-[10px] text-muted-foreground mb-1 block">Images</Label>
-              <LevelImageSection levelName={level.name} />
-            </div>
           </CardContent>
         </Card>
 
@@ -176,6 +171,17 @@ export default function LevelEditor() {
         </Card>
 
         <LevelTextEditor levelName={level.name} />
+
+        <Card>
+          <CardHeader className="p-3 pb-2">
+            <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
+              Images per Culture
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <LevelImageSection levelName={level.name} />
+          </CardContent>
+        </Card>
       </div>
     </ScrollArea>
   );
