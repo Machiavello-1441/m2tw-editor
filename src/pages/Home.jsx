@@ -7,7 +7,7 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Package, ArrowRight, Info, Castle, Image, Map
+  FileText, Package, ArrowRight, Info, Castle, Image, Map, Layers
 } from 'lucide-react';
 
 function decodeTgaToDataUrl(buffer) {
