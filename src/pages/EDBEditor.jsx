@@ -7,7 +7,7 @@ import CodePreview from '../components/edb/CodePreview';
 import HiddenResourceEditor from '../components/edb/HiddenResourceEditor';
 import RefFileLoader from '../components/edb/RefFileLoader';
 import { Button } from '@/components/ui/button';
-import { Castle, Code2, Image, ShieldAlert } from 'lucide-react';
+import { Castle, Code2, Image } from 'lucide-react';
 import AutoSavePanel from '../components/edb/AutoSavePanel';
 
 function decodeTgaToDataUrl(buffer) {
@@ -75,6 +75,7 @@ function decodeTgaToDataUrl(buffer) {
 export default function EDBEditor() {
   const { edbData, fileName, loadTgaImages, saveNow } = useEDB();
   const [showCode, setShowCode] = useState(false);
+  const [showValidation, setShowValidation] = useState(false);
   const tgaFolderRef = useRef();
 
   const handleTgaFolder = async (e) => {
