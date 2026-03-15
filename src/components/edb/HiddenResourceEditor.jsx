@@ -30,7 +30,7 @@ export default function HiddenResourceEditor() {
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="text-slate-50 px-3 text-xs font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 gap-1">
           <Database className="w-3 h-3" />
-          <span className="hidden xl:inline">Hidden Res</span>
+          <span className="hidden xl:inline">Hidden Resources</span>
           <span className="text-[10px] text-muted-foreground">({resources.length})</span>
         </Button>
       </DialogTrigger>
