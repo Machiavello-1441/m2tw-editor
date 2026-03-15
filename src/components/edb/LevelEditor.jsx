@@ -138,7 +138,7 @@ export default function LevelEditor() {
 
             <div>
               <Label className="text-[10px] text-muted-foreground mb-1 block">Images</Label>
-              <LevelImages levelName={level.name} />
+              <LevelImageSection levelName={level.name} />
             </div>
           </CardContent>
         </Card>
