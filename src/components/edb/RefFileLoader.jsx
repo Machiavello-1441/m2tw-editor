@@ -72,20 +72,20 @@ export default function RefFileLoader() {
     e.target.value = '';
   };
 
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      <span className="text-[10px] text-muted-foreground hidden lg:block">Ref files:</span>
-      <label className="cursor-pointer">
-        <input ref={folderRef} type="file" className="hidden" webkitdirectory="" directory="" multiple onChange={handleFolderSelect} />
-        <Button variant="outline" size="sm" className="h-7 text-[10px] pointer-events-none gap-1.5 border-primary/40 text-primary">
-          <FolderOpen className="w-3 h-3" /> Load M2TW/data folder
-        </Button>
-      </label>
-      
-      <FileBtn label="Factions" hint="descr_sm_factions.txt" onLoad={loaderMap.fac} loaded={loaded.fac} />
-      <FileBtn label="Resources" hint="descr_sm_resources.txt" onLoad={loaderMap.res} loaded={loaded.res} />
-      <FileBtn label="Events" hint="descr_events.txt" onLoad={loaderMap.ev} loaded={loaded.ev} />
-      <FileBtn label="Units" hint="export_descr_unit.txt" onLoad={loaderMap.unit} loaded={loaded.unit} />
-    </div>);
+  return null;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
