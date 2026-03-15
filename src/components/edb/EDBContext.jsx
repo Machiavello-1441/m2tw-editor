@@ -205,6 +205,18 @@ export function EDBProvider({ children }) {
     setImageData(prev => ({ ...prev, ...images }));
   }, []);
 
+  const loadBuildingTgaImages = useCallback((filesArray) => {
+    // filesArray: array of { path, name, buffer } from folder picker
+    const structured = {};
+    for (const f of filesArray) {
+      const parsed = parseBuildingImageKey(f.path, f.name);
+      if (parsed) {
+        structured[parsed.key] = { url: f.url, culture: parsed.culture, type: parsed.type, levelName: parsed.levelName };
+      }
+    }
+    setImageData(prev => ({ ...prev, ...structured }));
+  }, []);
+
   const restoreSnapshot = useCallback((snap) => {
     setEdbData(snap.edbData);
     setTextData(snap.textData || {});
