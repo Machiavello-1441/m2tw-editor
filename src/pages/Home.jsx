@@ -195,12 +195,6 @@ export default function Home() {
       const name = file.name.toLowerCase();
       const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
 
-      // Collect Lua scripts
-      if (name.endsWith('.lua')) {
-        luaFiles.push(file);
-        continue;
-      }
-
       // Route TGA files by folder path
       if (name.endsWith('.tga')) {
         if (pathLower.includes('/ui/ancillaries/')) {
