@@ -71,6 +71,7 @@ const DATA_FILE_MAP = {
   'export_descr_ancillaries.txt':       'anc',
   'export_vnvs.txt':                    'vnvs',   // lower-cased for matching
   'export_ancillaries.txt':             'anctxt',
+  'export_units.txt':                   'expunits',
 };
 
 
