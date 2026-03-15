@@ -99,14 +99,15 @@ function checkBrokenUpgradeRefs(buildings) {
 
   for (const b of buildings) {
     for (const l of b.levels) {
-      for (const up of l.upgrades) {
-        if (!allLevelNames.has(up)) {
+      for (const up of (l.upgrades || [])) {
+        const upName = typeof up === 'object' ? up?.name : up;
+        if (!allLevelNames.has(upName)) {
           issues.push({
-            id: `broken_upgrade_${b.name}_${l.name}_${up}`,
+            id: `broken_upgrade_${b.name}_${l.name}_${upName}`,
             severity: 'error',
             category: 'EDB',
-            title: `Broken upgrade reference "${up}" in "${b.name} → ${l.name}"`,
-            detail: `Level "${l.name}" lists "${up}" as an upgrade but no level with that name exists anywhere in the EDB.`,
+            title: `Broken upgrade reference "${upName}" in "${b.name} → ${l.name}"`,
+            detail: `Level "${l.name}" lists "${upName}" as an upgrade but no level with that name exists anywhere in the EDB.`,
             context: { building: b.name, level: l.name },
           });
         }
