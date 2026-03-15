@@ -58,8 +58,8 @@ export default function ValidationPanel() {
               </button>
             ))}
           </div>
-          <ScrollArea className="flex-1">
-            <div className="px-2 pb-2 space-y-0.5">
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="px-2 py-2 space-y-0.5">
               {filtered.length === 0 && (
                 <p className="text-[10px] text-muted-foreground text-center py-4">
                   {edbData ? '✓ No issues found' : 'Load an EDB to validate'}
