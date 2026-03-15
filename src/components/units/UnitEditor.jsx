@@ -7,7 +7,6 @@ import {
 import { Field, TextInput, NumberInput, SelectInput, Section, MultiCheckbox } from './UnitStatRow';
 import { serializeUnit } from './EDUParser';
 import UnitDescriptionTab from './UnitDescriptionTab';
-import UnitImagesTab from './UnitImagesTab';
 
 // Parse a comma-separated stat string into an array
 function splitStat(str, count) {
@@ -39,8 +38,7 @@ export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitI
     { id: 'combat', label: 'Combat' },
     { id: 'stats', label: 'Stats' },
     { id: 'ownership', label: 'Ownership' },
-    { id: 'description', label: 'Description' },
-    { id: 'images', label: 'Images' },
+    { id: 'description', label: 'Description & Images' },
     { id: 'preview', label: 'Preview' },
   ];
 
@@ -373,14 +371,9 @@ export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitI
             </Section>
           </>}
 
-          {/* ── Description ── */}
+          {/* ── Description & Images ── */}
           {tab === 'description' && (
-            <UnitDescriptionTab dictionary={unit.dictionary} descr={descr} onDescrChange={onDescrChange} />
-          )}
-
-          {/* ── Images ── */}
-          {tab === 'images' && (
-            <UnitImagesTab dictionary={unit.dictionary} unitImages={unitImages} />
+            <UnitDescriptionTab dictionary={unit.dictionary} descr={descr} onDescrChange={onDescrChange} unitImages={unitImages} />
           )}
 
           {/* ── Preview ── */}
