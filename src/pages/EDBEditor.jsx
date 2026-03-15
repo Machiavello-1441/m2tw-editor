@@ -132,6 +132,15 @@ export default function EDBEditor() {
         <AutoSavePanel onSaveNow={saveNow} />
         <Button
           size="sm"
+          variant={showValidation ? 'default' : 'ghost'}
+          className="h-7 text-xs gap-1 shrink-0"
+          onClick={() => setShowValidation(v => !v)}
+        >
+          <ShieldAlert className="w-3 h-3" />
+          <span className="hidden lg:block">Validate</span>
+        </Button>
+        <Button
+          size="sm"
           variant={showCode ? 'default' : 'ghost'}
           className="h-7 text-xs gap-1 shrink-0"
           onClick={() => setShowCode(v => !v)}
