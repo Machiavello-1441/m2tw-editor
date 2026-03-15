@@ -7,6 +7,7 @@ const EDBContext = createContext(null);
 const EDB_LS_KEY = 'm2tw_edb_file';
 const EDB_LS_NAME_KEY = 'm2tw_edb_file_name';
 const EDB_TXT_LS_KEY = 'm2tw_edb_txt_file';
+const EDB_IMG_LS_KEY = 'm2tw_edb_images';
 
 export function EDBProvider({ children }) {
   const [edbData, setEdbData] = useState(null);
