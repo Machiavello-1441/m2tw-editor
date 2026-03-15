@@ -203,6 +203,26 @@ export default function Home() {
     setFileStatus(prev => ({ ...prev, anc_images: 'ok' }));
   };
 
+  const handleUnitUiFolder = async (e) => {
+    const files = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.tga'));
+    e.target.value = '';
+    if (files.length === 0) return;
+    setFileStatus(prev => ({ ...prev, unit_images: 'loading' }));
+    const images = {};
+    for (const file of files) {
+      const buf = await file.arrayBuffer();
+      const dataUrl = decodeTgaToDataUrl(buf);
+      if (dataUrl) {
+        // Strip .tga, lowercase; keep filename only (not path)
+        const key = file.name.replace(/\.tga$/i, '').toLowerCase();
+        images[key] = dataUrl;
+      }
+    }
+    window.dispatchEvent(new CustomEvent('load-unit-images', { detail: images }));
+    setUnitImgCount(Object.keys(images).length);
+    setFileStatus(prev => ({ ...prev, unit_images: 'ok' }));
+  };
+
   const handleMapFolder = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
