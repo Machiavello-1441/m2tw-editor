@@ -274,44 +274,87 @@ export default function Home() {
         <span className="text-[10px] text-muted-foreground whitespace-nowrap">Used in the exported zip path</span>
       </div>
 
-      {/* Step 1 — data folder */}
+      {/* Step 1 — data folder + UI images */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Castle className="w-4 h-4 text-primary" />
-            Step 1 — Load <code className="text-xs font-mono bg-accent px-1 py-0.5 rounded">data\</code> Folder
+            Step 1 — Load Mod Files &amp; Images
           </h2>
-
           <p className="text-[11px] text-muted-foreground mt-1">
-            Finds buildings, traits, ancillaries, factions, resources, units, events and text files — just browse the whole <code className="text-[10px] font-mono bg-accent px-1 rounded">data\</code> folder.
-            Traits &amp; ancillaries files are cached and auto-loaded when you open their editors.
+            Browse your whole <code className="text-[10px] font-mono bg-accent px-1 rounded">data\</code> folder to load all game files, then
+            browse <code className="text-[10px] font-mono bg-accent px-1 rounded">data\ui\</code> to load UI images for the Ancillaries and Unit editors.
           </p>
         </div>
-        <div className="p-4 space-y-3">
-          <label className="cursor-pointer">
-            <input ref={dataFolderRef} type="file" className="hidden"
-              webkitdirectory="" directory="" multiple onChange={handleDataFolder} />
-            <Button asChild variant="outline"
-              className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
-              <span>
-                <FolderOpen className="w-4 h-4" />
-                Browse to <code className="text-xs font-mono">…\data\</code> folder
-              </span>
-            </Button>
-          </label>
+        <div className="p-4 space-y-4">
+          {/* Text files */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Game Data Files</p>
+            <label className="cursor-pointer">
+              <input ref={dataFolderRef} type="file" className="hidden"
+                webkitdirectory="" directory="" multiple onChange={handleDataFolder} />
+              <Button asChild variant="outline"
+                className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
+                <span>
+                  <FolderOpen className="w-4 h-4" />
+                  Browse to <code className="text-xs font-mono">…\data\</code> folder
+                </span>
+              </Button>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt"        status={fileStatus.edb} />
+              <FileStatus label="Building Text"   hint="text\export_buildings.txt"         status={fileStatus.txt} />
+              <FileStatus label="Factions"        hint="descr_sm_factions.txt"             status={fileStatus.fac} />
+              <FileStatus label="Resources"       hint="descr_sm_resources.txt"            status={fileStatus.res} />
+              <FileStatus label="Units"           hint="export_descr_unit.txt"             status={fileStatus.unit} />
+              <FileStatus label="Events"          hint="descr_events.txt"                  status={fileStatus.ev} />
+              <FileStatus label="Traits"          hint="export_descr_character_traits.txt" status={fileStatus.traits} />
+              <FileStatus label="Traits Text"     hint="text\export_VnVs.txt"              status={fileStatus.vnvs} />
+              <FileStatus label="Ancillaries"     hint="export_descr_ancillaries.txt"      status={fileStatus.anc} />
+              <FileStatus label="Ancillaries Text" hint="text\export_ancillaries.txt"      status={fileStatus.anctxt} />
+              <FileStatus label="Unit Descriptions" hint="text\export_units.txt"           status={fileStatus.expunits} />
+            </div>
+          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt"        status={fileStatus.edb} />
-            <FileStatus label="Building Text"   hint="text\export_buildings.txt"         status={fileStatus.txt} />
-            <FileStatus label="Factions"        hint="descr_sm_factions.txt"             status={fileStatus.fac} />
-            <FileStatus label="Resources"       hint="descr_sm_resources.txt"            status={fileStatus.res} />
-            <FileStatus label="Units"           hint="export_descr_unit.txt"             status={fileStatus.unit} />
-            <FileStatus label="Events"          hint="descr_events.txt"                  status={fileStatus.ev} />
-            <FileStatus label="Traits"          hint="export_descr_character_traits.txt" status={fileStatus.traits} />
-            <FileStatus label="Traits Text"     hint="text\export_VnVs.txt"              status={fileStatus.vnvs} />
-            <FileStatus label="Ancillaries"     hint="export_descr_ancillaries.txt"      status={fileStatus.anc} />
-            <FileStatus label="Ancillaries Text" hint="text\export_ancillaries.txt"      status={fileStatus.anctxt} />
-            <FileStatus label="Unit Descriptions" hint="text\export_units.txt"           status={fileStatus.expunits} />
+          <div className="border-t border-border" />
+
+          {/* UI images */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">UI Images <span className="normal-case font-normal">(optional)</span></p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="cursor-pointer">
+                <input ref={ancImagesFolderRef} type="file" className="hidden"
+                  webkitdirectory="" directory="" multiple onChange={handleAncImagesFolder} />
+                <Button asChild variant="outline" className="w-full h-11 pointer-events-none gap-2">
+                  <span>
+                    <Image className="w-4 h-4" />
+                    <code className="text-xs font-mono">…\ui\ancillaries\</code>
+                  </span>
+                </Button>
+              </label>
+              <label className="cursor-pointer">
+                <input ref={unitUiFolderRef} type="file" className="hidden"
+                  webkitdirectory="" directory="" multiple onChange={handleUnitUiFolder} />
+                <Button asChild variant="outline" className="w-full h-11 pointer-events-none gap-2">
+                  <span>
+                    <Layers className="w-4 h-4" />
+                    <code className="text-xs font-mono">…\ui\</code> (units)
+                  </span>
+                </Button>
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <FileStatus
+                label="Ancillary Images"
+                hint={fileStatus.anc_images === 'ok' ? `${ancImgCount} images loaded` : 'data\\ui\\ancillaries\\'}
+                status={fileStatus.anc_images}
+              />
+              <FileStatus
+                label="Unit UI Images"
+                hint={fileStatus.unit_images === 'ok' ? `${unitImgCount} images loaded` : 'data\\ui\\units\\ + unit_info\\'}
+                status={fileStatus.unit_images}
+              />
+            </div>
           </div>
         </div>
       </div>
