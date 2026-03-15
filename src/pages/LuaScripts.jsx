@@ -32,6 +32,16 @@ export default function LuaScripts() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('editor'); // 'editor' | 'imgui' | 'api'
 
+  useEffect(() => {
+    const handler = () => {
+      const reloaded = loadScripts();
+      setScripts(reloaded);
+      setActiveId(reloaded[0]?.id || '');
+    };
+    window.addEventListener('lua-scripts-loaded', handler);
+    return () => window.removeEventListener('lua-scripts-loaded', handler);
+  }, []);
+
   const activeScript = scripts.find(s => s.id === activeId) || scripts[0];
   const activeIsImgui = activeScript?.type === 'imgui';
 
