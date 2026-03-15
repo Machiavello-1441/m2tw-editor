@@ -771,6 +771,47 @@ export function serializeTextFile(textData) {
   return out;
 }
 
+// ─── Building Image Path Parser ────────────────────────────────────────────────
+
+/**
+ * Parses a TGA file path/name to extract culture, level name, and image type.
+ * Returns { culture, levelName, type, key } or null if not a building UI image.
+ *
+ * Expected M2TW paths:
+ *   data\ui\[culture]\buildings\constructed\#[culture]_[level].tga   → type = 'icon'
+ *   data\ui\[culture]\buildings\#[culture]_[level].tga               → type = 'panel'
+ *   data\ui\[culture]\buildings\#[culture]_[level]_constructed.tga   → type = 'construction'
+ *
+ * Key format: `${levelName}_${culture}_${type}`
+ */
+export function parseBuildingImageKey(filePath, fileName) {
+  const pathLower = (filePath || fileName).toLowerCase().replace(/\\/g, '/');
+  // Extract the folder immediately before 'buildings/'
+  const buildingMatch = pathLower.match(/([a-z_]+)\/buildings\//);
+  if (!buildingMatch) return null;
+  const culture = buildingMatch[1];
+  if (culture === 'buildings') return null; // bad match
+  const nameLower = fileName.toLowerCase().replace(/\.tga$/i, '');
+  const inConstructedDir = pathLower.includes('/buildings/constructed/');
+  const hasConstructedSuffix = nameLower.endsWith('_constructed');
+  const nameWithoutHash = nameLower.replace(/^#/, '');
+  const prefix = culture + '_';
+  if (!nameWithoutHash.startsWith(prefix)) return null;
+  const afterCulture = nameWithoutHash.slice(prefix.length);
+  let levelName, type;
+  if (inConstructedDir) {
+    type = 'icon';
+    levelName = afterCulture;
+  } else if (hasConstructedSuffix) {
+    type = 'construction';
+    levelName = afterCulture.replace(/_constructed$/, '');
+  } else {
+    type = 'panel';
+    levelName = afterCulture;
+  }
+  return { culture, levelName, type, key: `${levelName}_${culture}_${type}` };
+}
+
 // Create a new level with defaults
 export function createDefaultLevel(baseName, index) {
   return {
