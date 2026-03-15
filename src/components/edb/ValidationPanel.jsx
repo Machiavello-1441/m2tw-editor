@@ -28,10 +28,10 @@ export default function ValidationPanel() {
   };
 
   return (
-    <div className="border-t border-border bg-card/30 shrink-0">
+    <div className="flex flex-col h-full bg-card/30">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-accent/50 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-accent/50 transition-colors shrink-0 border-b border-border"
       >
         {expanded ? <ChevronDown className="w-3 h-3 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex-1 text-left">Validation</span>
@@ -42,8 +42,8 @@ export default function ValidationPanel() {
       </button>
 
       {expanded && (
-        <div className="flex flex-col" style={{ height: 180 }}>
-          <div className="flex gap-1 px-2 pb-1 shrink-0 flex-wrap">
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex gap-1 px-2 py-1 shrink-0 flex-wrap border-b border-border/50">
             {[
               { key: 'all', label: `All (${issues.length})` },
               { key: 'error', label: `Err (${errors.length})` },
