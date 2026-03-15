@@ -219,7 +219,11 @@ export function EDBProvider({ children }) {
         structured[parsed.key] = { url: f.url, culture: parsed.culture, type: parsed.type, levelName: parsed.levelName };
       }
     }
-    setImageData(prev => ({ ...prev, ...structured }));
+    setImageData(prev => {
+      const next = { ...prev, ...structured };
+      try { localStorage.setItem(EDB_IMG_LS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
   }, []);
 
   const restoreSnapshot = useCallback((snap) => {
