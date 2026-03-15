@@ -348,20 +348,50 @@ export default function Home() {
     setFileStatus((prev) => ({ ...prev, bld_images: 'ok' }));
   };
 
-  const handleMapFolder = async (e) => {
+  const handleCampaignFolder = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
-    const mapTgaFiles = files.filter((f) => f.name.toLowerCase().endsWith('.tga') || f.name.toLowerCase().endsWith('.txt'));
-    if (mapTgaFiles.length === 0) return;
-    // Store raw files in sessionStorage key for CampaignMap to pick up
-    // We dispatch a custom event so CampaignMap can react if open, or store names for reference
-    const tgaNames = mapTgaFiles.filter((f) => f.name.toLowerCase().endsWith('.tga')).map((f) => f.name.toLowerCase());
-    const txtNames = mapTgaFiles.filter((f) => f.name.toLowerCase().endsWith('.txt')).map((f) => f.name.toLowerCase());
-    setMapFileCount(mapTgaFiles.length);
-    setFileStatus((prev) => ({ ...prev, map_folder: 'ok' }));
-    // Cache files globally so CampaignMap page can load them
-    window._m2tw_map_files = mapTgaFiles;
-    window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: mapTgaFiles } }));
+    if (files.length === 0) return;
+    // Validate: must contain descr_events.txt
+    const hasEvents = files.some(f => f.name.toLowerCase() === 'descr_events.txt');
+    if (!hasEvents) {
+      setFileStatus(prev => ({ ...prev, campaign_folder: 'error' }));
+      setCampaignError('No descr_events.txt found — make sure you selected a campaign folder.');
+      return;
+    }
+    setCampaignError('');
+    const relevant = files.filter(f => {
+      const n = f.name.toLowerCase();
+      return n.endsWith('.tga') || n.endsWith('.txt');
+    });
+    // Merge with existing base map files so campaign overrides base
+    const existing = window._m2tw_map_files || [];
+    const existingNames = new Set(relevant.map(f => f.name.toLowerCase()));
+    const merged = existing.filter(f => !existingNames.has(f.name.toLowerCase())).concat(relevant);
+    window._m2tw_map_files = merged;
+    window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: relevant, source: 'campaign' } }));
+    setMapFileCount(merged.length);
+    // Detect campaign name from path
+    const samplePath = files[0]?.webkitRelativePath || '';
+    const parts = samplePath.split('/');
+    const folderName = parts.length >= 2 ? parts[parts.length - 2] : 'custom';
+    setCampaignName(folderName);
+    setFileStatus(prev => ({ ...prev, campaign_folder: 'ok' }));
+  };
+
+  const handleLuaFolder = async (e) => {
+    const files = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.lua'));
+    e.target.value = '';
+    if (files.length === 0) return;
+    const scripts = [];
+    for (const file of files) {
+      const text = await readText(file);
+      scripts.push({ id: `loaded_${file.name}`, name: file.name, type: 'custom', code: text });
+    }
+    try { localStorage.setItem('m2tw_lua_scripts', JSON.stringify(scripts)); } catch {}
+    window.dispatchEvent(new CustomEvent('lua-scripts-loaded', { detail: scripts }));
+    setLuaCount(scripts.length);
+    setFileStatus(prev => ({ ...prev, lua: 'ok' }));
   };
 
   const edbLoaded = fileStatus.edb === 'ok' || !!edbData?.buildings?.length;
