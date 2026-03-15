@@ -25,49 +25,60 @@ function saveUnits(units) {
 // Parse export_units.txt into a map: dictionary -> { name, long, short }
 function parseExportUnits(text) {
   const map = {};
-  const lines = text.split('\n');
+  // Normalize line endings
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   let i = 0;
   while (i < lines.length) {
-    const line = lines[i].trim();
-    // Name line: {dict}\tDisplay Name
-    const nameMatch = line.match(/^\{([^}]+)\}\s*(.+)/);
-    if (nameMatch && !nameMatch[1].endsWith('_descr') && !nameMatch[1].endsWith('_descr_short')) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Skip comments and empty
+    if (!trimmed || trimmed.startsWith('//')) { i++; continue; }
+
+    // {key_descr_short} inline: {key_descr_short}¬text  OR key on own line
+    const shortInline = trimmed.match(/^\{([^}]+)_descr_short\}¬(.+)/);
+    if (shortInline) {
+      const key = shortInline[1].trim();
+      map[key] = map[key] || {};
+      map[key].short = shortInline[2].trim();
+      i++; continue;
+    }
+    const shortBlock = trimmed.match(/^\{([^}]+)_descr_short\}$/);
+    if (shortBlock) {
+      const key = shortBlock[1].trim();
+      map[key] = map[key] || {};
+      const parts = []; i++;
+      while (i < lines.length && !lines[i].trim().startsWith('{')) { parts.push(lines[i]); i++; }
+      map[key].short = parts.join('\n').trim();
+      continue;
+    }
+
+    // {key_descr} inline or block
+    const descrInline = trimmed.match(/^\{([^}]+)_descr\}¬(.+)/);
+    if (descrInline) {
+      const key = descrInline[1].trim();
+      map[key] = map[key] || {};
+      map[key].long = descrInline[2].trim();
+      i++; continue;
+    }
+    const descrBlock = trimmed.match(/^\{([^}]+)_descr\}$/);
+    if (descrBlock) {
+      const key = descrBlock[1].trim();
+      map[key] = map[key] || {};
+      const parts = []; i++;
+      while (i < lines.length && !lines[i].trim().startsWith('{')) { parts.push(lines[i]); i++; }
+      map[key].long = parts.join('\n').trim();
+      continue;
+    }
+
+    // {key}¬Name  or {key}\tName or {key} Name
+    const nameMatch = trimmed.match(/^\{([^}]+)\}[¬\t ](.+)/);
+    if (nameMatch) {
       const key = nameMatch[1].trim();
       map[key] = map[key] || {};
       map[key].name = nameMatch[2].trim();
     }
-    // Long description: {dict_descr} on its own line, content follows
-    const descrMatch = line.match(/^\{([^}]+)_descr\}$/);
-    if (descrMatch) {
-      const key = descrMatch[1].trim();
-      map[key] = map[key] || {};
-      const parts = [];
-      i++;
-      while (i < lines.length) {
-        const dl = lines[i].trim();
-        if (dl.startsWith('{')) break;
-        parts.push(lines[i]);
-        i++;
-      }
-      map[key].long = parts.join('\n').trim();
-      continue;
-    }
-    // Short description: {dict_descr_short} on its own line, content follows
-    const shortMatch = line.match(/^\{([^}]+)_descr_short\}$/);
-    if (shortMatch) {
-      const key = shortMatch[1].trim();
-      map[key] = map[key] || {};
-      const parts = [];
-      i++;
-      while (i < lines.length) {
-        const dl = lines[i].trim();
-        if (dl.startsWith('{')) break;
-        parts.push(lines[i]);
-        i++;
-      }
-      map[key].short = parts.join('\n').trim();
-      continue;
-    }
+
     i++;
   }
   return map;
