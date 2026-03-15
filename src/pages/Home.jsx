@@ -362,8 +362,18 @@ export default function Home() {
                   </span>
                 </Button>
               </label>
+              <label className="cursor-pointer">
+                <input ref={bldImagesFolderRef} type="file" className="hidden"
+                  webkitdirectory="" directory="" multiple onChange={handleBldImagesFolder} />
+                <Button asChild variant="outline" className="w-full h-11 pointer-events-none gap-2">
+                  <span>
+                    <Castle className="w-4 h-4" />
+                    <code className="text-xs font-mono">…\ui\[culture]\buildings\</code>
+                  </span>
+                </Button>
+              </label>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <FileStatus
                 label="Ancillary Images"
                 hint={fileStatus.anc_images === 'ok' ? `${ancImgCount} images loaded` : 'data\\ui\\ancillaries\\'}
@@ -373,6 +383,11 @@ export default function Home() {
                 label="Unit UI Images"
                 hint={fileStatus.unit_images === 'ok' ? `${unitImgCount} images loaded` : 'data\\ui\\units\\ + unit_info\\'}
                 status={fileStatus.unit_images}
+              />
+              <FileStatus
+                label="Building Images"
+                hint={fileStatus.bld_images === 'ok' ? `${bldImgCount} images loaded` : 'data\\ui\\[culture]\\buildings\\'}
+                status={fileStatus.bld_images || 'idle'}
               />
             </div>
           </div>
