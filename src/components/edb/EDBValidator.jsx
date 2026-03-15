@@ -65,8 +65,9 @@ export function validateEDB(edbData) {
         issues.push({ severity: 'info', building: bn, level: ln, message: `Cost is 0 — intentional?` });
       }
       for (const up of (level.upgrades || [])) {
-        if (!levelNames.has(up)) {
-          issues.push({ severity: 'error', building: bn, level: ln, message: `Upgrade "${up}" not found in this building` });
+        const upName = typeof up === 'object' ? up?.name : up;
+        if (!levelNames.has(upName)) {
+          issues.push({ severity: 'error', building: bn, level: ln, message: `Upgrade "${upName}" not found in this building` });
         }
       }
       // Level convert_to must be a number (index into the paired building tree)
