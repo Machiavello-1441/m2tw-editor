@@ -153,12 +153,13 @@ export default function Home() {
       txt: loadTextFile,
     };
 
-    // Storage keys for traits/ancillaries files (loaded by their own editors)
+    // Storage keys for files loaded by their own editors
     const storeKeys = {
-      traits:  'm2tw_traits_file',
-      anc:     'm2tw_anc_file',
-      vnvs:    'm2tw_vnvs_file',
-      anctxt:  'm2tw_anctxt_file',
+      traits:    'm2tw_traits_file',
+      anc:       'm2tw_anc_file',
+      vnvs:      'm2tw_vnvs_file',
+      anctxt:    'm2tw_anctxt_file',
+      expunits:  'm2tw_export_units_file',
     };
 
     for (const file of files) {
