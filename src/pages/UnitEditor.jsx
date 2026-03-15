@@ -115,7 +115,7 @@ export default function UnitEditorPage() {
       return raw ? parseExportUnits(raw) : {};
     } catch { return {}; }
   });
-  const [unitImages, setUnitImages] = useState(loadUnitImages);
+  const [unitImages, setUnitImages] = useState(() => window._m2tw_unit_images || loadUnitImages());
   const fileRef = useRef();
 
   // Auto-load from EDU file and export_units.txt if Home page cached them
