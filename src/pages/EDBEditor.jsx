@@ -164,6 +164,13 @@ export default function EDBEditor() {
           <LevelEditor />
         </div>
 
+        {/* Right: validation panel */}
+        {showValidation && (
+          <div className="w-80 xl:w-96 border-l border-border bg-card/20 shrink-0 min-h-0 overflow-auto">
+            <ValidationPanel />
+          </div>
+        )}
+
         {/* Right: code preview (collapsible) */}
         {showCode && (
           <div className="w-80 xl:w-96 border-l border-border bg-card/20 shrink-0 min-h-0">
