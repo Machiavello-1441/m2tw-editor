@@ -120,7 +120,7 @@ function ImageSlot({ culture, levelName, slot }) {
               onClick={() => fileRef.current?.click()} title="Replace">↑</button>
           )}
         </div>
-      ) : (
+      ) : !img && (
         <button
           className="border border-dashed border-border rounded flex flex-col items-center justify-center gap-0.5 hover:border-primary/40 hover:bg-primary/5 transition-colors text-muted-foreground"
           style={{ width: slot.w, height: slot.h }}
