@@ -164,8 +164,24 @@ export default function Home() {
       expunits: 'm2tw_export_units_file'
     };
 
+    // Separate TGA files for auto image loading
+    const ancTgaFiles = [];
+    const unitTgaFiles = [];
+
     for (const file of files) {
       const name = file.name.toLowerCase();
+      const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
+
+      // Route TGA files by folder path
+      if (name.endsWith('.tga')) {
+        if (pathLower.includes('/ui/ancillaries/')) {
+          ancTgaFiles.push(file);
+        } else if (pathLower.includes('/ui/units/') || pathLower.includes('/ui/unit_info/')) {
+          unitTgaFiles.push(file);
+        }
+        continue;
+      }
+
       const key = DATA_FILE_MAP[name];
       if (!key) continue;
 
@@ -174,7 +190,6 @@ export default function Home() {
       if (key === 'edb') {
         loadEDB(text, file.name);
       } else if (storeKeys[key]) {
-        // Persist in localStorage so the dedicated editors can pick it up
         try {
           localStorage.setItem(storeKeys[key], text);
           localStorage.setItem(storeKeys[key] + '_name', file.name);
@@ -183,6 +198,34 @@ export default function Home() {
         loaderMap[key]?.(text);
       }
       setFileStatus((prev) => ({ ...prev, [key]: 'ok' }));
+    }
+
+    // Auto-load ancillary images
+    if (ancTgaFiles.length > 0) {
+      setFileStatus((prev) => ({ ...prev, anc_images: 'loading' }));
+      const images = {};
+      for (const file of ancTgaFiles) {
+        const buf = await file.arrayBuffer();
+        const dataUrl = decodeTgaToDataUrl(buf);
+        if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
+      }
+      window.dispatchEvent(new CustomEvent('load-anc-tga-batch', { detail: images }));
+      setAncImgCount(Object.keys(images).length);
+      setFileStatus((prev) => ({ ...prev, anc_images: 'ok' }));
+    }
+
+    // Auto-load unit images (icon: #dict.tga in ui/units/[faction|merc]/, info: dict_info.tga in ui/unit_info/[faction|merc]/)
+    if (unitTgaFiles.length > 0) {
+      setFileStatus((prev) => ({ ...prev, unit_images: 'loading' }));
+      const images = {};
+      for (const file of unitTgaFiles) {
+        const buf = await file.arrayBuffer();
+        const dataUrl = decodeTgaToDataUrl(buf);
+        if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
+      }
+      window.dispatchEvent(new CustomEvent('load-unit-images', { detail: images }));
+      setUnitImgCount(Object.keys(images).length);
+      setFileStatus((prev) => ({ ...prev, unit_images: 'ok' }));
     }
   };
 
