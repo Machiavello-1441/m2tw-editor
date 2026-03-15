@@ -75,8 +75,9 @@ function checkUnreachableLevels(buildings) {
     for (let i = 1; i < b.levels.length; i++) {
       const level = b.levels[i];
       const prev = b.levels[i - 1];
-      // Check if the previous level lists this level as an upgrade
-      if (!prev.upgrades.includes(level.name)) {
+      // Check if the previous level lists this level as an upgrade (normalise object entries)
+      const prevUpgradeNames = (prev.upgrades || []).map(u => typeof u === 'object' ? u?.name : u);
+      if (!prevUpgradeNames.includes(level.name)) {
         issues.push({
           id: `unreachable_${b.name}_${level.name}`,
           severity: 'error',
