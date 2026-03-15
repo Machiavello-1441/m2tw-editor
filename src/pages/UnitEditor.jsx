@@ -106,6 +106,13 @@ export default function UnitEditorPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [filename, setFilename] = useState('export_descr_unit.txt');
   const [copied, setCopied] = useState(false);
+  const [descrMap, setDescrMap] = useState(() => {
+    try {
+      const raw = localStorage.getItem(EXPORT_UNITS_KEY);
+      return raw ? parseExportUnits(raw) : {};
+    } catch { return {}; }
+  });
+  const [unitImages, setUnitImages] = useState(loadUnitImages);
   const fileRef = useRef();
 
   // Auto-load from EDU file if Home page cached it
