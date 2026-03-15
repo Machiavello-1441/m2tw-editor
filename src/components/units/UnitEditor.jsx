@@ -16,7 +16,7 @@ function splitStat(str, count) {
 }
 function joinStat(parts) { return parts.join(', '); }
 
-export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitImages }) {
+export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitImages, onImageUpload, onImageDelete }) {
   const [tab, setTab] = useState('identity');
 
   const set = (key, val) => onChange({ ...unit, [key]: val });
@@ -373,7 +373,7 @@ export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitI
 
           {/* ── Description & Images ── */}
           {tab === 'description' && (
-            <UnitDescriptionTab dictionary={unit.dictionary} descr={descr} onDescrChange={onDescrChange} unitImages={unitImages} />
+            <UnitDescriptionTab dictionary={unit.dictionary} descr={descr} onDescrChange={onDescrChange} unitImages={unitImages} onImageUpload={onImageUpload} onImageDelete={onImageDelete} />
           )}
 
           {/* ── Preview ── */}
