@@ -6,6 +6,8 @@ import {
 } from './EDUParser';
 import { Field, TextInput, NumberInput, SelectInput, Section, MultiCheckbox } from './UnitStatRow';
 import { serializeUnit } from './EDUParser';
+import UnitDescriptionTab from './UnitDescriptionTab';
+import UnitImagesTab from './UnitImagesTab';
 
 // Parse a comma-separated stat string into an array
 function splitStat(str, count) {
@@ -15,7 +17,7 @@ function splitStat(str, count) {
 }
 function joinStat(parts) { return parts.join(', '); }
 
-export default function UnitEditor({ unit, onChange }) {
+export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitImages }) {
   const [tab, setTab] = useState('identity');
 
   const set = (key, val) => onChange({ ...unit, [key]: val });
@@ -37,6 +39,8 @@ export default function UnitEditor({ unit, onChange }) {
     { id: 'combat', label: 'Combat' },
     { id: 'stats', label: 'Stats' },
     { id: 'ownership', label: 'Ownership' },
+    { id: 'description', label: 'Description' },
+    { id: 'images', label: 'Images' },
     { id: 'preview', label: 'Preview' },
   ];
 
@@ -368,6 +372,20 @@ export default function UnitEditor({ unit, onChange }) {
               ))}
             </Section>
           </>}
+
+          {/* ── Description ── */}
+          {tab === 'description' && (
+            <UnitDescriptionTab
+              dictionary={unit.dictionary}
+              descr={descr}
+              onDescrChange={onDescrChange}
+            />
+          )}
+
+          {/* ── Images ── */}
+          {tab === 'images' && (
+            <UnitImagesTab dictionary={unit.dictionary} unitImages={unitImages} />
+          )}
 
           {/* ── Preview ── */}
           {tab === 'preview' && (
