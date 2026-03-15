@@ -108,17 +108,19 @@ export default function Home() {
     // Show 'ok' for files already cached in localStorage from a previous session
     const ls = (k) => { try { return !!localStorage.getItem(k); } catch { return false; } };
     return {
-      edb:      ls('m2tw_edb_file')        ? 'ok' : 'idle',
-      fac:      ls('m2tw_factions_file')   ? 'ok' : 'idle',
-      res:      ls('m2tw_resources_file')  ? 'ok' : 'idle',
-      ev:       ls('m2tw_events_file')     ? 'ok' : 'idle',
-      unit:     ls('m2tw_units_file')      ? 'ok' : 'idle',
-      txt:      ls('m2tw_edb_txt_file')    ? 'ok' : 'idle',
-      traits:   ls('m2tw_traits_file')     ? 'ok' : 'idle',
-      anc:      ls('m2tw_anc_file')        ? 'ok' : 'idle',
-      vnvs:     ls('m2tw_vnvs_file')       ? 'ok' : 'idle',
-      anctxt:   ls('m2tw_anctxt_file')     ? 'ok' : 'idle',
+      edb:        ls('m2tw_edb_file')          ? 'ok' : 'idle',
+      fac:        ls('m2tw_factions_file')     ? 'ok' : 'idle',
+      res:        ls('m2tw_resources_file')    ? 'ok' : 'idle',
+      ev:         ls('m2tw_events_file')       ? 'ok' : 'idle',
+      unit:       ls('m2tw_units_file')        ? 'ok' : 'idle',
+      txt:        ls('m2tw_edb_txt_file')      ? 'ok' : 'idle',
+      traits:     ls('m2tw_traits_file')       ? 'ok' : 'idle',
+      anc:        ls('m2tw_anc_file')          ? 'ok' : 'idle',
+      vnvs:       ls('m2tw_vnvs_file')         ? 'ok' : 'idle',
+      anctxt:     ls('m2tw_anctxt_file')       ? 'ok' : 'idle',
+      expunits:   ls('m2tw_export_units_file') ? 'ok' : 'idle',
       anc_images: 'idle',
+      unit_images:'idle',
     };
   });
 
