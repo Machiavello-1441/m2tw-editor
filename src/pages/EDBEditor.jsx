@@ -118,16 +118,16 @@ export default function EDBEditor() {
           <RefFileLoader />
         </div>
         <HiddenResourceEditor />
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs gap-1 shrink-0 text-white"
-          title="Browse to data\ui\buildings\ folder"
-          onClick={() => tgaFolderRef.current?.click()}>
+        
 
-          <Image className="w-3 h-3" />
-          <span className="hidden lg:block">Load Images (.tga)</span>
-        </Button>
+
+
+
+
+
+
+
+
         <AutoSavePanel onSaveNow={saveNow} />
         <Button
           size="sm"
