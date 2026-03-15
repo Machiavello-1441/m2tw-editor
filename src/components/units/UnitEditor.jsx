@@ -375,11 +375,7 @@ export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitI
 
           {/* ── Description ── */}
           {tab === 'description' && (
-            <UnitDescriptionTab
-              dictionary={unit.dictionary}
-              descr={descr}
-              onDescrChange={onDescrChange}
-            />
+            <UnitDescriptionTab dictionary={unit.dictionary} descr={descr} onDescrChange={onDescrChange} />
           )}
 
           {/* ── Images ── */}
