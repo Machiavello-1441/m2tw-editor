@@ -130,7 +130,7 @@ function ImageSlot({ culture, levelName, slot }) {
           <span className="text-[7px]">{slot.w}×{slot.h}</span>
         </button>
       )}
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <input ref={fileRef} type="file" accept="image/*,.tga,.dds" className="hidden" onChange={handleFile} />
     </div>
   );
 }
