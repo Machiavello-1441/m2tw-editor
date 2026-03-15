@@ -41,6 +41,10 @@ export function EDBProvider({ children }) {
         const parsed = parseTextFile(txtRaw);
         setTextData(prev => ({ ...prev, ...parsed }));
       }
+      const imgRaw = localStorage.getItem(EDB_IMG_LS_KEY);
+      if (imgRaw) {
+        setImageData(JSON.parse(imgRaw));
+      }
     } catch {}
   }, []);
 
