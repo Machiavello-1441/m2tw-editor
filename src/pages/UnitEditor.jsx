@@ -256,7 +256,13 @@ export default function UnitEditorPage() {
         {/* Center: unit editor */}
         <div className="flex-1 min-w-0 flex flex-col">
           {active ? (
-            <UnitEditorPanel unit={active} onChange={handleChange} />
+            <UnitEditorPanel
+              unit={active}
+              onChange={handleChange}
+              descr={activeDescr}
+              onDescrChange={handleDescrChange}
+              unitImages={unitImages}
+            />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
               <FileText className="w-12 h-12 opacity-20" />
