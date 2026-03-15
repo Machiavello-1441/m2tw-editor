@@ -43,7 +43,7 @@ export function validateEDB(edbData) {
     // A level is "root" if no other level upgrades to it
     const targetedByUpgrade = new Set();
     for (const level of building.levels) {
-      for (const up of (level.upgrades || [])) targetedByUpgrade.add(up);
+      for (const up of (level.upgrades || [])) targetedByUpgrade.add(typeof up === 'object' ? up?.name : up);
     }
     const roots = building.levels.filter(l => !targetedByUpgrade.has(l.name));
     if (roots.length > 1) {
