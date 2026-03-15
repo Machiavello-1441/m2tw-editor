@@ -130,10 +130,17 @@ export default function UnitEditorPage() {
   const [copied, setCopied] = useState(false);
   const [descrMap, setDescrMap] = useState(() => {
     try {
-      // Always re-parse from raw to avoid stale cached parses
+      // Parse raw file, then overlay any manual edits saved on top
       const raw = localStorage.getItem(EXPORT_UNITS_KEY);
-      if (raw) return parseExportUnits(raw);
-      return {};
+      const base = raw ? parseExportUnits(raw) : {};
+      const editsRaw = localStorage.getItem(EXPORT_UNITS_KEY + '_edits');
+      const edits = editsRaw ? JSON.parse(editsRaw) : {};
+      // Merge: edits override parsed values per-key per-field
+      const merged = { ...base };
+      for (const [k, v] of Object.entries(edits)) {
+        merged[k] = { ...(merged[k] || {}), ...v };
+      }
+      return merged;
     } catch { return {}; }
   });
   const [unitImages, setUnitImages] = useState(() => window._m2tw_unit_images || loadUnitImages());
