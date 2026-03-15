@@ -165,13 +165,6 @@ function TriggerRow({ trigger, issues, mode }) {
           {issues.map((issue, i) => <IssueRow key={i} issue={issue} />)}
         </div>
       )}
-      {open && issues.length === 0 && (
-        <div className="px-3 pb-2 pt-1 border-t border-border/40">
-          <p className="text-[10px] text-green-400 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> No issues found
-          </p>
-        </div>
-      )}
     </div>
   );
 }
