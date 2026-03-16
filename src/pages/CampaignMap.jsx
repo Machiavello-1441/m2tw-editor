@@ -321,6 +321,7 @@ export default function CampaignMap() {
     { id: 'layers',     label: 'Layers',     Icon: Layers },
     { id: 'strat',      label: 'Strat',      Icon: Globe },
     { id: 'validation', label: 'Validate',   Icon: CheckSquare },
+    { id: '3d',         label: '3D View',    Icon: Box },
   ];
 
   return (
