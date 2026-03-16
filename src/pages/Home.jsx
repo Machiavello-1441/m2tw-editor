@@ -243,6 +243,18 @@ export default function Home() {
       const name = file.name.toLowerCase();
       const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
 
+      // Route .strings.bin files from text\ folder into shared store
+      if (name.endsWith('.strings.bin') || name.endsWith('.bin')) {
+        if (pathLower.includes('/text/')) {
+          const buf = await file.arrayBuffer();
+          const parsed = parseStringsBin(buf);
+          if (parsed) {
+            stringsBinFiles[file.name] = { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 };
+          }
+          continue;
+        }
+      }
+
       // Route TGA files by folder path
       if (name.endsWith('.tga')) {
         if (pathLower.includes('/ui/ancillaries/')) {
