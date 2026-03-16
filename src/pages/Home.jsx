@@ -92,6 +92,7 @@ function parseDescrAerialGroundTypes(text) {
 
 // Files we look for in the data\ folder (matched by filename only, regardless of subfolder)
 const DATA_FILE_MAP = {
+  'descr_aerial_map_ground_types.txt': 'aerial_ground_types',
   'export_descr_buildings.txt': 'edb',
   'descr_sm_factions.txt': 'fac',
   'descr_sm_resources.txt': 'res',
