@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { applyEulersToQuats, encodeCasAnim } from '@/lib/casAnimCodec';
 import { Button } from '@/components/ui/button';
 import { Download, ChevronDown, ChevronRight, RotateCcw } from 'lucide-react';
