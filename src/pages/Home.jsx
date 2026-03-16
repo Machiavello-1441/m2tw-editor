@@ -317,6 +317,17 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, [key]: 'ok' }));
     }
 
+    // Flush .strings.bin files into shared store
+    if (Object.keys(stringsBinFiles).length > 0) {
+      setFileStatus((prev) => ({ ...prev, strings_bin: 'loading' }));
+      const existing = getStringsBinStore();
+      const merged = { ...existing, ...stringsBinFiles };
+      setStringsBinStore(merged);
+      window.dispatchEvent(new CustomEvent('strings-bin-updated', { detail: { bulk: true } }));
+      setStringsBinCount(Object.keys(merged).length);
+      setFileStatus((prev) => ({ ...prev, strings_bin: 'ok' }));
+    }
+
     // Auto-load ancillary images
     if (ancTgaFiles.length > 0) {
       setFileStatus((prev) => ({ ...prev, anc_images: 'loading' }));
