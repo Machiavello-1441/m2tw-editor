@@ -3,19 +3,36 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Globe } from 'lucide-react';
 
+// M2TW ground_types map pixel colour → ground type name (matches descr_aerial_map_ground_types.txt keys)
+const GROUND_COLOR_TO_TYPE = {
+  '0,128,128':   'cultivated_low',
+  '96,160,64':   'cultivated_medium',
+  '101,124,0':   'cultivated_high',
+  '0,64,0':      'forest_dense',
+  '0,128,0':     'forest_sparse',
+  '128,128,64':  'hills',
+  '196,128,128': 'mountains_high',
+  '98,65,65':    'mountains_low',
+  '0,255,128':   'swamp',
+  '255,255,255': 'beach',
+  '64,64,64':    'impassable',
+  '0,0,64':      'sea',
+};
+
+// Fallback solid colors when no texture is available
 const GROUND_PRESETS = {
-  '0,128,128':   { color: [106, 168, 122], name: 'Fertile Low' },
-  '96,160,64':   { color: [85, 170, 55],   name: 'Fertile Medium' },
-  '101,124,0':   { color: [100, 130, 20],  name: 'Fertile High' },
-  '0,64,0':      { color: [22, 65, 22],    name: 'Forest Dense' },
-  '0,128,0':     { color: [30, 110, 30],   name: 'Forest Sparse' },
-  '128,128,64':  { color: [160, 150, 90],  name: 'Hills' },
-  '196,128,128': { color: [175, 135, 110], name: 'Mountains High' },
-  '98,65,65':    { color: [125, 85, 75],   name: 'Mountains Low' },
-  '0,255,128':   { color: [55, 195, 125],  name: 'Swamp' },
-  '255,255,255': { color: [230, 215, 150], name: 'Beach/Sand' },
-  '64,64,64':    { color: [80, 80, 80],    name: 'Impassable Land' },
-  '0,0,64':      { color: [20, 30, 100],   name: 'Impassable Sea' },
+  '0,128,128':   { color: [106, 168, 122] },
+  '96,160,64':   { color: [85, 170, 55]   },
+  '101,124,0':   { color: [100, 130, 20]  },
+  '0,64,0':      { color: [22, 65, 22]    },
+  '0,128,0':     { color: [30, 110, 30]   },
+  '128,128,64':  { color: [160, 150, 90]  },
+  '196,128,128': { color: [175, 135, 110] },
+  '98,65,65':    { color: [125, 85, 75]   },
+  '0,255,128':   { color: [55, 195, 125]  },
+  '255,255,255': { color: [230, 215, 150] },
+  '64,64,64':    { color: [80, 80, 80]    },
+  '0,0,64':      { color: [20, 30, 100]   },
 };
 
 function buildColorLookup() {
