@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
+import { parseStringsBin } from '@/components/strings/stringsBinCodec';
+import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
   FileText, Package, ArrowRight, Info, Castle, Image, Map, Layers } from
