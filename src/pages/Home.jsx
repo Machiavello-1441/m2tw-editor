@@ -266,7 +266,13 @@ export default function Home() {
 
       setFileStatus((prev) => ({ ...prev, [key]: 'loading' }));
       const text = await readText(file);
-      if (key === 'edb') {
+      if (key === 'aerial_ground_types') {
+        const parsed = parseDescrAerialGroundTypes(text);
+        try { localStorage.setItem('m2tw_aerial_ground_types', JSON.stringify(parsed)); } catch {}
+        window._m2tw_aerial_ground_types = parsed;
+        setFileStatus((prev) => ({ ...prev, aerial_ground_types: 'ok' }));
+        continue;
+      } else if (key === 'edb') {
         loadEDB(text, file.name);
       } else if (storeKeys[key]) {
        try {
