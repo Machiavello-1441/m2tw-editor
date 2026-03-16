@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Globe } from 'lucide-react';
 
-// Hardcoded fallback color map: rgb_key from map_ground_types.tga → display color
 const GROUND_PRESETS = {
   '0,128,128':   { color: [106, 168, 122], name: 'Fertile Low' },
   '96,160,64':   { color: [85, 170, 55],   name: 'Fertile Medium' },
@@ -70,9 +69,7 @@ function loadImageData(dataUrl) {
   });
 }
 
-// Strip path components and extension, return lowercase basename
 function texBasename(texName) {
-  // Handle both forward and back slashes
   const parts = texName.replace(/\\/g, '/').split('/');
   const filename = parts[parts.length - 1];
   return filename.replace(/\.tga$/i, '').toLowerCase();
@@ -98,7 +95,6 @@ async function preloadGroundTiles(groundData, gW, gH, groundTextures, aerialGrou
     if (!preset) continue;
     const texName = (season === 'winter' && preset.winter) ? preset.winter : preset.summer;
     if (!texName) continue;
-    // Use basename only — the descr file may contain a subdirectory path
     const lookupKey = texBasename(texName);
     const dataUrl = groundTextures[lookupKey];
     if (!dataUrl) continue;
@@ -108,9 +104,6 @@ async function preloadGroundTiles(groundData, gW, gH, groundTextures, aerialGrou
   return tileCache;
 }
 
-// Build the final terrain canvas.
-// Heights/ground: W×H.  Features/regions: ~W/2 × H/2 (exact: (W-1)/2 × (H-1)/2).
-// All overlay maps have their Y-axis inverted relative to heights.
 async function buildTerrainCanvas(
   groundData, gW, gH,
   featData, fW, fH,
@@ -125,14 +118,13 @@ async function buildTerrainCanvas(
   const out = ctx.createImageData(gW, gH);
   const d = out.data;
 
-  // ── Ground layer ──────────────────────────────────────────────────────────
   for (let j = 0; j < gH; j++) {
     for (let i = 0; i < gW; i++) {
       const dBase = (j * gW + i) * 4;
       let cr = 60, cg = 110, cb = 55;
 
       if (groundData) {
-        const gy = gH - 1 - j;   // Y-flip: ground TGA bottom-origin
+        const gy = gH - 1 - j;
         const gSrc = (gy * gW + i) * 4;
         const gr = groundData[gSrc], gg = groundData[gSrc + 1], gb = groundData[gSrc + 2];
         const key = `${gr},${gg},${gb}`;
@@ -154,9 +146,6 @@ async function buildTerrainCanvas(
     }
   }
 
-  // ── Features overlay ──────────────────────────────────────────────────────
-  // features map is ~half the size: fW = (gW-1)/2, fH = (gH-1)/2
-  // Mapping: fx = floor(i/2), fy = fH-1-floor(j/2)  (Y-flip)
   if (featData && showFeatures && fW > 0 && fH > 0 && featuresOpacity > 0) {
     const fa = featuresOpacity / 100;
     for (let j = 0; j < gH; j++) {
@@ -176,7 +165,6 @@ async function buildTerrainCanvas(
     }
   }
 
-  // ── Regions overlay ───────────────────────────────────────────────────────
   if (regData && showRegions && rW > 0 && rH > 0 && regionsOpacity > 0) {
     const ra = regionsOpacity / 100;
     for (let j = 0; j < gH; j++) {
@@ -190,11 +178,9 @@ async function buildTerrainCanvas(
         const dBase = (j * gW + i) * 4;
 
         if (isBlack || isWhite) {
-          // City = gold, Port = cyan — always fully opaque markers
           const c = isBlack ? [255, 220, 0] : [0, 220, 255];
           d[dBase] = c[0]; d[dBase + 1] = c[1]; d[dBase + 2] = c[2];
         } else if (regionsMode !== 'citiesports') {
-          // Region fill tint — semi-transparent, scaled by opacity
           d[dBase]     = Math.round(d[dBase]     * (1 - ra) + rr * ra);
           d[dBase + 1] = Math.round(d[dBase + 1] * (1 - ra) + rg * ra);
           d[dBase + 2] = Math.round(d[dBase + 2] * (1 - ra) + rb * ra);
@@ -208,13 +194,13 @@ async function buildTerrainCanvas(
 }
 
 const LEGEND_ITEMS = [
-  { label: 'River',       color: '#3264dc' },
-  { label: 'River Source',color: '#96c8ff' },
-  { label: 'Bridge',      color: '#00dcdc' },
-  { label: 'Cliff',       color: '#dcb41e' },
-  { label: 'Volcano',     color: '#d23200' },
-  { label: 'City (region)',  color: '#ffdc00' },
-  { label: 'Port (region)',  color: '#00dcff' },
+  { label: 'River',         color: '#3264dc' },
+  { label: 'River Source',  color: '#96c8ff' },
+  { label: 'Bridge',        color: '#00dcdc' },
+  { label: 'Cliff',         color: '#dcb41e' },
+  { label: 'Volcano',       color: '#d23200' },
+  { label: 'City (region)', color: '#ffdc00' },
+  { label: 'Port (region)', color: '#00dcff' },
 ];
 
 function SliderRow({ label, value, onChange, min = 0, max = 100 }) {
@@ -233,16 +219,16 @@ export default function Map3DPreview({ layers }) {
   const mountRef   = useRef(null);
   const cleanupRef = useRef(null);
 
-  const [heightScale,     setHeightScale]     = useState(30);
-  const [showFeatures,    setShowFeatures]     = useState(true);
-  const [featuresOpacity, setFeaturesOpacity]  = useState(80);
-  const [showRegions,     setShowRegions]      = useState(false);
-  const [regionsOpacity,  setRegionsOpacity]   = useState(40);
-  const [regionsMode,     setRegionsMode]      = useState('full'); // 'full' | 'citiesports'
-  const [useTextures,     setUseTextures]      = useState(false);
-  const [season,          setSeason]           = useState('summer');
-  const [showLegend,      setShowLegend]       = useState(false);
-  const [status,          setStatus]           = useState('idle');
+  const [heightScale,     setHeightScale]    = useState(30);
+  const [showFeatures,    setShowFeatures]   = useState(true);
+  const [featuresOpacity, setFeaturesOpacity]= useState(80);
+  const [showRegions,     setShowRegions]    = useState(false);
+  const [regionsOpacity,  setRegionsOpacity] = useState(40);
+  const [regionsMode,     setRegionsMode]    = useState('full');
+  const [useTextures,     setUseTextures]    = useState(false);
+  const [season,          setSeason]         = useState('summer');
+  const [showLegend,      setShowLegend]     = useState(false);
+  const [status,          setStatus]         = useState('idle');
 
   const hasGroundTextures = !!(window._m2tw_ground_textures && Object.keys(window._m2tw_ground_textures).length > 0);
   const hasAerialDef      = !!(window._m2tw_aerial_ground_types);
@@ -295,7 +281,6 @@ export default function Map3DPreview({ layers }) {
       );
       if (cancelled || !mountRef.current) return;
 
-      // ── Three.js scene ──────────────────────────────────────────────────
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x1a2535);
       scene.fog = new THREE.FogExp2(0x1a2535, 0.0005);
@@ -318,7 +303,6 @@ export default function Map3DPreview({ layers }) {
       controls.maxDistance   = mapW * 4;
       controls.maxPolarAngle = Math.PI / 2.05;
 
-      // ── Terrain geometry ─────────────────────────────────────────────────
       const stepsX = Math.min(mapW - 1, 512);
       const stepsY = Math.min(mapH - 1, 512);
       const vertW  = stepsX + 1;
@@ -348,8 +332,7 @@ export default function Map3DPreview({ layers }) {
       terrainTex.magFilter = THREE.NearestFilter;
       terrainTex.flipY = false;
       const terrainMat  = new THREE.MeshLambertMaterial({ map: terrainTex });
-      const terrainMesh = new THREE.Mesh(geom, terrainMat);
-      scene.add(terrainMesh);
+      scene.add(new THREE.Mesh(geom, terrainMat));
 
       const seaGeom = new THREE.PlaneGeometry(mapW * 1.1, mapH * 1.1);
       seaGeom.rotateX(-Math.PI / 2);
@@ -393,9 +376,12 @@ export default function Map3DPreview({ layers }) {
         renderer.dispose();
         geom.dispose(); seaGeom.dispose();
         terrainTex.dispose(); terrainMat.dispose(); seaMat.dispose();
-        if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
-          mountRef.current.removeChild(renderer.domElement);
-        }
+        // Safe removal: React may have already unmounted the parent
+        try {
+          if (renderer.domElement.parentNode) {
+            renderer.domElement.parentNode.removeChild(renderer.domElement);
+          }
+        } catch (_) {}
       };
     }, 60);
 
@@ -433,7 +419,6 @@ export default function Map3DPreview({ layers }) {
       {hasData && (
         <div className="absolute bottom-4 left-4 bg-slate-900/95 border border-slate-700 rounded-lg p-3 space-y-2.5 text-[11px] min-w-[230px] max-h-[80vh] overflow-y-auto">
 
-          {/* Height scale */}
           <div className="flex items-center gap-2">
             <span className="text-slate-400 w-24 shrink-0 text-[10px]">Height scale</span>
             <input type="range" min={5} max={120} value={heightScale}
@@ -444,7 +429,6 @@ export default function Map3DPreview({ layers }) {
 
           <div className="border-t border-slate-700" />
 
-          {/* Ground texture mode */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={useTextures}
@@ -470,7 +454,6 @@ export default function Map3DPreview({ layers }) {
 
           <div className="border-t border-slate-700" />
 
-          {/* Features */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={showFeatures}
@@ -485,7 +468,6 @@ export default function Map3DPreview({ layers }) {
             )}
           </div>
 
-          {/* Regions */}
           {layers.regions?.data && (
             <div className="space-y-1.5">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -510,7 +492,6 @@ export default function Map3DPreview({ layers }) {
             </div>
           )}
 
-          {/* Legend */}
           <div className="border-t border-slate-700 pt-1">
             <button onClick={() => setShowLegend(v => !v)}
               className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors">
