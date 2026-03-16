@@ -68,8 +68,8 @@ function parseDescrAerialGroundTypes(text) {
   for (const raw of lines) {
     const line = raw.trim();
     if (!line || line.startsWith(';')) continue;
-    if (line === '{') { inBlock = true; continue; }
-    if (line === '}') { inBlock = false; currentPreset = null; continue; }
+    if (line === '{') {inBlock = true;continue;}
+    if (line === '}') {inBlock = false;currentPreset = null;continue;}
     if (!inBlock) {
       // preset line: "preset_name  (R, G, B)"
       const m = line.match(/^(\w+)\s+\((\d+),\s*(\d+),\s*(\d+)\)/);
@@ -82,8 +82,8 @@ function parseDescrAerialGroundTypes(text) {
     if (currentPreset) {
       const parts = line.split(/\s+/).filter(Boolean);
       if (parts.length >= 1 && parts[0].endsWith('.tga')) {
-        if (!currentPreset.summer) currentPreset.summer = parts[0];
-        else if (!currentPreset.winter) currentPreset.winter = parts[0];
+        if (!currentPreset.summer) currentPreset.summer = parts[0];else
+        if (!currentPreset.winter) currentPreset.winter = parts[0];
       }
     }
   }
@@ -270,32 +270,32 @@ export default function Home() {
       const text = await readText(file);
       if (key === 'aerial_ground_types') {
         const parsed = parseDescrAerialGroundTypes(text);
-        try { localStorage.setItem('m2tw_aerial_ground_types', JSON.stringify(parsed)); } catch {}
+        try {localStorage.setItem('m2tw_aerial_ground_types', JSON.stringify(parsed));} catch {}
         window._m2tw_aerial_ground_types = parsed;
         setFileStatus((prev) => ({ ...prev, aerial_ground_types: 'ok' }));
         continue;
       } else if (key === 'edb') {
         loadEDB(text, file.name);
       } else if (storeKeys[key]) {
-       try {
-         localStorage.setItem(storeKeys[key], text);
-         localStorage.setItem(nameKeys[key], file.name);
-         if (key === 'expunits') {
-           window.dispatchEvent(new CustomEvent('load-export-units'));
-         }
-         if (key === 'traits') {
-           window.dispatchEvent(new CustomEvent('load-traits'));
-         }
-         if (key === 'vnvs') {
-           window.dispatchEvent(new CustomEvent('load-vnvs'));
-         }
-         if (key === 'anc') {
-           window.dispatchEvent(new CustomEvent('load-ancillaries'));
-         }
-         if (key === 'anctxt') {
-           window.dispatchEvent(new CustomEvent('load-anctxt'));
-         }
-       } catch {}
+        try {
+          localStorage.setItem(storeKeys[key], text);
+          localStorage.setItem(nameKeys[key], file.name);
+          if (key === 'expunits') {
+            window.dispatchEvent(new CustomEvent('load-export-units'));
+          }
+          if (key === 'traits') {
+            window.dispatchEvent(new CustomEvent('load-traits'));
+          }
+          if (key === 'vnvs') {
+            window.dispatchEvent(new CustomEvent('load-vnvs'));
+          }
+          if (key === 'anc') {
+            window.dispatchEvent(new CustomEvent('load-ancillaries'));
+          }
+          if (key === 'anctxt') {
+            window.dispatchEvent(new CustomEvent('load-anctxt'));
+          }
+        } catch {}
       } else {
         loaderMap[key]?.(text);
       }
@@ -350,8 +350,8 @@ export default function Home() {
     if (baseMapFiles.length > 0) {
       window._m2tw_map_files = (window._m2tw_map_files || []).concat(baseMapFiles);
       window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: baseMapFiles, source: 'base' } }));
-      setMapFileCount(prev => prev + baseMapFiles.length);
-      setFileStatus(prev => ({ ...prev, base_map: 'ok' }));
+      setMapFileCount((prev) => prev + baseMapFiles.length);
+      setFileStatus((prev) => ({ ...prev, base_map: 'ok' }));
     }
 
     // Auto-load building images from data\ui\[culture]\buildings\
@@ -434,21 +434,21 @@ export default function Home() {
     e.target.value = '';
     if (files.length === 0) return;
     // Validate: must contain descr_events.txt
-    const hasEvents = files.some(f => f.name.toLowerCase() === 'descr_events.txt');
+    const hasEvents = files.some((f) => f.name.toLowerCase() === 'descr_events.txt');
     if (!hasEvents) {
-      setFileStatus(prev => ({ ...prev, campaign_folder: 'error' }));
+      setFileStatus((prev) => ({ ...prev, campaign_folder: 'error' }));
       setCampaignError('No descr_events.txt found — make sure you selected a campaign folder.');
       return;
     }
     setCampaignError('');
-    const relevant = files.filter(f => {
+    const relevant = files.filter((f) => {
       const n = f.name.toLowerCase();
       return n.endsWith('.tga') || n.endsWith('.txt');
     });
     // Merge with existing base map files so campaign overrides base
     const existing = window._m2tw_map_files || [];
-    const existingNames = new Set(relevant.map(f => f.name.toLowerCase()));
-    const merged = existing.filter(f => !existingNames.has(f.name.toLowerCase())).concat(relevant);
+    const existingNames = new Set(relevant.map((f) => f.name.toLowerCase()));
+    const merged = existing.filter((f) => !existingNames.has(f.name.toLowerCase())).concat(relevant);
     window._m2tw_map_files = merged;
     window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: relevant, source: 'campaign' } }));
     setMapFileCount(merged.length);
@@ -457,11 +457,11 @@ export default function Home() {
     const parts = samplePath.split('/');
     const folderName = parts.length >= 2 ? parts[parts.length - 2] : 'custom';
     setCampaignName(folderName);
-    setFileStatus(prev => ({ ...prev, campaign_folder: 'ok' }));
+    setFileStatus((prev) => ({ ...prev, campaign_folder: 'ok' }));
   };
 
   const handleLuaFolder = async (e) => {
-    const files = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.lua'));
+    const files = Array.from(e.target.files || []).filter((f) => f.name.toLowerCase().endsWith('.lua'));
     e.target.value = '';
     if (files.length === 0) return;
     const scripts = [];
@@ -469,10 +469,10 @@ export default function Home() {
       const text = await readText(file);
       scripts.push({ id: `loaded_${file.name}`, name: file.name, type: 'custom', code: text });
     }
-    try { localStorage.setItem('m2tw_lua_scripts', JSON.stringify(scripts)); } catch {}
+    try {localStorage.setItem('m2tw_lua_scripts', JSON.stringify(scripts));} catch {}
     window.dispatchEvent(new CustomEvent('lua-scripts-loaded', { detail: scripts }));
     setLuaCount(scripts.length);
-    setFileStatus(prev => ({ ...prev, lua: 'ok' }));
+    setFileStatus((prev) => ({ ...prev, lua: 'ok' }));
   };
 
   const edbLoaded = fileStatus.edb === 'ok' || !!edbData?.buildings?.length;
@@ -514,9 +514,9 @@ export default function Home() {
           <Swords className="w-7 h-7 text-primary" />
         </div>
         <h1 className="text-2xl font-bold text-foreground">M2TW Mod Editor</h1>
-        <p className="text-sm text-muted-foreground">
-          Load your mod's files to begin editing. Use the Export page when done to download a complete
-          <code className="text-xs bg-accent px-1 py-0.5 rounded mx-1">[mod name]\data\</code>folder ready to drop into your M2TW mods directory.
+        <p className="text-sm text-muted-foreground">Load your mod's files to begin editing. Use the Export page when done to download a complete [mod name]\data\ folder ready to drop into your M2TW mods directory.
+
+
         </p>
       </div>
 
@@ -584,7 +584,7 @@ export default function Home() {
 
           {/* UI images */}
           <div className="space-y-2">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">UI Images </p>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">IMAGES</p>
             
 
 
@@ -667,17 +667,17 @@ export default function Home() {
               status={fileStatus.campaign_folder || 'idle'} />
           </div>
 
-          {campaignError && (
-            <p className="text-[11px] text-destructive flex items-center gap-1.5">
+          {campaignError &&
+          <p className="text-[11px] text-destructive flex items-center gap-1.5">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {campaignError}
             </p>
-          )}
+          }
 
           <label className="cursor-pointer">
             <input ref={campaignFolderRef} type="file" className="hidden"
-              webkitdirectory="" directory="" multiple onChange={handleCampaignFolder} />
+            webkitdirectory="" directory="" multiple onChange={handleCampaignFolder} />
             <Button asChild variant="outline"
-              className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
+            className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
               <span>
                 <FolderOpen className="w-4 h-4" />
                 Browse to <code className="text-xs font-mono">…\maps\campaign\[name]\</code> folder
@@ -688,15 +688,15 @@ export default function Home() {
             Must contain <code className="font-mono bg-accent px-1 rounded">descr_events.txt</code>. Campaign files override matching base map files.
           </p>
 
-          {(fileStatus.base_map === 'ok' || fileStatus.campaign_folder === 'ok') && (
-            <Link to="/CampaignMap">
+          {(fileStatus.base_map === 'ok' || fileStatus.campaign_folder === 'ok') &&
+          <Link to="/CampaignMap">
               <Button className="w-full h-10 gap-2" variant="outline">
                 <Map className="w-4 h-4" />
                 Open Campaign Map Editor
                 <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </Link>
-          )}
+          }
         </div>
       </div>
 
@@ -714,9 +714,9 @@ export default function Home() {
         <div className="p-4 space-y-3">
           <label className="cursor-pointer">
             <input ref={luaFolderRef} type="file" className="hidden"
-              webkitdirectory="" directory="" multiple onChange={handleLuaFolder} />
+            webkitdirectory="" directory="" multiple onChange={handleLuaFolder} />
             <Button asChild variant="outline"
-              className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
+            className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
               <span>
                 <FolderOpen className="w-4 h-4" />
                 Browse to <code className="text-xs font-mono">…\eopData\eopScripts\</code> folder
@@ -745,12 +745,12 @@ export default function Home() {
       <div className="w-full max-w-2xl flex flex-col gap-2">
         {edbLoaded &&
         <Link to={createPageUrl('EDBEditor')}>
-            <Button className="w-full h-11 gap-2">
-              <Castle className="w-4 h-4" />
-              Open EDB Editor
-              {fileName && <span className="text-xs opacity-60 font-mono">({fileName})</span>}
-              <ArrowRight className="w-4 h-4 ml-auto" />
-            </Button>
+            
+
+
+
+
+
           </Link>
         }
         {edbLoaded && edbData &&
@@ -760,7 +760,7 @@ export default function Home() {
             <Badge variant="outline" className="text-[10px]">{edbData.hiddenResources.length} hidden resources</Badge>
           </div>
         }
-        <Button variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={handleClearMemory}>
+        <Button variant="ghost" className="bg-slate-100 text-gray-900 px-4 py-2 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-9 hover:text-foreground" onClick={handleClearMemory}>
           Clear All Cached Data & Reload
         </Button>
       </div>
