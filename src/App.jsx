@@ -76,6 +76,7 @@ const AuthenticatedApp = () => {
       <Route path="/LuaScripts" element={<LayoutWrapper currentPageName="LuaScripts"><LuaScripts /></LayoutWrapper>} />
       <Route path="/UnitEditor" element={<LayoutWrapper currentPageName="UnitEditor"><UnitEditor /></LayoutWrapper>} />
       <Route path="/StringsBinEditor" element={<LayoutWrapper currentPageName="StringsBinEditor"><StringsBinEditor /></LayoutWrapper>} />
+      <Route path="/AssetsConverter" element={<LayoutWrapper currentPageName="AssetsConverter"><AssetsConverter /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
