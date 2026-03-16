@@ -604,6 +604,7 @@ export default function Home() {
               <FileStatus label="Ancillaries" hint="export_descr_ancillaries.txt" status={fileStatus.anc} />
               <FileStatus label="Ancillaries Text" hint="text\export_ancillaries.txt" status={fileStatus.anctxt} />
               <FileStatus label="Unit Descriptions" hint="text\export_units.txt" status={fileStatus.expunits} />
+              <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded` : 'text\\*.strings.bin'} status={fileStatus.strings_bin} />
             </div>
           </div>
 
