@@ -161,6 +161,7 @@ export default function Home() {
   const [modName, setModName] = useState(() => {
     try {return localStorage.getItem('m2tw_mod_name') || 'my_mod';} catch {return 'my_mod';}
   });
+  const [stringsBinCount, setStringsBinCount] = useState(() => Object.keys(getStringsBinStore()).length);
   const [ancImgCount, setAncImgCount] = useState(0);
   const [mapFileCount, setMapFileCount] = useState(0);
   const [unitImgCount, setUnitImgCount] = useState(0);
