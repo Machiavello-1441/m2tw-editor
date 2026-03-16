@@ -151,6 +151,7 @@ export default function Home() {
       vnvs: ls('m2tw_vnvs_file') ? 'ok' : 'idle',
       anctxt: ls('m2tw_anctxt_file') ? 'ok' : 'idle',
       expunits: ls('m2tw_export_units_file') ? 'ok' : 'idle',
+      aerial_ground_types: ls('m2tw_aerial_ground_types') ? 'ok' : 'idle',
       anc_images: 'idle',
       unit_images: 'idle'
     };
