@@ -14,8 +14,8 @@ import RequirementBuilder from './RequirementBuilder';
  * when there are no requirements, to keep the EDB output clean.
  */
 function normalise(upgrades) {
-  return (upgrades || []).map(u =>
-    typeof u === 'string' ? { name: u, requirements: [] } : { requirements: [], ...u }
+  return (upgrades || []).map((u) =>
+  typeof u === 'string' ? { name: u, requirements: [] } : { requirements: [], ...u }
   );
 }
 
@@ -25,15 +25,15 @@ export default function UpgradesEditor({ upgrades, onChange, allLevels, currentL
   const entries = normalise(upgrades);
 
   // Levels available to add (not already in list, not self)
-  const usedNames = new Set(entries.map(e => e.name));
-  const available = allLevels
-    .filter(l => l.name !== currentLevelName && !usedNames.has(l.name))
-    .map(l => ({ value: l.name, label: l.name }));
+  const usedNames = new Set(entries.map((e) => e.name));
+  const available = allLevels.
+  filter((l) => l.name !== currentLevelName && !usedNames.has(l.name)).
+  map((l) => ({ value: l.name, label: l.name }));
 
   const commit = (newEntries) => {
     // Serialise: plain string if no requirements, object otherwise
-    onChange(newEntries.map(e =>
-      (!e.requirements || e.requirements.length === 0) ? e.name : e
+    onChange(newEntries.map((e) =>
+    !e.requirements || e.requirements.length === 0 ? e.name : e
     ));
   };
 
@@ -44,8 +44,8 @@ export default function UpgradesEditor({ upgrades, onChange, allLevels, currentL
 
   const removeUpgrade = (idx) => {
     const next = entries.filter((_, i) => i !== idx);
-    if (expandedIdx === idx) setExpandedIdx(null);
-    else if (expandedIdx > idx) setExpandedIdx(expandedIdx - 1);
+    if (expandedIdx === idx) setExpandedIdx(null);else
+    if (expandedIdx > idx) setExpandedIdx(expandedIdx - 1);
     commit(next);
   };
 
@@ -58,9 +58,9 @@ export default function UpgradesEditor({ upgrades, onChange, allLevels, currentL
     <div>
       <Label className="text-[10px] text-muted-foreground">Upgrades To</Label>
 
-      {entries.length === 0 && (
-        <p className="text-[10px] text-muted-foreground italic mt-1">No upgrades — this is a top-level or terminal level</p>
-      )}
+      {entries.length === 0 &&
+      <p className="text-[10px] text-muted-foreground italic mt-1">No upgrades — this is a top-level or terminal level</p>
+      }
 
       <div className="mt-1 space-y-1">
         {entries.map((entry, idx) => {
@@ -71,22 +71,22 @@ export default function UpgradesEditor({ upgrades, onChange, allLevels, currentL
               <div className="flex items-center gap-2 px-2 py-1.5">
                 <button
                   onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                  className="p-0.5 hover:bg-accent rounded shrink-0"
-                >
-                  {isExpanded
-                    ? <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                    : <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                  className="p-0.5 hover:bg-accent rounded shrink-0">
+
+                  {isExpanded ?
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" /> :
+                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
                   }
                 </button>
                 <span className="text-xs font-mono flex-1 text-foreground">{entry.name}</span>
-                {hasReqs && (
-                  <Shield className="w-3 h-3 text-primary shrink-0" title="Has requirements" />
-                )}
+                {hasReqs &&
+                <Shield className="w-3 h-3 text-primary shrink-0" title="Has requirements" />
+                }
                 <Button
-                  variant="ghost" size="sm"
-                  className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
-                  onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                >
+                  variant="ghost" size="sm" className="bg-slate-500 text-muted-foreground px-1.5 text-sm font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-6 hover:text-foreground"
+
+                  onClick={() => setExpandedIdx(isExpanded ? null : idx)}>
+
                   Req ({entry.requirements?.length || 0})
                 </Button>
                 <button onClick={() => removeUpgrade(idx)} className="p-1 hover:bg-destructive/20 rounded shrink-0">
@@ -94,37 +94,37 @@ export default function UpgradesEditor({ upgrades, onChange, allLevels, currentL
                 </button>
               </div>
 
-              {isExpanded && (
-                <div className="px-3 pb-3 pt-1 border-t border-border/50 bg-accent/10">
+              {isExpanded &&
+              <div className="px-3 pb-3 pt-1 border-t border-border/50 bg-accent/10">
                   <p className="text-[10px] text-muted-foreground mb-2">
                     Optional requirements for this upgrade path:
                   </p>
                   <RequirementBuilder
-                    requirements={entry.requirements || []}
-                    onChange={reqs => updateReqs(idx, reqs)}
-                    edbData={edbData}
-                  />
+                  requirements={entry.requirements || []}
+                  onChange={(reqs) => updateReqs(idx, reqs)}
+                  edbData={edbData} />
+
                 </div>
-              )}
-            </div>
-          );
+              }
+            </div>);
+
         })}
       </div>
 
-      {available.length > 0 && (
-        <div className="flex items-center gap-2 mt-2">
+      {available.length > 0 &&
+      <div className="flex items-center gap-2 mt-2">
           <SearchableSelect
-            value=""
-            onValueChange={addUpgrade}
-            options={available}
-            placeholder="Add upgrade path..."
-            className="flex-1"
-          />
+          value=""
+          onValueChange={addUpgrade}
+          options={available}
+          placeholder="Add upgrade path..."
+          className="flex-1" />
+
         </div>
-      )}
-      {available.length === 0 && allLevels.filter(l => l.name !== currentLevelName).length > 0 && (
-        <p className="text-[10px] text-muted-foreground italic mt-1">All other levels already added</p>
-      )}
-    </div>
-  );
+      }
+      {available.length === 0 && allLevels.filter((l) => l.name !== currentLevelName).length > 0 &&
+      <p className="text-[10px] text-muted-foreground italic mt-1">All other levels already added</p>
+      }
+    </div>);
+
 }
