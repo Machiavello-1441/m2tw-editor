@@ -150,12 +150,12 @@ export default function StringsBinEditor() {
 
       {/* File tabs */}
       {files.length > 0 && (
-        <div className="flex gap-1 px-3 pt-2 pb-0 border-b border-border bg-card overflow-x-auto">
+        <div className="flex gap-1 px-3 pt-2 pb-0 border-b border-slate-700 bg-slate-900 overflow-x-auto">
           {files.map((f, i) => (
             <button
               key={i}
               onClick={() => { setActiveFile(i); setSelected(null); setEditKey(''); setEditValue(''); setSearch(''); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-md text-[11px] font-medium border border-b-0 transition-all shrink-0 ${i === activeFile ? 'bg-background text-foreground border-border' : 'bg-card text-muted-foreground border-transparent hover:bg-accent'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-md text-[11px] font-medium border border-b-0 transition-all shrink-0 ${i === activeFile ? 'bg-slate-800 text-white border-slate-600' : 'bg-slate-900 text-slate-400 border-transparent hover:bg-slate-800 hover:text-slate-200'}`}
             >
               {f.dirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />}
               {f.name}
