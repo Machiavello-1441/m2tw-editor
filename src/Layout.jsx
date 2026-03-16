@@ -19,6 +19,7 @@ const navItems = [
   { name: 'Sound Files', icon: Volume2, page: 'SoundEditor' },
   { name: 'Strings Editor', icon: FileText, page: 'StringsBinEditor' },
   { name: 'Assets', icon: Package, page: 'AssetsConverter' },
+  { name: 'Animations', icon: Swords, page: 'AnimationEditor' },
   { name: 'Lua Scripts', icon: Code2, page: 'LuaScripts' },
   { name: 'Export', icon: Download, page: 'Export' },
 ];

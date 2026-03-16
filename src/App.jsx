@@ -14,6 +14,7 @@ import LuaScripts from './pages/LuaScripts';
 import UnitEditor from './pages/UnitEditor';
 import StringsBinEditor from './pages/StringsBinEditor';
 import AssetsConverter from './pages/AssetsConverter';
+import AnimationEditor from './pages/AnimationEditor';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
       <Route path="/UnitEditor" element={<LayoutWrapper currentPageName="UnitEditor"><UnitEditor /></LayoutWrapper>} />
       <Route path="/StringsBinEditor" element={<LayoutWrapper currentPageName="StringsBinEditor"><StringsBinEditor /></LayoutWrapper>} />
       <Route path="/AssetsConverter" element={<LayoutWrapper currentPageName="AssetsConverter"><AssetsConverter /></LayoutWrapper>} />
+      <Route path="/AnimationEditor" element={<LayoutWrapper currentPageName="AnimationEditor"><AnimationEditor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
