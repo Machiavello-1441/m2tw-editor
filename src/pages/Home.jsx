@@ -238,6 +238,7 @@ export default function Home() {
     const bldTgaFiles = [];
     const baseMapFiles = [];
     const groundTypeTgaFiles = [];
+    const stringsBinFiles = {};
 
     for (const file of files) {
       const name = file.name.toLowerCase();
