@@ -137,7 +137,7 @@ export default function StringsBinEditor() {
         <div className="flex-1" />
         <label className="cursor-pointer">
           <input ref={fileInputRef} type="file" className="hidden" multiple accept=".bin,.strings.bin" onChange={handleLoad} />
-          <Button asChild variant="outline" size="sm" className="gap-1.5 pointer-events-none h-8">
+          <Button asChild variant="outline" size="sm" className="gap-1.5 pointer-events-none h-8 border-slate-500 text-slate-200 hover:bg-slate-700">
             <span><Upload className="w-3.5 h-3.5" /> Open File(s)</span>
           </Button>
         </label>
