@@ -225,7 +225,47 @@ export default function AnimationEditor() {
               </div>
 
               {/* Right: main content */}
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 space-y-3">
+                {tab === '3d' && (
+                  <div className="space-y-3">
+                    <SkeletonViewer
+                      casAnim={current?.parsed}
+                      ms3d={ms3dData}
+                      frameIdx={frameIdx}
+                      totalFrames={current?.parsed?.nFrames || ms3dData?.totalFrames || 1}
+                    />
+                    {/* Playback scrubber */}
+                    <div className="bg-slate-900 rounded-xl border border-slate-700 p-4 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setPlaying(v => !v)}
+                          className="w-8 h-8 rounded-lg bg-blue-700 hover:bg-blue-600 flex items-center justify-center shrink-0"
+                        >
+                          {playing ? <Pause className="w-3.5 h-3.5 text-white" /> : <Play className="w-3.5 h-3.5 text-white" />}
+                        </button>
+                        <input
+                          type="range"
+                          min={0}
+                          max={Math.max((current?.parsed?.nFrames || ms3dData?.totalFrames || 1) - 1, 0)}
+                          value={frameIdx}
+                          onChange={e => { setPlaying(false); setFrameIdx(Number(e.target.value)); }}
+                          className="flex-1 accent-blue-500"
+                        />
+                        <span className="text-[11px] text-slate-400 font-mono w-20 text-right">
+                          {frameIdx} / {Math.max((current?.parsed?.nFrames || ms3dData?.totalFrames || 1) - 1, 0)}
+                        </span>
+                      </div>
+                      {ms3dData && (
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                          <span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>
+                          MS3D: {ms3dData.joints.length} joints · {ms3dData.vertices.length} verts · {ms3dData.totalFrames} frames
+                          <button onClick={() => setMs3dData(null)} className="ml-auto text-slate-600 hover:text-slate-400"><X className="w-3 h-3" /></button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {(tab === 'view' || tab === 'scale') && (
                   <BoneDataTable parsed={current.parsed} />
                 )}
