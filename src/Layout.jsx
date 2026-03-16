@@ -18,6 +18,7 @@ const navItems = [
   { name: 'Campaigns', icon: Globe, page: 'CampaignManager' },
   { name: 'Sound Files', icon: Volume2, page: 'SoundEditor' },
   { name: 'Strings Editor', icon: FileText, page: 'StringsBinEditor' },
+  { name: 'Assets', icon: Package, page: 'AssetsConverter' },
   { name: 'Lua Scripts', icon: Code2, page: 'LuaScripts' },
   { name: 'Export', icon: Download, page: 'Export' },
 ];
