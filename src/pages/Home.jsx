@@ -137,6 +137,8 @@ export default function Home() {
   const [fileStatus, setFileStatus] = useState(() => {
     // Show 'ok' for files already cached in localStorage from a previous session
     const ls = (k) => {try {return !!localStorage.getItem(k);} catch {return false;}};
+    const stringsStore = getStringsBinStore();
+    const stringsCount = Object.keys(stringsStore).length;
     return {
       edb: ls('m2tw_edb_file') ? 'ok' : 'idle',
       fac: ls('m2tw_factions_file') ? 'ok' : 'idle',
