@@ -36,17 +36,7 @@ const GROUND_PRESETS = {
 };
 
 function buildColorLookup() {
-  const lookup = { ...GROUND_PRESETS };
-  const aerial = window._m2tw_aerial_ground_types;
-  if (aerial) {
-    for (const preset of Object.values(aerial)) {
-      const key = `${preset.r},${preset.g},${preset.b}`;
-      if (!lookup[key]) {
-        lookup[key] = { color: [preset.r, preset.g, preset.b], name: preset.name };
-      }
-    }
-  }
-  return lookup;
+  return { ...GROUND_PRESETS };
 }
 
 function detectFeature(r, g, b) {
