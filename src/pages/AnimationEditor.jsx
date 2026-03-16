@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, Download, FileText, Maximize2, Search, Box, ArrowLeftRight, X } from 'lucide-react';
+import { Upload, Download, FileText, Maximize2, Search, Box, ArrowLeftRight, X, Play, Pause } from 'lucide-react';
 import { parseCasAnim, casAnimToText, encodeCasAnim, scaleCasAnim, textToCasAnim } from '@/lib/casAnimCodec';
+import { parseMs3d } from '@/lib/ms3dCodec';
 import CasFileInfo from '@/components/animation/CasFileInfo';
 import BoneDataTable from '@/components/animation/BoneDataTable';
 import ScalePanel from '@/components/animation/ScalePanel';
 import SurveyPanel from '@/components/animation/SurveyPanel';
+import SkeletonViewer from '@/components/animation/SkeletonViewer';
 
 function downloadBuffer(buf, filename) {
   const blob = new Blob([buf], { type: 'application/octet-stream' });
