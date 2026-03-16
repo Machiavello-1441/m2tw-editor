@@ -51,21 +51,25 @@ function buildTerrainTexture(groundData, featuresData, w, h, showFeatures) {
   const imgData = ctx.createImageData(w, h);
   const d = imgData.data;
 
-  for (let i = 0; i < w * h; i++) {
-    const base = i * 4;
-    if (groundData) {
-      const r = groundData[base], g = groundData[base + 1], b = groundData[base + 2];
-      const key = `${r},${g},${b}`;
-      const preset = GROUND_PRESETS[key];
-      if (preset) {
-        d[base] = preset.color[0]; d[base + 1] = preset.color[1]; d[base + 2] = preset.color[2];
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      const base = (j * w + i) * 4;
+      if (groundData) {
+        // Ground types TGA has Y origin inverted relative to heights — flip row
+        const srcBase = ((h - 1 - j) * w + i) * 4;
+        const r = groundData[srcBase], g = groundData[srcBase + 1], b = groundData[srcBase + 2];
+        const key = `${r},${g},${b}`;
+        const preset = GROUND_PRESETS[key];
+        if (preset) {
+          d[base] = preset.color[0]; d[base + 1] = preset.color[1]; d[base + 2] = preset.color[2];
+        } else {
+          d[base] = r; d[base + 1] = g; d[base + 2] = b;
+        }
       } else {
-        d[base] = r; d[base + 1] = g; d[base + 2] = b;
+        d[base] = 60; d[base + 1] = 110; d[base + 2] = 55;
       }
-    } else {
-      d[base] = 60; d[base + 1] = 110; d[base + 2] = 55;
+      d[base + 3] = 255;
     }
-    d[base + 3] = 255;
   }
   ctx.putImageData(imgData, 0, 0);
 
