@@ -27,13 +27,24 @@ export function TraitsProvider({ children }) {
         setTraitsData(parsed);
         if (traitsName) setTraitsFilename(traitsName);
       }
-      const vnvsContent = localStorage.getItem('m2tw_vnvs_file');
-      const vnvsName = localStorage.getItem('m2tw_vnvs_file_name');
-      if (vnvsContent) {
-        const parsed = parseTextFile(vnvsContent);
-        originalTextData.current = JSON.stringify(parsed);
-        setTextData(parsed);
-        if (vnvsName) setTextFilename(vnvsName);
+      // Try .strings.bin store first, then fall back to plain txt cache
+      const store = getStringsBinStore();
+      const vnvsBin = store['export_VnVs.txt.strings.bin'];
+      if (vnvsBin) {
+        const map = {};
+        for (const e of vnvsBin.entries) map[e.key] = e.value;
+        originalTextData.current = JSON.stringify(map);
+        setTextData(map);
+        setTextFilename('export_VnVs.txt.strings.bin');
+      } else {
+        const vnvsContent = localStorage.getItem('m2tw_vnvs_file');
+        const vnvsName = localStorage.getItem('m2tw_vnvs_file_name');
+        if (vnvsContent) {
+          const parsed = parseTextFile(vnvsContent);
+          originalTextData.current = JSON.stringify(parsed);
+          setTextData(parsed);
+          if (vnvsName) setTextFilename(vnvsName);
+        }
       }
     } catch {}
   }, []);

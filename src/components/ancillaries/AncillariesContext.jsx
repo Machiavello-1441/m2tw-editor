@@ -40,13 +40,24 @@ export function AncillariesProvider({ children }) {
         setAncData(parsed);
         if (ancName) setAncFilename(ancName);
       }
-      const txtContent = localStorage.getItem('m2tw_anctxt_file');
-      const txtName = localStorage.getItem('m2tw_anctxt_file_name');
-      if (txtContent) {
-        const parsed = parseTextFile(txtContent);
-        originalTextData.current = JSON.stringify(parsed);
-        setTextData(parsed);
-        if (txtName) setTextFilename(txtName);
+      // Try .strings.bin store first, then fall back to plain txt cache
+      const store = getStringsBinStore();
+      const anctxtBin = store['export_ancillaries.txt.strings.bin'];
+      if (anctxtBin) {
+        const map = {};
+        for (const e of anctxtBin.entries) map[e.key] = e.value;
+        originalTextData.current = JSON.stringify(map);
+        setTextData(map);
+        setTextFilename('export_ancillaries.txt.strings.bin');
+      } else {
+        const txtContent = localStorage.getItem('m2tw_anctxt_file');
+        const txtName = localStorage.getItem('m2tw_anctxt_file_name');
+        if (txtContent) {
+          const parsed = parseTextFile(txtContent);
+          originalTextData.current = JSON.stringify(parsed);
+          setTextData(parsed);
+          if (txtName) setTextFilename(txtName);
+        }
       }
     } catch {}
   }, []);
