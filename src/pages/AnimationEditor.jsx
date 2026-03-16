@@ -34,10 +34,28 @@ const TABS = [
 ];
 
 export default function AnimationEditor() {
-  const [tab, setTab] = useState('view');
+  const [tab, setTab] = useState('3d');
   const [files, setFiles] = useState([]);
   const [selected, setSelected] = useState(0);
   const [txtContent, setTxtContent] = useState('');
+  const [ms3dData, setMs3dData] = useState(null);
+  const [frameIdx, setFrameIdx] = useState(0);
+  const [playing, setPlaying] = React.useState(false);
+  const playRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (playing) {
+      playRef.current = setInterval(() => {
+        setFrameIdx(prev => {
+          const total = files[selected]?.parsed?.nFrames || ms3dData?.totalFrames || 1;
+          return (prev + 1) % Math.max(total, 1);
+        });
+      }, 50);
+    } else {
+      clearInterval(playRef.current);
+    }
+    return () => clearInterval(playRef.current);
+  }, [playing, files, selected, ms3dData]);
 
   const current = files[selected] || null;
 
