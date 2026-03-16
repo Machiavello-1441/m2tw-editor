@@ -10,24 +10,24 @@ import { CAPABILITY_LIBRARY } from './CapabilityLibrary';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const AGENT_TYPES = ['merchant','spy','assassin','diplomat','princess','priest','imam','heretic','witch','inquisitor'];
+const AGENT_TYPES = ['merchant', 'spy', 'assassin', 'diplomat', 'princess', 'priest', 'imam', 'heretic', 'witch', 'inquisitor'];
 
 // Derive sets for classification from the library
 const CIVILIAN_CODES = new Set(
-  CAPABILITY_LIBRARY.filter(c => c.type === 'Civilian Bonus').map(c => c.code)
+  CAPABILITY_LIBRARY.filter((c) => c.type === 'Civilian Bonus').map((c) => c.code)
 );
 const MILITARY_CODES = new Set(
-  CAPABILITY_LIBRARY.filter(c => c.type === 'Military Bonus').map(c => c.code)
+  CAPABILITY_LIBRARY.filter((c) => c.type === 'Military Bonus').map((c) => c.code)
 );
 
 // Build searchable options for civilian and military
-const CIVILIAN_OPTIONS = CAPABILITY_LIBRARY
-  .filter(c => c.type === 'Civilian Bonus')
-  .map(c => ({ value: c.code, label: c.subtype, meta: c }));
+const CIVILIAN_OPTIONS = CAPABILITY_LIBRARY.
+filter((c) => c.type === 'Civilian Bonus').
+map((c) => ({ value: c.code, label: c.subtype, meta: c }));
 
-const MILITARY_OPTIONS = CAPABILITY_LIBRARY
-  .filter(c => c.type === 'Military Bonus')
-  .map(c => ({ value: c.code, label: c.subtype, meta: c }));
+const MILITARY_OPTIONS = CAPABILITY_LIBRARY.
+filter((c) => c.type === 'Military Bonus').
+map((c) => ({ value: c.code, label: c.subtype, meta: c }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ function classifyCapability(cap) {
 }
 
 function getLibraryEntry(code) {
-  return CAPABILITY_LIBRARY.find(c => c.code === code) || null;
+  return CAPABILITY_LIBRARY.find((c) => c.code === code) || null;
 }
 
 // Does this code need a trailing " bonus" keyword in the serialized output?
@@ -55,61 +55,61 @@ function needsBonusSuffix(code) {
 function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
   const [showReqs, setShowReqs] = useState(false);
   const { units } = useRefData();
-  const unitOptions = units.map(u => ({ value: u.type, label: u.type }));
+  const unitOptions = units.map((u) => ({ value: u.type, label: u.type }));
 
   return (
     <div className="bg-accent/50 rounded-lg p-3 space-y-2">
       <div className="flex items-center gap-2">
         <Swords className="w-3.5 h-3.5 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
-          {units.length > 0 ? (
-            <SearchableSelect
-              value={cap.unitName || ''}
-              onValueChange={v => onChange(index, { ...cap, unitName: v })}
-              options={unitOptions}
-              placeholder="Select unit..."
-              className="w-full"
-            />
-          ) : (
-            <Input
-              className="h-7 text-xs"
-              placeholder="Unit type name (load export_descr_unit.txt)"
-              value={cap.unitName || ''}
-              onChange={e => onChange(index, { ...cap, unitName: e.target.value })}
-            />
-          )}
+          {units.length > 0 ?
+          <SearchableSelect
+            value={cap.unitName || ''}
+            onValueChange={(v) => onChange(index, { ...cap, unitName: v })}
+            options={unitOptions}
+            placeholder="Select unit..."
+            className="w-full" /> :
+
+
+          <Input
+            className="h-7 text-xs"
+            placeholder="Unit type name (load export_descr_unit.txt)"
+            value={cap.unitName || ''}
+            onChange={(e) => onChange(index, { ...cap, unitName: e.target.value })} />
+
+          }
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <div className="flex flex-col items-center">
             <span className="text-[9px] text-muted-foreground/70 mb-0.5">Init</span>
             <Input className="h-7 text-xs w-14" type="number" step="0.1"
-              value={cap.initialPool ?? ''}
-              onChange={e => onChange(index, { ...cap, initialPool: parseFloat(e.target.value) || 0 })}
-            />
+            value={cap.initialPool ?? ''}
+            onChange={(e) => onChange(index, { ...cap, initialPool: parseFloat(e.target.value) || 0 })} />
+
           </div>
           <div className="flex flex-col items-center">
             <span className="text-[9px] text-muted-foreground/70 mb-0.5">+/turn</span>
             <Input className="h-7 text-xs w-16" type="number" step="0.001"
-              value={cap.replenishRate ?? ''}
-              onChange={e => onChange(index, { ...cap, replenishRate: parseFloat(e.target.value) || 0 })}
-            />
+            value={cap.replenishRate ?? ''}
+            onChange={(e) => onChange(index, { ...cap, replenishRate: parseFloat(e.target.value) || 0 })} />
+
           </div>
           <div className="flex flex-col items-center">
             <span className="text-[9px] text-muted-foreground/70 mb-0.5">Max</span>
             <Input className="h-7 text-xs w-14" type="number" step="0.1"
-              value={cap.maxPool ?? ''}
-              onChange={e => onChange(index, { ...cap, maxPool: parseFloat(e.target.value) || 0 })}
-            />
+            value={cap.maxPool ?? ''}
+            onChange={(e) => onChange(index, { ...cap, maxPool: parseFloat(e.target.value) || 0 })} />
+
           </div>
           <div className="flex flex-col items-center">
             <span className="text-[9px] text-muted-foreground/70 mb-0.5">XP</span>
             <Input className="h-7 text-xs w-10" type="number" min="0" max="9"
-              value={cap.experience ?? ''}
-              onChange={e => onChange(index, { ...cap, experience: Math.min(9, Math.max(0, parseInt(e.target.value) || 0)) })}
-            />
+            value={cap.experience ?? ''}
+            onChange={(e) => onChange(index, { ...cap, experience: Math.min(9, Math.max(0, parseInt(e.target.value) || 0)) })} />
+
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs shrink-0" onClick={() => setShowReqs(!showReqs)}>
+        <Button variant="ghost" size="sm" className="bg-slate-500 px-2 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 shrink-0" onClick={() => setShowReqs(!showReqs)}>
           <Shield className="w-3 h-3 mr-1" />
           Req ({cap.requirements?.length || 0})
         </Button>
@@ -117,17 +117,17 @@ function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
           <Trash2 className="w-3 h-3 text-destructive" />
         </button>
       </div>
-      {showReqs && (
-        <div className="ml-6">
+      {showReqs &&
+      <div className="ml-6">
           <RequirementBuilder
-            requirements={cap.requirements || []}
-            onChange={reqs => onChange(index, { ...cap, requirements: reqs })}
-            edbData={edbData}
-          />
+          requirements={cap.requirements || []}
+          onChange={(reqs) => onChange(index, { ...cap, requirements: reqs })}
+          edbData={edbData} />
+
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 }
 
 function AgentRow({ cap, index, onChange, onRemove }) {
@@ -135,7 +135,7 @@ function AgentRow({ cap, index, onChange, onRemove }) {
   return (
     <div className="bg-accent/30 rounded-lg px-3 py-2 flex items-center gap-2">
       <UserRound className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-      <Select value={type} onValueChange={val => onChange(index, { ...cap, type: val })}>
+      <Select value={type} onValueChange={(val) => onChange(index, { ...cap, type: val })}>
         <SelectTrigger className="h-7 text-xs w-28">
           <SelectValue />
         </SelectTrigger>
@@ -144,25 +144,25 @@ function AgentRow({ cap, index, onChange, onRemove }) {
           <SelectItem value="agent_limit" className="text-xs">agent_limit</SelectItem>
         </SelectContent>
       </Select>
-      <Select value={cap.agentType || ''} onValueChange={val => onChange(index, { ...cap, agentType: val })}>
+      <Select value={cap.agentType || ''} onValueChange={(val) => onChange(index, { ...cap, agentType: val })}>
         <SelectTrigger className="h-7 text-xs w-32">
           <SelectValue placeholder="agent type…" />
         </SelectTrigger>
         <SelectContent>
-          {AGENT_TYPES.map(a => (
-            <SelectItem key={a} value={a} className="text-xs">{a}</SelectItem>
-          ))}
+          {AGENT_TYPES.map((a) =>
+          <SelectItem key={a} value={a} className="text-xs">{a}</SelectItem>
+          )}
         </SelectContent>
       </Select>
       <Input className="h-7 text-xs w-16" type="number"
-        value={cap.value ?? 1}
-        onChange={e => onChange(index, { ...cap, value: parseInt(e.target.value) || 1 })}
-      />
+      value={cap.value ?? 1}
+      onChange={(e) => onChange(index, { ...cap, value: parseInt(e.target.value) || 1 })} />
+
       <button onClick={() => onRemove(index)} className="ml-auto p-1 hover:bg-destructive/20 rounded shrink-0">
         <Trash2 className="w-3 h-3 text-destructive" />
       </button>
-    </div>
-  );
+    </div>);
+
 }
 
 function BonusRow({ cap, index, onChange, onRemove, edbData, options, accentClass }) {
@@ -178,34 +178,34 @@ function BonusRow({ cap, index, onChange, onRemove, edbData, options, accentClas
         <div className="flex-1 min-w-0">
           <SearchableSelect
             value={cap.identifier || ''}
-            onValueChange={val => {
+            onValueChange={(val) => {
               const e = getLibraryEntry(val);
               onChange(index, { ...cap, identifier: val, needsBonus: e?.args === 'bonus' });
             }}
             options={options}
-            placeholder="Select capability…"
-          />
-          {rangeHint && (
-            <span className="text-[9px] text-muted-foreground/60 mt-0.5 block">{rangeHint}</span>
-          )}
+            placeholder="Select capability…" />
+
+          {rangeHint &&
+          <span className="text-[9px] text-muted-foreground/60 mt-0.5 block">{rangeHint}</span>
+          }
         </div>
 
         {/* Value */}
         <Input className="h-7 text-xs w-20" type="number"
-          value={cap.value ?? ''}
-          onChange={e => onChange(index, { ...cap, value: parseFloat(e.target.value) || 0 })}
-        />
+        value={cap.value ?? ''}
+        onChange={(e) => onChange(index, { ...cap, value: parseFloat(e.target.value) || 0 })} />
+
 
         {/* Info */}
-        {entry && (
-          <button
-            onClick={() => setShowInfo(v => !v)}
-            className="p-1 hover:bg-accent rounded shrink-0 text-muted-foreground hover:text-foreground"
-            title={entry.description}
-          >
+        {entry &&
+        <button
+          onClick={() => setShowInfo((v) => !v)}
+          className="p-1 hover:bg-accent rounded shrink-0 text-muted-foreground hover:text-foreground"
+          title={entry.description}>
+
             <Info className="w-3 h-3" />
           </button>
-        )}
+        }
 
         {/* Requirements toggle */}
         <button onClick={() => setShowReqs(!showReqs)} className="p-1 hover:bg-accent rounded shrink-0">
@@ -217,23 +217,23 @@ function BonusRow({ cap, index, onChange, onRemove, edbData, options, accentClas
         </button>
       </div>
 
-      {showInfo && entry && (
-        <div className="text-[9px] text-muted-foreground bg-accent/20 rounded px-2 py-1 leading-relaxed">
+      {showInfo && entry &&
+      <div className="text-[9px] text-muted-foreground bg-accent/20 rounded px-2 py-1 leading-relaxed">
           {entry.description}
         </div>
-      )}
+      }
 
-      {showReqs && (
-        <div className="ml-2 pt-1 border-t border-border/50">
+      {showReqs &&
+      <div className="ml-2 pt-1 border-t border-border/50">
           <RequirementBuilder
-            requirements={cap.requirements || []}
-            onChange={reqs => onChange(index, { ...cap, requirements: reqs })}
-            edbData={edbData}
-          />
+          requirements={cap.requirements || []}
+          onChange={(reqs) => onChange(index, { ...cap, requirements: reqs })}
+          edbData={edbData} />
+
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -249,15 +249,15 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
     onChange(capabilities.filter((_, i) => i !== index));
   };
 
-  const recruitPools  = capabilities.filter(c => classifyCapability(c) === 'recruit_pool');
-  const agentCaps     = capabilities.filter(c => classifyCapability(c) === 'agent');
-  const civilianCaps  = capabilities.filter(c => classifyCapability(c) === 'civilian');
-  const militaryCaps  = capabilities.filter(c => classifyCapability(c) === 'military');
+  const recruitPools = capabilities.filter((c) => classifyCapability(c) === 'recruit_pool');
+  const agentCaps = capabilities.filter((c) => classifyCapability(c) === 'agent');
+  const civilianCaps = capabilities.filter((c) => classifyCapability(c) === 'civilian');
+  const militaryCaps = capabilities.filter((c) => classifyCapability(c) === 'military');
 
   const addRecruitPool = () => onChange([...capabilities, {
     type: 'recruit_pool', unitName: '', initialPool: 1, replenishRate: 0.5, maxPool: 4, experience: 0, requirements: []
   }]);
-  const addAgent    = () => onChange([...capabilities, { type: 'agent', agentType: 'merchant', value: 1 }]);
+  const addAgent = () => onChange([...capabilities, { type: 'agent', agentType: 'merchant', value: 1 }]);
   const addCivilian = () => onChange([...capabilities, {
     type: 'bonus', identifier: 'happiness_bonus', needsBonus: true, value: 1, requirements: []
   }]);
@@ -269,78 +269,78 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
     <div className="space-y-5">
 
       {/* Agent Recruitment */}
-      {agentCaps.length > 0 && (
-        <section className="space-y-1">
+      {agentCaps.length > 0 &&
+      <section className="space-y-1">
           <h4 className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-1">
             <UserRound className="w-3 h-3" /> Agent Recruitment ({agentCaps.length})
           </h4>
           {agentCaps.map((cap) => {
-            const realIndex = capabilities.indexOf(cap);
-            return <AgentRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} />;
-          })}
+          const realIndex = capabilities.indexOf(cap);
+          return <AgentRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} />;
+        })}
         </section>
-      )}
+      }
 
       {/* Civilian Bonuses */}
-      {civilianCaps.length > 0 && (
-        <section className="space-y-1">
+      {civilianCaps.length > 0 &&
+      <section className="space-y-1">
           <h4 className="text-[10px] font-semibold text-yellow-400 uppercase tracking-wider flex items-center gap-1">
             <Building2 className="w-3 h-3" /> Civilian Bonuses ({civilianCaps.length})
           </h4>
           {civilianCaps.map((cap) => {
-            const realIndex = capabilities.indexOf(cap);
-            return (
-              <BonusRow
-                key={realIndex}
-                cap={cap}
-                index={realIndex}
-                onChange={handleChange}
-                onRemove={handleRemove}
-                edbData={edbData}
-                options={CIVILIAN_OPTIONS}
-                accentClass="bg-yellow-500/5 border border-yellow-500/20"
-              />
-            );
-          })}
+          const realIndex = capabilities.indexOf(cap);
+          return (
+            <BonusRow
+              key={realIndex}
+              cap={cap}
+              index={realIndex}
+              onChange={handleChange}
+              onRemove={handleRemove}
+              edbData={edbData}
+              options={CIVILIAN_OPTIONS}
+              accentClass="bg-yellow-500/5 border border-yellow-500/20" />);
+
+
+        })}
         </section>
-      )}
+      }
 
       {/* Military Bonuses */}
-      {militaryCaps.length > 0 && (
-        <section className="space-y-1">
+      {militaryCaps.length > 0 &&
+      <section className="space-y-1">
           <h4 className="text-[10px] font-semibold text-red-400 uppercase tracking-wider flex items-center gap-1">
             <Sword className="w-3 h-3" /> Military Bonuses ({militaryCaps.length})
           </h4>
           {militaryCaps.map((cap) => {
-            const realIndex = capabilities.indexOf(cap);
-            return (
-              <BonusRow
-                key={realIndex}
-                cap={cap}
-                index={realIndex}
-                onChange={handleChange}
-                onRemove={handleRemove}
-                edbData={edbData}
-                options={MILITARY_OPTIONS}
-                accentClass="bg-red-500/5 border border-red-500/20"
-              />
-            );
-          })}
+          const realIndex = capabilities.indexOf(cap);
+          return (
+            <BonusRow
+              key={realIndex}
+              cap={cap}
+              index={realIndex}
+              onChange={handleChange}
+              onRemove={handleRemove}
+              edbData={edbData}
+              options={MILITARY_OPTIONS}
+              accentClass="bg-red-500/5 border border-red-500/20" />);
+
+
+        })}
         </section>
-      )}
+      }
 
       {/* Recruit Pools */}
-      {recruitPools.length > 0 && (
-        <section className="space-y-2">
+      {recruitPools.length > 0 &&
+      <section className="space-y-2">
           <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
             <Swords className="w-3 h-3" /> Recruit Pools ({recruitPools.length})
           </h4>
           {recruitPools.map((cap) => {
-            const realIndex = capabilities.indexOf(cap);
-            return <RecruitPoolRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} />;
-          })}
+          const realIndex = capabilities.indexOf(cap);
+          return <RecruitPoolRow key={realIndex} cap={cap} index={realIndex} onChange={handleChange} onRemove={handleRemove} edbData={edbData} />;
+        })}
         </section>
-      )}
+      }
 
       {/* Add buttons */}
       <div className="flex flex-wrap gap-2 pt-1">
@@ -357,6 +357,6 @@ export default function CapabilityEditor({ capabilities, onChange, edbData }) {
           <Plus className="w-3 h-3 mr-1" /> Military Bonus
         </Button>
       </div>
-    </div>
-  );
+    </div>);
+
 }
