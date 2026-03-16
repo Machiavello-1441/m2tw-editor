@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { casAnimToText, scaleAnimData, encodeCasAnim } from '@/lib/casAnimCodec';
+import { casAnimToText, scaleCasAnim, encodeCasAnim } from '@/lib/casAnimCodec';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Scale, ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -43,7 +43,7 @@ export default function AnimInspector({ parsed }) {
     const sx = parseFloat(scaleX) || 1;
     const sy = parseFloat(scaleY) || 1;
     const sz = parseFloat(scaleZ) || 1;
-    const scaled = scaleAnimData(parsed, sx, sy, sz);
+    const scaled = scaleCasAnim(parsed, sx, sy, sz);
     const buf = encodeCasAnim(scaled);
     const name = (parsed._filename || 'animation').replace(/\.cas$/i, '') + '_scaled.cas';
     downloadBuffer(buf, name);
