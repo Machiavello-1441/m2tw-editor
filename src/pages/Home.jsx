@@ -632,6 +632,11 @@ export default function Home() {
                 hint={fileStatus.bld_images === 'ok' ? `${bldImgCount} images loaded` : 'data\\ui\\[culture]\\buildings\\'}
                 status={fileStatus.bld_images || 'idle'} />
 
+              <FileStatus
+                label="Ground Textures"
+                hint={fileStatus.ground_textures === 'ok' ? `${groundTexCount} textures loaded` : 'data\\terrain\\aerial_map\\ground_types\\'}
+                status={fileStatus.ground_textures || 'idle'} />
+
             </div>
           </div>
         </div>
