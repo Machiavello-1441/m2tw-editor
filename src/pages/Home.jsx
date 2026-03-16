@@ -249,6 +249,8 @@ export default function Home() {
           bldTgaFiles.push(file);
         } else if (pathLower.includes('/maps/base/')) {
           baseMapFiles.push(file);
+        } else if (pathLower.includes('/terrain/aerial_map/ground_types/')) {
+          groundTypeTgaFiles.push(file);
         }
         continue;
       }
