@@ -92,13 +92,10 @@ function texBasename(texName) {
   return filename.replace(/\.tga$/i, '').toLowerCase();
 }
 
+// aerialGroundTypes: { [typeName]: { summer: 'file.tga', winter: 'file.tga' } }  (from parser)
+// groundTextures: { [basenameNoExt]: dataUrl }  (loaded from disk)
 async function preloadGroundTiles(groundData, gW, gH, groundTextures, aerialGroundTypes, season) {
   if (!groundTextures || !aerialGroundTypes || !groundData) return {};
-
-  const rgbToPreset = {};
-  for (const preset of Object.values(aerialGroundTypes)) {
-    rgbToPreset[`${preset.r},${preset.g},${preset.b}`] = preset;
-  }
 
   const uniqueKeys = new Set();
   for (let i = 0; i < gW * gH; i++) {
@@ -108,9 +105,11 @@ async function preloadGroundTiles(groundData, gW, gH, groundTextures, aerialGrou
 
   const tileCache = {};
   for (const key of uniqueKeys) {
-    const preset = rgbToPreset[key];
-    if (!preset) continue;
-    const texName = (season === 'winter' && preset.winter) ? preset.winter : preset.summer;
+    const typeName = GROUND_COLOR_TO_TYPE[key];
+    if (!typeName) continue;
+    const entry = aerialGroundTypes[typeName];
+    if (!entry) continue;
+    const texName = (season === 'winter' && entry.winter) ? entry.winter : entry.summer;
     if (!texName) continue;
     const lookupKey = texBasename(texName);
     const dataUrl = groundTextures[lookupKey];
