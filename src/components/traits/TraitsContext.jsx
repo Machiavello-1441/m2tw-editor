@@ -55,9 +55,11 @@ export function TraitsProvider({ children }) {
     const handler = () => loadFromStorage();
     window.addEventListener('load-traits', handler);
     window.addEventListener('load-vnvs', handler);
+    window.addEventListener('strings-bin-updated', handler);
     return () => {
       window.removeEventListener('load-traits', handler);
       window.removeEventListener('load-vnvs', handler);
+      window.removeEventListener('strings-bin-updated', handler);
     };
   }, [loadFromStorage]);
 

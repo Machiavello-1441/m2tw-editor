@@ -68,9 +68,11 @@ export function AncillariesProvider({ children }) {
     const handler = () => loadFromStorage();
     window.addEventListener('load-ancillaries', handler);
     window.addEventListener('load-anctxt', handler);
+    window.addEventListener('strings-bin-updated', handler);
     return () => {
       window.removeEventListener('load-ancillaries', handler);
       window.removeEventListener('load-anctxt', handler);
+      window.removeEventListener('strings-bin-updated', handler);
     };
   }, [loadFromStorage]);
 
