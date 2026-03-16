@@ -13,6 +13,7 @@ import AncillariesEditor from './pages/AncillariesEditor';
 import LuaScripts from './pages/LuaScripts';
 import UnitEditor from './pages/UnitEditor';
 import StringsBinEditor from './pages/StringsBinEditor';
+import AssetsConverter from './pages/AssetsConverter';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
