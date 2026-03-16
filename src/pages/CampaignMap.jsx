@@ -462,6 +462,13 @@ export default function CampaignMap() {
           </div>
         </div>
       </div>
+
+      {/* 3D Preview — full-screen overlay when active */}
+      {activeTab === '3d' && (
+        <div className="absolute inset-0 z-10" style={{ top: '6.5rem' }}>
+          <Map3DPreview layers={layers} />
+        </div>
+      )}
     </div>
   );
 }
