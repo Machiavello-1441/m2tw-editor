@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { parseAncillariesFile, serializeAncillariesFile, parseTextFile, serializeTextFile } from './AncillariesParser';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
 
 const AncillariesContext = createContext(null);
 
