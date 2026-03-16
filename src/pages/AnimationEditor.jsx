@@ -26,7 +26,8 @@ function downloadText(text, filename) {
 }
 
 const TABS = [
-  { id: 'view',    label: 'View / Convert',    icon: Box },
+  { id: '3d',      label: '3D Preview',        icon: Box },
+  { id: 'view',    label: 'View / Convert',    icon: ArrowLeftRight },
   { id: 'scale',   label: 'Scale',             icon: Maximize2 },
   { id: 'txt',     label: 'Text Edit',         icon: FileText },
   { id: 'survey',  label: 'Survey Directory',  icon: Search },
