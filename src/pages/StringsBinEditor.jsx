@@ -130,10 +130,10 @@ export default function StringsBinEditor() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
-        <FileText className="w-4 h-4 text-primary shrink-0" />
-        <h1 className="text-sm font-bold text-foreground">Strings Bin Editor</h1>
-        <span className="text-[11px] text-muted-foreground">.txt.strings.bin</span>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-slate-900 shrink-0">
+        <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+        <h1 className="text-sm font-bold text-white">Strings Bin Editor</h1>
+        <span className="text-[11px] text-slate-400">.txt.strings.bin</span>
         <div className="flex-1" />
         <label className="cursor-pointer">
           <input ref={fileInputRef} type="file" className="hidden" multiple accept=".bin,.strings.bin" onChange={handleLoad} />
