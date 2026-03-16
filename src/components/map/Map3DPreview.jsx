@@ -19,7 +19,6 @@ const GROUND_PRESETS = {
   '0,0,64':      { color: [20, 30, 100],   name: 'Impassable Sea' },
 };
 
-// Build color lookup: merges hardcoded presets with dynamically loaded aerial_ground_types
 function buildColorLookup() {
   const lookup = { ...GROUND_PRESETS };
   const aerial = window._m2tw_aerial_ground_types;
@@ -44,12 +43,12 @@ function detectFeature(r, g, b) {
   return null;
 }
 
-const FEATURE_RGBA = {
-  river:   [50,  100, 220, 210],
-  source:  [150, 210, 255, 230],
-  bridge:  [0,   220, 220, 240],
-  cliff:   [220, 180, 30,  220],
-  volcano: [210, 50,  10,  240],
+const FEATURE_BASE_RGBA = {
+  river:   [50,  100, 220],
+  source:  [150, 210, 255],
+  bridge:  [0,   220, 220],
+  cliff:   [220, 180, 30 ],
+  volcano: [210, 50,  10 ],
 };
 
 function isSeaPixel(r, g, b) {
@@ -71,7 +70,14 @@ function loadImageData(dataUrl) {
   });
 }
 
-// Pre-load TGA tile images for texture mode
+// Strip path components and extension, return lowercase basename
+function texBasename(texName) {
+  // Handle both forward and back slashes
+  const parts = texName.replace(/\\/g, '/').split('/');
+  const filename = parts[parts.length - 1];
+  return filename.replace(/\.tga$/i, '').toLowerCase();
+}
+
 async function preloadGroundTiles(groundData, gW, gH, groundTextures, aerialGroundTypes, season) {
   if (!groundTextures || !aerialGroundTypes || !groundData) return {};
 
@@ -92,8 +98,9 @@ async function preloadGroundTiles(groundData, gW, gH, groundTextures, aerialGrou
     if (!preset) continue;
     const texName = (season === 'winter' && preset.winter) ? preset.winter : preset.summer;
     if (!texName) continue;
-    const stripped = texName.replace(/\.tga$/i, '').toLowerCase();
-    const dataUrl = groundTextures[stripped];
+    // Use basename only — the descr file may contain a subdirectory path
+    const lookupKey = texBasename(texName);
+    const dataUrl = groundTextures[lookupKey];
     if (!dataUrl) continue;
     const tileData = await loadImageData(dataUrl);
     if (tileData) tileCache[key] = tileData;
@@ -101,14 +108,15 @@ async function preloadGroundTiles(groundData, gW, gH, groundTextures, aerialGrou
   return tileCache;
 }
 
-// Build the final terrain canvas with ground colors/textures + baked features + baked regions.
-// Heights and ground maps are (2N+1)×(2M+1); features and regions are N×M.
-// The Y-axis of ground/features/regions is inverted relative to heights.
+// Build the final terrain canvas.
+// Heights/ground: W×H.  Features/regions: ~W/2 × H/2 (exact: (W-1)/2 × (H-1)/2).
+// All overlay maps have their Y-axis inverted relative to heights.
 async function buildTerrainCanvas(
   groundData, gW, gH,
   featData, fW, fH,
   regData, rW, rH,
-  showFeatures, showRegions,
+  showFeatures, featuresOpacity,
+  showRegions, regionsOpacity, regionsMode,
   useTextures, tileCache, colorLookup
 ) {
   const canvas = document.createElement('canvas');
@@ -124,7 +132,7 @@ async function buildTerrainCanvas(
       let cr = 60, cg = 110, cb = 55;
 
       if (groundData) {
-        const gy = gH - 1 - j;   // Y-flip: ground TGA is inverted vs heights
+        const gy = gH - 1 - j;   // Y-flip: ground TGA bottom-origin
         const gSrc = (gy * gW + i) * 4;
         const gr = groundData[gSrc], gg = groundData[gSrc + 1], gb = groundData[gSrc + 2];
         const key = `${gr},${gg},${gb}`;
@@ -147,9 +155,10 @@ async function buildTerrainCanvas(
   }
 
   // ── Features overlay ──────────────────────────────────────────────────────
-  // features map is ~half the size: fW ≈ (gW-1)/2, fH ≈ (gH-1)/2
-  // Mapping: fx = floor(i/2), fy_flipped = fH-1-floor(j/2)
-  if (featData && showFeatures && fW && fH) {
+  // features map is ~half the size: fW = (gW-1)/2, fH = (gH-1)/2
+  // Mapping: fx = floor(i/2), fy = fH-1-floor(j/2)  (Y-flip)
+  if (featData && showFeatures && fW > 0 && fH > 0 && featuresOpacity > 0) {
+    const fa = featuresOpacity / 100;
     for (let j = 0; j < gH; j++) {
       for (let i = 0; i < gW; i++) {
         const fx = Math.min(Math.floor(i / 2), fW - 1);
@@ -158,18 +167,18 @@ async function buildTerrainCanvas(
         const feat = detectFeature(featData[fSrc], featData[fSrc + 1], featData[fSrc + 2]);
         if (feat) {
           const dBase = (j * gW + i) * 4;
-          const c = FEATURE_RGBA[feat];
-          const a = c[3] / 255;
-          d[dBase]     = Math.round(d[dBase]     * (1 - a) + c[0] * a);
-          d[dBase + 1] = Math.round(d[dBase + 1] * (1 - a) + c[1] * a);
-          d[dBase + 2] = Math.round(d[dBase + 2] * (1 - a) + c[2] * a);
+          const c = FEATURE_BASE_RGBA[feat];
+          d[dBase]     = Math.round(d[dBase]     * (1 - fa) + c[0] * fa);
+          d[dBase + 1] = Math.round(d[dBase + 1] * (1 - fa) + c[1] * fa);
+          d[dBase + 2] = Math.round(d[dBase + 2] * (1 - fa) + c[2] * fa);
         }
       }
     }
   }
 
   // ── Regions overlay ───────────────────────────────────────────────────────
-  if (regData && showRegions && rW && rH) {
+  if (regData && showRegions && rW > 0 && rH > 0 && regionsOpacity > 0) {
+    const ra = regionsOpacity / 100;
     for (let j = 0; j < gH; j++) {
       for (let i = 0; i < gW; i++) {
         const rx = Math.min(Math.floor(i / 2), rW - 1);
@@ -179,16 +188,16 @@ async function buildTerrainCanvas(
         const isBlack = rr < 15 && rg < 15 && rb < 15;
         const isWhite = rr > 240 && rg > 240 && rb > 240;
         const dBase = (j * gW + i) * 4;
+
         if (isBlack || isWhite) {
-          // City = gold, Port = cyan — fully opaque marker
+          // City = gold, Port = cyan — always fully opaque markers
           const c = isBlack ? [255, 220, 0] : [0, 220, 255];
           d[dBase] = c[0]; d[dBase + 1] = c[1]; d[dBase + 2] = c[2];
-        } else {
-          // Region fill — semi-transparent tint
-          const a = 0.25;
-          d[dBase]     = Math.round(d[dBase]     * (1 - a) + rr * a);
-          d[dBase + 1] = Math.round(d[dBase + 1] * (1 - a) + rg * a);
-          d[dBase + 2] = Math.round(d[dBase + 2] * (1 - a) + rb * a);
+        } else if (regionsMode !== 'citiesports') {
+          // Region fill tint — semi-transparent, scaled by opacity
+          d[dBase]     = Math.round(d[dBase]     * (1 - ra) + rr * ra);
+          d[dBase + 1] = Math.round(d[dBase + 1] * (1 - ra) + rg * ra);
+          d[dBase + 2] = Math.round(d[dBase + 2] * (1 - ra) + rb * ra);
         }
       }
     }
@@ -208,17 +217,32 @@ const LEGEND_ITEMS = [
   { label: 'Port (region)',  color: '#00dcff' },
 ];
 
-export default function Map3DPreview({ layers }) {
-  const mountRef    = useRef(null);
-  const cleanupRef  = useRef(null);
+function SliderRow({ label, value, onChange, min = 0, max = 100 }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-slate-400 w-24 shrink-0 text-[10px]">{label}</span>
+      <input type="range" min={min} max={max} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="flex-1 h-1 accent-primary" />
+      <span className="text-slate-400 w-7 text-right text-[10px]">{value}%</span>
+    </div>
+  );
+}
 
-  const [heightScale,  setHeightScale]  = useState(30);
-  const [showFeatures, setShowFeatures] = useState(true);
-  const [showRegions,  setShowRegions]  = useState(false);
-  const [useTextures,  setUseTextures]  = useState(false);
-  const [season,       setSeason]       = useState('summer');
-  const [showLegend,   setShowLegend]   = useState(false);
-  const [status,       setStatus]       = useState('idle');
+export default function Map3DPreview({ layers }) {
+  const mountRef   = useRef(null);
+  const cleanupRef = useRef(null);
+
+  const [heightScale,     setHeightScale]     = useState(30);
+  const [showFeatures,    setShowFeatures]     = useState(true);
+  const [featuresOpacity, setFeaturesOpacity]  = useState(80);
+  const [showRegions,     setShowRegions]      = useState(false);
+  const [regionsOpacity,  setRegionsOpacity]   = useState(40);
+  const [regionsMode,     setRegionsMode]      = useState('full'); // 'full' | 'citiesports'
+  const [useTextures,     setUseTextures]      = useState(false);
+  const [season,          setSeason]           = useState('summer');
+  const [showLegend,      setShowLegend]       = useState(false);
+  const [status,          setStatus]           = useState('idle');
 
   const hasGroundTextures = !!(window._m2tw_ground_textures && Object.keys(window._m2tw_ground_textures).length > 0);
   const hasAerialDef      = !!(window._m2tw_aerial_ground_types);
@@ -248,7 +272,6 @@ export default function Map3DPreview({ layers }) {
     const buildTimeout = setTimeout(async () => {
       if (!mountRef.current || cancelled) return;
 
-      // ── Pre-load tile textures (async) ──────────────────────────────────
       let tileCache = {};
       if (useTextures && hasGroundTextures && hasAerialDef && groundData) {
         tileCache = await preloadGroundTiles(
@@ -262,12 +285,12 @@ export default function Map3DPreview({ layers }) {
 
       const colorLookup = buildColorLookup();
 
-      // ── Build terrain canvas ─────────────────────────────────────────────
       const terrainCanvas = await buildTerrainCanvas(
         groundData, mapW, mapH,
         featuresData, featW, featH,
         regionsData,  regW,  regH,
-        showFeatures, showRegions,
+        showFeatures, featuresOpacity,
+        showRegions,  regionsOpacity, regionsMode,
         useTextures, tileCache, colorLookup
       );
       if (cancelled || !mountRef.current) return;
@@ -320,7 +343,6 @@ export default function Map3DPreview({ layers }) {
       positions.needsUpdate = true;
       geom.computeVertexNormals();
 
-      // ── Terrain texture (pixel-perfect) ──────────────────────────────────
       const terrainTex = new THREE.CanvasTexture(terrainCanvas);
       terrainTex.minFilter = THREE.NearestFilter;
       terrainTex.magFilter = THREE.NearestFilter;
@@ -329,7 +351,6 @@ export default function Map3DPreview({ layers }) {
       const terrainMesh = new THREE.Mesh(geom, terrainMat);
       scene.add(terrainMesh);
 
-      // ── Sea plane ─────────────────────────────────────────────────────────
       const seaGeom = new THREE.PlaneGeometry(mapW * 1.1, mapH * 1.1);
       seaGeom.rotateX(-Math.PI / 2);
       const seaMat  = new THREE.MeshLambertMaterial({ color: 0x1a3d6e, transparent: true, opacity: 0.9 });
@@ -337,7 +358,6 @@ export default function Map3DPreview({ layers }) {
       seaMesh.position.y = -heightScale * 0.01;
       scene.add(seaMesh);
 
-      // ── Lighting ──────────────────────────────────────────────────────────
       scene.add(new THREE.AmbientLight(0xffffff, 0.55));
       const sun = new THREE.DirectionalLight(0xfff5e0, 1.3);
       sun.position.set(mapW * 0.6, heightScale * 4, mapH * 0.4);
@@ -348,7 +368,6 @@ export default function Map3DPreview({ layers }) {
 
       setStatus('ready');
 
-      // ── Render loop ───────────────────────────────────────────────────────
       let animId;
       const animate = () => {
         animId = requestAnimationFrame(animate);
@@ -357,7 +376,6 @@ export default function Map3DPreview({ layers }) {
       };
       animate();
 
-      // ── Resize ────────────────────────────────────────────────────────────
       const onResize = () => {
         if (!mountRef.current) return;
         const nw = mountRef.current.clientWidth;
@@ -386,7 +404,7 @@ export default function Map3DPreview({ layers }) {
       clearTimeout(buildTimeout);
       if (cleanupRef.current) { cleanupRef.current(); cleanupRef.current = null; }
     };
-  }, [layers, heightScale, showFeatures, showRegions, useTextures, season]); // eslint-disable-line
+  }, [layers, heightScale, showFeatures, featuresOpacity, showRegions, regionsOpacity, regionsMode, useTextures, season]); // eslint-disable-line
 
   const hasData = !!(layers.heights?.data);
 
@@ -413,14 +431,15 @@ export default function Map3DPreview({ layers }) {
       <div ref={mountRef} className="w-full h-full" />
 
       {hasData && (
-        <div className="absolute bottom-4 left-4 bg-slate-900/92 border border-slate-700 rounded-lg p-3 space-y-2.5 text-[11px] min-w-[210px]">
+        <div className="absolute bottom-4 left-4 bg-slate-900/95 border border-slate-700 rounded-lg p-3 space-y-2.5 text-[11px] min-w-[230px] max-h-[80vh] overflow-y-auto">
+
           {/* Height scale */}
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 w-24 shrink-0">Height scale</span>
+            <span className="text-slate-400 w-24 shrink-0 text-[10px]">Height scale</span>
             <input type="range" min={5} max={120} value={heightScale}
               onChange={e => setHeightScale(Number(e.target.value))}
               className="flex-1 h-1 accent-primary" />
-            <span className="text-slate-400 w-7 text-right">{heightScale}</span>
+            <span className="text-slate-400 w-7 text-right text-[10px]">{heightScale}</span>
           </div>
 
           <div className="border-t border-slate-700" />
@@ -439,7 +458,7 @@ export default function Map3DPreview({ layers }) {
             </label>
             {useTextures && hasGroundTextures && (
               <div className="flex items-center gap-2 ml-5">
-                <span className="text-slate-500">Season:</span>
+                <span className="text-slate-500 text-[10px]">Season:</span>
                 <select value={season} onChange={e => setSeason(e.target.value)}
                   className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-[10px] text-slate-300">
                   <option value="summer">Summer</option>
@@ -451,41 +470,65 @@ export default function Map3DPreview({ layers }) {
 
           <div className="border-t border-slate-700" />
 
-          {/* Features toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={showFeatures}
-              onChange={e => setShowFeatures(e.target.checked)}
-              className="w-3 h-3 accent-primary" />
-            <span className="text-slate-300">Rivers, cliffs &amp; volcanoes</span>
-          </label>
-
-          {/* Regions toggle */}
-          {layers.regions?.data && (
+          {/* Features */}
+          <div className="space-y-1.5">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={showRegions}
-                onChange={e => setShowRegions(e.target.checked)}
+              <input type="checkbox" checked={showFeatures}
+                onChange={e => setShowFeatures(e.target.checked)}
                 className="w-3 h-3 accent-primary" />
-              <span className="text-slate-300">Regions &amp; cities/ports</span>
+              <span className="text-slate-300">Rivers, cliffs &amp; volcanoes</span>
             </label>
-          )}
+            {showFeatures && (
+              <div className="ml-5">
+                <SliderRow label="Opacity" value={featuresOpacity} onChange={setFeaturesOpacity} />
+              </div>
+            )}
+          </div>
 
-          {/* Legend */}
-          <button onClick={() => setShowLegend(v => !v)}
-            className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors">
-            {showLegend ? '▾ Hide legend' : '▸ Show legend'}
-          </button>
-          {showLegend && (
-            <div className="space-y-1 pt-1 border-t border-slate-700">
-              {LEGEND_ITEMS.map(({ label, color }) => (
-                <div key={label} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm shrink-0" style={{ background: color }} />
-                  <span className="text-slate-400">{label}</span>
+          {/* Regions */}
+          {layers.regions?.data && (
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={showRegions}
+                  onChange={e => setShowRegions(e.target.checked)}
+                  className="w-3 h-3 accent-primary" />
+                <span className="text-slate-300">Regions overlay</span>
+              </label>
+              {showRegions && (
+                <div className="ml-5 space-y-1.5">
+                  <SliderRow label="Opacity" value={regionsOpacity} onChange={setRegionsOpacity} />
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-[10px] w-24 shrink-0">Show</span>
+                    <select value={regionsMode} onChange={e => setRegionsMode(e.target.value)}
+                      className="flex-1 bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-[10px] text-slate-300">
+                      <option value="full">Fill + cities/ports</option>
+                      <option value="citiesports">Cities &amp; ports only</option>
+                    </select>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           )}
 
-          <div className="pt-1 border-t border-slate-700 text-[10px] text-slate-600 space-y-0.5">
+          {/* Legend */}
+          <div className="border-t border-slate-700 pt-1">
+            <button onClick={() => setShowLegend(v => !v)}
+              className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors">
+              {showLegend ? '▾ Hide legend' : '▸ Show legend'}
+            </button>
+            {showLegend && (
+              <div className="space-y-1 pt-1.5">
+                {LEGEND_ITEMS.map(({ label, color }) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm shrink-0" style={{ background: color }} />
+                    <span className="text-slate-400 text-[10px]">{label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-700 text-[10px] text-slate-600 space-y-0.5 pt-1">
             <div>🖱 Left drag — orbit</div>
             <div>🖱 Right drag — pan</div>
             <div>⚙ Scroll — zoom</div>
@@ -497,8 +540,8 @@ export default function Map3DPreview({ layers }) {
         <div className="absolute top-3 right-3 flex flex-wrap gap-1 max-w-xs justify-end">
           {layers.heights?.data  && <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800 border border-slate-600 text-slate-400">heights</span>}
           {layers.ground?.data   && <span className="px-1.5 py-0.5 rounded text-[9px] bg-green-900/40 border border-green-700/40 text-green-400">{useTextures ? `textures (${season})` : 'ground types'}</span>}
-          {layers.features?.data && showFeatures && <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-900/40 border border-blue-700/40 text-blue-400">features</span>}
-          {layers.regions?.data  && showRegions  && <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-900/40 border border-purple-700/40 text-purple-400">regions</span>}
+          {layers.features?.data && showFeatures && <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-900/40 border border-blue-700/40 text-blue-400">features {featuresOpacity}%</span>}
+          {layers.regions?.data  && showRegions  && <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-900/40 border border-purple-700/40 text-purple-400">regions {regionsOpacity}%</span>}
         </div>
       )}
     </div>
