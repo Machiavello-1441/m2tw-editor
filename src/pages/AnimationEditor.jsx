@@ -40,10 +40,10 @@ export default function AnimationEditor() {
   const [txtContent, setTxtContent] = useState('');
   const [ms3dData, setMs3dData] = useState(null);
   const [frameIdx, setFrameIdx] = useState(0);
-  const [playing, setPlaying] = React.useState(false);
-  const playRef = React.useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const playRef = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (playing) {
       playRef.current = setInterval(() => {
         setFrameIdx(prev => {
