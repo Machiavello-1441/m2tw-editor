@@ -59,6 +59,37 @@ function decodeTgaToDataUrl(buffer) {
   return canvas.toDataURL('image/png');
 }
 
+// Parse descr_aerial_map_ground_types.txt → { [presetName]: { summer: 'file.tga', winter: 'file.tga' | null } }
+function parseDescrAerialGroundTypes(text) {
+  const result = {};
+  const lines = text.split('\n');
+  let inBlock = false;
+  let currentPreset = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith(';')) continue;
+    if (line === '{') { inBlock = true; continue; }
+    if (line === '}') { inBlock = false; currentPreset = null; continue; }
+    if (!inBlock) {
+      // preset line: "preset_name  (R, G, B)"
+      const m = line.match(/^(\w+)\s+\((\d+),\s*(\d+),\s*(\d+)\)/);
+      if (m) {
+        currentPreset = { name: m[1], r: +m[2], g: +m[3], b: +m[4], summer: null, winter: null };
+        result[m[1]] = currentPreset;
+      }
+      continue;
+    }
+    if (currentPreset) {
+      const parts = line.split(/\s+/).filter(Boolean);
+      if (parts.length >= 1 && parts[0].endsWith('.tga')) {
+        if (!currentPreset.summer) currentPreset.summer = parts[0];
+        else if (!currentPreset.winter) currentPreset.winter = parts[0];
+      }
+    }
+  }
+  return result;
+}
+
 // Files we look for in the data\ folder (matched by filename only, regardless of subfolder)
 const DATA_FILE_MAP = {
   'export_descr_buildings.txt': 'edb',
