@@ -73,6 +73,13 @@ export default function AnimationEditor() {
     } else if (ext === 'txt') {
       sourceText = new TextDecoder().decode(buf);
       parsed = textToCasAnim(sourceText);
+    } else if (ext === 'ms3d') {
+      const ms3d = parseMs3d(buf);
+      if (!ms3d.error) {
+        setMs3dData(ms3d);
+        setFrameIdx(0);
+      }
+      return;
     } else {
       return;
     }
