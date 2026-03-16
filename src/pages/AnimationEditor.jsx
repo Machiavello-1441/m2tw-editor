@@ -180,10 +180,10 @@ export default function AnimationEditor() {
             onDragOver={e => e.preventDefault()}
             onDrop={handleDrop}
           >
-            <input type="file" className="hidden" multiple accept=".cas,.txt" onChange={handleInput} />
+            <input type="file" className="hidden" multiple accept=".cas,.txt,.ms3d" onChange={handleInput} />
             <Upload className="w-5 h-5 mx-auto mb-1.5 text-slate-400" />
-            <p className="text-sm text-slate-300">Drop <code className="text-xs bg-slate-700 px-1 rounded">.cas</code> or <code className="text-xs bg-slate-700 px-1 rounded">.txt</code> files here</p>
-            <p className="text-[10px] text-slate-500 mt-0.5">.cas = binary animation · .txt = convertcastotxt output</p>
+            <p className="text-sm text-slate-300">Drop <code className="text-xs bg-slate-700 px-1 rounded">.cas</code>, <code className="text-xs bg-slate-700 px-1 rounded">.ms3d</code> or <code className="text-xs bg-slate-700 px-1 rounded">.txt</code> files</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">.cas = binary animation · .ms3d = MilkShape model+skeleton · .txt = text dump</p>
           </label>
 
           {/* File tabs */}
