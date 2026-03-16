@@ -206,7 +206,7 @@ export default function ModelPanel() {
       <ModelSubPanel
         key={tab}
         accept={t.accept}
-        label={`Drop ${t.accept.split(',').map(e => <code key={e}>{e}</code>)} files here`}
+        label={`Drop ${t.accept.split(',').join(' / ')} files here`}
         hint={t.hint}
         onFromMs3d={t.fromMs3d}
       />
