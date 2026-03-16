@@ -12,6 +12,7 @@ import TraitsEditor from './pages/TraitsEditor';
 import AncillariesEditor from './pages/AncillariesEditor';
 import LuaScripts from './pages/LuaScripts';
 import UnitEditor from './pages/UnitEditor';
+import StringsBinEditor from './pages/StringsBinEditor';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -73,6 +74,7 @@ const AuthenticatedApp = () => {
       <Route path="/AncillariesEditor" element={<LayoutWrapper currentPageName="AncillariesEditor"><AncillariesEditor /></LayoutWrapper>} />
       <Route path="/LuaScripts" element={<LayoutWrapper currentPageName="LuaScripts"><LuaScripts /></LayoutWrapper>} />
       <Route path="/UnitEditor" element={<LayoutWrapper currentPageName="UnitEditor"><UnitEditor /></LayoutWrapper>} />
+      <Route path="/StringsBinEditor" element={<LayoutWrapper currentPageName="StringsBinEditor"><StringsBinEditor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
