@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, FileText, Maximize2, Search, Box, ArrowLeftRight, X, Play, Pause } from 'lucide-react';
 import { parseCasAnim, casAnimToText, encodeCasAnim, scaleCasAnim, textToCasAnim } from '@/lib/casAnimCodec';
