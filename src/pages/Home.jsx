@@ -598,11 +598,11 @@ export default function Home() {
               <FileStatus label="Units" hint="export_descr_unit.txt" status={fileStatus.unit} />
               <FileStatus label="Events" hint="descr_events.txt" status={fileStatus.ev} />
               <FileStatus label="Traits" hint="export_descr_character_traits.txt" status={fileStatus.traits} />
-              <FileStatus label="Traits Text" hint="text\export_VnVs.txt" status={fileStatus.vnvs} />
+
               <FileStatus label="Ancillaries" hint="export_descr_ancillaries.txt" status={fileStatus.anc} />
-              <FileStatus label="Ancillaries Text" hint="text\export_ancillaries.txt" status={fileStatus.anctxt} />
+
               <FileStatus label="Unit Descriptions" hint="text\export_units.txt" status={fileStatus.expunits} />
-              <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded` : 'text\\*.strings.bin'} status={fileStatus.strings_bin} />
+              <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />
             </div>
           </div>
 
