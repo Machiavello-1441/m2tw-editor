@@ -525,6 +525,7 @@ export default function Home() {
       localStorage.removeItem('m2tw_export_units_file_name');
       localStorage.removeItem('m2tw_lua_scripts');
       localStorage.removeItem('m2tw_campaigns');
+      clearStringsBinStore();
       window._m2tw_map_files = [];
       window._m2tw_unit_images = {};
       window.location.reload();
