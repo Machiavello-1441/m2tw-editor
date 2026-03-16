@@ -330,6 +330,21 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, unit_images: 'ok' }));
     }
 
+    // Auto-load ground type textures
+    if (groundTypeTgaFiles.length > 0) {
+      setFileStatus((prev) => ({ ...prev, ground_textures: 'loading' }));
+      const textures = {};
+      for (const file of groundTypeTgaFiles) {
+        const buf = await file.arrayBuffer();
+        const dataUrl = decodeTgaToDataUrl(buf);
+        if (dataUrl) textures[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
+      }
+      window._m2tw_ground_textures = textures;
+      window.dispatchEvent(new CustomEvent('load-ground-textures', { detail: textures }));
+      setGroundTexCount(Object.keys(textures).length);
+      setFileStatus((prev) => ({ ...prev, ground_textures: 'ok' }));
+    }
+
     // Auto-load base map files
     if (baseMapFiles.length > 0) {
       window._m2tw_map_files = (window._m2tw_map_files || []).concat(baseMapFiles);
