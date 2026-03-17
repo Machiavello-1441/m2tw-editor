@@ -17,6 +17,9 @@ import AssetsConverter from './pages/AssetsConverter';
 import AnimationEditor from './pages/AnimationEditor';
 import GoatTools from './pages/GoatTools';
 import ScriptEditor from './pages/ScriptEditor';
+import FactionsEditor from './pages/FactionsEditor';
+import CharactersEditor from './pages/CharactersEditor';
+import CampaignSettings from './pages/CampaignSettings';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -83,6 +86,9 @@ const AuthenticatedApp = () => {
       <Route path="/AnimationEditor" element={<LayoutWrapper currentPageName="AnimationEditor"><AnimationEditor /></LayoutWrapper>} />
       <Route path="/GoatTools" element={<LayoutWrapper currentPageName="GoatTools"><GoatTools /></LayoutWrapper>} />
       <Route path="/ScriptEditor" element={<LayoutWrapper currentPageName="ScriptEditor"><ScriptEditor /></LayoutWrapper>} />
+      <Route path="/FactionsEditor" element={<LayoutWrapper currentPageName="FactionsEditor"><FactionsEditor /></LayoutWrapper>} />
+      <Route path="/CharactersEditor" element={<LayoutWrapper currentPageName="CharactersEditor"><CharactersEditor /></LayoutWrapper>} />
+      <Route path="/CampaignSettings" element={<LayoutWrapper currentPageName="CampaignSettings"><CampaignSettings /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
