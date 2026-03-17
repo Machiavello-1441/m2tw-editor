@@ -319,15 +319,40 @@ export default function CampaignMap() {
       return;
     }
     // Region click: find which region the clicked pixel belongs to
-    if (regionsData && layers['regions']?.data) {
+    if (layers['regions']?.data) {
       const layer = layers['regions'];
       const idx = (ry * layer.width + rx) * 4;
       const r = layer.data[idx], g = layer.data[idx + 1], b = layer.data[idx + 2];
-      const region = regionsData.find(reg => reg.r === r && reg.g === g && reg.b === b);
-      if (region) {
-        setSelectedRegion(region);
-        setActiveTab('region');
-      }
+      // Try DB first, fall back to in-memory regionsData
+      base44.entities.Region.filter({ color_r: r, color_g: g, color_b: b }).then(results => {
+        if (results?.length) {
+          // Normalize to same shape as regionsData for RegionEditorPanel
+          const dbReg = results[0];
+          const region = {
+            regionName: dbReg.province_in,
+            settlementName: dbReg.city_in,
+            factionCreator: dbReg.original_faction,
+            rebelFaction: dbReg.rebels,
+            r: dbReg.color_r, g: dbReg.color_g, b: dbReg.color_b,
+            resources: dbReg.resources || [],
+            val1: dbReg.victory_points, val2: dbReg.agriculture,
+            religions: {},
+            _dbRecord: dbReg,
+          };
+          setSelectedRegion(region);
+          setActiveTab('region');
+        } else if (regionsData) {
+          // Fallback to in-memory
+          const region = regionsData.find(reg => reg.r === r && reg.g === g && reg.b === b);
+          if (region) { setSelectedRegion(region); setActiveTab('region'); }
+        }
+      }).catch(() => {
+        // Fallback to in-memory if DB unavailable
+        if (regionsData) {
+          const region = regionsData.find(reg => reg.r === r && reg.g === g && reg.b === b);
+          if (region) { setSelectedRegion(region); setActiveTab('region'); }
+        }
+      });
     }
   }, [pendingPlace, mapH, regionsData, layers]);
 
