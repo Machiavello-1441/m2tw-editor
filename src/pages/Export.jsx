@@ -216,11 +216,20 @@ export default function Export() {
               />
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-chart-4/70" />}
-                label="export_buildings.txt"
+                label="export_buildings.txt.strings.bin"
                 path={`${modName}/data/text/`}
                 status={hasText ? 'ready' : 'skip'}
                 detail={hasText ? `${Object.keys(textData).length} text entries` : 'No text data — will be skipped'}
               />
+              {imageData && Object.keys(imageData).length > 0 && (
+                <ExportRow
+                  icon={<FileText className="w-4 h-4 text-blue-400/70" />}
+                  label="Building images (.tga)"
+                  path={`${modName}/data/ui/[culture]/buildings/`}
+                  status="ready"
+                  detail={`${Object.keys(imageData).length} image(s) exported as TGA`}
+                />
+              )}
               <ExportRow
                 icon={<Code2 className="w-4 h-4 text-green-500/70" />}
                 label="luaPluginScript.lua"
