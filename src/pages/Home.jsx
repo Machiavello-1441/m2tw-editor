@@ -408,6 +408,7 @@ export default function Home() {
       }
       window._m2tw_resource_icons = { ...(window._m2tw_resource_icons || {}), ...icons };
       window.dispatchEvent(new CustomEvent('load-resource-icons', { detail: icons }));
+      setFileStatus((prev) => ({ ...prev, resource_icons: 'ok' }));
     }
 
     // Auto-load ground type textures
