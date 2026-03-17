@@ -126,7 +126,11 @@ export function parseCasAnim(buffer) {
   if (off + 2 > buffer.byteLength) return { errors: ['File truncated before nBones'] };
   const nBones = view.getUint16(off, true); off += 2;
 
-  if (nBones > 256) return { errors: [`Implausible bone count: ${nBones} — file may be corrupt or unsupported format`] };
+  // Sanity check: nBones * minimum record size must fit in the remaining buffer
+  const minBytesNeeded = nBones * (2 + BONE_RECORD_SIZE); // hierarchy int16 + bone record
+  if (nBones === 0 || minBytesNeeded > buffer.byteLength) {
+    return { errors: [`Implausible bone count: ${nBones} — file may be corrupt or wrong format (expected ≤${Math.floor(buffer.byteLength / (2 + BONE_RECORD_SIZE))} bones)`] };
+  }
 
   const hierarchy = [];
   for (let i = 0; i < nBones; i++) {
