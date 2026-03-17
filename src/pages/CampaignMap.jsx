@@ -408,6 +408,7 @@ export default function CampaignMap() {
   const tabs = [
     { id: 'layers',     label: 'Layers',   Icon: Layers },
     { id: 'strat',      label: 'Strat',    Icon: Globe },
+    { id: 'region',     label: 'Region',   Icon: Edit3 },
     { id: 'script',     label: 'Script',   Icon: Code2 },
     { id: 'validation', label: 'Validate', Icon: CheckSquare },
     { id: '3d',         label: '3D',       Icon: Box },
