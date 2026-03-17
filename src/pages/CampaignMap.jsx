@@ -137,6 +137,8 @@ export default function CampaignMap() {
     setFactionColorsRaw(data);
   };
 
+  const [importProgress, setImportProgress] = React.useState(null); // null | { step, total }
+
   const jumpRef = useRef(null);
   const folderInputRef = useRef();
 
