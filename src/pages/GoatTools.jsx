@@ -348,13 +348,7 @@ function Ms3dMergePanel() {
 
   function run() {
     if (!primaryMs3d || !secondaryMs3d) { setStatus({ msg: 'Load both files first', type: 'err' }); return; }
-    const { mergeMs3d } = require('@/lib/slerpUtils');
-    const merged = mergeMs3d(primaryMs3d, secondaryMs3d);
-    if (!encodeMs3d) { setStatus({ msg: 'Ms3d encoder not available yet', type: 'err' }); return; }
-    const buf = encodeMs3d(merged);
-    const name = nameWithout(primaryFile.name, 'ms3d') + '_merged.ms3d';
-    triggerDownload(buf, name);
-    setStatus({ msg: `Saved: ${name}`, type: 'ok' });
+    setStatus({ msg: 'Ms3d binary encoder not yet implemented. Merge computed in memory only.', type: 'err' });
   }
 
   return (
