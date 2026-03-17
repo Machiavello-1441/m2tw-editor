@@ -92,6 +92,26 @@ export default function CampaignMap() {
   const [editedSettlements, setEditedSettlements] = useState({});
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
 
+  // ── Extra data sources for region editor ──────────────────────────────────
+  const [rebelFactions, setRebelFactions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_rebel_factions_raw'); return r ? parseDescrRebelFactions(r) : []; } catch { return []; } });
+  const [religions, setReligions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_religions_raw'); return r ? parseDescrReligions(r) : []; } catch { return []; } });
+  const [naturalResources, setNaturalRes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_sm_resources_raw'); return r ? parseDescrSmResources(r) : []; } catch { return []; } });
+  const [mercenaryPools, setMercenaryPools] = useState(() => { try { const r = sessionStorage.getItem('m2tw_mercenaries_raw'); return r ? parseDescrMercenaries(r) : []; } catch { return []; } });
+  const [musicTypes, setMusicTypes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_music_types_raw'); return r ? parseDescrSoundsMusicTypes(r) : []; } catch { return []; } });
+
+  // ── Selected region (click on map) ────────────────────────────────────────
+  const [selectedRegion, setSelectedRegion] = useState(null);
+
+  const { buildings } = useEDB();
+  const hiddenResourceList = useMemo(() => extractHiddenResourcesFromEDB(buildings || []), [buildings]);
+  const buildingLevelList  = useMemo(() => extractBuildingLevelsFromEDB(buildings || []), [buildings]);
+  const factionList        = useMemo(() => (stratData?.factions || []).map(f => f.name).filter(Boolean), [stratData]);
+  const rebelFactionList   = useMemo(() => rebelFactions.map(f => f.name || f).filter(Boolean), [rebelFactions]);
+  const religionList       = useMemo(() => religions.map(r => r.name || r).filter(Boolean), [religions]);
+  const naturalResList     = useMemo(() => naturalResources.map(r => r.name || r).filter(Boolean), [naturalResources]);
+  const mercenaryPoolList  = useMemo(() => mercenaryPools.map(p => p.name || p).filter(Boolean), [mercenaryPools]);
+  const musicTypeList      = useMemo(() => musicTypes.map(t => t.name || t).filter(Boolean), [musicTypes]);
+
   // Compute settlement positions once we have both strat + regions layer
   const applySettlementPositions = React.useCallback((stratParsed, regData, regLayer) => {
     if (!stratParsed?.items?.length) return stratParsed;
