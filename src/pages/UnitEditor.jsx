@@ -163,6 +163,48 @@ export default function UnitEditorPage() {
     } catch {}
   }, []);
 
+  // Listen for modeldb loaded from event
+  useEffect(() => {
+    const handler = (e) => setModeldb(e.detail);
+    window.addEventListener('modeldb-loaded', handler);
+    return () => window.removeEventListener('modeldb-loaded', handler);
+  }, []);
+
+  const handleModeldbLoad = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = parseModeldb(ev.target.result);
+        modeldbStore.set(parsed);
+        setModeldb(parsed);
+      } catch (err) {
+        alert('Failed to parse ModelDB: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleUpdateModeldbEntry = (name, updatedEntry) => {
+    if (!modeldb) return;
+    const entries = modeldb.entries.map(e => e.name === name ? updatedEntry : e);
+    const updated = { ...modeldb, entries, byName: { ...modeldb.byName, [name]: updatedEntry } };
+    modeldbStore.update(updated);
+    setModeldb(updated);
+  };
+
+  const handleDownloadModeldb = () => {
+    if (!modeldb) return;
+    const text = serializeModeldb(modeldb);
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'battle_models.modeldb'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Listen for unit images loaded from Home page
   useEffect(() => {
     const handler = (e) => {
