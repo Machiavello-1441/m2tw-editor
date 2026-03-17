@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Shield, Save, ChevronRight, Loader2 } from 'lucide-react';
+import { Shield, Save, ChevronRight, Loader2, Plus } from 'lucide-react';
 
 const PLAYABILITY_LABELS = { 0: 'Not Playable', 1: 'Playable', 2: 'Unlockable', 3: 'Hidden' };
 const ECONOMIC_AI_OPTIONS = ['balanced', 'religious', 'trader', 'comfortable', 'bureaucrat', 'craftsman', 'sailor', 'fortified'];
