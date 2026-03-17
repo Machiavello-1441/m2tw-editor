@@ -5,7 +5,6 @@
  * Y-axis: M2TW uses y=0 at bottom, screen uses y=0 at top — we invert.
  */
 import React, { useRef, useCallback, useEffect } from 'react';
-
 import { SETTLEMENT_LEVEL_ICONS } from './stratParser';
 
 export const ITEM_ICON = {
