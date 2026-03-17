@@ -13,6 +13,7 @@ import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat, serializeDescrRegions } from '../components/map/stratParser';
 import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
+import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { useEDB } from '../components/edb/EDBContext';
 
 const INITIAL_PAINT = {
