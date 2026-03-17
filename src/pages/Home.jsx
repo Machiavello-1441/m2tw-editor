@@ -529,6 +529,22 @@ export default function Home() {
       loadEventsFile(evText); // reuse existing loader which saves to localStorage
     }
     setCampaignError('');
+
+    // Campaign-specific text files stored in localStorage for campaign map editor
+    const CAMPAIGN_STORE = {
+      'descr_strat.txt': 'm2tw_campaign_strat',
+      'campaign_script.txt': 'm2tw_campaign_script',
+      'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
+      'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
+    };
+    for (const file of files) {
+      const key = CAMPAIGN_STORE[file.name.toLowerCase()];
+      if (key) {
+        const txt = await readText(file);
+        try { localStorage.setItem(key, txt); } catch {}
+      }
+    }
+
     const relevant = files.filter((f) => {
       const n = f.name.toLowerCase();
       return n.endsWith('.tga') || n.endsWith('.txt');
