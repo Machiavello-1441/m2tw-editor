@@ -472,7 +472,7 @@ export default function CampaignMap() {
           <MapCanvas
             layers={layers}
             regionsMode={regionsMode}
-            onRegionClick={pendingPlace ? handleRegionClick : null}
+            onRegionClick={handleCanvasClick}
             jumpRef={jumpRef}
             paintState={paintState}
             onPaint={handlePaint}
