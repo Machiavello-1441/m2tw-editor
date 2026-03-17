@@ -248,9 +248,11 @@ export default function ScriptingPanel({ stratData }) {
             value={text}
             onChange={handleChange}
             onScroll={syncScroll}
+            onKeyDown={(e) => { if (e.key === 'Tab') { e.preventDefault(); const s = e.target.selectionStart; const v = text.substring(0,s) + '  ' + text.substring(e.target.selectionEnd); setText(v); setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = s + 2; }, 0); } }}
             spellCheck={false}
+            wrap="off"
             className="absolute inset-0 p-2 w-full h-full bg-transparent text-transparent caret-slate-300 resize-none outline-none leading-5 overflow-auto"
-            style={{ tabSize: 2, caretColor: '#94a3b8' }}
+            style={{ tabSize: 2, caretColor: '#94a3b8', whiteSpace: 'pre' }}
           />
           <style>{`
             .sc-kw   { color: #c084fc; font-weight: 600; }
