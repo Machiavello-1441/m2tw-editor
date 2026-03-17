@@ -682,6 +682,10 @@ export default function Home() {
               <FileStatus label="Ancillaries" hint="export_descr_ancillaries.txt" status={fileStatus.anc} />
 
               <FileStatus label="Unit Descriptions" hint="text\export_units.txt" status={fileStatus.expunits} />
+              <FileStatus label="Cultures" hint="descr_cultures.txt" status={fileStatus.cultures} />
+              <FileStatus label="Names" hint="descr_names.txt" status={fileStatus.names} />
+              <FileStatus label="Rebel Factions" hint="descr_rebel_factions.txt" status={fileStatus.rebel_fac} />
+              <FileStatus label="Religions" hint="descr_religions.txt" status={fileStatus.religions} />
               <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />
             </div>
           </div>
