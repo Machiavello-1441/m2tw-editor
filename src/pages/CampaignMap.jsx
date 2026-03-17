@@ -84,7 +84,8 @@ export default function CampaignMap() {
     return [];
   });
   const [selectedItem, setSelectedItem] = useState(null);
-  const [visibleCategories, setVisibleCategories] = useState(new Set(['resource', 'character', 'fortification']));
+  const [visibleCategories, setVisibleCategories] = useState(new Set(['settlement', 'resource', 'character', 'fortification']));
+  const [editedSettlements, setEditedSettlements] = useState({});
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
 
   // Wrappers that also persist to sessionStorage
