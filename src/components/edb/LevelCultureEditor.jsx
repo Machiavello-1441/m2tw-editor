@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import ImageCropModal from './ImageCropModal';
 import { useEDB } from './EDBContext';
 import { useRefData } from './RefDataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,11 +60,20 @@ function encodeTGA(canvas, tw, th) {
 }
 
 function ImageSlot({ culture, levelName, slot }) {
-  const { imageData, loadBuildingTgaImages } = useEDB();
+  const { imageData, loadBuildingTgaImages, setImageData } = useEDB();
   const key = `${levelName}_${culture}_${slot.type}`;
   const img = imageData[key];
   const fileRef = useRef();
   const [preview, setPreview] = useState(null);
+
+  const removeImage = (k) => {
+    setImageData(prev => {
+      const next = { ...prev };
+      delete next[k];
+      try { localStorage.setItem('m2tw_edb_images', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   const [cropOpen, setCropOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState(null);
