@@ -1,20 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import {
-  Swords, RefreshCw, Download, Upload, Info, Merge,
-  Scissors, Zap, FileText, Layers, GitMerge
-} from 'lucide-react';
+import { Swords, Download, Info, Merge, Scissors, Zap, FileText, Layers, GitMerge } from 'lucide-react';
 import { parseCasAnim, casAnimToText, textToCasAnim, encodeCasAnim, surveyCasHeader } from '@/lib/casAnimCodec';
 import { parseMs3d } from '@/lib/ms3dCodec';
 import { slerpAnimation, slerpTwoSegment, concatenateAnimations, extractSkeletonToText } from '@/lib/slerpUtils';
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function triggerDownload(buffer, filename) {
   const blob = new Blob([buffer], { type: 'application/octet-stream' });
   const a = document.createElement('a');
@@ -37,7 +34,7 @@ function nameWithout(filename, ext) {
   return filename.replace(new RegExp(`\\.${ext}$`, 'i'), '');
 }
 
-function readFile(file) {
+function readFileAsBuffer(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = e => resolve(e.target.result);
@@ -46,7 +43,7 @@ function readFile(file) {
   });
 }
 
-function readTextFile(file) {
+function readFileAsText(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = e => resolve(e.target.result);
@@ -55,7 +52,7 @@ function readTextFile(file) {
   });
 }
 
-// ── Small info tooltip ───────────────────────────────────────────────────────
+// ── Info tooltip ─────────────────────────────────────────────────────────────
 function InfoBadge({ text }) {
   const [show, setShow] = useState(false);
   return (
@@ -74,13 +71,13 @@ function InfoBadge({ text }) {
   );
 }
 
-// ── Tool card ────────────────────────────────────────────────────────────────
-function ToolCard({ title, icon: Icon, info, children }) {
+// ── Tool card ─────────────────────────────────────────────────────────────────
+function ToolCard({ title, icon: CardIcon, info, children }) {
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Icon className="w-4 h-4 text-primary" />
+          <CardIcon className="w-4 h-4 text-primary" />
           {title}
           <InfoBadge text={info} />
         </CardTitle>
@@ -90,16 +87,14 @@ function ToolCard({ title, icon: Icon, info, children }) {
   );
 }
 
-// ── Status line ──────────────────────────────────────────────────────────────
+// ── Status line ───────────────────────────────────────────────────────────────
 function Status({ msg, type = 'idle' }) {
   if (!msg) return null;
   const cls = type === 'ok' ? 'text-green-400' : type === 'err' ? 'text-destructive' : 'text-muted-foreground';
   return <p className={`text-xs ${cls} mt-1`}>{msg}</p>;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SLERP Animation
-// ═══════════════════════════════════════════════════════════════════════════
+// ── SLERP Animation ───────────────────────────────────────────────────────────
 function SlerpPanel() {
   const [status, setStatus] = useState({ msg: '', type: 'idle' });
   const [casFile, setCasFile] = useState(null);
@@ -109,13 +104,12 @@ function SlerpPanel() {
   async function loadCas(e) {
     const f = e.target.files[0];
     if (!f) return;
-    const buf = await readFile(f);
+    const buf = await readFileAsBuffer(f);
     const p = parseCasAnim(buf);
     if (p.errors && p.errors.length > 0) {
       setStatus({ msg: p.errors[0], type: 'err' });
     } else {
-      setCasFile(f);
-      setParsed(p);
+      setCasFile(f); setParsed(p);
       setNewFrames(String(p.nFrames));
       setStatus({ msg: `Loaded: ${f.name} — ${p.nFrames} frames`, type: 'ok' });
     }
@@ -124,23 +118,22 @@ function SlerpPanel() {
   function run() {
     const n = parseInt(newFrames);
     if (!parsed || isNaN(n) || n < 2) { setStatus({ msg: 'Invalid parameters', type: 'err' }); return; }
-    const out  = slerpAnimation(parsed, n);
-    const buf  = encodeCasAnim(out);
-    const name = `${nameWithout(casFile.name, 'cas')}_SLERP_${parsed.nFrames}_${n}.cas`;
-    triggerDownload(buf, name);
-    setStatus({ msg: `Saved: ${name}`, type: 'ok' });
+    const out = slerpAnimation(parsed, n);
+    const buf = encodeCasAnim(out);
+    triggerDownload(buf, `${nameWithout(casFile.name, 'cas')}_SLERP_${parsed.nFrames}_${n}.cas`);
+    setStatus({ msg: `Done — ${n} frames`, type: 'ok' });
   }
 
   return (
     <ToolCard title="SLERP Animation" icon={Zap}
-      info="Resample a .cas animation to a different number of frames (SLERP for rotations, linear for positions). Fewer frames = faster, more frames = slower.">
+      info="Resample a .cas animation to a different number of frames using SLERP for rotations and linear interpolation for positions. Fewer frames = faster, more = slower.">
       <div>
         <Label className="text-xs text-muted-foreground">CAS file</Label>
         <input type="file" accept=".cas" onChange={loadCas} className="block w-full text-xs text-foreground mt-1" />
       </div>
       {parsed && (
         <div>
-          <Label className="text-xs text-muted-foreground">Current frames: {parsed.nFrames} → New frames</Label>
+          <Label className="text-xs text-muted-foreground">Current: {parsed.nFrames} → New frames</Label>
           <Input value={newFrames} onChange={e => setNewFrames(e.target.value)} type="number" min="2" className="mt-1 h-8 text-xs" />
         </div>
       )}
@@ -152,9 +145,7 @@ function SlerpPanel() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SLERP Two Segment
-// ═══════════════════════════════════════════════════════════════════════════
+// ── SLERP Two Segment ─────────────────────────────────────────────────────────
 function SlerpTwoSegPanel() {
   const [status, setStatus] = useState({ msg: '', type: 'idle' });
   const [casFile, setCasFile] = useState(null);
@@ -166,7 +157,7 @@ function SlerpTwoSegPanel() {
   async function loadCas(e) {
     const f = e.target.files[0];
     if (!f) return;
-    const buf = await readFile(f);
+    const buf = await readFileAsBuffer(f);
     const p = parseCasAnim(buf);
     if (!p || p.errors?.length) { setStatus({ msg: p?.errors?.[0] || 'Parse error', type: 'err' }); return; }
     setCasFile(f); setParsed(p);
@@ -180,9 +171,8 @@ function SlerpTwoSegPanel() {
     if (!parsed || isNaN(sf) || isNaN(sn1) || isNaN(sn2)) { setStatus({ msg: 'Invalid parameters', type: 'err' }); return; }
     const out = slerpTwoSegment(parsed, sf, sn1, sn2);
     const buf = encodeCasAnim(out);
-    const name = `${nameWithout(casFile.name, 'cas')}_SLERP_${parsed.nFrames}_${sn1}_${sn2}.cas`;
-    triggerDownload(buf, name);
-    setStatus({ msg: `Saved: ${name}`, type: 'ok' });
+    triggerDownload(buf, `${nameWithout(casFile.name, 'cas')}_SLERP_${parsed.nFrames}_${sn1}_${sn2}.cas`);
+    setStatus({ msg: `Done — ${out.nFrames} frames total`, type: 'ok' });
   }
 
   return (
@@ -195,7 +185,7 @@ function SlerpTwoSegPanel() {
       {parsed && (
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <Label className="text-xs text-muted-foreground">Split at frame (1–{parsed.nFrames - 1})</Label>
+            <Label className="text-xs text-muted-foreground">Split frame (1–{parsed.nFrames - 1})</Label>
             <Input value={splitFrame} onChange={e => setSplitFrame(e.target.value)} type="number" className="mt-1 h-8 text-xs" />
           </div>
           <div>
@@ -216,26 +206,23 @@ function SlerpTwoSegPanel() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CAS ↔ Text
-// ═══════════════════════════════════════════════════════════════════════════
+// ── CAS ↔ Text ────────────────────────────────────────────────────────────────
 function CasTextPanel() {
   const [statusF, setStatusF] = useState({ msg: '', type: 'idle' });
   const [statusB, setStatusB] = useState({ msg: '', type: 'idle' });
 
   async function casToText(e) {
     const f = e.target.files[0]; if (!f) return;
-    const buf = await readFile(f);
+    const buf = await readFileAsBuffer(f);
     const p = parseCasAnim(buf);
     if (!p || p.errors?.length) { setStatusF({ msg: p?.errors?.[0] || 'Parse error', type: 'err' }); return; }
-    const txt = casAnimToText(p);
-    triggerTextDownload(txt, nameWithout(f.name, 'cas') + '.txt');
-    setStatusF({ msg: `Exported: ${f.name} → .txt`, type: 'ok' });
+    triggerTextDownload(casAnimToText(p), nameWithout(f.name, 'cas') + '.txt');
+    setStatusF({ msg: `Exported ${f.name} → .txt`, type: 'ok' });
   }
 
   async function textToCas(e) {
     const f = e.target.files[0]; if (!f) return;
-    const txt = await readTextFile(f);
+    const txt = await readFileAsText(f);
     const p = textToCasAnim(txt);
     const buf = encodeCasAnim(p);
     const name = nameWithout(f.name, 'txt') + '_modified.cas';
@@ -246,28 +233,20 @@ function CasTextPanel() {
   return (
     <div className="space-y-3">
       <ToolCard title="CAS → Text" icon={FileText}
-        info="Convert a binary .cas animation file to human-readable text (quaternions + Euler angles in degrees).">
-        <div>
-          <Label className="text-xs text-muted-foreground">Select .cas file</Label>
-          <input type="file" accept=".cas" onChange={casToText} className="block w-full text-xs text-foreground mt-1" />
-        </div>
+        info="Convert a binary .cas animation to human-readable text with quaternions and Euler angles in degrees.">
+        <input type="file" accept=".cas" onChange={casToText} className="block w-full text-xs text-foreground" />
         <Status {...statusF} />
       </ToolCard>
       <ToolCard title="Text → CAS" icon={FileText}
-        info="Convert a .txt animation text file (produced by CAS→Text) back into a binary .cas file. Euler angles in degrees are read and converted to quaternions.">
-        <div>
-          <Label className="text-xs text-muted-foreground">Select .txt file</Label>
-          <input type="file" accept=".txt" onChange={textToCas} className="block w-full text-xs text-foreground mt-1" />
-        </div>
+        info="Convert a .txt animation text file back into binary .cas. Euler angles are read and converted to quaternions.">
+        <input type="file" accept=".txt" onChange={textToCas} className="block w-full text-xs text-foreground" />
         <Status {...statusB} />
       </ToolCard>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Concatenate Animations
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Concatenate Animations ────────────────────────────────────────────────────
 function ConcatPanel() {
   const [status, setStatus] = useState({ msg: '', type: 'idle' });
   const [file1, setFile1] = useState(null);
@@ -277,35 +256,34 @@ function ConcatPanel() {
 
   async function loadF(e, idx) {
     const f = e.target.files[0]; if (!f) return;
-    const buf = await readFile(f);
+    const buf = await readFileAsBuffer(f);
     const p = parseCasAnim(buf);
     if (!p || p.errors?.length) { setStatus({ msg: p?.errors?.[0] || 'Parse error', type: 'err' }); return; }
-    if (idx === 1) { setFile1(f); setParsed1(p); setStatus({ msg: `File 1: ${f.name} (${p.nFrames} frames)`, type: 'ok' }); }
-    else           { setFile2(f); setParsed2(p); setStatus({ msg: `File 2: ${f.name} (${p.nFrames} frames)`, type: 'ok' }); }
+    if (idx === 1) { setFile1(f); setParsed1(p); setStatus({ msg: `File 1: ${p.nFrames} frames`, type: 'ok' }); }
+    else           { setFile2(f); setParsed2(p); setStatus({ msg: `File 2: ${p.nFrames} frames`, type: 'ok' }); }
   }
 
   function run() {
     if (!parsed1 || !parsed2) { setStatus({ msg: 'Load both files first', type: 'err' }); return; }
     const out = concatenateAnimations(parsed1, parsed2);
     const buf = encodeCasAnim(out);
-    const name = `${nameWithout(file1.name, 'cas')}_concat_${nameWithout(file2.name, 'cas')}.cas`;
-    triggerDownload(buf, name);
-    setStatus({ msg: `Saved: ${name} (${out.nFrames} frames)`, type: 'ok' });
+    triggerDownload(buf, `${nameWithout(file1.name, 'cas')}_concat_${nameWithout(file2.name, 'cas')}.cas`);
+    setStatus({ msg: `Done — ${out.nFrames} frames total`, type: 'ok' });
   }
 
   return (
     <ToolCard title="Concatenate Animations" icon={GitMerge}
-      info="Join two .cas files end-to-end into a single animation.">
+      info="Join two .cas animation files end-to-end into a single file.">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs text-muted-foreground">First .cas</Label>
           <input type="file" accept=".cas" onChange={e => loadF(e, 1)} className="block w-full text-xs text-foreground mt-1" />
-          {parsed1 && <p className="text-xs text-muted-foreground mt-0.5">{parsed1.nFrames} frames</p>}
+          {parsed1 && <p className="text-xs text-muted-foreground">{parsed1.nFrames} frames</p>}
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">Second .cas</Label>
           <input type="file" accept=".cas" onChange={e => loadF(e, 2)} className="block w-full text-xs text-foreground mt-1" />
-          {parsed2 && <p className="text-xs text-muted-foreground mt-0.5">{parsed2.nFrames} frames</p>}
+          {parsed2 && <p className="text-xs text-muted-foreground">{parsed2.nFrames} frames</p>}
         </div>
       </div>
       <Button size="sm" onClick={run} disabled={!parsed1 || !parsed2}>
@@ -316,54 +294,47 @@ function ConcatPanel() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Ms3d Merge
-// ═══════════════════════════════════════════════════════════════════════════
-import { mergeMs3d } from '@/lib/slerpUtils';
-
+// ── Ms3d Merge (info only — encoder not yet implemented) ──────────────────────
 function Ms3dMergePanel() {
   const [status, setStatus] = useState({ msg: '', type: 'idle' });
-  const [primaryFile, setPrimaryFile] = useState(null);
-  const [secondaryFile, setSecondaryFile] = useState(null);
   const [primaryMs3d, setPrimaryMs3d] = useState(null);
   const [secondaryMs3d, setSecondaryMs3d] = useState(null);
 
   async function loadMs3d(e, isPrimary) {
     const f = e.target.files[0]; if (!f) return;
-    const buf = await readFile(f);
+    const buf = await readFileAsBuffer(f);
     const p = parseMs3d(buf);
     if (p.error) { setStatus({ msg: p.error, type: 'err' }); return; }
     if (isPrimary) {
       if (!p.joints || p.joints.length === 0) {
-        setStatus({ msg: 'Primary file has no skeleton/joints! Select the file with bones as primary.', type: 'err' });
-        return;
+        setStatus({ msg: 'Primary must have a skeleton!', type: 'err' }); return;
       }
-      setPrimaryFile(f); setPrimaryMs3d(p);
-      setStatus({ msg: `Primary: ${f.name} (${p.joints.length} joints, ${p.groups.length} groups)`, type: 'ok' });
+      setPrimaryMs3d(p);
+      setStatus({ msg: `Primary: ${p.joints.length} joints, ${p.groups.length} groups`, type: 'ok' });
     } else {
-      setSecondaryFile(f); setSecondaryMs3d(p);
-      setStatus({ msg: `Secondary: ${f.name} (${p.groups.length} groups to merge)`, type: 'ok' });
+      setSecondaryMs3d(p);
+      setStatus({ msg: `Secondary: ${p.groups.length} groups loaded`, type: 'ok' });
     }
   }
 
   function run() {
     if (!primaryMs3d || !secondaryMs3d) { setStatus({ msg: 'Load both files first', type: 'err' }); return; }
-    setStatus({ msg: 'Ms3d binary encoder not yet implemented. Merge computed in memory only.', type: 'err' });
+    setStatus({ msg: 'Ms3d binary encoder coming soon — use original GOAT for now.', type: 'err' });
   }
 
   return (
     <ToolCard title="Ms3d Merge" icon={Merge}
-      info="Merge two .ms3d files. Select the file WITH the skeleton as Primary, and the geometry-only file (weapon, shield, etc.) as Secondary.">
+      info="Merge two .ms3d files — primary (with skeleton) + secondary (geometry only, e.g. weapon/shield). Binary encoder coming soon.">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs text-muted-foreground">Primary (has skeleton)</Label>
           <input type="file" accept=".ms3d" onChange={e => loadMs3d(e, true)} className="block w-full text-xs text-foreground mt-1" />
-          {primaryMs3d && <p className="text-xs text-muted-foreground mt-0.5">{primaryMs3d.joints.length} joints, {primaryMs3d.groups.length} groups</p>}
+          {primaryMs3d && <p className="text-xs text-muted-foreground">{primaryMs3d.joints.length} joints</p>}
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">Secondary (geometry only)</Label>
           <input type="file" accept=".ms3d" onChange={e => loadMs3d(e, false)} className="block w-full text-xs text-foreground mt-1" />
-          {secondaryMs3d && <p className="text-xs text-muted-foreground mt-0.5">{secondaryMs3d.groups.length} groups</p>}
+          {secondaryMs3d && <p className="text-xs text-muted-foreground">{secondaryMs3d.groups.length} groups</p>}
         </div>
       </div>
       <Button size="sm" onClick={run} disabled={!primaryMs3d || !secondaryMs3d}>
@@ -374,19 +345,17 @@ function Ms3dMergePanel() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Extract Skeleton
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Extract Skeleton ──────────────────────────────────────────────────────────
 function ExtractSkeletonPanel() {
   const [status, setStatus] = useState({ msg: '', type: 'idle' });
   const [text, setText] = useState('');
 
   async function load(e) {
     const f = e.target.files[0]; if (!f) return;
-    const buf = await readFile(f);
+    const buf = await readFileAsBuffer(f);
     const ms3d = parseMs3d(buf);
     if (ms3d.error) { setStatus({ msg: ms3d.error, type: 'err' }); return; }
-    if (!ms3d.joints || ms3d.joints.length === 0) { setStatus({ msg: 'No skeleton found in file', type: 'err' }); return; }
+    if (!ms3d.joints || ms3d.joints.length === 0) { setStatus({ msg: 'No skeleton found', type: 'err' }); return; }
     const txt = extractSkeletonToText(ms3d);
     setText(txt);
     const name = nameWithout(f.name, 'ms3d') + '_skeleton.skelexport';
@@ -396,11 +365,8 @@ function ExtractSkeletonPanel() {
 
   return (
     <ToolCard title="Extract Skeleton" icon={Layers}
-      info="Extract the skeleton from a .ms3d file and save it as a .skelexport text file (game coords, comma-delimited, with hierarchy indices and bone names).">
-      <div>
-        <Label className="text-xs text-muted-foreground">Select .ms3d file</Label>
-        <input type="file" accept=".ms3d" onChange={load} className="block w-full text-xs text-foreground mt-1" />
-      </div>
+      info="Extract the skeleton from a .ms3d file as a .skelexport text file (game coords, comma-delimited with hierarchy indices).">
+      <input type="file" accept=".ms3d" onChange={load} className="block w-full text-xs text-foreground" />
       {text && (
         <ScrollArea className="h-32 w-full rounded border border-border p-2 bg-muted/30">
           <pre className="text-xs text-foreground font-mono whitespace-pre">{text}</pre>
@@ -411,20 +377,18 @@ function ExtractSkeletonPanel() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Survey CAS Directory
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Survey CAS ────────────────────────────────────────────────────────────────
 function SurveyPanel() {
   const [results, setResults] = useState([]);
   const [status, setStatus] = useState({ msg: '', type: 'idle' });
 
   async function load(e) {
     const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    setStatus({ msg: `Processing ${files.length} files...`, type: 'idle' });
+    if (!files.length) return;
+    setStatus({ msg: `Processing ${files.length} files…`, type: 'idle' });
     const rows = [];
     for (const f of files) {
-      const buf = await readFile(f);
+      const buf = await readFileAsBuffer(f);
       const info = surveyCasHeader(buf, f.name);
       if (info) rows.push(info);
     }
@@ -434,11 +398,8 @@ function SurveyPanel() {
 
   return (
     <ToolCard title="Survey CAS Directory" icon={FileText}
-      info="Upload multiple .cas files to inspect their headers: version, animation time, bone count, etc.">
-      <div>
-        <Label className="text-xs text-muted-foreground">Select multiple .cas files</Label>
-        <input type="file" accept=".cas" multiple onChange={load} className="block w-full text-xs text-foreground mt-1" />
-      </div>
+      info="Upload multiple .cas files to inspect their headers: version, animation time, bone count, body size.">
+      <input type="file" accept=".cas" multiple onChange={load} className="block w-full text-xs text-foreground" />
       <Status {...status} />
       {results.length > 0 && (
         <ScrollArea className="h-48 w-full rounded border border-border">
@@ -453,7 +414,7 @@ function SurveyPanel() {
             <tbody>
               {results.map((r, i) => (
                 <tr key={i} className="border-t border-border hover:bg-muted/20">
-                  <td className="px-2 py-1 font-mono max-w-xs truncate">{r.filename}</td>
+                  <td className="px-2 py-1 font-mono truncate max-w-xs">{r.filename}</td>
                   <td className="px-2 py-1">{r.version}</td>
                   <td className="px-2 py-1">{r.animTime}s</td>
                   <td className="px-2 py-1">{r.nBones}</td>
@@ -468,28 +429,23 @@ function SurveyPanel() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Main Page
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function GoatTools() {
   return (
     <div className="min-h-screen bg-background p-4 lg:p-6">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Swords className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">GOAT Tools</h1>
-              <p className="text-xs text-muted-foreground">Game Object Application Toolbox — M2TW animation & mesh utilities</p>
-            </div>
+        <div className="mb-6 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+            <Swords className="w-5 h-5 text-primary" />
           </div>
-          <div className="flex flex-wrap gap-1 mt-2">
-            {['Animation Functions', 'Mesh Utilities', 'Skeleton Tools'].map(t => (
-              <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-            ))}
+          <div>
+            <h1 className="text-xl font-bold text-foreground">GOAT Tools</h1>
+            <p className="text-xs text-muted-foreground">Game Object Application Toolbox — M2TW animation & mesh utilities</p>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {['SLERP', 'CAS↔Text', 'Concatenate', 'Extract Skeleton', 'Survey'].map(t => (
+                <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -500,7 +456,6 @@ export default function GoatTools() {
             <TabsTrigger value="survey" className="text-xs">Survey</TabsTrigger>
           </TabsList>
 
-          {/* ── Animation tab ── */}
           <TabsContent value="animation" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <SlerpPanel />
@@ -512,7 +467,6 @@ export default function GoatTools() {
             </div>
           </TabsContent>
 
-          {/* ── Mesh / Skeleton tab ── */}
           <TabsContent value="mesh" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Ms3dMergePanel />
@@ -521,15 +475,13 @@ export default function GoatTools() {
             <Card className="bg-muted/30 border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  Not yet available in-browser
+                  <Info className="w-4 h-4" /> Not yet available in-browser
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  The following GOAT functions require Python (the original GOAT app) as they involve
-                  complex binary format reconstruction not yet implemented here:
-                  <strong className="text-foreground"> Mesh ↔ Ms3d Converter</strong>,{' '}
+                  These functions require the original Python GOAT app:{' '}
+                  <strong className="text-foreground">Mesh ↔ Ms3d</strong>,{' '}
                   <strong className="text-foreground">Banner Mesh ↔ Ms3d</strong>,{' '}
                   <strong className="text-foreground">Strat CAS ↔ Ms3d</strong>,{' '}
                   <strong className="text-foreground">Animmerge / Animextract</strong>,{' '}
@@ -542,7 +494,6 @@ export default function GoatTools() {
             </Card>
           </TabsContent>
 
-          {/* ── Survey tab ── */}
           <TabsContent value="survey">
             <SurveyPanel />
           </TabsContent>
