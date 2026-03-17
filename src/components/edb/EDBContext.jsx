@@ -106,7 +106,9 @@ export function EDBProvider({ children }) {
         if (b.name === buildingName) {
           const newLevels = b.levels.map(l => {
             if (l.name === levelName) {
-              return typeof updater === 'function' ? updater(l) : { ...l, ...updater };
+              const updated = typeof updater === 'function' ? updater(l) : { ...l, ...updater };
+              // If name changed, update selectedLevel too (done after state update)
+              return updated;
             }
             return l;
           });
