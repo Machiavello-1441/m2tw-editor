@@ -235,7 +235,23 @@ export function EDBProvider({ children }) {
     setIsDirty(false);
   }, []);
 
-  const { saveNow } = useEDBAutoSave(edbData, textData, fileName);
+  const { saveNow: saveSnapshot } = useEDBAutoSave(edbData, textData, fileName);
+
+  const saveNow = useCallback(async () => {
+    // Persist to localStorage so data survives page reload
+    if (edbData) {
+      try {
+        const { serializeEDB, serializeTextFile } = await import('./EDBParser');
+        localStorage.setItem('m2tw_edb_file', serializeEDB(edbData));
+        localStorage.setItem('m2tw_edb_file_name', fileName);
+        if (textData && Object.keys(textData).length > 0) {
+          localStorage.setItem('m2tw_edb_txt_file', serializeTextFile(textData));
+        }
+      } catch {}
+    }
+    setIsDirty(false);
+    return saveSnapshot();
+  }, [edbData, textData, fileName, saveSnapshot]);
 
   const value = {
     edbData, setEdbData, loadEDB, exportEDB,
