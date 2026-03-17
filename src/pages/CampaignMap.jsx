@@ -201,6 +201,10 @@ export default function CampaignMap() {
           return prev;
         });
       }
+      if (name === 'campaign_script.txt') {
+        const text = await file.text();
+        try { localStorage.setItem('m2tw_campaign_script', text); sessionStorage.setItem('m2tw_script_raw', text); } catch {}
+      }
       if (name === 'descr_sm_factions.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {}
