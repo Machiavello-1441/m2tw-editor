@@ -146,7 +146,9 @@ export default function UnitEditorPage() {
     } catch { return {}; }
   });
   const [unitImages, setUnitImages] = useState(() => window._m2tw_unit_images || loadUnitImages());
+  const [modeldb, setModeldb] = useState(() => modeldbStore.get());
   const fileRef = useRef();
+  const modeldbRef = useRef();
 
   // Auto-load from EDU file and export_units.txt if Home page cached them
   useEffect(() => {
