@@ -166,43 +166,36 @@ export function parseCasAnim(buffer) {
   // Read quat data for each bone
   for (let b = 0; b < nBones; b++) {
     const bn = bones[b];
+    bn.quatFrames = [];
     if (bn.nQuat > 0) {
       const start = dataStart + bn.quatOffset;
-      bn.quatFrames = [];
       for (let f = 0; f < bn.nQuat; f++) {
-        const q1 = view.getFloat32(start + f * 16 + 0, true);
-        const q2 = view.getFloat32(start + f * 16 + 4, true);
-        const q3 = view.getFloat32(start + f * 16 + 8, true);
-        const q4 = view.getFloat32(start + f * 16 + 12, true);
+        const pos = start + f * 16;
+        if (pos + 16 > buffer.byteLength) break;
+        const q1 = view.getFloat32(pos + 0, true);
+        const q2 = view.getFloat32(pos + 4, true);
+        const q3 = view.getFloat32(pos + 8, true);
+        const q4 = view.getFloat32(pos + 12, true);
         const [roll, pitch, yaw] = quatToEuler(q1, q2, q3, q4);
         bn.quatFrames.push({ q1, q2, q3, q4, roll, pitch, yaw });
       }
-    } else {
-      bn.quatFrames = [];
     }
   }
 
   // Read anim (translation) data for each bone
   for (let b = 0; b < nBones; b++) {
     const bn = bones[b];
+    bn.animFrames = [];
     if (bn.nAnim > 0) {
-      // animOffset is from the start of the anim data block
-      // anim block starts after quat data
-      const totalQuatBytes = bones.reduce((s, bone) => s + bone.nQuat * 16, 0);
-      const animBlockStart = dataStart + totalQuatBytes;
-      const start = animBlockStart + (bn.animOffset - totalQuatBytes);
-      // Alternatively: animOffset in file is absolute from dataStart
-      // Let's use animOffset directly from dataStart
       const absStart = dataStart + bn.animOffset;
-      bn.animFrames = [];
       for (let f = 0; f < bn.nAnim; f++) {
-        const x = view.getFloat32(absStart + f * 12 + 0, true);
-        const y = view.getFloat32(absStart + f * 12 + 4, true);
-        const z = view.getFloat32(absStart + f * 12 + 8, true);
+        const pos = absStart + f * 12;
+        if (pos + 12 > buffer.byteLength) break;
+        const x = view.getFloat32(pos + 0, true);
+        const y = view.getFloat32(pos + 4, true);
+        const z = view.getFloat32(pos + 8, true);
         bn.animFrames.push({ x, y, z });
       }
-    } else {
-      bn.animFrames = [];
     }
   }
 
