@@ -101,7 +101,12 @@ const DATA_FILE_MAP = {
   'export_buildings.txt': 'txt',
   'export_descr_character_traits.txt': 'traits',
   'export_descr_ancillaries.txt': 'anc',
-  'export_units.txt': 'expunits'
+  'export_units.txt': 'expunits',
+  // Geomod-required files
+  'descr_cultures.txt': 'cultures',
+  'descr_names.txt': 'names',
+  'descr_rebel_factions.txt': 'rebel_fac',
+  'descr_religions.txt': 'religions',
 };
 
 
@@ -154,7 +159,11 @@ export default function Home() {
       aerial_ground_types: ls('m2tw_aerial_ground_types') ? 'ok' : 'idle',
       strings_bin: stringsCount > 0 ? 'ok' : 'idle',
       anc_images: 'idle',
-      unit_images: 'idle'
+      unit_images: 'idle',
+      cultures: ls('m2tw_cultures_file') ? 'ok' : 'idle',
+      names: ls('m2tw_names_file') ? 'ok' : 'idle',
+      rebel_fac: ls('m2tw_rebel_factions_file') ? 'ok' : 'idle',
+      religions: ls('m2tw_religions_file') ? 'ok' : 'idle',
     };
   });
 
@@ -221,7 +230,12 @@ export default function Home() {
       anc: 'm2tw_anc_file',
       vnvs: 'm2tw_vnvs_file',
       anctxt: 'm2tw_anctxt_file',
-      expunits: 'm2tw_export_units_file'
+      expunits: 'm2tw_export_units_file',
+      // Geomod files (stored for campaign map editor)
+      cultures: 'm2tw_cultures_file',
+      names: 'm2tw_names_file',
+      rebel_fac: 'm2tw_rebel_factions_file',
+      religions: 'm2tw_religions_file',
     };
 
     // Filename storage keys (for context auto-load)
@@ -230,7 +244,7 @@ export default function Home() {
       anc: 'm2tw_anc_file_name',
       vnvs: 'm2tw_vnvs_file_name',
       anctxt: 'm2tw_anctxt_file_name',
-      expunits: 'm2tw_export_units_file_name'
+      expunits: 'm2tw_export_units_file_name',
     };
 
     // Separate TGA files for auto image loading
@@ -239,6 +253,7 @@ export default function Home() {
     const bldTgaFiles = [];
     const baseMapFiles = [];
     const groundTypeTgaFiles = [];
+    const resourceTgaFiles = [];
     const stringsBinFiles = {};
 
     for (const file of files) {
@@ -265,6 +280,8 @@ export default function Home() {
           unitTgaFiles.push(file);
         } else if (pathLower.includes('/ui/') && pathLower.includes('/buildings/')) {
           bldTgaFiles.push(file);
+        } else if (pathLower.includes('/ui/resources/') || pathLower.includes('/ui/resource/')) {
+          resourceTgaFiles.push(file);
         } else if (pathLower.includes('/maps/base/')) {
           baseMapFiles.push(file);
         } else if (pathLower.includes('/terrain/aerial_map/ground_types/')) {
@@ -273,8 +290,9 @@ export default function Home() {
         continue;
       }
 
-      // Base map text files
-      if ((name === 'descr_strat.txt' || name === 'descr_regions.txt') && pathLower.includes('/maps/base/')) {
+      // Base map text files (forward to campaign map editor)
+      const BASE_MAP_TXTS = ['descr_strat.txt', 'descr_regions.txt', 'descr_sounds_music_types.txt', 'descr_terrain.txt'];
+      if (BASE_MAP_TXTS.includes(name) && pathLower.includes('/maps/base/')) {
         baseMapFiles.push(file);
         continue;
       }
