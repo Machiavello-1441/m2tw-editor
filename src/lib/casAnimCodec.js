@@ -112,13 +112,14 @@ export function parseCasAnim(buffer) {
   const isOldVersion = version <= 3.02;
 
   // ── Body size + filler (8 bytes) ──────────────────────────────────────────
-  const bodySize  = view.getInt32(off, true); off += 4;
-  const bodyFlag  = view.getInt32(off, true); off += 4;
+  const bodySize  = view.getUint32(off, true); off += 4;
+  const bodyFlag  = view.getInt32(off, true);  off += 4;
 
   // Footer is stored at the end; save it as a blob
-  const footerSize = buffer.byteLength - HEADER_SIZE - bodySize;
-  const footerBytes = footerSize > 0
-    ? new Uint8Array(buffer, HEADER_SIZE + bodySize, footerSize)
+  const footerOffset = HEADER_SIZE + bodySize;
+  const footerSize   = buffer.byteLength - footerOffset;
+  const footerBytes  = (footerSize > 0 && footerOffset >= 0 && footerOffset + footerSize <= buffer.byteLength)
+    ? new Uint8Array(buffer.slice(footerOffset, footerOffset + footerSize))
     : new Uint8Array(0);
 
   // ── Hierarchy (nBones × int16) ─────────────────────────────────────────────
