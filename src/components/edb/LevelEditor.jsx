@@ -40,6 +40,10 @@ export default function LevelEditor() {
 
   const update = (field, value) => updateLevel(selectedBuilding, selectedLevel, { [field]: value });
 
+  // Local state for level name to avoid losing focus on each keystroke
+  const [localName, setLocalName] = React.useState(level.name);
+  React.useEffect(() => { setLocalName(level.name); }, [level.name]);
+
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-4">
@@ -66,8 +70,13 @@ export default function LevelEditor() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-muted-foreground">Level Name</Label>
-                <Input className="h-7 text-xs mt-1" value={level.name}
-                  onChange={e => updateLevel(selectedBuilding, selectedLevel, prev => ({ ...prev, name: e.target.value }))}
+                <Input className="h-7 text-xs mt-1" value={localName}
+                  onChange={e => setLocalName(e.target.value)}
+                  onBlur={() => {
+                    if (localName !== level.name) {
+                      updateLevel(selectedBuilding, selectedLevel, prev => ({ ...prev, name: localName }));
+                    }
+                  }}
                 />
               </div>
               <div>

@@ -65,33 +65,77 @@ function ImageSlot({ culture, levelName, slot }) {
   const fileRef = useRef();
   const [preview, setPreview] = useState(null);
 
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState(null);
+
   const handleFile = (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const dataUrl = ev.target.result;
-      const image = new window.Image();
-      image.onload = () => {
+      if (file.name.toLowerCase().endsWith('.tga')) {
+        // TGA: decode then open crop modal
+        const buf = ev.target.result;
+        import('./EDBEditor').then(() => {}); // warmup ignore
+        // decode inline
+        const data = new Uint8Array(buf);
         const canvas = document.createElement('canvas');
-        canvas.width = image.width; canvas.height = image.height;
-        canvas.getContext('2d').drawImage(image, 0, 0);
-        setPreview({ dataUrl, canvas });
-      };
-      image.src = dataUrl;
+        canvas.width = data[12] | data[13] << 8;
+        canvas.height = data[14] | data[15] << 8;
+        const bpp = data[16]; const idLen = data[0];
+        const pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+        let si = 18 + idLen, pi = 0;
+        if (data[2] === 2) {
+          for (let i = 0; i < canvas.width * canvas.height; i++) {
+            const b = data[si++], g = data[si++], r = data[si++], a = bpp === 32 ? data[si++] : 255;
+            pixels[pi++] = r; pixels[pi++] = g; pixels[pi++] = b; pixels[pi++] = a;
+          }
+        } else {
+          let px = 0;
+          while (px < canvas.width * canvas.height) {
+            const rc = data[si++], cnt = (rc & 0x7f) + 1;
+            if (rc & 0x80) {
+              const b = data[si++], g = data[si++], r = data[si++], a = bpp === 32 ? data[si++] : 255;
+              for (let i = 0; i < cnt; i++, px++) { pixels[pi++] = r; pixels[pi++] = g; pixels[pi++] = b; pixels[pi++] = a; }
+            } else {
+              for (let i = 0; i < cnt; i++, px++) {
+                const b = data[si++], g = data[si++], r = data[si++], a = bpp === 32 ? data[si++] : 255;
+                pixels[pi++] = r; pixels[pi++] = g; pixels[pi++] = b; pixels[pi++] = a;
+              }
+            }
+          }
+        }
+        const topOrigin = !!(data[17] & 0x20);
+        if (!topOrigin) {
+          const rowSize = canvas.width * 4;
+          for (let y = 0; y < Math.floor(canvas.height / 2); y++) {
+            const top = y * rowSize, bot = (canvas.height - 1 - y) * rowSize;
+            for (let i = 0; i < rowSize; i++) { const tmp = pixels[top + i]; pixels[top + i] = pixels[bot + i]; pixels[bot + i] = tmp; }
+          }
+        }
+        canvas.getContext('2d').putImageData(new ImageData(pixels, canvas.width, canvas.height), 0, 0);
+        setCropSrc(canvas.toDataURL('image/png'));
+        setCropOpen(true);
+      } else {
+        setCropSrc(ev.target.result);
+        setCropOpen(true);
+      }
     };
-    reader.readAsDataURL(file);
+    if (file.name.toLowerCase().endsWith('.tga')) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsDataURL(file);
+    }
     e.target.value = '';
   };
 
-  const handleSave = () => {
-    if (!preview) return;
+  const handleCropConfirm = (dataUrl, canvas) => {
+    setCropOpen(false);
     const { w, h } = slot;
+    setPreview({ dataUrl, canvas });
+    // Immediately store in imageData
     const filename = `#${culture}_${levelName}${slot.type === 'construction' ? '_constructed' : ''}.tga`;
-    const tga = encodeTGA(preview.canvas, w, h);
-    const blob = new Blob([tga], { type: 'image/x-tga' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href);
     const off = document.createElement('canvas'); off.width = w; off.height = h;
-    off.getContext('2d').drawImage(preview.canvas, 0, 0, w, h);
+    off.getContext('2d').drawImage(canvas, 0, 0, w, h);
     loadBuildingTgaImages([{
       path: `data/ui/${culture}/buildings/${slot.type === 'icon' ? 'constructed/' : ''}${filename}`,
       name: filename, url: off.toDataURL('image/png'),
@@ -99,39 +143,57 @@ function ImageSlot({ culture, levelName, slot }) {
     setPreview(null);
   };
 
+  const handleRemove = () => {
+    const { imageData: _d, setImageData } = { imageData, setImageData: undefined };
+    // remove from imageData by key
+    const key = `${levelName}_${culture}_${slot.type}`;
+    // We need setImageData from context — use loadBuildingTgaImages with empty to trigger a manual remove
+    // Instead call setImageData directly via a helper
+    removeImage(key);
+  };
+
   const displayImg = preview ? preview.dataUrl : img?.url;
 
   return (
-    <div className="flex flex-col items-center gap-0.5 group" style={{ width: slot.w }}>
-      <span className="text-[9px] text-muted-foreground">{slot.label}</span>
-      {displayImg ? (
-        <div className="relative">
-          <img src={displayImg} alt={slot.label}
-            className="rounded border border-border bg-black/30 object-contain"
-            style={{ width: slot.w, height: slot.h }} />
-          {preview ? (
-            <div className="absolute -bottom-4 left-0 right-0 flex justify-center gap-1">
-              <button className="text-[8px] text-green-400 hover:text-green-300" onClick={handleSave} title="Save as TGA">↓tga</button>
-              <button className="text-[8px] text-destructive hover:text-red-300" onClick={() => setPreview(null)}>✕</button>
-            </div>
-          ) : (
+    <>
+      <ImageCropModal
+        open={cropOpen}
+        onClose={() => setCropOpen(false)}
+        onConfirm={handleCropConfirm}
+        sourceDataUrl={cropSrc}
+        targetW={slot.w}
+        targetH={slot.h}
+        slotLabel={slot.label}
+      />
+      <div className="flex flex-col items-center gap-0.5 group" style={{ width: slot.w }}>
+        <span className="text-[9px] text-muted-foreground">{slot.label}</span>
+        {displayImg ? (
+          <div className="relative">
+            <img src={displayImg} alt={slot.label}
+              className="rounded border border-border bg-black/30 object-contain cursor-pointer"
+              style={{ width: slot.w, height: slot.h }}
+              onClick={() => fileRef.current?.click()}
+              title="Click to replace"
+            />
             <button
-              className="absolute inset-0 bg-black/0 hover:bg-black/40 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[8px] text-white"
-              onClick={() => fileRef.current?.click()} title="Replace">↑</button>
-          )}
-        </div>
-      ) : !img && (
-        <button
-          className="border border-dashed border-border rounded flex flex-col items-center justify-center gap-0.5 hover:border-primary/40 hover:bg-primary/5 transition-colors text-muted-foreground"
-          style={{ width: slot.w, height: slot.h }}
-          onClick={() => fileRef.current?.click()}
-        >
-          <Upload className="w-3 h-3" />
-          <span className="text-[7px]">{slot.w}×{slot.h}</span>
-        </button>
-      )}
-      <input ref={fileRef} type="file" accept="image/*,.tga,.dds" className="hidden" onChange={handleFile} />
-    </div>
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => { e.stopPropagation(); removeImage(`${levelName}_${culture}_${slot.type}`); }}
+              title="Remove image"
+            >✕</button>
+          </div>
+        ) : (
+          <button
+            className="border border-dashed border-border rounded flex flex-col items-center justify-center gap-0.5 hover:border-primary/40 hover:bg-primary/5 transition-colors text-muted-foreground"
+            style={{ width: slot.w, height: slot.h }}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="w-3 h-3" />
+            <span className="text-[7px]">{slot.w}×{slot.h}</span>
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept="image/*,.tga" className="hidden" onChange={handleFile} />
+      </div>
+    </>
   );
 }
 
