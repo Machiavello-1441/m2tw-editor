@@ -616,11 +616,6 @@ export default function CampaignMap() {
                 )}
               </div>
             )}
-            {activeTab === 'script' && (
-              <div className="h-full overflow-hidden">
-                <ScriptingPanel stratData={stratData} />
-              </div>
-            )}
             {activeTab === 'validation' && (
               <div className="h-full overflow-hidden">
                 <MapValidationPanel layers={layers} onJumpTo={(x, y) => jumpRef.current?.(x, y)} />
