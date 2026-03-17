@@ -20,6 +20,7 @@ const navItems = [
   { name: 'Strings Editor', icon: FileText, page: 'StringsBinEditor' },
   { name: 'Assets', icon: Package, page: 'AssetsConverter' },
   { name: 'Animations', icon: Swords, page: 'AnimationEditor' },
+  { name: 'GOAT Tools', icon: Swords, page: 'GoatTools' },
   { name: 'Lua Scripts', icon: Code2, page: 'LuaScripts' },
   { name: 'Export', icon: Download, page: 'Export' },
 ];
