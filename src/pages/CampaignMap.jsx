@@ -366,10 +366,11 @@ export default function CampaignMap() {
   };
 
   const tabs = [
-    { id: 'layers',     label: 'Layers',     Icon: Layers },
-    { id: 'strat',      label: 'Strat',      Icon: Globe },
-    { id: 'validation', label: 'Validate',   Icon: CheckSquare },
-    { id: '3d',         label: '3D View',    Icon: Box },
+    { id: 'layers',     label: 'Layers',   Icon: Layers },
+    { id: 'strat',      label: 'Strat',    Icon: Globe },
+    { id: 'script',     label: 'Script',   Icon: Code2 },
+    { id: 'validation', label: 'Validate', Icon: CheckSquare },
+    { id: '3d',         label: '3D',       Icon: Box },
   ];
 
   return (
