@@ -85,7 +85,6 @@ function ImageSlot({ culture, levelName, slot }) {
       if (file.name.toLowerCase().endsWith('.tga')) {
         // TGA: decode then open crop modal
         const buf = ev.target.result;
-        import('./EDBEditor').then(() => {}); // warmup ignore
         // decode inline
         const data = new Uint8Array(buf);
         const canvas = document.createElement('canvas');
