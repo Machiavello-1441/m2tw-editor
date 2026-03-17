@@ -17,7 +17,7 @@ function splitStat(str, count) {
 }
 function joinStat(parts) { return parts.join(', '); }
 
-export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitImages, onImageUpload, onImageDelete }) {
+export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitImages, onImageUpload, onImageDelete, modeldb, onUpdateModeldbEntry, onDownloadModeldb }) {
   const [tab, setTab] = useState('identity');
 
   const set = (key, val) => onChange({ ...unit, [key]: val });
