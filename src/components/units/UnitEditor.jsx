@@ -59,7 +59,16 @@ export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitI
         ))}
       </div>
 
-      <ScrollArea className="flex-1">
+      {tab === 'modeldb' ? (
+        <ModelDbPanel
+          soldierModel={unit.soldier_model}
+          modeldb={modeldb}
+          onUpdateEntry={onUpdateModeldbEntry}
+          onDownload={onDownloadModeldb}
+        />
+      ) : null}
+
+      <ScrollArea className={`flex-1 ${tab === 'modeldb' ? 'hidden' : ''}`}>
         <div className="p-4 space-y-5">
 
           {/* ── Identity ── */}
