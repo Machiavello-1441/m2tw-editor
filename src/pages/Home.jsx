@@ -221,7 +221,12 @@ export default function Home() {
       ev: loadEventsFile,
       unit: loadUnitsFile,
       txt: loadTextFile,
-      txt_bin: (text) => {} // handled below as binary
+      txt_bin: (text) => {}, // handled below as binary
+      // Geomod files go straight to localStorage via storeKeys above
+      cultures: null,
+      names: null,
+      rebel_fac: null,
+      religions: null,
     };
 
     // Storage keys for files loaded by their own editors
@@ -391,6 +396,18 @@ export default function Home() {
       window.dispatchEvent(new CustomEvent('load-unit-images', { detail: images }));
       setUnitImgCount(Object.keys(images).length);
       setFileStatus((prev) => ({ ...prev, unit_images: 'ok' }));
+    }
+
+    // Auto-load resource icons (ui/resources/*.tga)
+    if (resourceTgaFiles.length > 0) {
+      const icons = {};
+      for (const file of resourceTgaFiles) {
+        const buf = await file.arrayBuffer();
+        const dataUrl = decodeTgaToDataUrl(buf);
+        if (dataUrl) icons[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
+      }
+      window._m2tw_resource_icons = { ...(window._m2tw_resource_icons || {}), ...icons };
+      window.dispatchEvent(new CustomEvent('load-resource-icons', { detail: icons }));
     }
 
     // Auto-load ground type textures
