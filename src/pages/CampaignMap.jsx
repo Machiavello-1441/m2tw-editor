@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Map, Layers, CheckSquare, Globe, FolderOpen, Box, Code2 } from 'lucide-react';
-import ScriptingPanel from '../components/map/ScriptingPanel';
+import { Map, Layers, CheckSquare, Globe, FolderOpen, Box } from 'lucide-react';
 import Map3DPreview from '../components/map/Map3DPreview';
 import MapCanvas, { floodFillRGB } from '../components/map/MapCanvas';
 import MapLayerPanel from '../components/map/MapLayerPanel';
@@ -8,10 +7,13 @@ import MapPaintToolbar from '../components/map/MapPaintToolbar';
 import MapValidationPanel from '../components/map/MapValidationPanel';
 import StratOverlay from '../components/map/StratOverlay';
 import StratPanel from '../components/map/StratPanel';
+import RegionEditorPanel from '../components/map/RegionEditorPanel';
 import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
-import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat } from '../components/map/stratParser';
+import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat, serializeDescrRegions } from '../components/map/stratParser';
+import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
+import { useEDB } from '../components/edb/EDBContext';
 
 const INITIAL_PAINT = {
   active: false,
