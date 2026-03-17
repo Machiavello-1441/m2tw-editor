@@ -15,6 +15,7 @@ import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmF
 import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { useEDB } from '../components/edb/EDBContext';
+import { base44 } from '@/api/base44Client';
 
 const INITIAL_PAINT = {
   active: false,
