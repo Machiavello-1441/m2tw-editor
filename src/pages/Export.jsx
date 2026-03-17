@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
+import { encodeStringsBin } from '../components/strings/stringsBinCodec';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,8 +30,43 @@ function buildMergedLua(scripts) {
   return out;
 }
 
+function encodeTGA(canvas, tw, th) {
+  const off = document.createElement('canvas');
+  off.width = tw; off.height = th;
+  off.getContext('2d').drawImage(canvas, 0, 0, tw, th);
+  const d = off.getContext('2d').getImageData(0, 0, tw, th).data;
+  const hdr = new Uint8Array(18);
+  hdr[2] = 2; hdr[12] = tw & 0xff; hdr[13] = tw >> 8;
+  hdr[14] = th & 0xff; hdr[15] = th >> 8; hdr[16] = 32; hdr[17] = 0x28;
+  const body = new Uint8Array(tw * th * 4);
+  for (let i = 0; i < tw * th; i++) {
+    body[i*4]=d[i*4+2]; body[i*4+1]=d[i*4+1]; body[i*4+2]=d[i*4]; body[i*4+3]=d[i*4+3];
+  }
+  const out = new Uint8Array(18 + body.length);
+  out.set(hdr); out.set(body, 18); return out;
+}
+
+function dataUrlToCanvas(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      resolve(c);
+    };
+    img.src = dataUrl;
+  });
+}
+
+const IMAGE_SLOT_DEFS = [
+  { type: 'icon',         w: 64,  h: 51  },
+  { type: 'panel',        w: 78,  h: 62  },
+  { type: 'construction', w: 300, h: 245 },
+];
+
 export default function Export() {
-  const { edbData, exportEDB, textData, exportTextFile } = useEDB();
+  const { edbData, exportEDB, textData, exportTextFile, imageData } = useEDB();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
   const [exportingTwemp, setExportingTwemp] = useState(false);
@@ -56,8 +92,30 @@ export default function Export() {
     }
 
     if (textData && Object.keys(textData).length > 0) {
-      const textOut = exportTextFile();
-      dataFolder.folder('text').file('export_buildings.txt', textOut);
+      // Export as .strings.bin (the format M2TW uses)
+      const magic1 = parseInt(localStorage.getItem('m2tw_edb_txt_bin_magic1') || '2');
+      const magic2 = parseInt(localStorage.getItem('m2tw_edb_txt_bin_magic2') || '2048');
+      const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
+      const binBuf = encodeStringsBin(entries, magic1, magic2);
+      dataFolder.folder('text').file('export_buildings.txt.strings.bin', binBuf);
+    }
+
+    // Export building images as TGA files
+    if (imageData && Object.keys(imageData).length > 0) {
+      for (const [key, imgEntry] of Object.entries(imageData)) {
+        if (!imgEntry?.url) continue;
+        const { culture, levelName, type } = imgEntry;
+        if (!culture || !levelName || !type) continue;
+        const slotDef = IMAGE_SLOT_DEFS.find(s => s.type === type);
+        if (!slotDef) continue;
+        const canvas = await dataUrlToCanvas(imgEntry.url);
+        const tga = encodeTGA(canvas, slotDef.w, slotDef.h);
+        const filename = `#${culture}_${levelName}${type === 'construction' ? '_constructed' : ''}.tga`;
+        const subPath = type === 'icon'
+          ? `ui/${culture}/buildings/constructed/${filename}`
+          : `ui/${culture}/buildings/${filename}`;
+        dataFolder.file(subPath, tga);
+      }
     }
 
     // Include Lua scripts
