@@ -16,6 +16,7 @@ import StringsBinEditor from './pages/StringsBinEditor';
 import AssetsConverter from './pages/AssetsConverter';
 import AnimationEditor from './pages/AnimationEditor';
 import GoatTools from './pages/GoatTools';
+import ScriptEditor from './pages/ScriptEditor';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
