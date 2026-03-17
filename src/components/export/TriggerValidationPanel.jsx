@@ -237,13 +237,13 @@ export default function TriggerValidationPanel() {
           )}
 
           {/* Trait triggers */}
-          {traitResults.length > 0 && (
+          {traitResults.length > 0 && traitResults.some(r => r.issues.length > 0) && (
             <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">
-                Trait Triggers ({traitResults.length})
+                Trait Triggers ({traitResults.filter(r => r.issues.length > 0).length} with issues)
               </p>
               <div className="space-y-1.5">
-                {traitResults.map((r, i) => (
+                {traitResults.filter(r => r.issues.length > 0).map((r, i) => (
                   <TriggerRow key={i} trigger={r.trigger} issues={r.issues} mode="trait" />
                 ))}
               </div>
@@ -251,13 +251,13 @@ export default function TriggerValidationPanel() {
           )}
 
           {/* Ancillary triggers */}
-          {ancResults.length > 0 && (
+          {ancResults.length > 0 && ancResults.some(r => r.issues.length > 0) && (
             <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">
-                Ancillary Triggers ({ancResults.length})
+                Ancillary Triggers ({ancResults.filter(r => r.issues.length > 0).length} with issues)
               </p>
               <div className="space-y-1.5">
-                {ancResults.map((r, i) => (
+                {ancResults.filter(r => r.issues.length > 0).map((r, i) => (
                   <TriggerRow key={i} trigger={r.trigger} issues={r.issues} mode="ancillary" />
                 ))}
               </div>
