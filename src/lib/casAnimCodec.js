@@ -153,8 +153,10 @@ export function parseCasAnim(buffer) {
   // ── Time ticks ─────────────────────────────────────────────────────────────
   // nFrames derived from first active bone
   const nFrames = bones.find(b => b.nAnim > 0)?.nAnim ?? 0;
+  if (nFrames > 100000) return { errors: [`Implausible frame count: ${nFrames}`] };
   const timeTicks = [];
   for (let i = 0; i < nFrames; i++) {
+    if (off + 4 > buffer.byteLength) break;
     timeTicks.push(view.getFloat32(off, true)); off += 4;
   }
 
