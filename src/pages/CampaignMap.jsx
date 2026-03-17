@@ -283,18 +283,31 @@ export default function CampaignMap() {
     return 0;
   })();
 
-  // ── Canvas click (for placing strat items) — Y is flipped ─────────────────
-  const handleRegionClick = useCallback((rx, ry) => {
-    if (!pendingPlace) return;
-    // ry from MapCanvas is in pixel-space (y=0 top), flip to M2TW space
-    const stratY = mapH > 0 ? mapH - 1 - ry : ry;
-    const newItem = { ...pendingPlace, id: Date.now(), x: rx, y: stratY };
-    setOverlayItems(prev => [...prev, newItem]);
-    setStratData(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
-    setPendingPlace(null);
-    setSelectedItem(newItem);
-    setOverlayDirty(true);
-  }, [pendingPlace, mapH]);
+  // ── Canvas click — place strat item OR select region ──────────────────────
+  const handleCanvasClick = useCallback((rx, ry) => {
+    if (pendingPlace) {
+      // ry from MapCanvas is in pixel-space (y=0 top), flip to M2TW space
+      const stratY = mapH > 0 ? mapH - 1 - ry : ry;
+      const newItem = { ...pendingPlace, id: Date.now(), x: rx, y: stratY };
+      setOverlayItems(prev => [...prev, newItem]);
+      setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
+      setPendingPlace(null);
+      setSelectedItem(newItem);
+      setOverlayDirty(true);
+      return;
+    }
+    // Region click: find which region the clicked pixel belongs to
+    if (regionsData && layers['regions']?.data) {
+      const layer = layers['regions'];
+      const idx = (ry * layer.width + rx) * 4;
+      const r = layer.data[idx], g = layer.data[idx + 1], b = layer.data[idx + 2];
+      const region = regionsData.find(reg => reg.r === r && reg.g === g && reg.b === b);
+      if (region) {
+        setSelectedRegion(region);
+        setActiveTab('region');
+      }
+    }
+  }, [pendingPlace, mapH, regionsData, layers]);
 
   const handleAddItem = (itemTemplate) => {
     setPendingPlace(itemTemplate);
