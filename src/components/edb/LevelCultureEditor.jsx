@@ -153,15 +153,6 @@ function ImageSlot({ culture, levelName, slot }) {
     setPreview(null);
   };
 
-  const handleRemove = () => {
-    const { imageData: _d, setImageData } = { imageData, setImageData: undefined };
-    // remove from imageData by key
-    const key = `${levelName}_${culture}_${slot.type}`;
-    // We need setImageData from context — use loadBuildingTgaImages with empty to trigger a manual remove
-    // Instead call setImageData directly via a helper
-    removeImage(key);
-  };
-
   const displayImg = preview ? preview.dataUrl : img?.url;
 
   return (
