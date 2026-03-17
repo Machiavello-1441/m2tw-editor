@@ -123,9 +123,14 @@ export function parseCasAnim(buffer) {
     : new Uint8Array(0);
 
   // ── Hierarchy (nBones × int16) ─────────────────────────────────────────────
+  if (off + 2 > buffer.byteLength) return { errors: ['File truncated before nBones'] };
   const nBones = view.getUint16(off, true); off += 2;
+
+  if (nBones > 256) return { errors: [`Implausible bone count: ${nBones} — file may be corrupt or unsupported format`] };
+
   const hierarchy = [];
   for (let i = 0; i < nBones; i++) {
+    if (off + 2 > buffer.byteLength) return { errors: [`File truncated in hierarchy at bone ${i}`] };
     hierarchy.push(view.getInt16(off, true));
     off += 2;
   }
@@ -133,6 +138,7 @@ export function parseCasAnim(buffer) {
   // ── Bone section (nBones × 44 bytes each) ─────────────────────────────────
   const bones = [];
   for (let i = 0; i < nBones; i++) {
+    if (off + BONE_RECORD_SIZE > buffer.byteLength) return { errors: [`File truncated in bone section at bone ${i}`] };
     const boneName   = readNullPaddedString(view, off, BONE_NAME_LEN); off += BONE_NAME_LEN;
     const nQuat      = view.getInt16(off, true); off += 2;
     const nAnim      = view.getInt16(off, true); off += 2;
