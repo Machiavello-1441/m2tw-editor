@@ -810,7 +810,7 @@ export default function Home() {
             </Button>
           </label>
           <p className="text-[10px] text-muted-foreground">
-            Must contain <code className="font-mono bg-accent px-1 rounded">descr_events.txt</code>. Campaign files override matching base map files.
+            Must contain <code className="font-mono bg-accent px-1 rounded">descr_event.txt</code>. Loads descr_strat, campaign_script, descr_mercenaries, descr_win_conditions. Campaign TGAs override base map files.
           </p>
 
           {(fileStatus.base_map === 'ok' || fileStatus.campaign_folder === 'ok') &&
