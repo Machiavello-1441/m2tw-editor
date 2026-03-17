@@ -30,6 +30,7 @@ export function getItemIcon(item) {
 }
 
 export function getItemLabel(item) {
+  if (item.category === 'settlement') return item.region || item.name || '';
   if (item.name) return item.name;
   if (item.type) return item.type;
   if (item.charType) return item.charType;
