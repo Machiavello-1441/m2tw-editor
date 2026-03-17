@@ -359,10 +359,8 @@ export default function CampaignMap() {
     });
     // Also export descr_strat.txt if it has changes
     if (stratData?.raw && overlayDirty) {
-      const { downloadBlob: dl } = require('../components/map/tgaExporter');
       const text = serializeDescrStrat(stratData, overlayItems, editedSettlements);
-      const blob = new Blob([text], { type: 'text/plain' });
-      import('../components/map/tgaExporter').then(({ downloadBlob }) => downloadBlob(blob, 'descr_strat.txt'));
+      downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_strat.txt');
     }
   };
 
