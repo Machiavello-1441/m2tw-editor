@@ -357,6 +357,13 @@ export default function CampaignMap() {
       const blob = exportTGA(layer.data, layer.width, layer.height);
       downloadBlob(blob, def?.filename || `${layerId}.tga`);
     });
+    // Also export descr_strat.txt if it has changes
+    if (stratData?.raw && overlayDirty) {
+      const { downloadBlob: dl } = require('../components/map/tgaExporter');
+      const text = serializeDescrStrat(stratData, overlayItems, editedSettlements);
+      const blob = new Blob([text], { type: 'text/plain' });
+      import('../components/map/tgaExporter').then(({ downloadBlob }) => downloadBlob(blob, 'descr_strat.txt'));
+    }
   };
 
   const tabs = [
