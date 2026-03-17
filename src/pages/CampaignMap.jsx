@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Map, Layers, CheckSquare, Globe, FolderOpen, Box, Edit3 } from 'lucide-react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
+import { Map, Layers, CheckSquare, Globe, FolderOpen, Box, Edit3, Code2 } from 'lucide-react';
 import Map3DPreview from '../components/map/Map3DPreview';
 import MapCanvas, { floodFillRGB } from '../components/map/MapCanvas';
 import MapLayerPanel from '../components/map/MapLayerPanel';
