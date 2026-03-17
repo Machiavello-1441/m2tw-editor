@@ -113,9 +113,20 @@ export default function CampaignMap() {
   React.useEffect(() => {
     const cached = window._m2tw_map_files;
     if (cached && cached.length > 0) {
-      // Don't null it out — keep it so re-visiting the page reloads the TGA layers
       handleFolderImport({ files: cached, target: { value: '' } });
     }
+
+    // Auto-restore campaign text files from localStorage
+    try {
+      const stratRaw = localStorage.getItem('m2tw_campaign_strat');
+      if (stratRaw && !sessionStorage.getItem('m2tw_strat_raw')) {
+        sessionStorage.setItem('m2tw_strat_raw', stratRaw);
+        const parsed = parseDescrStrat(stratRaw);
+        setStratDataRaw(parsed);
+        setOverlayItems(parsed.items || []);
+      }
+    } catch {}
+
     const handler = (e) => {
       if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
     };
