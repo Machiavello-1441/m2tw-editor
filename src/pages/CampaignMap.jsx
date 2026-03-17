@@ -172,13 +172,33 @@ export default function CampaignMap() {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_strat_raw', text); } catch {}
         const parsed = parseDescrStrat(text);
-        setStratDataRaw(parsed);
-        setOverlayItems(parsed.items);
+        // Try to apply positions immediately if we already have regions data
+        setRegionsDataRaw(prevReg => {
+          setLayers(prevLayers => {
+            const enriched = applySettlementPositions(parsed, prevReg, prevLayers['regions']);
+            setStratDataRaw(enriched);
+            setOverlayItems(enriched.items);
+            return prevLayers;
+          });
+          return prevReg;
+        });
       }
       if (name === 'descr_regions.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_regions_raw', text); } catch {}
-        setRegionsDataRaw(parseDescrRegions(text));
+        const regData = parseDescrRegions(text);
+        setRegionsDataRaw(regData);
+        // Re-enrich settlements if strat already loaded
+        setStratDataRaw(prev => {
+          if (!prev) return prev;
+          setLayers(prevLayers => {
+            const enriched = applySettlementPositions(prev, regData, prevLayers['regions']);
+            setStratDataRaw(enriched);
+            setOverlayItems(enriched.items);
+            return prevLayers;
+          });
+          return prev;
+        });
       }
       if (name === 'descr_sm_factions.txt') {
         const text = await file.text();
