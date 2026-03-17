@@ -241,6 +241,26 @@ export default function CampaignMap() {
         setSettlementNamesRaw(parseSettlementNames(text));
       }
     }
+
+    // ── Trigger DB import in background ──────────────────────────────────────
+    const stratText = sessionStorage.getItem('m2tw_strat_raw');
+    const regionsText = sessionStorage.getItem('m2tw_regions_raw');
+    const factionsText = sessionStorage.getItem('m2tw_factions_raw');
+    if (stratText || regionsText || factionsText) {
+      setImportProgress({ step: 0, total: 5 });
+      importCampaignToDatabase({
+        stratText,
+        regionsText,
+        factionsText,
+        campaignName: 'imperial_campaign',
+        onProgress: (step, total) => setImportProgress({ step, total }),
+      }).then(() => {
+        setTimeout(() => setImportProgress(null), 2000);
+      }).catch(err => {
+        console.warn('DB import failed (non-critical):', err);
+        setImportProgress(null);
+      });
+    }
   }, []);
 
   // ── Painting ───────────────────────────────────────────────────────────────
