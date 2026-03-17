@@ -4,9 +4,11 @@ import { ChevronDown, Search } from 'lucide-react';
 
 const CATEGORIES = {
   'Battle': ['PostBattle', 'PreBattle', 'PostBattleAfterResults', 'OnSmallestArmyWinsBattle', 'OnSiegeSuccessful', 'OnSiegeFailed', 'EndedInSiege'],
-  'Character': ['OnGeneral', 'OnCharacterTurnEnd', 'OnCharacterTurnStart', 'OnCharacterComesOfAge', 'OnCharacterMarriage', 'OnCharacterDeath', 'OnCharacterBecomesFactionLeader', 'OnCharacterLooted', 'OnCharacterEndsTurnInSettlement', 'OnEnteringCity', 'OnLeavingCity'],
-  'Mission': ['OnSuccessfulMission', 'OnFailedMission', 'OnAssassinationSuccess', 'OnAssassinationFailure', 'OnSpySuccess', 'OnSpyFailure', 'OnBribeSuccess', 'OnBribeFailure', 'OnDiplomacySuccess', 'OnDiplomacyFailure', 'OnTradeSuccess', 'OnTradeFailure', 'InquisitionSuccess', 'InquisitionFailure'],
-  'Faction': ['OnMakingAlliance', 'OnBreakingAlliance', 'OnCaptureSettlement', 'OnConstructBuilding', 'OnHereticBurned', 'OnHereticConverted'],
+  'Character': ['OnGeneral', 'OnCharacterTurnEnd', 'OnCharacterTurnStart', 'OnCharacterComesOfAge', 'OnCharacterMarriage', 'OnCharacterDeath', 'OnCharacterBecomesFactionLeader', 'OnCharacterLooted', 'OnCharacterEndsTurnInSettlement', 'OnEnteringCity', 'OnLeavingCity', 'CharacterNearHeretic', 'BecomesFactionLeader', 'BecomesFactionHeir', 'CeasedFactionHeir', 'LesserGeneralOfferedForAdoption', 'FatherDiesNatural', 'Insurrection', 'CardinalPromoted', 'PriestBecomesHeretic'],
+  'Mission': ['OnSuccessfulMission', 'OnFailedMission', 'OnAssassinationSuccess', 'OnAssassinationFailure', 'OnSpySuccess', 'OnSpyFailure', 'OnBribeSuccess', 'OnBribeFailure', 'OnDiplomacySuccess', 'OnDiplomacyFailure', 'OnTradeSuccess', 'OnTradeFailure', 'InquisitionSuccess', 'InquisitionFailure', 'LeaderOrderedSpyingMission', 'BriberyMission', 'AcceptBribe', 'RefuseBribe', 'DiplomacyMission', 'LeaderOrderedDiplomacyMission', 'SufferAcquisitionAttempt', 'AcquisitionMission', 'ExecutesAnAssassinOnAMission', 'ExecutesASpyOnAMission', 'DenouncementMission', 'SufferDenouncementAttempt', 'LeaderMissionSuccess'],
+  'Faction': ['OnMakingAlliance', 'OnBreakingAlliance', 'OnCaptureSettlement', 'OnConstructBuilding', 'OnHereticBurned', 'OnHereticConverted', 'AgentCreated'],
+  'Governor': ['GovernorBuildingDestroyed', 'GovernorBuildingCompleted', 'GovernorUnitTrained', 'GovernorAgentCreated', 'GovernorCityRiots', 'GovernorCityRebels', 'OccupySettlement', 'SackSettlement', 'ExterminatePopulation'],
+  'General': ['GeneralDevastatesTile', 'GeneralPrisonersRansomedCaptor', 'GeneralJoinCrusade', 'GeneralAbandonCrusade', 'GeneralTakesCrusadeTarget', 'GeneralArrivesCrusadeTargetRegion', 'GeneralAssaultsResidence', 'GeneralCaptureSettlement'],
   'Religion': ['OnCrusade', 'OnJihad', 'OnCrusadeEnd', 'OnJihadEnd'],
   'Always': ['Always'],
 };

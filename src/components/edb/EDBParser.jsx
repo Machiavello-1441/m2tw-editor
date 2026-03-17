@@ -706,10 +706,27 @@ export function parseFactionsFile(text) {
 export function parseResourcesFile(text) {
   const resources = [];
   for (const line of text.split('\n')) {
-    const match = line.trim().match(/^resource\s+(\w+)/);
+    const trimmed = line.trim();
+    if (trimmed.startsWith(';')) continue;
+    const match = trimmed.match(/^resource\s+(\S+)/);
     if (match) resources.push(match[1]);
   }
   return resources;
+}
+
+export function parseEventsFromCampaign(text) {
+  const events = new Set();
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(';')) continue;
+    // descr_event.txt format: "event  event_counter  name  initial_value"
+    const match = trimmed.match(/^event\s+event_counter\s+(\S+)/i);
+    if (match) events.add(match[1]);
+    // Also handle plain event_counter lines
+    const match2 = trimmed.match(/^event_counter\s+(\S+)/i);
+    if (match2) events.add(match2[1]);
+  }
+  return [...events];
 }
 
 export function parseEventsFile(text) {
