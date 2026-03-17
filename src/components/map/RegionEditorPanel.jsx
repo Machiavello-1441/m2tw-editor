@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { X, Download, ChevronDown } from 'lucide-react';
 import { serializeDescrRegions, serializeDescrStrat } from './stratParser';
 import { downloadBlob } from './tgaExporter';
