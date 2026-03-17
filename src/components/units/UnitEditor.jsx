@@ -7,6 +7,7 @@ import {
 import { Field, TextInput, NumberInput, SelectInput, Section, MultiCheckbox } from './UnitStatRow';
 import { serializeUnit } from './EDUParser';
 import UnitDescriptionTab from './UnitDescriptionTab';
+import ModelDbPanel from './ModelDbPanel';
 
 // Parse a comma-separated stat string into an array
 function splitStat(str, count) {
