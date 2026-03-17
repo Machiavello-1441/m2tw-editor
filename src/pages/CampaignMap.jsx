@@ -88,6 +88,16 @@ export default function CampaignMap() {
   const [editedSettlements, setEditedSettlements] = useState({});
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
 
+  // Compute settlement positions once we have both strat + regions layer
+  const applySettlementPositions = React.useCallback((stratParsed, regData, regLayer) => {
+    if (!stratParsed?.items?.length) return stratParsed;
+    const settlements = stratParsed.items.filter(i => i.category === 'settlement');
+    const withPos = computeSettlementPositions(settlements, regData, regLayer);
+    const posMap = Object.fromEntries(withPos.map(s => [s.id, s]));
+    const items = stratParsed.items.map(i => posMap[i.id] || i);
+    return { ...stratParsed, items };
+  }, []);
+
   // Wrappers that also persist to sessionStorage
   const setStratData = (data) => {
     setStratDataRaw(data);
