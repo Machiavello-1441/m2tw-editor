@@ -15,7 +15,7 @@ const navItems = [
   { name: 'Ancillaries', icon: Package, page: 'AncillariesEditor' },
   { name: 'Unit Editor', icon: Swords, page: 'UnitEditor' },
   { name: 'Campaign Map', icon: Map, page: 'CampaignMap' },
-  { name: 'Script Editor', icon: Code2, page: 'ScriptEditor' },
+  { name: 'Script Editor', icon: ScrollText, page: 'ScriptEditor' },
   { name: 'Campaigns', icon: Globe, page: 'CampaignManager' },
   { name: 'Sound Files', icon: Volume2, page: 'SoundEditor' },
   { name: 'Strings Editor', icon: FileText, page: 'StringsBinEditor' },
