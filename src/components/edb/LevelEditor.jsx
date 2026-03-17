@@ -17,7 +17,7 @@ import UpgradesEditor from './UpgradesEditor';
 import LevelCultureEditor from './LevelCultureEditor';
 
 export default function LevelEditor() {
-  const { edbData, selectedBuilding, selectedLevel, updateLevel } = useEDB();
+  const { edbData, selectedBuilding, selectedLevel, setSelectedLevel, updateLevel } = useEDB();
 
   if (!edbData || !selectedBuilding) {
     return (
