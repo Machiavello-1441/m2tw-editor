@@ -603,6 +603,15 @@ export default function Home() {
       localStorage.removeItem('m2tw_export_units_file_name');
       localStorage.removeItem('m2tw_lua_scripts');
       localStorage.removeItem('m2tw_campaigns');
+      localStorage.removeItem('m2tw_cultures_file');
+      localStorage.removeItem('m2tw_names_file');
+      localStorage.removeItem('m2tw_rebel_factions_file');
+      localStorage.removeItem('m2tw_religions_file');
+      localStorage.removeItem('m2tw_campaign_strat');
+      localStorage.removeItem('m2tw_campaign_script');
+      localStorage.removeItem('m2tw_campaign_mercenaries');
+      localStorage.removeItem('m2tw_campaign_win_conditions');
+      window._m2tw_resource_icons = {};
       clearStringsBinStore();
       window._m2tw_map_files = [];
       window._m2tw_unit_images = {};
@@ -747,6 +756,11 @@ export default function Home() {
                 label="Ground Textures"
                 hint={fileStatus.ground_textures === 'ok' ? `${groundTexCount} textures loaded` : 'data\\terrain\\aerial_map\\ground_types\\'}
                 status={fileStatus.ground_textures || 'idle'} />
+
+              <FileStatus
+                label="Resource Icons"
+                hint="data\\ui\\resources\\ (auto from Step 1)"
+                status={fileStatus.resource_icons || 'idle'} />
 
             </div>
           </div>
