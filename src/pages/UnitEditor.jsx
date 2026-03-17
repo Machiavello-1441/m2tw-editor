@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Swords, Upload, Download, Plus, FileText, CheckCircle2, Copy } from 'lucide-react';
+import { Swords, Upload, Download, Plus, FileText, CheckCircle2, Copy, Database } from 'lucide-react';
 import UnitList from '../components/units/UnitList';
 import UnitEditorPanel from '../components/units/UnitEditor';
 import { parseEDU, serializeEDU, serializeUnit, createDefaultUnit } from '../components/units/EDUParser';
+import { parseModeldb, serializeModeldb } from '../lib/modeldbCodec';
+import { modeldbStore } from '../lib/modeldbStore';
 
 const STORAGE_KEY = 'm2tw_edu_units';
 const EDU_FILE_KEY = 'm2tw_edu_file';
