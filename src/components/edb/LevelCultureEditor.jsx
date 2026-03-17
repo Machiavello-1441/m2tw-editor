@@ -65,6 +65,10 @@ function ImageSlot({ culture, levelName, slot }) {
   const img = imageData[key];
   const fileRef = useRef();
   const [preview, setPreview] = useState(null);
+  const [customW, setCustomW] = useState('');
+  const [customH, setCustomH] = useState('');
+  const effectiveW = parseInt(customW) || slot.w;
+  const effectiveH = parseInt(customH) || slot.h;
 
   const removeImage = (k) => {
     setImageData(prev => {
@@ -139,7 +143,7 @@ function ImageSlot({ culture, levelName, slot }) {
 
   const handleCropConfirm = (dataUrl, canvas) => {
     setCropOpen(false);
-    const { w, h } = slot;
+    const w = effectiveW, h = effectiveH;
     setPreview({ dataUrl, canvas });
     // Immediately store in imageData
     const filename = `#${culture}_${levelName}${slot.type === 'construction' ? '_constructed' : ''}.tga`;
@@ -161,17 +165,34 @@ function ImageSlot({ culture, levelName, slot }) {
         onClose={() => setCropOpen(false)}
         onConfirm={handleCropConfirm}
         sourceDataUrl={cropSrc}
-        targetW={slot.w}
-        targetH={slot.h}
+        targetW={effectiveW}
+        targetH={effectiveH}
         slotLabel={slot.label}
       />
-      <div className="flex flex-col items-center gap-0.5 group" style={{ width: slot.w }}>
-        <span className="text-[9px] text-muted-foreground">{slot.label}</span>
+      <div className="flex flex-col items-center gap-0.5 group" style={{ minWidth: slot.w }}>
+        <div className="flex items-center gap-1">
+          <span className="text-[9px] text-muted-foreground">{slot.label}</span>
+          <input
+            type="number" placeholder={String(slot.w)}
+            value={customW}
+            onChange={e => setCustomW(e.target.value)}
+            className="w-10 text-[8px] bg-background border border-border rounded px-1 py-0.5 text-foreground focus:outline-none"
+            title="Override width"
+          />
+          <span className="text-[8px] text-muted-foreground">×</span>
+          <input
+            type="number" placeholder={String(slot.h)}
+            value={customH}
+            onChange={e => setCustomH(e.target.value)}
+            className="w-10 text-[8px] bg-background border border-border rounded px-1 py-0.5 text-foreground focus:outline-none"
+            title="Override height"
+          />
+        </div>
         {displayImg ? (
           <div className="relative">
             <img src={displayImg} alt={slot.label}
               className="rounded border border-border bg-black/30 object-contain cursor-pointer"
-              style={{ width: slot.w, height: slot.h }}
+              style={{ width: effectiveW, height: effectiveH }}
               onClick={() => fileRef.current?.click()}
               title="Click to replace"
             />
@@ -184,11 +205,11 @@ function ImageSlot({ culture, levelName, slot }) {
         ) : (
           <button
             className="border border-dashed border-border rounded flex flex-col items-center justify-center gap-0.5 hover:border-primary/40 hover:bg-primary/5 transition-colors text-muted-foreground"
-            style={{ width: slot.w, height: slot.h }}
+            style={{ width: effectiveW, height: effectiveH }}
             onClick={() => fileRef.current?.click()}
           >
             <Upload className="w-3 h-3" />
-            <span className="text-[7px]">{slot.w}×{slot.h}</span>
+            <span className="text-[7px]">{effectiveW}×{effectiveH}</span>
           </button>
         )}
         <input ref={fileRef} type="file" accept="image/*,.tga" className="hidden" onChange={handleFile} />
