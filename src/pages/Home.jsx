@@ -96,6 +96,7 @@ const DATA_FILE_MAP = {
   'descr_sm_resources.txt': 'res',
   'export_descr_unit.txt': 'unit',
   'descr_events.txt': 'ev',
+  'export_buildings.txt.strings.bin': 'txt_bin',
   'export_buildings.txt': 'txt',
   'export_descr_character_traits.txt': 'traits',
   'export_descr_ancillaries.txt': 'anc',
@@ -209,7 +210,8 @@ export default function Home() {
       res: loadResourcesFile,
       ev: loadEventsFile,
       unit: loadUnitsFile,
-      txt: loadTextFile
+      txt: loadTextFile,
+      txt_bin: (text) => {} // handled below as binary
     };
 
     // Storage keys for files loaded by their own editors
@@ -280,6 +282,23 @@ export default function Home() {
       if (!key) continue;
 
       setFileStatus((prev) => ({ ...prev, [key]: 'loading' }));
+
+      // .strings.bin: parse as binary, convert to text map, load as text file
+      if (key === 'txt_bin') {
+        const buf = await file.arrayBuffer();
+        const parsed = parseStringsBin(buf);
+        if (parsed) {
+          // Convert entries to plain text format {key}value\n
+          const textContent = parsed.entries.map(e => `{${e.key}}${e.value}`).join('\n');
+          loadTextFile(textContent);
+          // Store original binary for export
+          try { localStorage.setItem('m2tw_edb_txt_bin_magic1', String(parsed.magic1)); } catch {}
+          try { localStorage.setItem('m2tw_edb_txt_bin_magic2', String(parsed.magic2)); } catch {}
+          setFileStatus((prev) => ({ ...prev, txt_bin: 'ok', txt: 'ok' }));
+        }
+        continue;
+      }
+
       const text = await readText(file);
       if (key === 'aerial_ground_types') {
         const parsed = parseDescrAerialGroundTypes(text);
