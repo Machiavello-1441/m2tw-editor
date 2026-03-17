@@ -6,7 +6,7 @@ import { RefDataProvider } from './components/edb/RefDataContext';
 import { TraitsProvider } from './components/traits/TraitsContext';
 import { AncillariesProvider } from './components/ancillaries/AncillariesContext';
 import { ModDataProvider } from './components/shared/ModDataContext';
-import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2, FileText } from 'lucide-react';
+import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2, FileText, ScrollText } from 'lucide-react';
 
 const navItems = [
   { name: 'Home', icon: Home, page: 'Home' },
