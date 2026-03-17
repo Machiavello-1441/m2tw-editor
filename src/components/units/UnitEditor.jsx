@@ -378,6 +378,16 @@ export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitI
             <UnitDescriptionTab dictionary={unit.dictionary} descr={descr} onDescrChange={onDescrChange} unitImages={unitImages} onImageUpload={onImageUpload} onImageDelete={onImageDelete} />
           )}
 
+          {/* ── ModelDB ── */}
+          {tab === 'modeldb' && (
+            <ModelDbPanel
+              soldierModel={unit.soldier_model}
+              modeldb={modeldb}
+              onUpdateEntry={onUpdateModeldbEntry}
+              onDownload={onDownloadModeldb}
+            />
+          )}
+
           {/* ── Preview ── */}
           {tab === 'preview' && (
             <Section title="Raw EDU Output">
