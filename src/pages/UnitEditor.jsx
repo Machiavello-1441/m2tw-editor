@@ -340,6 +340,14 @@ export default function UnitEditorPage() {
             Load EDU file
           </button>
           <input ref={fileRef} type="file" accept=".txt" className="hidden" onChange={handleFileLoad} />
+          <button
+            onClick={() => modeldbRef.current?.click()}
+            className={`flex items-center gap-1 px-2 py-1 text-[11px] rounded border transition-colors ${modeldb ? 'border-green-700 text-green-400 hover:bg-green-950' : 'border-border hover:bg-accent text-muted-foreground hover:text-foreground'}`}
+          >
+            <Database className="w-3 h-3" />
+            {modeldb ? `ModelDB (${modeldb.entries.length})` : 'Load ModelDB'}
+          </button>
+          <input ref={modeldbRef} type="file" accept=".modeldb,.txt" className="hidden" onChange={handleModeldbLoad} />
           {active && (
             <button
               onClick={handleCopyUnit}
