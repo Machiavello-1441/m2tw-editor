@@ -482,13 +482,35 @@ export default function CampaignMap() {
                   regionsData={regionsData}
                   settlementNames={settlementNames}
                   factionColors={factionColors}
-                  onStratLoad={(text) => { try { sessionStorage.setItem('m2tw_strat_raw', text); } catch {} const p = parseDescrStrat(text); setStratDataRaw(p); setOverlayItems(p.items); }}
-                  onRegionsLoad={(text) => { try { sessionStorage.setItem('m2tw_regions_raw', text); } catch {} setRegionsDataRaw(parseDescrRegions(text)); }}
+                  onStratLoad={(text) => {
+                    try { sessionStorage.setItem('m2tw_strat_raw', text); } catch {}
+                    const p = parseDescrStrat(text);
+                    const enriched = applySettlementPositions(p, regionsData, layers['regions']);
+                    setStratDataRaw(enriched);
+                    setOverlayItems(enriched.items);
+                  }}
+                  onRegionsLoad={(text) => {
+                    try { sessionStorage.setItem('m2tw_regions_raw', text); } catch {}
+                    const regData = parseDescrRegions(text);
+                    setRegionsDataRaw(regData);
+                    if (stratData) {
+                      const enriched = applySettlementPositions(stratData, regData, layers['regions']);
+                      setStratDataRaw(enriched);
+                      setOverlayItems(enriched.items);
+                    }
+                  }}
                   onNamesLoad={(text) => { try { sessionStorage.setItem('m2tw_names_raw', text); } catch {} setSettlementNamesRaw(parseSettlementNames(text)); }}
                   onFactionsLoad={(text) => { try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {} setFactionColorsRaw(parseDescrSmFactions(text)); }}
+                  onRegionsDataUpdate={(updatedRegions) => { setRegionsDataRaw(updatedRegions); }}
+                  onSettlementChange={(id, edits) => {
+                    setEditedSettlements(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...edits } }));
+                    setOverlayItems(prev => prev.map(i => i.id === id ? { ...i, ...edits } : i));
+                    setStratDataRaw(prev => prev ? { ...prev, items: (prev.items||[]).map(i => i.id === id ? { ...i, ...edits } : i) } : prev);
+                    setOverlayDirty(true);
+                  }}
                   overlayItems={overlayItems}
                   selectedItem={selectedItem}
-                  onSelectItem={(item) => { setSelectedItem(item); if (jumpRef.current) jumpRef.current(item.x, mapH > 0 ? mapH - 1 - item.y : item.y); }}
+                  onSelectItem={(item) => { setSelectedItem(item); if (jumpRef.current && item.x != null) jumpRef.current(item.x, mapH > 0 ? mapH - 1 - item.y : item.y); }}
                   visibleCategories={visibleCategories}
                   onToggleCategory={handleToggleCategory}
                   onDeleteItem={handleDeleteItem}
