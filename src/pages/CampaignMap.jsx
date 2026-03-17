@@ -566,6 +566,58 @@ export default function CampaignMap() {
                 />
               </div>
             )}
+            {activeTab === 'region' && (
+              <div className="h-full overflow-hidden">
+                {selectedRegion ? (
+                  <RegionEditorPanel
+                    key={selectedRegion.regionName}
+                    region={selectedRegion}
+                    stratSettlement={overlayItems.find(i => i.category === 'settlement' && i.regionName === selectedRegion.regionName) || null}
+                    onClose={() => setSelectedRegion(null)}
+                    regionsData={regionsData}
+                    stratData={stratData}
+                    factionList={factionList}
+                    rebelFactionList={rebelFactionList}
+                    religionList={religionList}
+                    naturalResourceList={naturalResList}
+                    hiddenResourceList={hiddenResourceList}
+                    buildingLevelList={buildingLevelList}
+                    mercenaryPoolList={mercenaryPoolList}
+                    musicTypeList={musicTypeList}
+                    settlementNamesMap={settlementNames}
+                    onRegionChange={(updatedReg) => {
+                      setRegionsDataRaw(prev => prev ? prev.map(r => r.regionName === updatedReg.regionName ? updatedReg : r) : prev);
+                      setSelectedRegion(updatedReg);
+                      setOverlayDirty(true);
+                    }}
+                    onStratChange={(id, edits) => {
+                      setEditedSettlements(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...edits } }));
+                      setOverlayItems(prev => prev.map(i => i.id === id ? { ...i, ...edits } : i));
+                      setStratDataRaw(prev => prev ? { ...prev, items: (prev.items || []).map(i => i.id === id ? { ...i, ...edits } : i) } : prev);
+                      setOverlayDirty(true);
+                    }}
+                    onExportRegions={() => {
+                      if (regionsData) {
+                        const text = serializeDescrRegions(regionsData);
+                        downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_regions.txt');
+                      }
+                    }}
+                    onExportStrat={() => {
+                      if (stratData) {
+                        const text = serializeDescrStrat(stratData, overlayItems, editedSettlements);
+                        downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_strat.txt');
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
+                    <Edit3 className="w-6 h-6 text-slate-600" />
+                    <p className="text-[11px] text-slate-500">Click a region on the map to edit it</p>
+                    {!regionsData && <p className="text-[10px] text-slate-600">Load descr_regions.txt first</p>}
+                  </div>
+                )}
+              </div>
+            )}
             {activeTab === 'script' && (
               <div className="h-full overflow-hidden">
                 <ScriptingPanel stratData={stratData} />
