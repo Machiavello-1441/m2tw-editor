@@ -198,12 +198,22 @@ export default function FactionsEditor() {
       <div className="flex flex-1 min-h-0">
         {/* List */}
         <div className="w-64 border-r border-slate-800 flex flex-col shrink-0">
-          <div className="p-2 border-b border-slate-800">
+          <div className="p-2 border-b border-slate-800 space-y-1.5">
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search factions…"
               className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 placeholder-slate-500"
             />
+            <button
+              onClick={async () => {
+                const newFaction = await base44.entities.Faction.create({ name_in: 'new_faction', name_out: 'New Faction', playability: 0 });
+                setFactions(prev => [newFaction, ...prev]);
+                setSelected(newFaction);
+              }}
+              className="w-full flex items-center justify-center gap-1 py-1.5 rounded bg-slate-700 border border-slate-600 text-xs text-slate-200 hover:bg-slate-600 transition-colors"
+            >
+              <Plus className="w-3 h-3" /> Add Faction
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto">
             {loading && (
