@@ -466,6 +466,13 @@ export default function CampaignMap() {
           <option value="citiesports">Regions: cities+ports</option>
         </select>
 
+        {/* DB import progress */}
+        {importProgress && (
+          <span className="flex items-center gap-1 px-2 py-1 rounded bg-blue-500/20 border border-blue-500/40 text-blue-400 text-[10px] font-semibold">
+            Saving to DB… {importProgress.step}/{importProgress.total}
+          </span>
+        )}
+
         {/* Pending place indicator */}
         {pendingPlace && (
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-semibold animate-pulse">
