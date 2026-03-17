@@ -6,6 +6,8 @@
  */
 import React, { useRef, useCallback, useEffect } from 'react';
 
+import { SETTLEMENT_LEVEL_ICONS } from './stratParser';
+
 export const ITEM_ICON = {
   'named character': '⚔️', general: '⚔️', admiral: '⚓', spy: '👁️',
   merchant: '💰', diplomat: '📜', priest: '🙏', assassin: '🗡️',
@@ -20,6 +22,7 @@ export const ITEM_ICON = {
 };
 
 export function getItemIcon(item) {
+  if (item.category === 'settlement') return SETTLEMENT_LEVEL_ICONS[item.level] || '🏘️';
   if (item.category === 'character') return ITEM_ICON[item.charType] || '⚔️';
   if (item.category === 'fortification') return '🏰';
   if (item.category === 'resource') return ITEM_ICON[item.type] || '💎';
