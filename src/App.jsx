@@ -80,6 +80,7 @@ const AuthenticatedApp = () => {
       <Route path="/StringsBinEditor" element={<LayoutWrapper currentPageName="StringsBinEditor"><StringsBinEditor /></LayoutWrapper>} />
       <Route path="/AssetsConverter" element={<LayoutWrapper currentPageName="AssetsConverter"><AssetsConverter /></LayoutWrapper>} />
       <Route path="/AnimationEditor" element={<LayoutWrapper currentPageName="AnimationEditor"><AnimationEditor /></LayoutWrapper>} />
+      <Route path="/GoatTools" element={<LayoutWrapper currentPageName="GoatTools"><GoatTools /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
