@@ -10,7 +10,7 @@ import StratPanel from '../components/map/StratPanel';
 import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
-import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions } from '../components/map/stratParser';
+import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat } from '../components/map/stratParser';
 
 const INITIAL_PAINT = {
   active: false,
