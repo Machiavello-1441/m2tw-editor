@@ -319,7 +319,7 @@ function ConcatPanel() {
 // ═══════════════════════════════════════════════════════════════════════════
 // Ms3d Merge
 // ═══════════════════════════════════════════════════════════════════════════
-import { encodeMs3d } from '@/lib/ms3dCodec';
+import { mergeMs3d } from '@/lib/slerpUtils';
 
 function Ms3dMergePanel() {
   const [status, setStatus] = useState({ msg: '', type: 'idle' });
