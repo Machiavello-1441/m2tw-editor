@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
 import { useRefData } from '../components/edb/RefDataContext';
+import { parseEventsFromCampaign } from '../components/edb/EDBParser';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { createPageUrl } from '@/utils';
@@ -476,12 +477,21 @@ export default function Home() {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     if (files.length === 0) return;
-    // Validate: must contain descr_events.txt
-    const hasEvents = files.some((f) => f.name.toLowerCase() === 'descr_events.txt');
-    if (!hasEvents) {
+    // Accept both descr_event.txt (singular, in campaign folder) and descr_events.txt (plural)
+    const eventFile = files.find((f) => {
+      const n = f.name.toLowerCase();
+      return n === 'descr_event.txt' || n === 'descr_events.txt';
+    });
+    if (!eventFile) {
       setFileStatus((prev) => ({ ...prev, campaign_folder: 'error' }));
-      setCampaignError('No descr_events.txt found — make sure you selected a campaign folder.');
+      setCampaignError('No descr_event.txt found — make sure you selected a campaign folder.');
       return;
+    }
+    // Load event counters from the campaign descr_event.txt
+    const evText = await readText(eventFile);
+    const evs = parseEventsFromCampaign(evText);
+    if (evs.length > 0) {
+      loadEventsFile(evText); // reuse existing loader which saves to localStorage
     }
     setCampaignError('');
     const relevant = files.filter((f) => {
