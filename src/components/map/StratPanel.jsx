@@ -1,180 +1,440 @@
-import React, { useState } from 'react';
-import { Upload, Download, Eye, EyeOff, Trash2, Plus, Map } from 'lucide-react';
-import { getItemIcon } from './StratOverlay';
-import { serializeDescrStrat } from './stratParser';
+import React, { useState, useMemo } from 'react';
+import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X } from 'lucide-react';
+import { getItemIcon, getItemLabel } from './StratOverlay';
+import { serializeDescrStrat, serializeDescrRegions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { downloadBlob } from './tgaExporter';
 
 const CATEGORIES = [
+  { id: 'settlement',    label: 'Settlements',   emoji: '🏛️' },
   { id: 'resource',      label: 'Resources',     emoji: '💎' },
   { id: 'character',     label: 'Characters',    emoji: '⚔️' },
   { id: 'fortification', label: 'Fortifications',emoji: '🏰' },
 ];
 
 const CHARACTER_TYPES = ['general','admiral','spy','merchant','diplomat','priest','assassin','princess','heretic','witch','inquisitor','named character'];
-const RESOURCE_TYPES = ['coal','fish','amber','furs','gold','silver','iron','timber','wine','wool','grain','silk','dyes','tin','marble','ivory','sugar','spices','tobacco','chocolate','cotton','sulfur','slaves'];
+const RESOURCE_TYPES  = ['coal','fish','amber','furs','gold','silver','iron','timber','wine','wool','grain','silk','dyes','tin','marble','ivory','sugar','spices','tobacco','chocolate','cotton','sulfur','slaves'];
 
+// Faction color dot
+function FactionDot({ factionColors, factionName }) {
+  const fc = factionColors?.[factionName];
+  if (!fc?.primaryColor) return null;
+  const { r, g, b } = fc.primaryColor;
+  return <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: `rgb(${r},${g},${b})` }} />;
+}
+
+// ─── Settlement editor (inline) ───────────────────────────────────────────────
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange }) {
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({});
+
+  const open = () => {
+    setDraft({
+      level: item.level,
+      population: item.population,
+      yearFounded: item.yearFounded,
+      planSet: item.planSet,
+      factionCreator: item.factionCreator,
+    });
+    setEditing(true);
+    setExpanded(true);
+  };
+
+  const commit = () => {
+    onChange(item.id, draft);
+    setEditing(false);
+  };
+
+  const iconChar = SETTLEMENT_LEVEL_ICONS[item.level] || '🏘️';
+  const posText = item.x != null ? `${item.x},${item.y}` : 'pos?';
+
+  return (
+    <div className={`rounded border transition-colors ${isSelected ? 'border-amber-500/50 bg-amber-900/10' : 'border-slate-700/40 bg-slate-900/20'}`}>
+      {/* Header row */}
+      <div className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer" onClick={() => onSelect(item)}>
+        <button onClick={e => { e.stopPropagation(); setExpanded(v => !v); }} className="text-slate-500 hover:text-slate-300">
+          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        </button>
+        <span className="text-sm shrink-0">{iconChar}</span>
+        <FactionDot factionColors={factionColors} factionName={item.faction} />
+        <span className={`text-[11px] font-mono flex-1 truncate ${isSelected ? 'text-amber-300' : 'text-slate-300'}`}>
+          {item.region}
+        </span>
+        <span className="text-[9px] text-slate-600 font-mono shrink-0">{posText}</span>
+        <button onClick={e => { e.stopPropagation(); open(); }} title="Edit" className="p-0.5 text-slate-600 hover:text-slate-300 transition-colors">
+          <Edit2 className="w-3 h-3" />
+        </button>
+        <button onClick={e => { e.stopPropagation(); onDelete(item.id); }} title="Delete" className="p-0.5 text-slate-600 hover:text-red-400 transition-colors">
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-slate-700/40 px-2 py-2 space-y-1.5">
+          {editing ? (
+            <>
+              <div className="flex gap-1.5">
+                <select value={draft.level} onChange={e => setDraft(d => ({...d, level: e.target.value}))}
+                  className="flex-1 h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                  {SETTLEMENT_LEVELS.map(l => <option key={l}>{l}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] text-slate-500">Population</span>
+                  <input type="number" value={draft.population} onChange={e => setDraft(d => ({...d, population: parseInt(e.target.value)||0}))}
+                    className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] text-slate-500">Year Founded</span>
+                  <input type="number" value={draft.yearFounded} onChange={e => setDraft(d => ({...d, yearFounded: parseInt(e.target.value)||0}))}
+                    className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[9px] text-slate-500">Faction Creator</span>
+                <input value={draft.factionCreator} onChange={e => setDraft(d => ({...d, factionCreator: e.target.value}))}
+                  className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+              </div>
+              <div className="flex gap-1.5 justify-end pt-0.5">
+                <button onClick={() => setEditing(false)} className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-slate-200 border border-slate-700/40">
+                  <X className="w-2.5 h-2.5" /> Cancel
+                </button>
+                <button onClick={commit} className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] bg-green-700/80 hover:bg-green-700 border border-green-600/40 text-green-200 font-semibold">
+                  <Check className="w-2.5 h-2.5" /> Save
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+              <span className="text-slate-500">Level</span><span className="text-slate-300 font-mono">{item.level}</span>
+              <span className="text-slate-500">Faction</span><span className="text-slate-300 font-mono truncate">{item.faction}</span>
+              <span className="text-slate-500">Population</span><span className="text-slate-300 font-mono">{item.population}</span>
+              <span className="text-slate-500">Founded</span><span className="text-slate-300 font-mono">{item.yearFounded}</span>
+              {item.upgrades?.length > 0 && <>
+                <span className="text-slate-500 col-span-2">Upgrades</span>
+                <span className="text-slate-300 font-mono col-span-2 text-[9px] truncate">{item.upgrades.join(', ')}</span>
+              </>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── RegionsEditor ────────────────────────────────────────────────────────────
+function RegionsEditor({ regionsData, onSave }) {
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [draft, setDraft] = useState({});
+
+  const filtered = useMemo(() =>
+    (regionsData || []).filter(r => r.regionName?.toLowerCase().includes(search.toLowerCase())),
+  [regionsData, search]);
+
+  const openEdit = (reg) => {
+    setSelected(reg.regionName);
+    setDraft({ ...reg });
+  };
+
+  const commit = () => {
+    onSave(regionsData.map(r => r.regionName === draft.regionName ? draft : r));
+    setSelected(null);
+  };
+
+  if (!regionsData?.length) return (
+    <div className="text-[10px] text-slate-600 text-center py-4">Load descr_regions.txt first</div>
+  );
+
+  return (
+    <div className="space-y-1.5">
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search regions…"
+        className="w-full h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
+      <div className="max-h-56 overflow-y-auto space-y-0.5">
+        {filtered.map(reg => (
+          <div key={reg.regionName} className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors ${selected === reg.regionName ? 'bg-amber-500/20 text-amber-300' : 'hover:bg-slate-800/40 text-slate-400'}`}
+            onClick={() => openEdit(reg)}>
+            <span className="w-3 h-3 rounded-sm border border-white/10 shrink-0" style={{ background: `rgb(${reg.r},${reg.g},${reg.b})` }} />
+            <span className="text-[10px] font-mono flex-1 truncate">{reg.regionName}</span>
+            <span className="text-[9px] text-slate-600">{reg.settlementName}</span>
+          </div>
+        ))}
+      </div>
+      {selected && draft.regionName && (
+        <div className="border-t border-slate-700/40 pt-2 space-y-1.5">
+          <p className="text-[10px] font-semibold text-amber-400">{draft.regionName}</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] text-slate-500">Settlement Name</span>
+              <input value={draft.settlementName||''} onChange={e => setDraft(d=>({...d, settlementName: e.target.value}))}
+                className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono w-full" />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] text-slate-500">Faction Creator</span>
+              <input value={draft.factionCreator||''} onChange={e => setDraft(d=>({...d, factionCreator: e.target.value}))}
+                className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono w-full" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] text-slate-500">Resources (comma-separated)</span>
+            <input value={(draft.resources||[]).join(', ')} onChange={e => setDraft(d=>({...d, resources: e.target.value.split(',').map(s=>s.trim()).filter(Boolean)}))}
+              className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono w-full" />
+          </div>
+          <div className="flex gap-1.5 justify-end">
+            <button onClick={() => setSelected(null)} className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-slate-200 border border-slate-700/40">
+              <X className="w-2.5 h-2.5" /> Cancel
+            </button>
+            <button onClick={commit} className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] bg-green-700/80 hover:bg-green-700 border border-green-600/40 text-green-200 font-semibold">
+              <Check className="w-2.5 h-2.5" /> Save
+            </button>
+          </div>
+        </div>
+      )}
+      <button
+        onClick={() => {
+          const text = serializeDescrRegions(regionsData);
+          downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_regions.txt');
+        }}
+        className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-400 transition-colors font-semibold">
+        <Download className="w-3 h-3" /> Export descr_regions.txt
+      </button>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function StratPanel({
   stratData, regionsData, settlementNames, factionColors,
   onStratLoad, onRegionsLoad, onNamesLoad, onFactionsLoad,
+  onRegionsDataUpdate,
   overlayItems, selectedItem, onSelectItem,
   visibleCategories, onToggleCategory,
-  onDeleteItem, onAddItem,
+  onDeleteItem, onAddItem, onSettlementChange,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
   const [newFaction, setNewFaction] = useState('');
+  const [tab, setTab] = useState('overview'); // 'overview' | 'settlements' | 'regions'
+  const [search, setSearch] = useState('');
 
   const loadFile = async (e, type) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
-    if (type === 'strat') onStratLoad(text, file.name);
+    if (type === 'strat')   onStratLoad(text, file.name);
     else if (type === 'regions') onRegionsLoad(text);
-    else if (type === 'names') onNamesLoad(text);
+    else if (type === 'names')   onNamesLoad(text);
     else if (type === 'factions') onFactionsLoad(text);
     e.target.value = '';
   };
 
-  const handleExport = () => {
+  const handleExportStrat = () => {
     if (!stratData?.raw) return;
     const text = serializeDescrStrat(stratData, overlayItems);
-    const blob = new Blob([text], { type: 'text/plain' });
-    downloadBlob(blob, 'descr_strat.txt');
+    downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_strat.txt');
   };
 
+  // Settlements from overlayItems
+  const settlements = useMemo(() =>
+    (overlayItems || []).filter(i => i.category === 'settlement'),
+  [overlayItems]);
+
+  const filteredSettlements = useMemo(() =>
+    settlements.filter(s => !search || s.region?.toLowerCase().includes(search.toLowerCase()) || s.faction?.toLowerCase().includes(search.toLowerCase())),
+  [settlements, search]);
+
+  const byFaction = useMemo(() => {
+    const map = {};
+    for (const s of filteredSettlements) {
+      if (!map[s.faction]) map[s.faction] = [];
+      map[s.faction].push(s);
+    }
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredSettlements]);
+
   return (
-    <div className="flex flex-col gap-2 h-full overflow-y-auto p-2">
-
-      {/* File loaders */}
-      <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Load Files</p>
-        {[
-          { label: 'descr_strat.txt',                     type: 'strat',   loaded: !!stratData },
-          { label: 'descr_regions.txt',                   type: 'regions', loaded: !!regionsData },
-          { label: '*_regions_and_settlement_names.txt',  type: 'names',   loaded: !!settlementNames },
-          { label: 'descr_sm_factions.txt',               type: 'factions',loaded: !!factionColors },
-        ].map(({ label, type, loaded }) => (
-          <label key={type} className="flex items-center gap-2 cursor-pointer group">
-            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
-            <span className="text-[10px] font-mono flex-1 truncate text-slate-400 group-hover:text-slate-200 transition-colors">{label}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 flex items-center gap-1">
-              <Upload className="w-2.5 h-2.5" />{loaded ? 'Replace' : 'Load'}
-            </span>
-            <input type="file" accept=".txt" className="hidden" onChange={e => loadFile(e, type)} />
-          </label>
-        ))}
-        {stratData && (
-          <button onClick={handleExport}
-            className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-400 transition-colors font-semibold">
-            <Download className="w-3 h-3" /> Export descr_strat.txt
+    <div className="flex flex-col h-full">
+      {/* Sub-tabs */}
+      <div className="flex border-b border-slate-800 shrink-0">
+        {[['overview','Overview'],['settlements','Settlements'],['regions','Regions']].map(([id,label]) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`flex-1 py-1.5 text-[10px] font-semibold border-b-2 transition-colors ${tab === id ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+            {label}
           </button>
-        )}
+        ))}
       </div>
 
-      {/* Category visibility */}
-      <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Overlay Visibility</p>
-        {CATEGORIES.map(cat => {
-          const visible = visibleCategories?.has(cat.id) ?? true;
-          const count = (overlayItems || []).filter(i => i.category === cat.id).length;
-          return (
-            <button key={cat.id} onClick={() => onToggleCategory(cat.id)}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800/40 transition-colors">
-              {visible ? <Eye className="w-3.5 h-3.5 text-slate-300" /> : <EyeOff className="w-3.5 h-3.5 text-slate-600" />}
-              <span className="text-[10px] text-slate-300 flex-1 text-left">{cat.emoji} {cat.label}</span>
-              <span className="text-[10px] text-slate-600 font-mono">{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
 
-      {/* Add item */}
-      <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Add Item (click map to place)</p>
-        <div className="flex gap-1 flex-wrap">
-          {CATEGORIES.map(cat => (
-            <button key={cat.id} onClick={() => setAddMode(addMode?.category === cat.id ? null : { category: cat.id })}
-              className={`px-2 py-1 rounded text-[10px] border transition-colors ${addMode?.category === cat.id ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'border-slate-600/40 text-slate-400 hover:text-slate-200'}`}>
-              {cat.emoji} {cat.label}
-            </button>
-          ))}
-        </div>
-        {addMode && (
-          <div className="space-y-1.5 border-t border-slate-700/40 pt-1.5">
-            {addMode.category === 'resource' && (
-              <select value={newType} onChange={e => setNewType(e.target.value)}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                <option value="">— pick resource —</option>
-                {RESOURCE_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
-            )}
-            {addMode.category === 'character' && (
-              <>
-                <select value={newType} onChange={e => setNewType(e.target.value)}
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                  <option value="">— pick type —</option>
-                  {CHARACTER_TYPES.map(t => <option key={t}>{t}</option>)}
-                </select>
-                <input value={newFaction} onChange={e => setNewFaction(e.target.value)}
-                  placeholder="Faction name"
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              </>
-            )}
-            {addMode.category === 'fortification' && (
-              <select value={newType} onChange={e => setNewType(e.target.value)}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                <option value="fort">Fort</option>
-                <option value="watchtower">Watchtower</option>
-              </select>
-            )}
-            <button
-              onClick={() => {
-                if (!newType && addMode.category !== 'fortification') return;
-                onAddItem({ ...addMode, type: newType || 'fort', charType: newType, faction: newFaction });
-                setAddMode(null); setNewType(''); setNewFaction('');
-              }}
-              className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 text-slate-900 font-semibold transition-colors">
-              <Plus className="w-3 h-3" /> Click on map to place
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Selected item info */}
-      {selectedItem && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-900/10 p-2.5 space-y-1.5">
-          <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">Selected</p>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{getItemIcon(selectedItem)}</span>
-            <div className="flex-1 min-w-0">
-              {selectedItem.name && <p className="text-[11px] text-amber-300 font-semibold truncate">{selectedItem.name}</p>}
-              <p className="text-[11px] text-slate-200 font-mono truncate">{selectedItem.type || selectedItem.charType}</p>
-              <p className="text-[10px] text-slate-500 font-mono">x:{selectedItem.x} y:{selectedItem.y}</p>
-            </div>
-            <button onClick={() => onDeleteItem(selectedItem.id)}
-              className="p-1 rounded hover:bg-red-900/40 text-slate-500 hover:text-red-400 transition-colors">
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Items list */}
-      {overlayItems && overlayItems.length > 0 && (
-        <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2 space-y-0.5">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Items ({overlayItems.length})</p>
-          <div className="max-h-48 overflow-y-auto space-y-0.5">
-            {overlayItems.map(item => (
-              <button key={item.id} onClick={() => onSelectItem(item)}
-                className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-left transition-colors ${selectedItem?.id === item.id ? 'bg-amber-500/20 text-amber-300' : 'hover:bg-slate-800/40 text-slate-400'}`}>
-                <span className="text-sm">{getItemIcon(item)}</span>
-                <span className="text-[10px] font-mono flex-1 truncate">{item.name || item.type || item.charType}</span>
-                <span className="text-[9px] text-slate-600 font-mono">{item.x},{item.y}</span>
-              </button>
+        {/* ── Overview tab ── */}
+        {tab === 'overview' && <>
+          {/* File loaders */}
+          <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Load Files</p>
+            {[
+              { label: 'descr_strat.txt',                    type: 'strat',   loaded: !!stratData },
+              { label: 'descr_regions.txt',                  type: 'regions', loaded: !!regionsData },
+              { label: '*_regions_and_settlement_names.txt', type: 'names',   loaded: !!settlementNames },
+              { label: 'descr_sm_factions.txt',              type: 'factions',loaded: !!factionColors },
+            ].map(({ label, type, loaded }) => (
+              <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
+                <span className="text-[10px] font-mono flex-1 truncate text-slate-400 group-hover:text-slate-200 transition-colors">{label}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 flex items-center gap-1">
+                  <Upload className="w-2.5 h-2.5" />{loaded ? 'Replace' : 'Load'}
+                </span>
+                <input type="file" accept=".txt" className="hidden" onChange={e => loadFile(e, type)} />
+              </label>
             ))}
+            {stratData && (
+              <button onClick={handleExportStrat}
+                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-400 transition-colors font-semibold">
+                <Download className="w-3 h-3" /> Export descr_strat.txt
+              </button>
+            )}
           </div>
-        </div>
-      )}
+
+          {/* Summary stats */}
+          {stratData && (
+            <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Info</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px]">
+                {stratData.startDate && <><span className="text-slate-500">Start</span><span className="text-slate-300 font-mono">{stratData.startDate}</span></>}
+                {stratData.endDate   && <><span className="text-slate-500">End</span><span className="text-slate-300 font-mono">{stratData.endDate}</span></>}
+                <span className="text-slate-500">Factions</span><span className="text-slate-300 font-mono">{stratData.factions?.length || 0}</span>
+                <span className="text-slate-500">Settlements</span><span className="text-slate-300 font-mono">{settlements.length}</span>
+                <span className="text-slate-500">Characters</span><span className="text-slate-300 font-mono">{(overlayItems||[]).filter(i=>i.category==='character').length}</span>
+                <span className="text-slate-500">Resources</span><span className="text-slate-300 font-mono">{(overlayItems||[]).filter(i=>i.category==='resource').length}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Category visibility */}
+          <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Map Overlay</p>
+            {CATEGORIES.map(cat => {
+              const visible = visibleCategories?.has(cat.id) ?? true;
+              const count = (overlayItems || []).filter(i => i.category === cat.id).length;
+              return (
+                <button key={cat.id} onClick={() => onToggleCategory(cat.id)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800/40 transition-colors">
+                  {visible ? <Eye className="w-3.5 h-3.5 text-slate-300" /> : <EyeOff className="w-3.5 h-3.5 text-slate-600" />}
+                  <span className="text-[10px] text-slate-300 flex-1 text-left">{cat.emoji} {cat.label}</span>
+                  <span className="text-[10px] text-slate-600 font-mono">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Add item */}
+          <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Add to Map (click to place)</p>
+            <div className="flex gap-1 flex-wrap">
+              {CATEGORIES.filter(c => c.id !== 'settlement').map(cat => (
+                <button key={cat.id} onClick={() => setAddMode(addMode?.category === cat.id ? null : { category: cat.id })}
+                  className={`px-2 py-1 rounded text-[10px] border transition-colors ${addMode?.category === cat.id ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'border-slate-600/40 text-slate-400 hover:text-slate-200'}`}>
+                  {cat.emoji} {cat.label}
+                </button>
+              ))}
+            </div>
+            {addMode && (
+              <div className="space-y-1.5 border-t border-slate-700/40 pt-1.5">
+                {addMode.category === 'resource' && (
+                  <select value={newType} onChange={e => setNewType(e.target.value)}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="">— pick resource —</option>
+                    {RESOURCE_TYPES.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                )}
+                {addMode.category === 'character' && (
+                  <>
+                    <select value={newType} onChange={e => setNewType(e.target.value)}
+                      className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                      <option value="">— pick type —</option>
+                      {CHARACTER_TYPES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                    <input value={newFaction} onChange={e => setNewFaction(e.target.value)}
+                      placeholder="Faction name"
+                      className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  </>
+                )}
+                {addMode.category === 'fortification' && (
+                  <select value={newType} onChange={e => setNewType(e.target.value)}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="fort">Fort</option>
+                    <option value="watchtower">Watchtower</option>
+                  </select>
+                )}
+                <button
+                  onClick={() => {
+                    if (!newType && addMode.category !== 'fortification') return;
+                    onAddItem({ ...addMode, type: newType || 'fort', charType: newType, faction: newFaction });
+                    setAddMode(null); setNewType(''); setNewFaction('');
+                  }}
+                  className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 text-slate-900 font-semibold transition-colors">
+                  <Plus className="w-3 h-3" /> Click on map to place
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Selected item */}
+          {selectedItem && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-900/10 p-2.5 space-y-1.5">
+              <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">Selected</p>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{getItemIcon(selectedItem)}</span>
+                <div className="flex-1 min-w-0">
+                  {selectedItem.name && <p className="text-[11px] text-amber-300 font-semibold truncate">{selectedItem.name}</p>}
+                  <p className="text-[11px] text-slate-200 font-mono truncate">{selectedItem.region || selectedItem.type || selectedItem.charType}</p>
+                  <p className="text-[10px] text-slate-500 font-mono">{selectedItem.x != null ? `x:${selectedItem.x} y:${selectedItem.y}` : 'pos unknown'}</p>
+                </div>
+                <button onClick={() => onDeleteItem(selectedItem.id)}
+                  className="p-1 rounded hover:bg-red-900/40 text-slate-500 hover:text-red-400 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>}
+
+        {/* ── Settlements tab ── */}
+        {tab === 'settlements' && <>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search region or faction…"
+            className="w-full h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
+          {settlements.length === 0
+            ? <div className="text-[10px] text-slate-600 text-center py-4">Load descr_strat.txt to see settlements</div>
+            : byFaction.map(([factionName, setts]) => (
+              <div key={factionName}>
+                <div className="flex items-center gap-1.5 px-1 py-0.5 mb-0.5">
+                  <FactionDot factionColors={factionColors} factionName={factionName} />
+                  <span className="text-[10px] font-semibold text-slate-400 font-mono">{factionName}</span>
+                  <span className="text-[9px] text-slate-600">({setts.length})</span>
+                </div>
+                <div className="space-y-0.5 ml-2">
+                  {setts.map(s => (
+                    <SettlementRow
+                      key={s.id}
+                      item={s}
+                      isSelected={selectedItem?.id === s.id}
+                      factionColors={factionColors}
+                      onSelect={item => onSelectItem(item)}
+                      onDelete={onDeleteItem}
+                      onChange={onSettlementChange}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          }
+        </>}
+
+        {/* ── Regions tab ── */}
+        {tab === 'regions' && (
+          <RegionsEditor regionsData={regionsData} onSave={onRegionsDataUpdate} />
+        )}
+      </div>
     </div>
   );
 }
