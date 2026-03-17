@@ -7,7 +7,7 @@ import CodePreview from '../components/edb/CodePreview';
 import HiddenResourceEditor from '../components/edb/HiddenResourceEditor';
 import RefFileLoader from '../components/edb/RefFileLoader';
 import { Button } from '@/components/ui/button';
-import { Castle, Code2, Image, ShieldAlert } from 'lucide-react';
+import { Castle, Code2, Image, ShieldAlert, Save } from 'lucide-react';
 import AutoSavePanel from '../components/edb/AutoSavePanel';
 
 function decodeTgaToDataUrl(buffer) {
@@ -73,7 +73,7 @@ function decodeTgaToDataUrl(buffer) {
 }
 
 export default function EDBEditor() {
-  const { edbData, fileName, loadBuildingTgaImages, saveNow } = useEDB();
+  const { edbData, fileName, loadBuildingTgaImages, saveNow, exportEDB, exportTextFile, isDirty } = useEDB();
   const [showCode, setShowCode] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
   const tgaFolderRef = useRef();
@@ -128,6 +128,16 @@ export default function EDBEditor() {
 
 
 
+        <Button
+          size="sm"
+          variant="ghost"
+          className={`px-3 text-xs font-medium rounded-md inline-flex items-center h-7 gap-1 shrink-0 ${isDirty ? 'text-yellow-400 hover:text-yellow-300' : 'text-muted-foreground'}`}
+          title="Save EDB to browser cache"
+          onClick={() => saveNow()}
+        >
+          <Save className="w-3 h-3" />
+          <span className="hidden lg:block">{isDirty ? 'Save*' : 'Saved'}</span>
+        </Button>
         <AutoSavePanel onSaveNow={saveNow} />
         <Button
           size="sm"
