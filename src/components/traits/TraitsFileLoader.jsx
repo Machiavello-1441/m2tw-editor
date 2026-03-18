@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { useTraits } from './TraitsContext';
+
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Save, RotateCcw } from 'lucide-react';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
@@ -7,7 +8,7 @@ import { getStringsBinStore, setStringsBinStore } from '@/lib/stringsBinStore';
 
 export default function TraitsFileLoader() {
   const {
-    traitsData, textData, textBinMeta, traitsFilename, textFilename,
+    traitsData, textData, traitsFilename, textFilename,
     loadTraitsFile, loadTextFile,
     exportTraitsFile, exportTextFile,
     saveTraits, revertTraits,
@@ -39,7 +40,7 @@ export default function TraitsFileLoader() {
         // Build map and directly load into context
         const map = {};
         for (const entry of parsed.entries) map[entry.key] = entry.value;
-        loadTextFile(map, file.name);
+        loadTextFile(map, file.name, { magic1: parsed.magic1, magic2: parsed.magic2 });
       }
     } else {
       const reader = new FileReader();
