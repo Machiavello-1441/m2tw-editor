@@ -553,6 +553,14 @@ export default function CampaignMap() {
           </span>
         )}
 
+          {/* File status indicators */}
+        <div className="hidden xl:flex items-center gap-1 ml-2">
+          {TXT_FILES.map(fname => (
+            <span key={fname} title={fname} className={`w-2 h-2 rounded-full ${loadedFiles[fname] ? 'bg-green-500' : 'bg-slate-600'}`} />
+          ))}
+          <span className="text-[9px] text-slate-500 ml-1">{Object.keys(loadedFiles).length}/{TXT_FILES.length} txt</span>
+        </div>
+
         {/* Pending place indicator */}
         {pendingPlace && (
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-semibold animate-pulse">
