@@ -107,6 +107,7 @@ const DATA_FILE_MAP = {
   'descr_names.txt': 'names',
   'descr_rebel_factions.txt': 'rebel_fac',
   'descr_religions.txt': 'religions',
+  'battle_models.modeldb': 'modeldb',
 };
 
 
