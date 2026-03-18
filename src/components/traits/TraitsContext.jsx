@@ -225,7 +225,7 @@ export function TraitsProvider({ children }) {
       traitsFilename, textFilename,
       isDirty, selectedTrait,
       setSelectedTrait,
-      loadTraitsFile, loadTextFile,
+      loadTraitsFile, loadTextFile, loadTextFileFromBin,
       updateTrait, addTrait, deleteTrait,
       updateTrigger, addTrigger, deleteTrigger,
       revertTraits, saveTraits,
