@@ -27,9 +27,11 @@ export function TraitsProvider({ children }) {
         setTraitsData(parsed);
         if (traitsName) setTraitsFilename(traitsName);
       }
-      // Try .strings.bin store first, then fall back to plain txt cache
+      // Try .strings.bin store first (case-insensitive), then fall back to plain txt cache
       const store = getStringsBinStore();
-      const vnvsBin = store['export_VnVs.txt.strings.bin'];
+      const vnvsBin = Object.entries(store).find(([k]) =>
+        k.toLowerCase() === 'export_vnvs.txt.strings.bin'
+      )?.[1];
       if (vnvsBin) {
         const map = {};
         for (const e of vnvsBin.entries) map[e.key] = e.value;
