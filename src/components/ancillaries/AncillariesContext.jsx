@@ -40,9 +40,11 @@ export function AncillariesProvider({ children }) {
         setAncData(parsed);
         if (ancName) setAncFilename(ancName);
       }
-      // Try .strings.bin store first, then fall back to plain txt cache
+      // Try .strings.bin store first (case-insensitive), then fall back to plain txt cache
       const store = getStringsBinStore();
-      const anctxtBin = store['export_ancillaries.txt.strings.bin'];
+      const anctxtBin = Object.entries(store).find(([k]) =>
+        k.toLowerCase() === 'export_ancillaries.txt.strings.bin'
+      )?.[1];
       if (anctxtBin) {
         const map = {};
         for (const e of anctxtBin.entries) map[e.key] = e.value;
