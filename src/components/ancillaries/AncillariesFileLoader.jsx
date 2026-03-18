@@ -106,9 +106,20 @@ export default function AncillariesFileLoader() {
   const handleTextFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const isBin = file.name.toLowerCase().endsWith('.bin');
     const reader = new FileReader();
-    reader.onload = ev => loadTextFile(ev.target.result, file.name);
-    reader.readAsText(file);
+    if (isBin) {
+      reader.onload = ev => {
+        const parsed = parseStringsBin(ev.target.result);
+        const map = {};
+        for (const entry of parsed.entries) map[entry.key] = entry.value;
+        loadTextFileFromBin(map, file.name, parsed.magic1, parsed.magic2);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = ev => loadTextFile(ev.target.result, file.name);
+      reader.readAsText(file);
+    }
     e.target.value = '';
   };
 
