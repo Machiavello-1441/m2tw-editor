@@ -184,11 +184,24 @@ export default function CampaignMap() {
     const buf = await file.arrayBuffer();
     const result = await loadTGA(buf);
     if (!result) return;
-    setLayers(prev => ({
-      ...prev,
-      [layerId]: { ...prev[layerId], ...result },
-    }));
-  }, []);
+    setLayers(prev => {
+      const next = { ...prev, [layerId]: { ...prev[layerId], ...result } };
+      // Re-compute settlement positions when regions layer loads
+      if (layerId === 'regions') {
+        setStratDataRaw(prevStrat => {
+          if (!prevStrat) return prevStrat;
+          setRegionsDataRaw(prevReg => {
+            const enriched = applySettlementPositions(prevStrat, prevReg, result);
+            setStratDataRaw(enriched);
+            setOverlayItems(enriched.items);
+            return prevReg;
+          });
+          return prevStrat;
+        });
+      }
+      return next;
+    });
+  }, [applySettlementPositions]);
 
   // ── Bulk folder import ─────────────────────────────────────────────────────
   const handleFolderImport = useCallback(async (e) => {
