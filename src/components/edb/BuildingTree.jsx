@@ -119,9 +119,9 @@ function BuildingNode({ building, isFirst, isLast }) {
                       <AlertDialogTrigger asChild>
                         <button
                       onClick={(e) => e.stopPropagation()}
-                      className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      className="p-0.5 hover:bg-destructive/20 rounded text-destructive/50 hover:text-destructive transition-colors">
 
-                          <Trash2 className="w-2.5 h-2.5 text-destructive" />
+                          <Trash2 className="w-2.5 h-2.5" />
                         </button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
