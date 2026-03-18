@@ -168,6 +168,19 @@ export default function CampaignMap() {
         setStratDataRaw(parsed);
         setOverlayItems(parsed.items || []);
       }
+      // Auto-restore factions colors (campaign descr_sm_factions overrides data)
+      const facRaw = localStorage.getItem('m2tw_campaign_sm_factions') || localStorage.getItem('m2tw_factions_file');
+      if (facRaw && !sessionStorage.getItem('m2tw_factions_raw')) {
+        setFactionColorsRaw(parseDescrSmFactions(facRaw));
+      }
+      // Auto-restore settlement names from campaign *_regions_and_settlement_names
+      const namesRaw = localStorage.getItem('m2tw_campaign_names_txt');
+      if (namesRaw && !sessionStorage.getItem('m2tw_names_raw')) {
+        setSettlementNamesRaw(parseSettlementNames(namesRaw));
+      }
+      // Auto-restore cultures
+      const cultRaw = localStorage.getItem('m2tw_cultures_file');
+      if (cultRaw) setCultures(parseDescrCultures(cultRaw));
     } catch {}
 
     const handler = (e) => {
