@@ -144,7 +144,21 @@ export default function CampaignMap() {
     setFactionColorsRaw(data);
   };
 
-  const [importProgress, setImportProgress] = React.useState(null); // null | { step, total }
+  const [importProgress, setImportProgress] = React.useState(null);
+  const [loadedFiles, setLoadedFiles] = React.useState(() => {
+    // Check which files are already in sessionStorage
+    const loaded = {};
+    if (sessionStorage.getItem('m2tw_strat_raw'))          loaded['descr_strat.txt'] = true;
+    if (sessionStorage.getItem('m2tw_regions_raw'))        loaded['descr_regions.txt'] = true;
+    if (sessionStorage.getItem('m2tw_factions_raw'))       loaded['descr_sm_factions.txt'] = true;
+    if (sessionStorage.getItem('m2tw_rebel_factions_raw')) loaded['descr_rebel_factions.txt'] = true;
+    if (sessionStorage.getItem('m2tw_religions_raw'))      loaded['descr_religions.txt'] = true;
+    if (sessionStorage.getItem('m2tw_sm_resources_raw'))   loaded['descr_sm_resources.txt'] = true;
+    if (sessionStorage.getItem('m2tw_mercenaries_raw'))    loaded['descr_mercenaries.txt'] = true;
+    if (sessionStorage.getItem('m2tw_music_types_raw'))    loaded['descr_sounds_music_types.txt'] = true;
+    if (sessionStorage.getItem('m2tw_script_raw'))         loaded['campaign_script.txt'] = true;
+    return loaded;
+  });
 
   const jumpRef = useRef(null);
   const folderInputRef = useRef();
