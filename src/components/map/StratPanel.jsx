@@ -297,16 +297,50 @@ export default function StratPanel({
 
           {/* Summary stats */}
           {stratData && (
-            <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1">
+            <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-2">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Info</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px]">
+                {stratData.campaignName && <><span className="text-slate-500">Campaign</span><span className="text-slate-300 font-mono">{stratData.campaignName}</span></>}
                 {stratData.startDate && <><span className="text-slate-500">Start</span><span className="text-slate-300 font-mono">{stratData.startDate}</span></>}
                 {stratData.endDate   && <><span className="text-slate-500">End</span><span className="text-slate-300 font-mono">{stratData.endDate}</span></>}
-                <span className="text-slate-500">Factions</span><span className="text-slate-300 font-mono">{stratData.factions?.length || 0}</span>
+                {stratData.timescale && <><span className="text-slate-500">Timescale</span><span className="text-slate-300 font-mono">{stratData.timescale} yr/turn</span></>}
                 <span className="text-slate-500">Settlements</span><span className="text-slate-300 font-mono">{settlements.length}</span>
                 <span className="text-slate-500">Characters</span><span className="text-slate-300 font-mono">{(overlayItems||[]).filter(i=>i.category==='character').length}</span>
                 <span className="text-slate-500">Resources</span><span className="text-slate-300 font-mono">{(overlayItems||[]).filter(i=>i.category==='resource').length}</span>
+                {stratData.scriptFile && <><span className="text-slate-500">Script</span><span className="text-slate-300 font-mono truncate">{stratData.scriptFile}</span></>}
               </div>
+              {/* Playable / unlockable */}
+              {stratData.playable?.length > 0 && (
+                <div>
+                  <p className="text-[9px] text-green-500 uppercase font-semibold mb-0.5">Playable ({stratData.playable.length})</p>
+                  <p className="text-[10px] text-slate-400 font-mono break-all">{stratData.playable.join(', ')}</p>
+                </div>
+              )}
+              {stratData.unlockable?.length > 0 && (
+                <div>
+                  <p className="text-[9px] text-yellow-500 uppercase font-semibold mb-0.5">Unlockable ({stratData.unlockable.length})</p>
+                  <p className="text-[10px] text-slate-400 font-mono break-all">{stratData.unlockable.join(', ')}</p>
+                </div>
+              )}
+              {stratData.nonplayable?.length > 0 && (
+                <div>
+                  <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Nonplayable ({stratData.nonplayable.length})</p>
+                  <p className="text-[10px] text-slate-500 font-mono break-all">{stratData.nonplayable.join(', ')}</p>
+                </div>
+              )}
+              {/* Flags */}
+              {stratData.flags && Object.keys(stratData.flags).length > 0 && (
+                <div>
+                  <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Flags</p>
+                  <div className="flex flex-wrap gap-1">
+                    {Object.entries(stratData.flags).map(([k, v]) => (
+                      <span key={k} className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600/40 text-[9px] text-slate-400 font-mono">
+                        {typeof v === 'boolean' ? k : `${k}: ${v}`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
