@@ -93,7 +93,6 @@ export function TraitsProvider({ children }) {
     setTextFilename(fn);
     // Store in strings bin store so other editors can access it
     try {
-      const { updateStringsBinFile } = require('@/lib/stringsBinStore');
       const entries = Object.entries(map).map(([key, value]) => ({ key, value }));
       updateStringsBinFile(fn, { entries, magic1: magic1 ?? 2, magic2: magic2 ?? 2048 });
     } catch {}
