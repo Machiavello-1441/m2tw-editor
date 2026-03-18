@@ -52,6 +52,18 @@ function BuildingNode({ building, isFirst, isLast }) {
         <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
           {building.levels.length}L
         </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); moveBuilding(building.name, -1); }}
+          disabled={isFirst}
+          className="p-0.5 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-20">
+          <ArrowUp className="w-3 h-3 text-muted-foreground" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); moveBuilding(building.name, 1); }}
+          disabled={isLast}
+          className="p-0.5 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-20">
+          <ArrowDown className="w-3 h-3 text-muted-foreground" />
+        </button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <button className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity">
