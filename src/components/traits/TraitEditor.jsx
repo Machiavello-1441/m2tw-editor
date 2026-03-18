@@ -278,15 +278,20 @@ export default function TraitEditor() {
                           />
                         </div>
                         <div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[10px] text-muted-foreground">Epithet</Label>
-                            <span className="text-[9px] text-muted-foreground/50 font-mono">{level.epithet}</span>
+                          <div className="flex items-center justify-between mb-1">
+                            <Label className="text-[10px] text-muted-foreground">Epithet key (ID)</Label>
                           </div>
+                          <Input
+                            value={level.epithet}
+                            onChange={e => updateLevel(li, 'epithet', e.target.value)}
+                            className={inputSmCls + ' font-mono mb-1'}
+                            placeholder={`${trait.name}_Level${li + 1}_epithet_desc`}
+                          />
                           <Input
                             value={epithText}
                             onChange={e => level.epithet && updateTextEntry(level.epithet, e.target.value)}
                             className={inputSmCls}
-                            placeholder={level.epithet ? 'Enter epithet text…' : 'No epithet key set'}
+                            placeholder={level.epithet ? 'Enter epithet display text…' : 'Set epithet key above first'}
                             disabled={!level.epithet}
                           />
                         </div>
