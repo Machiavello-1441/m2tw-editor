@@ -64,11 +64,13 @@ export default function TraitEditor() {
   };
 
   const addLevel = () => {
+    const levelName = `${trait.name}_Level${trait.levels.length + 1}`;
     const newLevel = {
-      name: `${trait.name}_Level${trait.levels.length + 1}`,
-      description: `${trait.name}_Level${trait.levels.length + 1}_desc`,
-      effectsDescription: `${trait.name}_Level${trait.levels.length + 1}_effects_desc`,
-      gainMessage: '', loseMessage: '', epithet: '',
+      name: levelName,
+      description: `${levelName}_desc`,
+      effectsDescription: `${levelName}_effects_desc`,
+      epithet: `${levelName}_epithet_desc`,
+      gainMessage: '', loseMessage: '',
       threshold: (trait.levels[trait.levels.length - 1]?.threshold || 0) * 2 || 1,
       effects: [],
     };
