@@ -169,13 +169,23 @@ export function AncillariesProvider({ children }) {
   }, []);
 
   const addAncillary = useCallback(() => {
+    const baseName = 'new_ancillary';
     const newAnc = {
-      name: 'new_ancillary', type: 'Court', transferable: 0,
+      name: baseName, type: 'Court', transferable: 0,
       image: 'court_noble.tga', unique: false, excludedAncillaries: [],
-      excludeCultures: [], description: 'new_ancillary_desc',
-      effectsDescription: 'new_ancillary_effects_desc', effects: [],
+      excludeCultures: [],
+      description: `${baseName}_desc`,
+      effectsDescription: `${baseName}_effects_desc`,
+      effects: [],
     };
     setAncData(prev => ({ ...prev, ancillaries: [...(prev?.ancillaries || []), newAnc] }));
+    // Pre-populate empty text entries
+    setTextData(prev => ({
+      ...prev,
+      [baseName]: '',
+      [`${baseName}_desc`]: '',
+      [`${baseName}_effects_desc`]: '',
+    }));
     setIsDirty(true);
   }, []);
 
