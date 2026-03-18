@@ -12,7 +12,6 @@ export function TraitsProvider({ children }) {
   const [textFilename, setTextFilename] = useState('export_VnVs.txt');
   const [isDirty, setIsDirty] = useState(false);
   const [selectedTrait, setSelectedTrait] = useState(null);
-  const [textBinMeta, setTextBinMeta] = useState({ magic1: 2, magic2: 2048 });
 
   // Snapshots for revert
   const originalTraitsData = useRef(null);
@@ -31,19 +30,17 @@ export function TraitsProvider({ children }) {
       }
       // Try .strings.bin store first (case-insensitive), then fall back to plain txt cache
       const store = getStringsBinStore();
-      // Accept any file whose name contains 'vnv' or matches exactly
-      const vnvsBinEntry = Object.entries(store).find(([k]) => {
-        const lk = k.toLowerCase();
-        return lk === 'export_vnvs.txt.strings.bin' || lk.includes('vnv');
-      });
-      const vnvsBin = vnvsBinEntry?.[1];
-      if (vnvsBin) {
+      const vnvsEntry = Object.entries(store).find(([k]) =>
+        k.toLowerCase() === 'export_vnvs.txt.strings.bin'
+      );
+      if (vnvsEntry) {
+        const [filename, binData] = vnvsEntry;
         const map = {};
-        for (const e of vnvsBin.entries) map[e.key] = e.value;
+        for (const e of binData.entries) map[e.key] = e.value;
         originalTextData.current = JSON.stringify(map);
         setTextData(map);
-        setTextBinMeta({ magic1: vnvsBin.magic1 ?? 2, magic2: vnvsBin.magic2 ?? 2048 });
-        setTextFilename(vnvsBinEntry[0]);
+        setTextFilename(filename);
+        setTextBinMeta({ magic1: binData.magic1 ?? 2, magic2: binData.magic2 ?? 2048 });
       } else {
         const vnvsContent = localStorage.getItem('m2tw_vnvs_file');
         const vnvsName = localStorage.getItem('m2tw_vnvs_file_name');
@@ -52,6 +49,7 @@ export function TraitsProvider({ children }) {
           originalTextData.current = JSON.stringify(parsed);
           setTextData(parsed);
           if (vnvsName) setTextFilename(vnvsName);
+          setTextBinMeta(null);
         }
       }
     } catch {}
@@ -89,10 +87,12 @@ export function TraitsProvider({ children }) {
       : parseTextFile(content);
     originalTextData.current = JSON.stringify(parsed);
     setTextData(parsed);
-    if (binMeta) setTextBinMeta(binMeta);
     const fn = filename || 'export_VnVs.txt';
     setTextFilename(fn);
-    if (typeof content === 'string') {
+    if (binMeta) {
+      setTextBinMeta(binMeta);
+    } else if (typeof content === 'string') {
+      setTextBinMeta(null);
       try { localStorage.setItem('m2tw_vnvs_file', content); localStorage.setItem('m2tw_vnvs_file_name', fn); } catch {}
     }
   }, []);
@@ -163,15 +163,14 @@ export function TraitsProvider({ children }) {
         name: `${baseName}_Level1`,
         description: `${baseName}_Level1_desc`,
         effectsDescription: `${baseName}_Level1_effects_desc`,
-        gainMessage: '', loseMessage: '',
         epithet: `${baseName}_Level1_epithet_desc`,
+        gainMessage: '', loseMessage: '',
         threshold: 1, effects: [],
       }],
     };
     setTraitsData(prev => ({ ...prev, traits: [...(prev?.traits || []), newTrait] }));
-    // Pre-populate empty text entries so they show up in the .strings.bin export
     setTextData(prev => ({
-      ...prev,
+      ...(prev || {}),
       [`${baseName}_Level1_desc`]: '',
       [`${baseName}_Level1_effects_desc`]: '',
       [`${baseName}_Level1_epithet_desc`]: '',
@@ -212,18 +211,6 @@ export function TraitsProvider({ children }) {
     setIsDirty(true);
   }, []);
 
-  const renameTextKey = useCallback((oldKey, newKey) => {
-    if (!oldKey || !newKey || oldKey === newKey) return;
-    setTextData(prev => {
-      if (!prev) return prev;
-      const next = { ...prev };
-      next[newKey] = next[oldKey] ?? '';
-      delete next[oldKey];
-      return next;
-    });
-    setIsDirty(true);
-  }, []);
-
   const exportTraitsFile = useCallback(() => {
     if (!traitsData) return null;
     return serializeTraitsFile(traitsData);
@@ -231,13 +218,13 @@ export function TraitsProvider({ children }) {
 
   const exportTextFile = useCallback(() => {
     if (!textData) return null;
-    // If the loaded file was a .strings.bin, export binary
-    if (textFilename.toLowerCase().endsWith('.bin')) {
+    if (textBinMeta) {
+      // Export as .strings.bin binary
       const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
       return encodeStringsBin(entries, textBinMeta.magic1, textBinMeta.magic2);
     }
     return serializeTextFile(textData);
-  }, [textData, textFilename, textBinMeta]);
+  }, [textData, textBinMeta]);
 
   const getText = useCallback((key) => {
     if (!textData || !key) return '';
@@ -246,15 +233,15 @@ export function TraitsProvider({ children }) {
 
   return (
     <TraitsContext.Provider value={{
-      traitsData, textData,
-      traitsFilename, textFilename, textBinMeta,
+      traitsData, textData, textBinMeta,
+      traitsFilename, textFilename,
       isDirty, selectedTrait,
       setSelectedTrait,
       loadTraitsFile, loadTextFile,
       updateTrait, addTrait, deleteTrait,
       updateTrigger, addTrigger, deleteTrigger,
       revertTraits, saveTraits,
-      updateTextEntry, renameTextKey,
+      updateTextEntry,
       exportTraitsFile, exportTextFile,
       getText,
     }}>
