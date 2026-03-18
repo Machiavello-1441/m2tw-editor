@@ -47,7 +47,40 @@ export default function TraitEditor() {
   const trait = traitsData.traits[selectedTrait];
   if (!trait) return null;
 
-  const update = (field, value) => updateTrait(selectedTrait, { ...trait, [field]: value });
+  const update = (field, value) => {
+    if (field === 'name') {
+      // Rename all text keys that use the old trait name as prefix
+      const oldName = trait.name;
+      const newName = value;
+      // Rename level text keys
+      const renamedLevels = trait.levels.map((l, li) => {
+        const renamedLevel = { ...l };
+        // Replace oldName prefix with newName in level keys
+        if (l.description && l.description.startsWith(oldName)) {
+          const newKey = newName + l.description.slice(oldName.length);
+          updateTextEntry(l.description, null, l.description, newKey);
+          renamedLevel.description = newKey;
+        }
+        if (l.effectsDescription && l.effectsDescription.startsWith(oldName)) {
+          const newKey = newName + l.effectsDescription.slice(oldName.length);
+          updateTextEntry(l.effectsDescription, null, l.effectsDescription, newKey);
+          renamedLevel.effectsDescription = newKey;
+        }
+        if (l.epithet && l.epithet.startsWith(oldName)) {
+          const newKey = newName + l.epithet.slice(oldName.length);
+          updateTextEntry(l.epithet, null, l.epithet, newKey);
+          renamedLevel.epithet = newKey;
+        }
+        if (l.name && l.name.startsWith(oldName)) {
+          renamedLevel.name = newName + l.name.slice(oldName.length);
+        }
+        return renamedLevel;
+      });
+      updateTrait(selectedTrait, { ...trait, name: newName, levels: renamedLevels });
+      return;
+    }
+    updateTrait(selectedTrait, { ...trait, [field]: value });
+  };
 
   const toggleCharacter = (char) => {
     const chars = trait.characters.includes(char)
