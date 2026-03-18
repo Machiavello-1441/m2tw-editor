@@ -104,13 +104,23 @@ export default function AncillariesFileLoader() {
     e.target.value = '';
   };
 
-  const handleTextFile = (e) => {
+  const handleTextFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => loadTextFile(ev.target.result, file.name);
-    reader.readAsText(file);
     e.target.value = '';
+    if (file.name.toLowerCase().endsWith('.strings.bin')) {
+      const buf = await file.arrayBuffer();
+      const parsed = parseStringsBin(buf);
+      if (parsed) {
+        const existing = getStringsBinStore();
+        setStringsBinStore({ ...existing, [file.name]: { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 } });
+        window.dispatchEvent(new CustomEvent('strings-bin-updated'));
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = ev => loadTextFile(ev.target.result, file.name);
+      reader.readAsText(file);
+    }
   };
 
   const handleTgaFolder = async (e) => {
