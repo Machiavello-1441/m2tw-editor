@@ -49,7 +49,8 @@ export default function TraitsFileLoader() {
   };
 
   const downloadFile = (content, filename) => {
-    const blob = new Blob([content], { type: 'text/plain' });
+    const type = content instanceof ArrayBuffer ? 'application/octet-stream' : 'text/plain';
+    const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.click();
