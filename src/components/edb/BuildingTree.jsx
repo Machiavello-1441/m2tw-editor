@@ -246,8 +246,8 @@ export default function BuildingTree() {
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2">
-          {filtered.map((building) =>
-          <BuildingNode key={building.name} building={building} />
+          {filtered.map((building, idx) =>
+          <BuildingNode key={building.name} building={building} isFirst={idx === 0} isLast={idx === filtered.length - 1} />
           )}
           {filtered.length === 0 &&
           <p className="text-xs text-muted-foreground text-center py-8">No buildings found</p>
