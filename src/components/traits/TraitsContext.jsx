@@ -254,7 +254,7 @@ export function TraitsProvider({ children }) {
       updateTrait, addTrait, deleteTrait,
       updateTrigger, addTrigger, deleteTrigger,
       revertTraits, saveTraits,
-      updateTextEntry,
+      updateTextEntry, renameTextKey,
       exportTraitsFile, exportTextFile,
       getText,
     }}>
