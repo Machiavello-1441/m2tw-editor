@@ -261,6 +261,34 @@ export default function Export() {
                 />
               )}
               <ExportRow
+                icon={<FileText className="w-4 h-4 text-orange-400/70" />}
+                label="export_descr_character_traits.txt"
+                path={`${modName}/data/`}
+                status={hasTraits ? 'ready' : 'skip'}
+                detail={hasTraits ? `${traitsData.traits.length} traits, ${traitsData.triggers.length} triggers` : 'No traits loaded'}
+              />
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-orange-300/70" />}
+                label={hasTraitsText ? traitsTextFilename : 'export_VnVs.txt.strings.bin'}
+                path={`${modName}/data/text/`}
+                status={hasTraitsText ? 'ready' : 'skip'}
+                detail={hasTraitsText ? `${Object.keys(traitsTextData).length} text entries` : 'No VnVs text loaded'}
+              />
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-purple-400/70" />}
+                label="export_descr_ancillaries.txt"
+                path={`${modName}/data/`}
+                status={hasAnc ? 'ready' : 'skip'}
+                detail={hasAnc ? `${ancData.ancillaries.length} ancillaries, ${(ancData.triggers||[]).length} triggers` : 'No ancillaries loaded'}
+              />
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-purple-300/70" />}
+                label={hasAncText ? ancTextFilename : 'export_ancillaries.txt.strings.bin'}
+                path={`${modName}/data/text/`}
+                status={hasAncText ? 'ready' : 'skip'}
+                detail={hasAncText ? `${Object.keys(ancTextData).length} text entries` : 'No ancillaries text loaded'}
+              />
+              <ExportRow
                 icon={<Code2 className="w-4 h-4 text-green-500/70" />}
                 label="luaPluginScript.lua"
                 path={`${modName}/eopData/eopScripts/`}
