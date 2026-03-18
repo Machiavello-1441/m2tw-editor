@@ -86,7 +86,6 @@ const AuthenticatedApp = () => {
       <Route path="/GoatTools" element={<LayoutWrapper currentPageName="GoatTools"><GoatTools /></LayoutWrapper>} />
       <Route path="/ScriptEditor" element={<LayoutWrapper currentPageName="ScriptEditor"><ScriptEditor /></LayoutWrapper>} />
       <Route path="/FactionsEditor" element={<LayoutWrapper currentPageName="FactionsEditor"><FactionsEditor /></LayoutWrapper>} />
-      <Route path="/CharactersEditor" element={<LayoutWrapper currentPageName="CharactersEditor"><CharactersEditor /></LayoutWrapper>} />
       <Route path="/CampaignSettings" element={<LayoutWrapper currentPageName="CampaignSettings"><CampaignSettings /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
