@@ -548,28 +548,50 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
 }
 
 // ─── descr_regions.txt ────────────────────────────────────────────────────────
+// Format per block (9 non-blank, non-comment lines):
+//   (province name)
+//   (settlement name)
+//   (faction creator)
+//   (rebel faction)
+//   R G B
+//   resource1, resource2, ...  (may be blank)
+//   triumph_points              (integer, default 5)
+//   farm_level                  (integer, default 5)
+//   religions { name val name val ... }
 export function parseDescrRegions(text) {
   const regions = [];
-  const lines = text.split('\n').map(l => l.replace(/;.*$/, '').trim()).filter(Boolean);
+  // Strip inline comments but preserve blank lines to separate blocks
+  const lines = text.split('\n').map(l => l.replace(/;.*$/, '').trimEnd());
+
+  // Collect non-blank stripped lines per region block
+  // Each region block has exactly 9 data lines; blocks are separated by blank lines
+  const stripped = [];
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (t) stripped.push(t);
+  }
+
   let i = 0;
-  while (i < lines.length) {
-    const regionName    = lines[i++]; if (!regionName || !lines[i]) break;
-    const settlementName= lines[i++];
-    const factionCreator= lines[i++];
-    const rebelFaction  = lines[i++];
-    const rgbParts      = (lines[i++] || '').split(/\s+/);
-    const r = parseInt(rgbParts[0]), g = parseInt(rgbParts[1]), b = parseInt(rgbParts[2]);
-    const resourcesLine = lines[i++] || '';
-    const resources     = resourcesLine.split(',').map(s => s.trim()).filter(Boolean);
-    const val1          = parseInt(lines[i++]) || 0;
-    const val2          = parseInt(lines[i++]) || 0;
-    const relLine       = lines[i++] || '';
-    const relMatch      = relLine.match(/religions\s*\{([^}]*)\}/);
-    const religions     = {};
+  while (i + 8 < stripped.length) {
+    const regionName     = stripped[i++];
+    const settlementName = stripped[i++];
+    const factionCreator = stripped[i++];
+    const rebelFaction   = stripped[i++];
+    const rgbParts       = stripped[i++].split(/\s+/);
+    const r = parseInt(rgbParts[0]) || 0;
+    const g = parseInt(rgbParts[1]) || 0;
+    const b = parseInt(rgbParts[2]) || 0;
+    const resourcesLine  = stripped[i++] || '';
+    const resources      = resourcesLine.split(',').map(s => s.trim()).filter(Boolean);
+    const val1           = parseInt(stripped[i++]) || 0;
+    const val2           = parseInt(stripped[i++]) || 0;
+    const relLine        = stripped[i++] || '';
+    const relMatch       = relLine.match(/religions\s*\{([^}]*)\}/);
+    const religions      = {};
     if (relMatch) {
       const parts = relMatch[1].trim().split(/\s+/);
       for (let j = 0; j < parts.length; j += 2) {
-        if (parts[j] && parts[j+1] !== undefined) religions[parts[j]] = parseInt(parts[j+1]);
+        if (parts[j] && parts[j + 1] !== undefined) religions[parts[j]] = parseInt(parts[j + 1]);
       }
     }
     regions.push({ regionName, settlementName, factionCreator, rebelFaction, r, g, b, resources, val1, val2, religions });
