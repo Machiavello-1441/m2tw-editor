@@ -30,15 +30,19 @@ export function TraitsProvider({ children }) {
       }
       // Try .strings.bin store first (case-insensitive), then fall back to plain txt cache
       const store = getStringsBinStore();
-      const vnvsBin = Object.entries(store).find(([k]) =>
-        k.toLowerCase() === 'export_vnvs.txt.strings.bin'
-      )?.[1];
+      // Accept any file whose name contains 'vnv' or matches exactly
+      const vnvsBinEntry = Object.entries(store).find(([k]) => {
+        const lk = k.toLowerCase();
+        return lk === 'export_vnvs.txt.strings.bin' || lk.includes('vnv');
+      });
+      const vnvsBin = vnvsBinEntry?.[1];
       if (vnvsBin) {
         const map = {};
         for (const e of vnvsBin.entries) map[e.key] = e.value;
         originalTextData.current = JSON.stringify(map);
         setTextData(map);
-        setTextFilename('export_VnVs.txt.strings.bin');
+        setTextBinMeta({ magic1: vnvsBin.magic1 ?? 2, magic2: vnvsBin.magic2 ?? 2048 });
+        setTextFilename(vnvsBinEntry[0]);
       } else {
         const vnvsContent = localStorage.getItem('m2tw_vnvs_file');
         const vnvsName = localStorage.getItem('m2tw_vnvs_file_name');

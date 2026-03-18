@@ -43,15 +43,19 @@ export function AncillariesProvider({ children }) {
       }
       // Try .strings.bin store first (case-insensitive), then fall back to plain txt cache
       const store = getStringsBinStore();
-      const anctxtBin = Object.entries(store).find(([k]) =>
-        k.toLowerCase() === 'export_ancillaries.txt.strings.bin'
-      )?.[1];
+      // Accept any file whose name contains 'ancillari' or matches exactly
+      const anctxtBinEntry = Object.entries(store).find(([k]) => {
+        const lk = k.toLowerCase();
+        return lk === 'export_ancillaries.txt.strings.bin' || lk.includes('ancillari');
+      });
+      const anctxtBin = anctxtBinEntry?.[1];
       if (anctxtBin) {
         const map = {};
         for (const e of anctxtBin.entries) map[e.key] = e.value;
         originalTextData.current = JSON.stringify(map);
         setTextData(map);
-        setTextFilename('export_ancillaries.txt.strings.bin');
+        setTextBinMeta({ magic1: anctxtBin.magic1 ?? 2, magic2: anctxtBin.magic2 ?? 2048 });
+        setTextFilename(anctxtBinEntry[0]);
       } else {
         const txtContent = localStorage.getItem('m2tw_anctxt_file');
         const txtName = localStorage.getItem('m2tw_anctxt_file_name');
