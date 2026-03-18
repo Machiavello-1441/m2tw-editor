@@ -55,7 +55,7 @@ export default function TraitsFileLoader() {
   return (
     <div className="flex flex-wrap items-center gap-2 p-3 border-b border-border bg-card">
       <input ref={traitsRef} type="file" accept=".txt" className="hidden" onChange={handleTraitsFile} />
-      <input ref={textRef} type="file" accept=".txt" className="hidden" onChange={handleTextFile} />
+      <input ref={textRef} type="file" accept=".txt,.strings.bin,.bin" className="hidden" onChange={handleTextFile} />
 
       {/* Load buttons */}
       <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
@@ -68,7 +68,7 @@ export default function TraitsFileLoader() {
       <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
         onClick={() => textRef.current?.click()}>
         <Upload className="w-3 h-3" />
-        Load VnVs Text
+        Load VnVs (.strings.bin / .txt)
       </Button>
       {textData && <span className="text-[10px] text-muted-foreground font-mono truncate max-w-32">{textFilename}</span>}
 
