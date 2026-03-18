@@ -149,7 +149,7 @@ export default function AncillariesFileLoader() {
   return (
     <div className="flex flex-wrap items-center gap-2 p-3 border-b border-border bg-card">
       <input ref={ancRef} type="file" accept=".txt" className="hidden" onChange={handleAncFile} />
-      <input ref={textRef} type="file" accept=".txt" className="hidden" onChange={handleTextFile} />
+      <input ref={textRef} type="file" accept=".txt,.bin" className="hidden" onChange={handleTextFile} />
       <input ref={tgaFolderRef} type="file" className="hidden"
         webkitdirectory="" directory="" multiple onChange={handleTgaFolder} />
 
