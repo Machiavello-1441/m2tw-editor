@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { useTraits } from './TraitsContext';
-
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Save, RotateCcw } from 'lucide-react';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
@@ -34,10 +33,8 @@ export default function TraitsFileLoader() {
       const buf = await file.arrayBuffer();
       const parsed = parseStringsBin(buf);
       if (parsed) {
-        // Store in global bin store
         const existing = getStringsBinStore();
         setStringsBinStore({ ...existing, [file.name]: parsed });
-        // Build map and directly load into context
         const map = {};
         for (const entry of parsed.entries) map[entry.key] = entry.value;
         loadTextFile(map, file.name, { magic1: parsed.magic1, magic2: parsed.magic2 });
@@ -63,7 +60,6 @@ export default function TraitsFileLoader() {
       <input ref={traitsRef} type="file" accept=".txt" className="hidden" onChange={handleTraitsFile} />
       <input ref={textRef} type="file" accept=".txt,.strings.bin,.bin" className="hidden" onChange={handleTextFile} />
 
-      {/* Load buttons */}
       <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
         onClick={() => traitsRef.current?.click()}>
         <Upload className="w-3 h-3" />
@@ -78,7 +74,6 @@ export default function TraitsFileLoader() {
       </Button>
       {textData && <span className="text-[10px] text-muted-foreground font-mono truncate max-w-32">{textFilename}</span>}
 
-      {/* Save / Revert */}
       {traitsData && isDirty && (
         <>
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white ml-auto"
@@ -94,7 +89,6 @@ export default function TraitsFileLoader() {
         </>
       )}
 
-      {/* Export */}
       {traitsData && (
         <Button size="sm" className="h-7 px-2 text-xs gap-1.5 text-white ml-auto"
           onClick={() => downloadFile(exportTraitsFile(), traitsFilename)}>
