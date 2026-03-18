@@ -225,12 +225,29 @@ function BuildingOverview({ building, edbData }) {
           <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
             <Settings className="w-4 h-4 text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-sm font-bold text-foreground">{building.name}</h2>
             <p className="text-[10px] text-muted-foreground">
               {building.levels.length} levels · {building.convertTo ? `converts to ${building.convertTo}` : 'no conversion'}
             </p>
           </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="destructive" className="h-7 px-2 text-xs gap-1">
+                <Trash2 className="w-3 h-3" /> Delete Tree
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Building Tree</AlertDialogTitle>
+                <AlertDialogDescription>Delete "{building.name}" and all its {building.levels.length} levels? This cannot be undone.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { deleteBuilding(building.name); setSelectedBuilding(null); }}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         <Card>
