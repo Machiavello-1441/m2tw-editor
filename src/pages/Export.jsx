@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
+import { useTraits } from '../components/traits/TraitsContext';
+import { useAncillaries } from '../components/ancillaries/AncillariesContext';
 import { encodeStringsBin } from '../components/strings/stringsBinCodec';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
