@@ -46,6 +46,17 @@ export function parseDescrMercenaries(text) {
   return [...new Set(pools)];
 }
 
+// descr_cultures.txt → array of culture name strings
+export function parseDescrCultures(text) {
+  const cultures = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/;.*$/, '').trim();
+    const m = line.match(/^culture\s+(\S+)/i);
+    if (m) cultures.push(m[1]);
+  }
+  return [...new Set(cultures)];
+}
+
 // descr_sounds_music_types.txt → array of music type name strings
 export function parseDescrSoundsMusicTypes(text) {
   const types = [];

@@ -223,9 +223,14 @@ export function parseDescrStrat(text) {
         const fl = cleanLine(lines[i]);
         if (!fl) { i++; continue; }
 
-        // End of faction: next top-level keyword or ; comment section
-        if (/^(faction|region|faction_standings|action_relationships|faction_relationships|script)$/i.test(fl) ||
-            /^(playable|unlockable|nonplayable|start_date|end_date|timescale|campaign)$/i.test(fl)) {
+        // End of faction: next top-level keyword
+        if (
+          /^faction\s+\w/i.test(fl) ||
+          /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
+          /^region\s+\S/i.test(fl) ||
+          /^script\s*$/i.test(fl) ||
+          /^(playable|unlockable|nonplayable|start_date|end_date|timescale|campaign)\b/i.test(fl)
+        ) {
           break;
         }
 
@@ -433,6 +438,43 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   if (!stratData?.raw) return '';
   const lines = stratData.raw.split('\n');
   const replacements = [];
+
+  // ── Patch global campaign settings ──────────────────────────────────────
+  const pl = (regex, newLine) => {
+    const idx = lines.findIndex(l => regex.test(l.replace(/;.*$/, '').trim()));
+    if (idx >= 0) lines[idx] = newLine;
+  };
+  if (stratData.campaignName) pl(/^campaign\b/i, `campaign\t\t${stratData.campaignName}`);
+  if (stratData.startDate)    pl(/^start_date\b/i, `start_date\t${stratData.startDate}`);
+  if (stratData.endDate)      pl(/^end_date\b/i, `end_date\t${stratData.endDate}`);
+  if (stratData.timescale)    pl(/^timescale\b/i, `timescale\t${stratData.timescale}`);
+  if (stratData.scriptFile) {
+    const si = lines.findIndex(l => /^script\s*$/.test(l.replace(/;.*$/, '').trim()));
+    if (si >= 0 && si + 1 < lines.length) lines[si + 1] = `\t${stratData.scriptFile}`;
+  }
+  // Boolean flags
+  const BOOL_FLAGS = ['marian_reforms_disabled','marian_reforms_activated','rebelling_characters_active','rebelling_characters_inactive','gladiator_uprising_disabled','night_battles_enabled','night_battles_disabled','show_date_as_turns'];
+  for (const key of BOOL_FLAGS) {
+    const enabled = stratData.flags?.[key] === true;
+    const idx = lines.findIndex(l => l.replace(/;.*$/, '').trim() === key);
+    if (!enabled && idx >= 0) lines[idx] = `; ${key}`;
+  }
+  if (stratData.flags?.brigand_spawn_value !== undefined)
+    pl(/^brigand_spawn_value\b/i, `brigand_spawn_value ${stratData.flags.brigand_spawn_value}`);
+  if (stratData.flags?.pirate_spawn_value !== undefined)
+    pl(/^pirate_spawn_value\b/i, `pirate_spawn_value ${stratData.flags.pirate_spawn_value}`);
+  // Playable / unlockable / nonplayable blocks
+  const repBlock = (keyword, values) => {
+    if (!values) return;
+    const si = lines.findIndex(l => l.replace(/;.*$/, '').trim().toLowerCase() === keyword);
+    if (si < 0) return;
+    const ei = lines.findIndex((l, i) => i > si && l.replace(/;.*$/, '').trim().toLowerCase() === 'end');
+    if (ei < 0) return;
+    lines.splice(si, ei - si + 1, keyword, ...values.map(v => `\t${v}`), 'end');
+  };
+  repBlock('playable', stratData.playable);
+  repBlock('unlockable', stratData.unlockable);
+  repBlock('nonplayable', stratData.nonplayable);
 
   // Patch moved characters/resources/forts
   for (const item of overlayItems) {
