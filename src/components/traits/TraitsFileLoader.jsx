@@ -7,7 +7,7 @@ import { getStringsBinStore, setStringsBinStore } from '@/lib/stringsBinStore';
 
 export default function TraitsFileLoader() {
   const {
-    traitsData, textData, traitsFilename, textFilename,
+    traitsData, textData, textBinMeta, traitsFilename, textFilename,
     loadTraitsFile, loadTextFile,
     exportTraitsFile, exportTextFile,
     saveTraits, revertTraits,
@@ -33,8 +33,10 @@ export default function TraitsFileLoader() {
       const buf = await file.arrayBuffer();
       const parsed = parseStringsBin(buf);
       if (parsed) {
+        // Store in global bin store
         const existing = getStringsBinStore();
         setStringsBinStore({ ...existing, [file.name]: parsed });
+        // Build map and directly load into context, passing bin metadata
         const map = {};
         for (const entry of parsed.entries) map[entry.key] = entry.value;
         loadTextFile(map, file.name, { magic1: parsed.magic1, magic2: parsed.magic2 });
@@ -60,6 +62,7 @@ export default function TraitsFileLoader() {
       <input ref={traitsRef} type="file" accept=".txt" className="hidden" onChange={handleTraitsFile} />
       <input ref={textRef} type="file" accept=".txt,.strings.bin,.bin" className="hidden" onChange={handleTextFile} />
 
+      {/* Load buttons */}
       <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
         onClick={() => traitsRef.current?.click()}>
         <Upload className="w-3 h-3" />
@@ -74,6 +77,7 @@ export default function TraitsFileLoader() {
       </Button>
       {textData && <span className="text-[10px] text-muted-foreground font-mono truncate max-w-32">{textFilename}</span>}
 
+      {/* Save / Revert */}
       {traitsData && isDirty && (
         <>
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white ml-auto"
@@ -89,6 +93,7 @@ export default function TraitsFileLoader() {
         </>
       )}
 
+      {/* Export */}
       {traitsData && (
         <Button size="sm" className="h-7 px-2 text-xs gap-1.5 text-white ml-auto"
           onClick={() => downloadFile(exportTraitsFile(), traitsFilename)}>
