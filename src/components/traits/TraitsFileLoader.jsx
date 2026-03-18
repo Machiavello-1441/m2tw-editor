@@ -79,7 +79,7 @@ export default function TraitsFileLoader() {
       <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
         onClick={() => textRef.current?.click()}>
         <Upload className="w-3 h-3" />
-        Load VnVs Text
+        Load VnVs (.bin)
       </Button>
       {textData && <span className="text-[10px] text-muted-foreground font-mono truncate max-w-32">{textFilename}</span>}
 
