@@ -355,10 +355,10 @@ export default function Export() {
             </div>
           )}
 
-          {!hasEDB && (
+          {!hasEDB && !hasTraits && !hasAnc && (
             <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
               <AlertCircle className="w-3.5 h-3.5" />
-              Load the EDB file on the Home page first to enable export.
+              Load files on the Home page first to enable export.
             </div>
           )}
         </div>
