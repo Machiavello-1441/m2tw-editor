@@ -98,6 +98,18 @@ export function AncillariesProvider({ children }) {
     try { localStorage.setItem('m2tw_anctxt_file', content); localStorage.setItem('m2tw_anctxt_file_name', fn); } catch {}
   }, []);
 
+  // Load from already-decoded .strings.bin data (map of {key: value})
+  const loadTextFileFromBin = useCallback((map, filename, magic1, magic2) => {
+    originalTextData.current = JSON.stringify(map);
+    setTextData(map);
+    const fn = filename || 'export_ancillaries.txt.strings.bin';
+    setTextFilename(fn);
+    try {
+      const entries = Object.entries(map).map(([key, value]) => ({ key, value }));
+      updateStringsBinFile(fn, { entries, magic1: magic1 ?? 2, magic2: magic2 ?? 2048 });
+    } catch {}
+  }, []);
+
   const loadTgaImages = useCallback((images) => {
     // images: { [key]: dataUrl }
     setTgaImages(prev => ({ ...prev, ...images }));
