@@ -12,7 +12,8 @@ import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat, serializeDescrRegions } from '../components/map/stratParser';
-import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
+import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
+import { parseStringsBin } from '../components/strings/stringsBinCodec';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
@@ -99,6 +100,7 @@ export default function CampaignMap() {
   const [naturalResources, setNaturalRes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_sm_resources_raw'); return r ? parseDescrSmResources(r) : []; } catch { return []; } });
   const [mercenaryPools, setMercenaryPools] = useState(() => { try { const r = sessionStorage.getItem('m2tw_mercenaries_raw'); return r ? parseDescrMercenaries(r) : []; } catch { return []; } });
   const [musicTypes, setMusicTypes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_music_types_raw'); return r ? parseDescrSoundsMusicTypes(r) : []; } catch { return []; } });
+  const [cultures, setCultures] = useState(() => { try { const r = sessionStorage.getItem('m2tw_cultures_raw'); return r ? parseDescrCultures(r) : []; } catch { return []; } });
 
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
@@ -116,6 +118,7 @@ export default function CampaignMap() {
   const naturalResList     = useMemo(() => naturalResources.map(r => r.name || r).filter(Boolean), [naturalResources]);
   const mercenaryPoolList  = useMemo(() => mercenaryPools.map(p => p.name || p).filter(Boolean), [mercenaryPools]);
   const musicTypeList      = useMemo(() => musicTypes.map(t => t.name || t).filter(Boolean), [musicTypes]);
+  const cultureList        = useMemo(() => cultures.map(c => c.name || c).filter(Boolean), [cultures]);
 
   // Compute settlement positions once we have both strat + regions layer
   const applySettlementPositions = React.useCallback((stratParsed, regData, regLayer) => {
@@ -244,6 +247,21 @@ export default function CampaignMap() {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_names_raw', text); } catch {}
         setSettlementNamesRaw(parseSettlementNames(text));
+      }
+      // Auto-parse .strings.bin files from data/text/ folder
+      if (name.endsWith('.strings.bin') || name.endsWith('_names.bin')) {
+        const buf = await file.arrayBuffer();
+        const decoded = parseStringsBin(buf);
+        if (decoded?.entries?.length) {
+          const namesMap = {};
+          for (const { key, value } of decoded.entries) if (key) namesMap[key] = value;
+          setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
+        }
+      }
+      if (name === 'descr_cultures.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_cultures_raw', text); } catch {}
+        setCultures(parseDescrCultures(text));
       }
     }
 
