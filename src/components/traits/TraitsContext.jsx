@@ -210,8 +210,13 @@ export function TraitsProvider({ children }) {
 
   const exportTextFile = useCallback(() => {
     if (!textData) return null;
+    // If the loaded file was a .strings.bin, export binary
+    if (textFilename.toLowerCase().endsWith('.bin')) {
+      const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
+      return encodeStringsBin(entries, textBinMeta.magic1, textBinMeta.magic2);
+    }
     return serializeTextFile(textData);
-  }, [textData]);
+  }, [textData, textFilename, textBinMeta]);
 
   const getText = useCallback((key) => {
     if (!textData || !key) return '';
