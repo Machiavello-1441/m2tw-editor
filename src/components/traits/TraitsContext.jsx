@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { parseTraitsFile, serializeTraitsFile, parseTextFile, serializeTextFile } from './TraitsParser';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { encodeStringsBin } from '@/components/strings/stringsBinCodec';
 
 const TraitsContext = createContext(null);
 
