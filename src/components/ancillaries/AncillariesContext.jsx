@@ -94,13 +94,14 @@ export function AncillariesProvider({ children }) {
     try { localStorage.setItem('m2tw_anc_file', content); localStorage.setItem('m2tw_anc_file_name', fn); } catch {}
   }, []);
 
-  const loadTextFile = useCallback((content, filename) => {
+  const loadTextFile = useCallback((content, filename, binMeta) => {
     // content may be a pre-parsed map (from .strings.bin) or a raw string
     const parsed = (typeof content === 'object' && content !== null && !(content instanceof ArrayBuffer))
       ? content
       : parseTextFile(content);
     originalTextData.current = JSON.stringify(parsed);
     setTextData(parsed);
+    if (binMeta) setTextBinMeta(binMeta);
     const fn = filename || 'export_ancillaries.txt';
     setTextFilename(fn);
     if (typeof content === 'string') {
