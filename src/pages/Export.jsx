@@ -69,8 +69,6 @@ const IMAGE_SLOT_DEFS = [
 
 export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile, imageData } = useEDB();
-  const { traitsData, exportTraitsFile, textData: traitsTextData, exportTextFile: exportTraitsTextFile, textFilename: traitsTextFilename, textBinMeta: traitsTextBinMeta } = useTraits();
-  const { ancData, exportAncFile, textData: ancTextData, exportTextFile: exportAncTextFile, textFilename: ancTextFilename, textBinMeta: ancTextBinMeta } = useAncillaries();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
   const [exportingTwemp, setExportingTwemp] = useState(false);
@@ -120,28 +118,6 @@ export default function Export() {
           : `ui/${culture}/buildings/${filename}`;
         dataFolder.file(subPath, tga);
       }
-    }
-
-    // Export traits
-    if (traitsData) {
-      dataFolder.file('export_descr_character_traits.txt', exportTraitsFile());
-    }
-    if (traitsTextData && Object.keys(traitsTextData).length > 0) {
-      const isBin = traitsTextFilename.toLowerCase().endsWith('.bin');
-      const content = exportTraitsTextFile();
-      const outName = isBin ? traitsTextFilename : 'export_VnVs.txt';
-      dataFolder.folder('text').file(outName, content);
-    }
-
-    // Export ancillaries
-    if (ancData) {
-      dataFolder.file('export_descr_ancillaries.txt', exportAncFile());
-    }
-    if (ancTextData && Object.keys(ancTextData).length > 0) {
-      const isBin = ancTextFilename.toLowerCase().endsWith('.bin');
-      const content = exportAncTextFile();
-      const outName = isBin ? ancTextFilename : 'export_ancillaries.txt';
-      dataFolder.folder('text').file(outName, content);
     }
 
     // Include Lua scripts
@@ -202,10 +178,6 @@ export default function Export() {
 
   const hasEDB = !!edbData;
   const hasText = textData && Object.keys(textData).length > 0;
-  const hasTraits = !!traitsData;
-  const hasTraitsText = traitsTextData && Object.keys(traitsTextData).length > 0;
-  const hasAnc = !!ancData;
-  const hasAncText = ancTextData && Object.keys(ancTextData).length > 0;
   const edbStats = edbData ? {
     buildings: edbData.buildings.length,
     levels: edbData.buildings.reduce((s, b) => s + b.levels.length, 0),
@@ -261,34 +233,6 @@ export default function Export() {
                 />
               )}
               <ExportRow
-                icon={<FileText className="w-4 h-4 text-orange-400/70" />}
-                label="export_descr_character_traits.txt"
-                path={`${modName}/data/`}
-                status={hasTraits ? 'ready' : 'skip'}
-                detail={hasTraits ? `${traitsData.traits.length} traits, ${traitsData.triggers.length} triggers` : 'No traits loaded'}
-              />
-              <ExportRow
-                icon={<FileText className="w-4 h-4 text-orange-300/70" />}
-                label={hasTraitsText ? traitsTextFilename : 'export_VnVs.txt.strings.bin'}
-                path={`${modName}/data/text/`}
-                status={hasTraitsText ? 'ready' : 'skip'}
-                detail={hasTraitsText ? `${Object.keys(traitsTextData).length} text entries` : 'No VnVs text loaded'}
-              />
-              <ExportRow
-                icon={<FileText className="w-4 h-4 text-purple-400/70" />}
-                label="export_descr_ancillaries.txt"
-                path={`${modName}/data/`}
-                status={hasAnc ? 'ready' : 'skip'}
-                detail={hasAnc ? `${ancData.ancillaries.length} ancillaries, ${(ancData.triggers||[]).length} triggers` : 'No ancillaries loaded'}
-              />
-              <ExportRow
-                icon={<FileText className="w-4 h-4 text-purple-300/70" />}
-                label={hasAncText ? ancTextFilename : 'export_ancillaries.txt.strings.bin'}
-                path={`${modName}/data/text/`}
-                status={hasAncText ? 'ready' : 'skip'}
-                detail={hasAncText ? `${Object.keys(ancTextData).length} text entries` : 'No ancillaries text loaded'}
-              />
-              <ExportRow
                 icon={<Code2 className="w-4 h-4 text-green-500/70" />}
                 label="luaPluginScript.lua"
                 path={`${modName}/eopData/eopScripts/`}
@@ -335,7 +279,7 @@ export default function Export() {
           <Button
             className="w-full h-12 text-base gap-2"
             onClick={handleExportZip}
-            disabled={building || (!hasEDB && !hasTraits && !hasAnc)}
+            disabled={building || !hasEDB}
           >
             {building ? (
               <>
@@ -357,10 +301,10 @@ export default function Export() {
             </div>
           )}
 
-          {!hasEDB && !hasTraits && !hasAnc && (
+          {!hasEDB && (
             <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
               <AlertCircle className="w-3.5 h-3.5" />
-              Load at least one file on the Home page first to enable export.
+              Load the EDB file on the Home page first to enable export.
             </div>
           )}
         </div>
