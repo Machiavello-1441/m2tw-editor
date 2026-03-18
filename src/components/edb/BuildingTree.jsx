@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search, AlertTriangle } from
+  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search, AlertTriangle, ArrowUp, ArrowDown } from
 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
