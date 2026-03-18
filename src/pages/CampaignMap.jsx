@@ -252,6 +252,7 @@ export default function CampaignMap() {
       if (name === 'campaign_script.txt') {
         const text = await file.text();
         try { localStorage.setItem('m2tw_campaign_script', text); sessionStorage.setItem('m2tw_script_raw', text); } catch {}
+        setLoadedFiles(p => ({ ...p, 'campaign_script.txt': true }));
       }
       if (name === 'descr_sm_factions.txt') {
         const text = await file.text();
