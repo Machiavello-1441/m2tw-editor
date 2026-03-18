@@ -66,7 +66,7 @@ export default function TraitsFileLoader() {
   return (
     <div className="flex flex-wrap items-center gap-2 p-3 border-b border-border bg-card">
       <input ref={traitsRef} type="file" accept=".txt" className="hidden" onChange={handleTraitsFile} />
-      <input ref={textRef} type="file" accept=".txt" className="hidden" onChange={handleTextFile} />
+      <input ref={textRef} type="file" accept=".txt,.bin" className="hidden" onChange={handleTextFile} />
 
       {/* Load buttons */}
       <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5 text-white"
