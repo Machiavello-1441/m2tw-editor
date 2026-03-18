@@ -213,7 +213,22 @@ export default function CampaignMap() {
       if (TGA_MAP[name]) {
         const buf = await file.arrayBuffer();
         const result = await loadTGA(buf);
-        if (result) setLayers(prev => ({ ...prev, [TGA_MAP[name]]: { ...prev[TGA_MAP[name]], ...result } }));
+        if (result) {
+          setLayers(prev => ({ ...prev, [TGA_MAP[name]]: { ...prev[TGA_MAP[name]], ...result } }));
+          // Re-compute settlement positions when regions layer loads during bulk import
+          if (TGA_MAP[name] === 'regions') {
+            setStratDataRaw(prevStrat => {
+              if (!prevStrat) return prevStrat;
+              setRegionsDataRaw(prevReg => {
+                const enriched = applySettlementPositions(prevStrat, prevReg, result);
+                setStratDataRaw(enriched);
+                setOverlayItems(enriched.items);
+                return prevReg;
+              });
+              return prevStrat;
+            });
+          }
+        }
       }
       if (name === 'descr_strat.txt') {
         const text = await file.text();
