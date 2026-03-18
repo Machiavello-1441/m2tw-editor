@@ -107,7 +107,7 @@ function BuildingNode({ building }) {
                       <AlertDialogTrigger asChild>
                         <button
                       onClick={(e) => e.stopPropagation()}
-                      className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100">
+                      className="p-0.5 hover:bg-destructive/20 rounded" title="Delete level">
 
                           <Trash2 className="w-2.5 h-2.5 text-destructive" />
                         </button>
