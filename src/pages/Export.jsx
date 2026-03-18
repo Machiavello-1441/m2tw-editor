@@ -335,7 +335,7 @@ export default function Export() {
           <Button
             className="w-full h-12 text-base gap-2"
             onClick={handleExportZip}
-            disabled={building || !hasEDB}
+            disabled={building || (!hasEDB && !hasTraits && !hasAnc)}
           >
             {building ? (
               <>
