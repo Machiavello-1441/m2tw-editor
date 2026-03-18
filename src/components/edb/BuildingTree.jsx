@@ -24,9 +24,9 @@ const PREFIXES = [
 { value: 'guild_', label: 'guild_', hint: 'Guild — needs entry in export_descr_guilds.txt (max 3 levels)' }];
 
 
-function BuildingNode({ building }) {
+function BuildingNode({ building, isFirst, isLast }) {
   const { selectedBuilding, setSelectedBuilding, selectedLevel, setSelectedLevel,
-    deleteBuilding, addLevel, deleteLevel } = useEDB();
+    deleteBuilding, addLevel, deleteLevel, moveBuilding } = useEDB();
   const [expanded, setExpanded] = useState(selectedBuilding === building.name);
   const isSelected = selectedBuilding === building.name && !selectedLevel;
 
