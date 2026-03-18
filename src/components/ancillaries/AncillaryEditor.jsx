@@ -49,7 +49,26 @@ export default function AncillaryEditor() {
   const anc = ancData.ancillaries[selectedAnc];
   if (!anc) return null;
 
-  const update = (field, value) => updateAncillary(selectedAnc, { ...anc, [field]: value });
+  const update = (field, value) => {
+    if (field === 'name') {
+      const oldName = anc.name;
+      const newName = value;
+      const renamedAnc = { ...anc, name: newName };
+      if (anc.description && anc.description.startsWith(oldName)) {
+        const newKey = newName + anc.description.slice(oldName.length);
+        renameTextKey(anc.description, newKey);
+        renamedAnc.description = newKey;
+      }
+      if (anc.effectsDescription && anc.effectsDescription.startsWith(oldName)) {
+        const newKey = newName + anc.effectsDescription.slice(oldName.length);
+        renameTextKey(anc.effectsDescription, newKey);
+        renamedAnc.effectsDescription = newKey;
+      }
+      updateAncillary(selectedAnc, renamedAnc);
+      return;
+    }
+    updateAncillary(selectedAnc, { ...anc, [field]: value });
+  };
 
   const toggleCulture = (culture) => {
     const cultures = anc.excludeCultures.includes(culture)
