@@ -233,7 +233,7 @@ export function AncillariesProvider({ children }) {
       ancFilename, textFilename,
       isDirty, selectedAnc,
       setSelectedAnc,
-      loadAncFile, loadTextFile, loadTgaImages,
+      loadAncFile, loadTextFile, loadTextFileFromBin, loadTgaImages,
       updateAncillary, addAncillary, deleteAncillary,
       updateTrigger, addTrigger, deleteTrigger,
       revertAncillaries, saveAncillaries,
