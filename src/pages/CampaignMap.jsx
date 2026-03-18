@@ -606,7 +606,14 @@ export default function CampaignMap() {
                   regionsData={regionsData}
                   settlementNames={settlementNames}
                   factionColors={factionColors}
-                  onStratLoad={(text) => {
+                  cultureList={cultureList}
+                 edbData={useEDB().edbData}
+                 onStratDataChange={(updatedStratData) => {
+                   setStratDataRaw(updatedStratData);
+                   setOverlayItems(updatedStratData.items || overlayItems);
+                   setOverlayDirty(true);
+                 }}
+                 onStratLoad={(text) => {
                     try { sessionStorage.setItem('m2tw_strat_raw', text); } catch {}
                     const p = parseDescrStrat(text);
                     const enriched = applySettlementPositions(p, regionsData, layers['regions']);
