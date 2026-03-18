@@ -34,11 +34,17 @@ const TGA_MAP = {
   'map_features.tga':    'features',
   'map_fog.tga':         'fog',
 };
-const TXT_MAP = {
-  'descr_strat.txt':     'strat',
-  'descr_regions.txt':   'regions',
-  'descr_sm_factions.txt':'factions',
-};
+const TXT_FILES = [
+  'descr_strat.txt',
+  'descr_regions.txt',
+  'descr_sm_factions.txt',
+  'descr_rebel_factions.txt',
+  'descr_religions.txt',
+  'descr_sm_resources.txt',
+  'descr_mercenaries.txt',
+  'descr_sounds_music_types.txt',
+  'campaign_script.txt',
+];
 
 export default function CampaignMap() {
   const [layers, setLayers] = useState(() =>
