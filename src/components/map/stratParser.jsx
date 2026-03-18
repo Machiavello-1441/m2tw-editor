@@ -254,8 +254,14 @@ export function parseDescrStrat(text) {
         }
 
         // Inline character line: character Name, type, sex, role, age N, x X, y Y
+        // Also handle "character sub_faction X, Name, type, ..."
+        let charLineForParse = fl;
+        if (/^character\s+sub_faction\s+\S+,/i.test(fl)) {
+          // Strip "sub_faction X," prefix so parseCharacterLine can handle it
+          charLineForParse = fl.replace(/^(character\s+)sub_faction\s+\S+,\s*/i, '$1');
+        }
         if (/^character\s+/i.test(fl)) {
-          const char = parseCharacterLine(fl, i);
+          const char = parseCharacterLine(charLineForParse, i);
           if (char) {
             char.id = itemId++;
             char.faction = faction.name;
