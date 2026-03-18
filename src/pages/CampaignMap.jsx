@@ -105,7 +105,7 @@ export default function CampaignMap() {
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
 
-  const { buildings } = useEDB();
+  const { buildings, edbData } = useEDB();
   const hiddenResourceList = useMemo(() => extractHiddenResourcesFromEDB(buildings || []), [buildings]);
   const buildingLevelList  = useMemo(() => extractBuildingLevelsFromEDB(buildings || []), [buildings]);
   const factionList        = useMemo(() => {
@@ -607,7 +607,7 @@ export default function CampaignMap() {
                   settlementNames={settlementNames}
                   factionColors={factionColors}
                   cultureList={cultureList}
-                 edbData={useEDB().edbData}
+                 edbData={edbData}
                  onStratDataChange={(updatedStratData) => {
                    setStratDataRaw(updatedStratData);
                    setOverlayItems(updatedStratData.items || overlayItems);
