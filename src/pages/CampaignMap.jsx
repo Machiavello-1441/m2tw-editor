@@ -234,6 +234,7 @@ export default function CampaignMap() {
       if (name === 'descr_regions.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_regions_raw', text); } catch {}
+        setLoadedFiles(p => ({ ...p, 'descr_regions.txt': true }));
         const regData = parseDescrRegions(text);
         setRegionsDataRaw(regData);
         // Re-enrich settlements if strat already loaded
