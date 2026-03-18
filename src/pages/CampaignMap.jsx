@@ -34,17 +34,11 @@ const TGA_MAP = {
   'map_features.tga':    'features',
   'map_fog.tga':         'fog',
 };
-const TXT_FILES = [
-  'descr_strat.txt',
-  'descr_regions.txt',
-  'descr_sm_factions.txt',
-  'descr_rebel_factions.txt',
-  'descr_religions.txt',
-  'descr_sm_resources.txt',
-  'descr_mercenaries.txt',
-  'descr_sounds_music_types.txt',
-  'campaign_script.txt',
-];
+const TXT_MAP = {
+  'descr_strat.txt':     'strat',
+  'descr_regions.txt':   'regions',
+  'descr_sm_factions.txt':'factions',
+};
 
 export default function CampaignMap() {
   const [layers, setLayers] = useState(() =>
@@ -112,7 +106,11 @@ export default function CampaignMap() {
   const { buildings } = useEDB();
   const hiddenResourceList = useMemo(() => extractHiddenResourcesFromEDB(buildings || []), [buildings]);
   const buildingLevelList  = useMemo(() => extractBuildingLevelsFromEDB(buildings || []), [buildings]);
-  const factionList        = useMemo(() => (stratData?.factions || []).map(f => f.name).filter(Boolean), [stratData]);
+  const factionList        = useMemo(() => {
+    const fromFactions = (stratData?.factions || []).map(f => f.name).filter(Boolean);
+    const fromPlayable = [...(stratData?.playable || []), ...(stratData?.unlockable || []), ...(stratData?.nonplayable || [])];
+    return [...new Set([...fromFactions, ...fromPlayable])];
+  }, [stratData]);
   const rebelFactionList   = useMemo(() => rebelFactions.map(f => f.name || f).filter(Boolean), [rebelFactions]);
   const religionList       = useMemo(() => religions.map(r => r.name || r).filter(Boolean), [religions]);
   const naturalResList     = useMemo(() => naturalResources.map(r => r.name || r).filter(Boolean), [naturalResources]);
@@ -144,21 +142,7 @@ export default function CampaignMap() {
     setFactionColorsRaw(data);
   };
 
-  const [importProgress, setImportProgress] = React.useState(null);
-  const [loadedFiles, setLoadedFiles] = React.useState(() => {
-    // Check which files are already in sessionStorage
-    const loaded = {};
-    if (sessionStorage.getItem('m2tw_strat_raw'))          loaded['descr_strat.txt'] = true;
-    if (sessionStorage.getItem('m2tw_regions_raw'))        loaded['descr_regions.txt'] = true;
-    if (sessionStorage.getItem('m2tw_factions_raw'))       loaded['descr_sm_factions.txt'] = true;
-    if (sessionStorage.getItem('m2tw_rebel_factions_raw')) loaded['descr_rebel_factions.txt'] = true;
-    if (sessionStorage.getItem('m2tw_religions_raw'))      loaded['descr_religions.txt'] = true;
-    if (sessionStorage.getItem('m2tw_sm_resources_raw'))   loaded['descr_sm_resources.txt'] = true;
-    if (sessionStorage.getItem('m2tw_mercenaries_raw'))    loaded['descr_mercenaries.txt'] = true;
-    if (sessionStorage.getItem('m2tw_music_types_raw'))    loaded['descr_sounds_music_types.txt'] = true;
-    if (sessionStorage.getItem('m2tw_script_raw'))         loaded['campaign_script.txt'] = true;
-    return loaded;
-  });
+  const [importProgress, setImportProgress] = React.useState(null); // null | { step, total }
 
   const jumpRef = useRef(null);
   const folderInputRef = useRef();
@@ -218,7 +202,6 @@ export default function CampaignMap() {
       if (name === 'descr_strat.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_strat_raw', text); } catch {}
-        setLoadedFiles(p => ({ ...p, 'descr_strat.txt': true }));
         const parsed = parseDescrStrat(text);
         // Try to apply positions immediately if we already have regions data
         setRegionsDataRaw(prevReg => {
@@ -234,7 +217,6 @@ export default function CampaignMap() {
       if (name === 'descr_regions.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_regions_raw', text); } catch {}
-        setLoadedFiles(p => ({ ...p, 'descr_regions.txt': true }));
         const regData = parseDescrRegions(text);
         setRegionsDataRaw(regData);
         // Re-enrich settlements if strat already loaded
@@ -252,43 +234,11 @@ export default function CampaignMap() {
       if (name === 'campaign_script.txt') {
         const text = await file.text();
         try { localStorage.setItem('m2tw_campaign_script', text); sessionStorage.setItem('m2tw_script_raw', text); } catch {}
-        setLoadedFiles(p => ({ ...p, 'campaign_script.txt': true }));
       }
       if (name === 'descr_sm_factions.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {}
         setFactionColorsRaw(parseDescrSmFactions(text));
-        setLoadedFiles(p => ({ ...p, 'descr_sm_factions.txt': true }));
-      }
-      if (name === 'descr_rebel_factions.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_rebel_factions_raw', text); } catch {}
-        setRebelFactions(parseDescrRebelFactions(text));
-        setLoadedFiles(p => ({ ...p, 'descr_rebel_factions.txt': true }));
-      }
-      if (name === 'descr_religions.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_religions_raw', text); } catch {}
-        setReligions(parseDescrReligions(text));
-        setLoadedFiles(p => ({ ...p, 'descr_religions.txt': true }));
-      }
-      if (name === 'descr_sm_resources.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_sm_resources_raw', text); } catch {}
-        setNaturalRes(parseDescrSmResources(text));
-        setLoadedFiles(p => ({ ...p, 'descr_sm_resources.txt': true }));
-      }
-      if (name === 'descr_mercenaries.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_mercenaries_raw', text); } catch {}
-        setMercenaryPools(parseDescrMercenaries(text));
-        setLoadedFiles(p => ({ ...p, 'descr_mercenaries.txt': true }));
-      }
-      if (name === 'descr_sounds_music_types.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_music_types_raw', text); } catch {}
-        setMusicTypes(parseDescrSoundsMusicTypes(text));
-        setLoadedFiles(p => ({ ...p, 'descr_sounds_music_types.txt': true }));
       }
       if (name.endsWith('_regions_and_settlement_names.txt')) {
         const text = await file.text();
@@ -552,14 +502,6 @@ export default function CampaignMap() {
             Saving to DB… {importProgress.step}/{importProgress.total}
           </span>
         )}
-
-          {/* File status indicators */}
-        <div className="hidden xl:flex items-center gap-1 ml-2">
-          {TXT_FILES.map(fname => (
-            <span key={fname} title={fname} className={`w-2 h-2 rounded-full ${loadedFiles[fname] ? 'bg-green-500' : 'bg-slate-600'}`} />
-          ))}
-          <span className="text-[9px] text-slate-500 ml-1">{Object.keys(loadedFiles).length}/{TXT_FILES.length} txt</span>
-        </div>
 
         {/* Pending place indicator */}
         {pendingPlace && (
