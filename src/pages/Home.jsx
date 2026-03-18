@@ -165,6 +165,7 @@ export default function Home() {
       names: ls('m2tw_names_file') ? 'ok' : 'idle',
       rebel_fac: ls('m2tw_rebel_factions_file') ? 'ok' : 'idle',
       religions: ls('m2tw_religions_file') ? 'ok' : 'idle',
+      modeldb: 'idle',
     };
   });
 
