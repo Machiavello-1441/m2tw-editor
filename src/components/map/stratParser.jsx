@@ -223,9 +223,11 @@ export function parseDescrStrat(text) {
         const fl = cleanLine(lines[i]);
         if (!fl) { i++; continue; }
 
-        // End of faction: next top-level keyword or ; comment section
-        if (/^(faction|region|faction_standings|action_relationships|faction_relationships|script)$/i.test(fl) ||
-            /^(playable|unlockable|nonplayable|start_date|end_date|timescale|campaign)$/i.test(fl)) {
+        // End of faction: next top-level keyword
+        if (/^faction\s+\w/i.test(fl) ||
+            /^region\s+\w/i.test(fl) ||
+            /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
+            /^(playable|unlockable|nonplayable|start_date|end_date|timescale|campaign)\b/i.test(fl)) {
           break;
         }
 
@@ -409,6 +411,67 @@ export function computeSettlementPositions(settlements, regionsData, regionsLaye
   });
 }
 
+// ─── Settings patcher (patches raw text with updated stratData fields) ────────
+function patchStratSettings(raw, stratData) {
+  const lines = raw.split('\n');
+  const out = [];
+  let i = 0;
+  let skipToEnd = false;
+
+  while (i < lines.length) {
+    const clean = lines[i].replace(/;.*$/, '').trim();
+
+    if (skipToEnd) {
+      if (/^end$/i.test(clean)) { skipToEnd = false; }
+      i++; continue;
+    }
+
+    if (/^playable$/i.test(clean)) {
+      out.push('playable');
+      (stratData.playable || []).forEach(f => out.push(`\t${f}`));
+      out.push('end');
+      skipToEnd = true; i++; continue;
+    }
+    if (/^unlockable$/i.test(clean)) {
+      out.push('unlockable');
+      (stratData.unlockable || []).forEach(f => out.push(`\t${f}`));
+      out.push('end');
+      skipToEnd = true; i++; continue;
+    }
+    if (/^nonplayable$/i.test(clean)) {
+      out.push('nonplayable');
+      (stratData.nonplayable || []).forEach(f => out.push(`\t${f}`));
+      out.push('end');
+      skipToEnd = true; i++; continue;
+    }
+    if (/^start_date\b/i.test(clean) && stratData.startDate) {
+      out.push(`start_date\t${stratData.startDate}`); i++; continue;
+    }
+    if (/^end_date\b/i.test(clean) && stratData.endDate) {
+      out.push(`end_date\t${stratData.endDate}`); i++; continue;
+    }
+    if (/^timescale\b/i.test(clean) && stratData.timescale) {
+      out.push(`timescale\t${stratData.timescale}`); i++; continue;
+    }
+    // Numeric flags
+    const nm = clean.match(/^(brigand_spawn_value|pirate_spawn_value)\s+\d+/);
+    if (nm && stratData.flags && nm[1] in stratData.flags) {
+      out.push(`${nm[1]} ${stratData.flags[nm[1]]}`); i++; continue;
+    }
+    // Boolean flags: if present in file but now set to false, skip (remove)
+    const bm = clean.match(/^(marian_reforms_disabled|marian_reforms_activated|rebelling_characters_active|rebelling_characters_inactive|gladiator_uprising_disabled|night_battles_enabled|night_battles_disabled|show_date_as_turns)$/i);
+    if (bm && stratData.flags) {
+      const k = bm[1];
+      // If explicitly set to false, remove the line
+      if (stratData.flags[k] === false) { i++; continue; }
+    }
+
+    out.push(lines[i]);
+    i++;
+  }
+  return out.join('\n');
+}
+
 // ─── Serializer ───────────────────────────────────────────────────────────────
 function generateSettlementBlock(s, indent = '\t') {
   const ind2 = indent + '\t';
@@ -483,7 +546,8 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     result.splice(start, end - start + 1, ...newLines);
   }
 
-  return result.join('\n');
+  const finalText = result.join('\n');
+  return patchStratSettings(finalText, stratData);
 }
 
 // ─── descr_regions.txt ────────────────────────────────────────────────────────
