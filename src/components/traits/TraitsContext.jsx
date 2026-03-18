@@ -85,6 +85,20 @@ export function TraitsProvider({ children }) {
     try { localStorage.setItem('m2tw_vnvs_file', content); localStorage.setItem('m2tw_vnvs_file_name', fn); } catch {}
   }, []);
 
+  // Load from already-decoded .strings.bin data (map of {key: value})
+  const loadTextFileFromBin = useCallback((map, filename, magic1, magic2) => {
+    originalTextData.current = JSON.stringify(map);
+    setTextData(map);
+    const fn = filename || 'export_VnVs.txt.strings.bin';
+    setTextFilename(fn);
+    // Store in strings bin store so other editors can access it
+    try {
+      const { updateStringsBinFile } = require('@/lib/stringsBinStore');
+      const entries = Object.entries(map).map(([key, value]) => ({ key, value }));
+      updateStringsBinFile(fn, { entries, magic1: magic1 ?? 2, magic2: magic2 ?? 2048 });
+    } catch {}
+  }, []);
+
   // Persist to localStorage whenever traitsData or textData changes (crash protection)
   useEffect(() => {
     if (!traitsData) return;
