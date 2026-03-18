@@ -168,17 +168,19 @@ export function TraitsProvider({ children }) {
         threshold: 1, effects: [],
       }],
     };
-    setTraitsData(prev => ({ ...prev, traits: [...(prev?.traits || []), newTrait] }));
-    // Pre-populate empty text entries so they show up in the .strings.bin export
+    setTraitsData(prev => {
+      if (!prev) return { traits: [newTrait], triggers: [] };
+      return { ...prev, traits: [...(prev.traits || []), newTrait] };
+    });
+    // Pre-populate empty text entries so they show up in the export
     setTextData(prev => ({
-      ...prev,
+      ...(prev || {}),
       [`${baseName}_Level1_desc`]: '',
       [`${baseName}_Level1_effects_desc`]: '',
       [`${baseName}_Level1_epithet_desc`]: '',
     }));
     setIsDirty(true);
-    return (traitsData?.traits?.length || 0);
-  }, [traitsData]);
+  }, []);
 
   const deleteTrait = useCallback((index) => {
     setTraitsData(prev => {
