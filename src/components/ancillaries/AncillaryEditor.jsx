@@ -35,7 +35,7 @@ function PreviewText({ text }) {
 }
 
 export default function AncillaryEditor() {
-  const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
+  const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, renameTextKey, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
   useModData(); // ensure context is consumed (data flows through TriggerEditor via useModData)
 
   if (selectedAnc === null || !ancData) {
