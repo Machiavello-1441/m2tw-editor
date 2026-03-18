@@ -36,10 +36,10 @@ export default function TraitsFileLoader() {
         // Store in global bin store
         const existing = getStringsBinStore();
         setStringsBinStore({ ...existing, [file.name]: parsed });
-        // Build map and directly load into context
+        // Build map and directly load into context, passing bin metadata
         const map = {};
         for (const entry of parsed.entries) map[entry.key] = entry.value;
-        loadTextFile(map, file.name);
+        loadTextFile(map, file.name, { magic1: parsed.magic1, magic2: parsed.magic2 });
       }
     } else {
       const reader = new FileReader();

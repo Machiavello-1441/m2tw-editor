@@ -115,7 +115,7 @@ export default function AncillariesFileLoader() {
         // Store in global bin store
         const existing = getStringsBinStore();
         setStringsBinStore({ ...existing, [file.name]: parsed });
-        // Build map and directly load into context
+        // Build map and directly load into context, passing bin metadata
         const map = {};
         for (const entry of parsed.entries) map[entry.key] = entry.value;
         loadTextFile(map, file.name, { magic1: parsed.magic1, magic2: parsed.magic2 });
@@ -143,8 +143,7 @@ export default function AncillariesFileLoader() {
   };
 
   const downloadFile = (content, filename) => {
-    const isBinary = content instanceof ArrayBuffer;
-    const blob = new Blob([content], { type: isBinary ? 'application/octet-stream' : 'text/plain' });
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.click();
