@@ -12,6 +12,7 @@ export function AncillariesProvider({ children }) {
   const [textFilename, setTextFilename] = useState('export_ancillaries.txt');
   const [isDirty, setIsDirty] = useState(false);
   const [selectedAnc, setSelectedAnc] = useState(null);
+  const [textBinMeta, setTextBinMeta] = useState({ magic1: 2, magic2: 2048 });
   // tgaImages: { [filename_no_ext]: dataUrl }
   const [tgaImages, setTgaImages] = useState({});
 
@@ -43,17 +44,19 @@ export function AncillariesProvider({ children }) {
       }
       // Try .strings.bin store first (case-insensitive), then fall back to plain txt cache
       const store = getStringsBinStore();
-      const anctxtEntry = Object.entries(store).find(([k]) =>
-        k.toLowerCase() === 'export_ancillaries.txt.strings.bin'
-      );
-      if (anctxtEntry) {
-        const [filename, binData] = anctxtEntry;
+      // Accept any file whose name contains 'ancillari' or matches exactly
+      const anctxtBinEntry = Object.entries(store).find(([k]) => {
+        const lk = k.toLowerCase();
+        return lk === 'export_ancillaries.txt.strings.bin' || lk.includes('ancillari');
+      });
+      const anctxtBin = anctxtBinEntry?.[1];
+      if (anctxtBin) {
         const map = {};
-        for (const e of binData.entries) map[e.key] = e.value;
+        for (const e of anctxtBin.entries) map[e.key] = e.value;
         originalTextData.current = JSON.stringify(map);
         setTextData(map);
-        setTextFilename(filename);
-        setTextBinMeta({ magic1: binData.magic1 ?? 2, magic2: binData.magic2 ?? 2048 });
+        setTextBinMeta({ magic1: anctxtBin.magic1 ?? 2, magic2: anctxtBin.magic2 ?? 2048 });
+        setTextFilename(anctxtBinEntry[0]);
       } else {
         const txtContent = localStorage.getItem('m2tw_anctxt_file');
         const txtName = localStorage.getItem('m2tw_anctxt_file_name');
@@ -62,7 +65,6 @@ export function AncillariesProvider({ children }) {
           originalTextData.current = JSON.stringify(parsed);
           setTextData(parsed);
           if (txtName) setTextFilename(txtName);
-          setTextBinMeta(null);
         }
       }
     } catch {}
@@ -100,12 +102,10 @@ export function AncillariesProvider({ children }) {
       : parseTextFile(content);
     originalTextData.current = JSON.stringify(parsed);
     setTextData(parsed);
+    if (binMeta) setTextBinMeta(binMeta);
     const fn = filename || 'export_ancillaries.txt';
     setTextFilename(fn);
-    if (binMeta) {
-      setTextBinMeta(binMeta);
-    } else if (typeof content === 'string') {
-      setTextBinMeta(null);
+    if (typeof content === 'string') {
       try { localStorage.setItem('m2tw_anctxt_file', content); localStorage.setItem('m2tw_anctxt_file_name', fn); } catch {}
     }
   }, []);
@@ -169,16 +169,20 @@ export function AncillariesProvider({ children }) {
   }, []);
 
   const addAncillary = useCallback(() => {
-    const baseName = 'New_Ancillary';
+    const baseName = 'new_ancillary';
     const newAnc = {
       name: baseName, type: 'Court', transferable: 0,
       image: 'court_noble.tga', unique: false, excludedAncillaries: [],
-      excludeCultures: [], description: `${baseName}_desc`,
-      effectsDescription: `${baseName}_effects_desc`, effects: [],
+      excludeCultures: [],
+      description: `${baseName}_desc`,
+      effectsDescription: `${baseName}_effects_desc`,
+      effects: [],
     };
     setAncData(prev => ({ ...prev, ancillaries: [...(prev?.ancillaries || []), newAnc] }));
+    // Pre-populate empty text entries
     setTextData(prev => ({
-      ...(prev || {}),
+      ...prev,
+      [baseName]: '',
       [`${baseName}_desc`]: '',
       [`${baseName}_effects_desc`]: '',
     }));
@@ -212,6 +216,18 @@ export function AncillariesProvider({ children }) {
     setIsDirty(true);
   }, []);
 
+  const renameTextKey = useCallback((oldKey, newKey) => {
+    if (!oldKey || !newKey || oldKey === newKey) return;
+    setTextData(prev => {
+      if (!prev) return prev;
+      const next = { ...prev };
+      next[newKey] = next[oldKey] ?? '';
+      delete next[oldKey];
+      return next;
+    });
+    setIsDirty(true);
+  }, []);
+
   const exportAncFile = useCallback(() => {
     if (!ancData) return null;
     return serializeAncillariesFile(ancData);
@@ -219,13 +235,13 @@ export function AncillariesProvider({ children }) {
 
   const exportTextFile = useCallback(() => {
     if (!textData) return null;
-    if (textBinMeta) {
-      // Export as .strings.bin binary
+    // If the loaded file was a .strings.bin, export binary
+    if (textFilename.toLowerCase().endsWith('.bin')) {
       const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
       return encodeStringsBin(entries, textBinMeta.magic1, textBinMeta.magic2);
     }
     return serializeTextFile(textData);
-  }, [textData, textBinMeta]);
+  }, [textData, textFilename, textBinMeta]);
 
   const getText = useCallback((key) => {
     if (!textData || !key) return '';
@@ -240,15 +256,15 @@ export function AncillariesProvider({ children }) {
 
   return (
     <AncillariesContext.Provider value={{
-      ancData, textData, tgaImages, textBinMeta,
-      ancFilename, textFilename,
+      ancData, textData, tgaImages,
+      ancFilename, textFilename, textBinMeta,
       isDirty, selectedAnc,
       setSelectedAnc,
       loadAncFile, loadTextFile, loadTgaImages,
       updateAncillary, addAncillary, deleteAncillary,
       updateTrigger, addTrigger, deleteTrigger,
       revertAncillaries, saveAncillaries,
-      updateTextEntry,
+      updateTextEntry, renameTextKey,
       exportAncFile, exportTextFile,
       getText, getTgaImage,
     }}>
