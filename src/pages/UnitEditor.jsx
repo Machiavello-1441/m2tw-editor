@@ -163,11 +163,35 @@ export default function UnitEditorPage() {
     } catch {}
   }, []);
 
-  // Listen for modeldb loaded from event
+  // Auto-load modeldb from localStorage if available
   useEffect(() => {
-    const handler = (e) => setModeldb(e.detail);
+    if (!modeldb) {
+      try {
+        const raw = localStorage.getItem('m2tw_modeldb_file');
+        if (raw) {
+          const parsed = parseModeldb(raw);
+          modeldbStore.set(parsed);
+          setModeldb(parsed);
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Listen for modeldb loaded from event (manual load button or folder import)
+  useEffect(() => {
+    const handler = (e) => {
+      try {
+        const parsed = parseModeldb(typeof e.detail === 'string' ? e.detail : e.detail);
+        modeldbStore.set(parsed);
+        setModeldb(parsed);
+      } catch {}
+    };
     window.addEventListener('modeldb-loaded', handler);
-    return () => window.removeEventListener('modeldb-loaded', handler);
+    window.addEventListener('modeldb-file-loaded', handler);
+    return () => {
+      window.removeEventListener('modeldb-loaded', handler);
+      window.removeEventListener('modeldb-file-loaded', handler);
+    };
   }, []);
 
   const handleModeldbLoad = (e) => {
