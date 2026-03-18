@@ -112,9 +112,13 @@ export default function AncillariesFileLoader() {
       const buf = await file.arrayBuffer();
       const parsed = parseStringsBin(buf);
       if (parsed) {
+        // Store in global bin store
         const existing = getStringsBinStore();
-        setStringsBinStore({ ...existing, [file.name]: { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 } });
-        window.dispatchEvent(new CustomEvent('strings-bin-updated'));
+        setStringsBinStore({ ...existing, [file.name]: parsed });
+        // Build map and directly load into context
+        const map = {};
+        for (const entry of parsed.entries) map[entry.key] = entry.value;
+        loadTextFile(map, file.name);
       }
     } else {
       const reader = new FileReader();
