@@ -49,12 +49,12 @@ function BuildingNode({ building }) {
         <span onClick={handleSelect} className="flex-1 truncate font-medium text-xs">
           {building.name}
         </span>
-        <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
+        <span className="text-[10px] text-muted-foreground">
           {building.levels.length}L
         </span>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <button className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            <button className="p-0.5 hover:bg-destructive/20 rounded transition-opacity" title="Delete building tree">
               <Trash2 className="w-3 h-3 text-destructive" />
             </button>
           </AlertDialogTrigger>
