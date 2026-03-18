@@ -11,6 +11,7 @@ export function AncillariesProvider({ children }) {
   const [textFilename, setTextFilename] = useState('export_ancillaries.txt');
   const [isDirty, setIsDirty] = useState(false);
   const [selectedAnc, setSelectedAnc] = useState(null);
+  const [textBinMeta, setTextBinMeta] = useState({ magic1: 2, magic2: 2048 });
   // tgaImages: { [filename_no_ext]: dataUrl }
   const [tgaImages, setTgaImages] = useState({});
 

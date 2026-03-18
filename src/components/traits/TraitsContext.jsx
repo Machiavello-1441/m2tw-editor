@@ -11,6 +11,7 @@ export function TraitsProvider({ children }) {
   const [textFilename, setTextFilename] = useState('export_VnVs.txt');
   const [isDirty, setIsDirty] = useState(false);
   const [selectedTrait, setSelectedTrait] = useState(null);
+  const [textBinMeta, setTextBinMeta] = useState({ magic1: 2, magic2: 2048 });
 
   // Snapshots for revert
   const originalTraitsData = useRef(null);
