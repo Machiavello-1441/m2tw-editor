@@ -66,6 +66,25 @@ export default function LevelEditor() {
           <Badge variant="outline" className="ml-auto text-[10px]">
             #{levelIndex + 1}
           </Badge>
+          {building.levels.length > 1 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="destructive" className="h-7 px-2 text-xs gap-1">
+                  <Trash2 className="w-3 h-3" /> Delete Level
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Level</AlertDialogTitle>
+                  <AlertDialogDescription>Delete level "{level.name}" from "{building.name}"? This cannot be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => { deleteLevel(building.name, level.name); setSelectedLevel(null); }}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         <Card>
