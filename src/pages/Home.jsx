@@ -353,6 +353,9 @@ export default function Home() {
           if (key === 'anctxt') {
             window.dispatchEvent(new CustomEvent('load-anctxt'));
           }
+          if (key === 'modeldb') {
+            window.dispatchEvent(new CustomEvent('modeldb-file-loaded', { detail: text }));
+          }
         } catch {}
       } else {
         loaderMap[key]?.(text);
