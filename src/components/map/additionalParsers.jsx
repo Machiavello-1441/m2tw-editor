@@ -82,17 +82,6 @@ export function extractHiddenResourcesFromEDB(edbData) {
   return [...resources].sort();
 }
 
-// descr_cultures.txt → array of culture name strings
-export function parseDescrCultures(text) {
-  const cultures = [];
-  for (const raw of text.split('\n')) {
-    const line = raw.replace(/;.*$/, '').trim();
-    const m = line.match(/^culture\s+(\S+)/i);
-    if (m) cultures.push(m[1]);
-  }
-  return [...new Set(cultures)];
-}
-
 // Extract all building level names from EDB data (for upgrades list)
 export function extractBuildingLevelsFromEDB(edbData) {
   if (!edbData?.buildings) return [];

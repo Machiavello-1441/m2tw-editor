@@ -12,7 +12,7 @@ import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat, serializeDescrRegions } from '../components/map/stratParser';
-import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
+import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
@@ -99,7 +99,6 @@ export default function CampaignMap() {
   const [naturalResources, setNaturalRes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_sm_resources_raw'); return r ? parseDescrSmResources(r) : []; } catch { return []; } });
   const [mercenaryPools, setMercenaryPools] = useState(() => { try { const r = sessionStorage.getItem('m2tw_mercenaries_raw'); return r ? parseDescrMercenaries(r) : []; } catch { return []; } });
   const [musicTypes, setMusicTypes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_music_types_raw'); return r ? parseDescrSoundsMusicTypes(r) : []; } catch { return []; } });
-  const [cultures, setCultures] = useState(() => { try { const r = localStorage.getItem('m2tw_cultures_file'); return r ? parseDescrCultures(r) : []; } catch { return []; } });
 
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
@@ -168,19 +167,6 @@ export default function CampaignMap() {
         setStratDataRaw(parsed);
         setOverlayItems(parsed.items || []);
       }
-      // Auto-restore factions colors (campaign descr_sm_factions overrides data)
-      const facRaw = localStorage.getItem('m2tw_campaign_sm_factions') || localStorage.getItem('m2tw_factions_file');
-      if (facRaw && !sessionStorage.getItem('m2tw_factions_raw')) {
-        setFactionColorsRaw(parseDescrSmFactions(facRaw));
-      }
-      // Auto-restore settlement names from campaign *_regions_and_settlement_names
-      const namesRaw = localStorage.getItem('m2tw_campaign_names_txt');
-      if (namesRaw && !sessionStorage.getItem('m2tw_names_raw')) {
-        setSettlementNamesRaw(parseSettlementNames(namesRaw));
-      }
-      // Auto-restore cultures
-      const cultRaw = localStorage.getItem('m2tw_cultures_file');
-      if (cultRaw) setCultures(parseDescrCultures(cultRaw));
     } catch {}
 
     const handler = (e) => {
@@ -258,10 +244,6 @@ export default function CampaignMap() {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_names_raw', text); } catch {}
         setSettlementNamesRaw(parseSettlementNames(text));
-      }
-      if (name === 'descr_cultures.txt') {
-        const text = await file.text();
-        setCultures(parseDescrCultures(text));
       }
     }
 

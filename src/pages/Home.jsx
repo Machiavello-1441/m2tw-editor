@@ -537,30 +537,12 @@ export default function Home() {
       'campaign_script.txt': 'm2tw_campaign_script',
       'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
       'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
-      'descr_sm_factions.txt': 'm2tw_campaign_sm_factions',
     };
     for (const file of files) {
-      const n = file.name.toLowerCase();
-      const key = CAMPAIGN_STORE[n];
+      const key = CAMPAIGN_STORE[file.name.toLowerCase()];
       if (key) {
         const txt = await readText(file);
         try { localStorage.setItem(key, txt); } catch {}
-      }
-      // *_regions_and_settlement_names.txt → store as binary (strings.bin) or text
-      if (n.endsWith('_regions_and_settlement_names.txt') || n.endsWith('_regions_and_settlement_names.bin')) {
-        if (n.endsWith('.bin')) {
-          // parse as strings.bin
-          const buf = await file.arrayBuffer();
-          const { parseStringsBin } = await import('@/components/strings/stringsBinCodec');
-          const parsed = parseStringsBin(buf);
-          if (parsed) {
-            const txt = parsed.entries.map(e => `{${e.key}}${e.value}`).join('\n');
-            try { localStorage.setItem('m2tw_campaign_names_txt', txt); } catch {}
-          }
-        } else {
-          const txt = await readText(file);
-          try { localStorage.setItem('m2tw_campaign_names_txt', txt); } catch {}
-        }
       }
     }
 
