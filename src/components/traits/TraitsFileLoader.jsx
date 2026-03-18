@@ -7,7 +7,7 @@ import { parseStringsBin, encodeStringsBin } from '../strings/stringsBinCodec';
 export default function TraitsFileLoader() {
   const {
     traitsData, textData, traitsFilename, textFilename,
-    loadTraitsFile, loadTextFile,
+    loadTraitsFile, loadTextFile, loadTextFileFromBin,
     exportTraitsFile, exportTextFile,
     saveTraits, revertTraits,
     isDirty,
