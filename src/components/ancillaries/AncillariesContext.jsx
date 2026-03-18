@@ -235,7 +235,7 @@ export function AncillariesProvider({ children }) {
   return (
     <AncillariesContext.Provider value={{
       ancData, textData, tgaImages,
-      ancFilename, textFilename,
+      ancFilename, textFilename, textBinMeta,
       isDirty, selectedAnc,
       setSelectedAnc,
       loadAncFile, loadTextFile, loadTgaImages,
