@@ -1,6 +1,13 @@
 /**
  * Parser and serializer for M2TW descr_strat.txt, descr_regions.txt,
  * *_regions_and_settlement_names.txt, and descr_sm_factions.txt
+ *
+ * Corrected format understanding:
+ * - Faction blocks are NOT brace-delimited; they end at the next faction/diplomacy keyword
+ * - Characters use inline x/y: "character Name, type, sex, age N, x X, y Y"
+ * - Resources: "resource name, X, Y"
+ * - Forts: "fort X Y [fort_type [culture name]]"
+ * - Settlements ARE brace-delimited, contain building{} sub-blocks
  */
 
 export const SETTLEMENT_LEVELS = ['village', 'town', 'large_town', 'city', 'large_city', 'huge_city'];
@@ -9,227 +16,276 @@ export const SETTLEMENT_LEVEL_ICONS = {
   city: '🏛️', large_city: '🏰', huge_city: '👑',
 };
 
-// ─── Utility ──────────────────────────────────────────────────────────────────
-function cleanLine(l) { return l.replace(/;.*$/, '').trim(); }
+const cleanLine = (l) => l.replace(/;.*$/, '').trim();
 
-// Skip forward until we find a line containing '{'
 function skipToBrace(lines, i) {
   while (i < lines.length && !lines[i].includes('{')) i++;
   return i;
 }
 
-// ─── Settlement block parser ───────────────────────────────────────────────────
+// ─── Settlement block parser (brace-delimited) ────────────────────────────────
 function parseSettlementBlock(lines, startI) {
-  let i = skipToBrace(lines, startI) + 1; // skip past {
-  const lineStart = startI - 1; // 'settlement' keyword line
-
+  let i = skipToBrace(lines, startI) + 1;
   const settlement = {
     level: 'village', region: '', population: 0,
-    yearFounded: 0, planSet: 'default', factionCreator: '',
-    upgrades: [], x: null, y: null,
-    _lineStart: lineStart,
+    yearFounded: 0, planSet: 'default_set', factionCreator: '',
+    buildings: [], castle: false,
   };
-
   let depth = 1;
   while (i < lines.length && depth > 0) {
     const line = cleanLine(lines[i]);
     if (line === '{') { depth++; i++; continue; }
     if (line === '}') { depth--; if (depth === 0) break; i++; continue; }
-
-    const m = {
-      level: line.match(/^level\s+(\S+)/),
-      region: line.match(/^region\s+(\S+)/),
-      pop: line.match(/^population\s+(\d+)/),
-      yf: line.match(/^year_founded\s+(-?\d+)/),
-      ps: line.match(/^plan_set\s+(\S+)/),
-      fc: line.match(/^faction_creator\s+(\S+)/),
-    };
-    if (m.level)  settlement.level         = m.level[1];
-    if (m.region) settlement.region        = m.region[1];
-    if (m.pop)    settlement.population    = parseInt(m.pop[1]);
-    if (m.yf)     settlement.yearFounded   = parseInt(m.yf[1]);
-    if (m.ps)     settlement.planSet       = m.ps[1];
-    if (m.fc)     settlement.factionCreator = m.fc[1];
-
-    if (line === 'upgrades') {
-      i = skipToBrace(lines, i + 1) + 1;
-      let ud = 1;
-      while (i < lines.length && ud > 0) {
-        const ul = cleanLine(lines[i]);
-        if (ul === '{') { ud++; i++; continue; }
-        if (ul === '}') { ud--; if (ud === 0) break; i++; continue; }
-        if (ul) settlement.upgrades.push(ul);
-        i++;
+    let m;
+    if ((m = line.match(/^level\s+(\S+)/)))         settlement.level         = m[1];
+    else if ((m = line.match(/^region\s+(\S+)/)))   settlement.region        = m[1];
+    else if ((m = line.match(/^population\s+(\d+)/))) settlement.population  = parseInt(m[1]);
+    else if ((m = line.match(/^year_founded\s+(-?\d+)/))) settlement.yearFounded = parseInt(m[1]);
+    else if ((m = line.match(/^plan_set\s+(\S+)/))) settlement.planSet       = m[1];
+    else if ((m = line.match(/^faction_creator\s+(\S+)/))) settlement.factionCreator = m[1];
+    else if (line === 'building') {
+      let bi = skipToBrace(lines, i + 1) + 1;
+      let bd = 1;
+      while (bi < lines.length && bd > 0) {
+        const bl = cleanLine(lines[bi]);
+        if (bl === '{') { bd++; bi++; continue; }
+        if (bl === '}') { bd--; if (bd === 0) break; bi++; continue; }
+        const tm = bl.match(/^type\s+(.+)/);
+        if (tm) settlement.buildings.push(tm[1].trim());
+        bi++;
       }
-      i++; continue;
+      i = bi;
     }
     i++;
   }
-
   settlement._lineEnd = i;
   return { settlement, endIndex: i };
 }
 
-// ─── Character / Agent block parser ───────────────────────────────────────────
-function parseCharBlock(lines, startI) {
-  let i = skipToBrace(lines, startI) + 1;
-  let x = null, y = null;
-  let depth = 1;
-  const lineStart = startI - 1;
+// ─── Character line parser ─────────────────────────────────────────────────────
+// Format: character Name, type, sex[, leader|heir], age N, x X, y Y
+function parseCharacterLine(line) {
+  const m = line.match(/^character\s+(.+)/);
+  if (!m) return null;
+  const rest = m[1];
 
-  while (i < lines.length && depth > 0) {
-    const line = cleanLine(lines[i]);
-    if (line === '{') { depth++; i++; continue; }
-    if (line === '}') { depth--; if (depth === 0) break; i++; continue; }
-    const cm = line.match(/^coordinates\s+(\d+)[,\s]+(\d+)/);
-    if (cm) { x = parseInt(cm[1]); y = parseInt(cm[2]); }
-    i++;
-  }
-  return { x, y, endIndex: i, _lineStart: lineStart, _lineEnd: i };
+  const parts = rest.split(',').map(s => s.trim());
+  const name = parts[0];
+
+  const xm = rest.match(/\bx\s+(\d+)/);
+  const ym = rest.match(/\by\s+(\d+)/);
+  const x = xm ? parseInt(xm[1]) : null;
+  const y = ym ? parseInt(ym[1]) : null;
+
+  const typeMatch = rest.match(/\b(named character|general|admiral|spy|merchant|diplomat|priest|assassin|princess|heretic|witch|inquisitor)\b/i);
+  const charType = typeMatch ? typeMatch[1].toLowerCase() : 'general';
+
+  const isLeader = /\bleader\b/i.test(rest);
+  const isHeir   = /\bheir\b/i.test(rest);
+  const ageM     = rest.match(/\bage\s+(\d+)/);
+  const age      = ageM ? parseInt(ageM[1]) : 30;
+  const sex      = /\bfemale\b/i.test(rest) ? 'female' : 'male';
+
+  return { name, charType, isLeader, isHeir, age, x, y, sex };
 }
 
-// ─── descr_strat.txt ─────────────────────────────────────────────────────────
+const FLAG_NAMES = new Set([
+  'marian_reforms_disabled', 'marian_reforms_activated',
+  'rebelling_characters_active', 'rebelling_characters_inactive',
+  'gladiator_uprising_disabled', 'night_battles_enabled',
+  'night_battles_disabled', 'show_date_as_turns',
+  'free_upkeep_enabled', 'free_upkeep_disabled',
+]);
+
+// Detect end of a faction block
+function isFactionBlockEnd(line) {
+  return (
+    line.match(/^faction\s+\w/) ||
+    line.match(/^faction_standings/) ||
+    line.match(/^faction_relationships/) ||
+    line.match(/^action_relationships/) ||
+    line === 'script'
+  );
+}
+
+// ─── descr_strat.txt ──────────────────────────────────────────────────────────
 export function parseDescrStrat(text) {
   const lines = text.split('\n');
   const items = [];
   const factions = [];
   let itemId = 0;
+  let campaignName = '';
+  let playable = [], unlockable = [], nonplayable = [];
   let startDate = '', endDate = '', timescale = '';
+  let flags = {};
+  let brigandSpawn = 0, pirateSpawn = 0;
+  let scriptFile = '';
   let i = 0;
 
   while (i < lines.length) {
     const line = cleanLine(lines[i]);
     if (!line) { i++; continue; }
 
-    // Campaign metadata
     let m;
-    if ((m = line.match(/^start_date\s+(.+)/)))   { startDate = m[1].trim(); i++; continue; }
-    if ((m = line.match(/^end_date\s+(.+)/)))      { endDate   = m[1].trim(); i++; continue; }
-    if ((m = line.match(/^timescale\s+([\d.]+)/))) { timescale = m[1];        i++; continue; }
 
-    // Faction block
-    if ((m = line.match(/^faction\s+(\w+)(?:,\s*(\w+))?/))) {
-      const faction = { name: m[1], type: m[2] || 'human', treasury: 0, settlements: [], characters: [] };
-      i = skipToBrace(lines, i + 1) + 1;
-      let depth = 1;
+    // Campaign name
+    if ((m = line.match(/^campaign\s+(\S+)/))) { campaignName = m[1]; i++; continue; }
 
-      while (i < lines.length && depth > 0) {
+    // Playability lists (terminated by 'end')
+    if (line === 'playable' || line === 'unlockable' || line === 'nonplayable') {
+      const arr = line === 'playable' ? playable : line === 'unlockable' ? unlockable : nonplayable;
+      i++;
+      while (i < lines.length) {
         const fl = cleanLine(lines[i]);
-        if (fl === '{') { depth++; i++; continue; }
-        if (fl === '}') { depth--; if (depth === 0) break; i++; continue; }
+        if (fl === 'end') { i++; break; }
+        if (fl) arr.push(fl);
+        i++;
+      }
+      continue;
+    }
 
-        if ((m = fl.match(/^denari\s+(\d+)/))) { faction.treasury = parseInt(m[1]); i++; continue; }
+    // Dates and timescale
+    if ((m = line.match(/^start_date\s+(\d+)\s+(\w+)/)))  { startDate = `${m[1]} ${m[2]}`; i++; continue; }
+    if ((m = line.match(/^end_date\s+(\d+)\s+(\w+)/)))    { endDate   = `${m[1]} ${m[2]}`; i++; continue; }
+    if ((m = line.match(/^timescale\s+([\d.]+)/)))         { timescale = m[1];              i++; continue; }
+    if ((m = line.match(/^brigand_spawn_value\s+(\d+)/)))  { brigandSpawn = parseInt(m[1]); i++; continue; }
+    if ((m = line.match(/^pirate_spawn_value\s+(\d+)/)))   { pirateSpawn  = parseInt(m[1]); i++; continue; }
+    if (FLAG_NAMES.has(line))                               { flags[line] = true;            i++; continue; }
 
-        if (fl === 'settlement') {
+    // Resources: "resource coal, 69, 107"
+    if ((m = line.match(/^resource\s+(\w+)\s*,\s*(\d+)\s*,\s*(\d+)/i))) {
+      items.push({ id: itemId++, category: 'resource', type: m[1], x: parseInt(m[2]), y: parseInt(m[3]), _lineNum: i });
+      i++; continue;
+    }
+
+    // ── Faction block (NOT brace-delimited) ───────────────────────────────────
+    if ((m = line.match(/^faction\s+(\w+)(?:\s*,\s*(\w+)(?:\s+(\w+))?)?/))) {
+      const faction = {
+        name: m[1], economicAi: m[2] || '', militaryAi: m[3] || '',
+        aiLabel: '', treasury: 0, kingsPromise: 0,
+        settlements: [], characters: [], characterRecords: [], relatives: [],
+        _lineStart: i,
+      };
+      i++;
+
+      while (i < lines.length) {
+        const fl = cleanLine(lines[i]);
+        if (!fl) { i++; continue; }
+        if (isFactionBlockEnd(fl)) break;
+
+        // ai_label, money
+        if ((m = fl.match(/^ai_label\s+(\S+)/)))           { faction.aiLabel    = m[1];            i++; continue; }
+        if ((m = fl.match(/^denari\s+(\d+)$/)))            { faction.treasury   = parseInt(m[1]);  i++; continue; }
+        if ((m = fl.match(/^denari_kings_purse\s+(\d+)/))) { faction.kingsPromise = parseInt(m[1]); i++; continue; }
+
+        // Settlement block (brace-delimited)
+        if (fl === 'settlement' || fl === 'settlement castle') {
+          const iscastle = fl.includes('castle');
           const { settlement, endIndex } = parseSettlementBlock(lines, i + 1);
+          settlement._lineStart = i; // the 'settlement' keyword line
           settlement.id       = itemId++;
           settlement.faction  = faction.name;
           settlement.category = 'settlement';
+          settlement.castle   = iscastle;
           faction.settlements.push(settlement);
           items.push(settlement);
           i = endIndex + 1;
           continue;
         }
 
-        if ((m = fl.match(/^character\s+(.+?),\s*(general|admiral|spy|merchant|diplomat|priest|assassin|princess|heretic|witch|inquisitor|named character)/i))) {
-          const { x, y, endIndex, _lineStart, _lineEnd } = parseCharBlock(lines, i + 1);
-          if (x !== null) {
-            const item = { id: itemId++, category: 'character', charType: m[2].toLowerCase(), name: m[1].trim(), faction: faction.name, x, y, _lineStart, _lineEnd };
+        // Character on map: x and y are on the character line itself
+        if (fl.match(/^character\s+/)) {
+          const charData = parseCharacterLine(fl);
+          if (charData && charData.x !== null) {
+            const item = { ...charData, id: itemId++, category: 'character', faction: faction.name, _lineNum: i, traits: [], ancillaries: [] };
+            i++;
+            // Consume trailing lines: traits, ancillaries, army/units
+            while (i < lines.length) {
+              const nl = cleanLine(lines[i]);
+              if (!nl) { i++; continue; }
+              if (nl.match(/^character\s+/) || nl.match(/^character_record/) ||
+                  nl.match(/^relative\s+/) || nl === 'settlement' || nl === 'settlement castle' ||
+                  isFactionBlockEnd(nl)) break;
+              if ((m = nl.match(/^traits\s+(.*)/)))      item.traits      = m[1].split(/\s*,\s*/).map(t => t.trim()).filter(Boolean);
+              if ((m = nl.match(/^ancillaries\s+(.*)/))) item.ancillaries = m[1].split(/\s*,\s*/).map(a => a.trim()).filter(Boolean);
+              i++;
+            }
             faction.characters.push(item);
             items.push(item);
+            continue;
           }
-          i = endIndex + 1;
+          i++;
           continue;
         }
 
-        if ((m = fl.match(/^agent\s+(.+),\s*(\w+)/i))) {
-          const { x, y, endIndex } = parseCharBlock(lines, i + 1);
-          if (x !== null) {
-            items.push({ id: itemId++, category: 'character', charType: m[2].toLowerCase(), name: m[1].trim(), faction: faction.name, x, y });
-          }
-          i = endIndex + 1;
-          continue;
-        }
+        if (fl.match(/^character_record\s+/)) { faction.characterRecords.push(fl); i++; continue; }
+        if (fl.match(/^relative\s+/))         { faction.relatives.push(fl);         i++; continue; }
 
         i++;
       }
-      i++;
+
       factions.push(faction);
       continue;
     }
 
-    // Global resources
-    if ((m = line.match(/^resource\s+(\w+)[\s,]+x[\s,]*(\d+)[\s,]+y[\s,]*(\d+)/i))) {
-      items.push({ id: itemId++, category: 'resource', type: m[1], x: parseInt(m[2]), y: parseInt(m[3]), _lineNum: i });
-      i++; continue;
-    }
-    if ((m = line.match(/^resource\s+(\w+)$/i))) {
-      let rx = null, ry = null;
-      for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
-        const cl = cleanLine(lines[j]);
-        const xm = cl.match(/^x[\s,]*(\d+)/i), ym = cl.match(/^y[\s,]*(\d+)/i);
-        if (xm) rx = parseInt(xm[1]);
-        if (ym) ry = parseInt(ym[1]);
-        if (rx !== null && ry !== null) break;
-      }
-      if (rx !== null && ry !== null)
-        items.push({ id: itemId++, category: 'resource', type: m[1], x: rx, y: ry, _lineNum: i });
+    // ── Fort / watchtower in regions section ─────────────────────────────────
+    // Format: "fort X Y [fort_type [culture culture_name]]"
+    //         "watchtower X Y"
+    if ((m = line.match(/^(fort|watchtower)\s+(\d+)\s+(\d+)(.*)/i))) {
+      const extra = m[4].trim();
+      const fortTypeM = extra.match(/^(\S+)/);
+      const cultureM  = extra.match(/culture\s+(\S+)/);
+      items.push({
+        id: itemId++, category: 'fortification', type: m[1].toLowerCase(),
+        x: parseInt(m[2]), y: parseInt(m[3]),
+        fortType: fortTypeM ? fortTypeM[1] : '',
+        culture: cultureM ? cultureM[1] : '',
+        _lineNum: i,
+      });
       i++; continue;
     }
 
-    // Forts / watchtowers
-    if ((m = line.match(/^(fort|watchtower)\s+x[\s,]*(\d+)[\s,]+y[\s,]*(\d+)/i))) {
-      items.push({ id: itemId++, category: 'fortification', type: m[1], x: parseInt(m[2]), y: parseInt(m[3]), _lineNum: i });
-      i++; continue;
-    }
-    if ((m = line.match(/^(fort|watchtower)$/i))) {
-      let fx = null, fy = null;
-      for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
-        const cl = cleanLine(lines[j]);
-        const xm = cl.match(/^x[\s,]*(\d+)/i), ym = cl.match(/^y[\s,]*(\d+)/i);
-        if (xm) fx = parseInt(xm[1]);
-        if (ym) fy = parseInt(ym[1]);
-        if (fx !== null && fy !== null) break;
+    // Script file (line after 'script' keyword)
+    if (line === 'script') {
+      i++;
+      while (i < lines.length) {
+        const sl = cleanLine(lines[i]);
+        if (sl) { scriptFile = sl; break; }
+        i++;
       }
-      if (fx !== null && fy !== null)
-        items.push({ id: itemId++, category: 'fortification', type: m[1], x: fx, y: fy, _lineNum: i });
       i++; continue;
     }
 
     i++;
   }
 
-  return { raw: text, items, factions, startDate, endDate, timescale };
+  return { raw: text, items, factions, playable, unlockable, nonplayable, campaignName, startDate, endDate, timescale, flags, brigandSpawn, pirateSpawn, scriptFile };
 }
 
 // ─── Settlement position computation ─────────────────────────────────────────
-// Scan map_regions.tga: each black pixel (city) is adjacent to its region color.
-// Build regionColor → city pixel map, then assign x,y to each settlement.
 export function computeSettlementPositions(settlements, regionsData, regionsLayer) {
   if (!settlements?.length || !regionsData?.length || !regionsLayer?.data) return settlements;
   const { data, width, height } = regionsLayer;
 
-  // region name (lower) → { r, g, b }
   const colorMap = {};
   for (const reg of regionsData) {
     if (reg.regionName) colorMap[reg.regionName.toLowerCase()] = { r: reg.r, g: reg.g, b: reg.b };
   }
 
-  // colorKey → {x, y} (first city/black pixel adjacent to that color)
   const cityPx = {};
   for (let py = 0; py < height; py++) {
     for (let px = 0; px < width; px++) {
       const i = (py * width + px) * 4;
-      if (data[i] > 5 || data[i+1] > 5 || data[i+2] > 5) continue; // not black
+      if (data[i] > 5 || data[i+1] > 5 || data[i+2] > 5) continue;
       for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
         const nx = px + dx, ny = py + dy;
         if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
         const ni = (ny * width + nx) * 4;
         const nr = data[ni], ng = data[ni+1], nb = data[ni+2];
-        if (nr < 5 && ng < 5 && nb < 5) continue;   // neighbor also black
-        if (nr > 245 && ng > 245 && nb > 245) continue; // port (white)
+        if (nr < 5 && ng < 5 && nb < 5) continue;
+        if (nr > 245 && ng > 245 && nb > 245) continue;
         const key = `${nr},${ng},${nb}`;
-        if (!cityPx[key]) cityPx[key] = { x: px, y: height - 1 - py }; // M2TW Y-flip
+        if (!cityPx[key]) cityPx[key] = { x: px, y: height - 1 - py };
         break;
       }
     }
@@ -243,89 +299,79 @@ export function computeSettlementPositions(settlements, regionsData, regionsLaye
   });
 }
 
-// ─── Serializer ───────────────────────────────────────────────────────────────
+// ─── Settlement block generator ───────────────────────────────────────────────
 function generateSettlementBlock(s, indent = '') {
   const ind4 = indent + '    ';
   const ind8 = indent + '        ';
   const lines = [
-    `${indent}settlement`,
+    `${indent}settlement${s.castle ? ' castle' : ''}`,
     `${indent}{`,
     `${ind4}level ${s.level}`,
     `${ind4}region ${s.region}`,
     ``,
     `${ind4}year_founded ${s.yearFounded ?? 0}`,
     `${ind4}population ${s.population ?? 0}`,
-    `${ind4}plan_set ${s.planSet || 'default'}`,
+    `${ind4}plan_set ${s.planSet || 'default_set'}`,
     `${ind4}faction_creator ${s.factionCreator || s.faction}`,
-    ``,
-    `${ind4}upgrades`,
-    `${ind4}{`,
-    ...(s.upgrades || []).map(u => `${ind8}${u}`),
-    `${ind4}}`,
-    `${indent}}`,
   ];
+  for (const bld of (s.buildings || [])) {
+    lines.push(`${ind4}building`);
+    lines.push(`${ind4}{`);
+    lines.push(`${ind8}type ${bld}`);
+    lines.push(`${ind4}}`);
+  }
+  lines.push(`${indent}}`);
   return lines;
 }
 
+// ─── descr_strat.txt serializer ───────────────────────────────────────────────
 export function serializeDescrStrat(stratData, overlayItems, editedSettlements = {}) {
   if (!stratData?.raw) return '';
-  const lines = stratData.raw.split('\n');
+  const lineArr = stratData.raw.split('\n');
 
-  // Collect replacements: { start, end, newLines }
-  const replacements = [];
-
-  // Patch moved character / resource / fort coordinates
+  // Patch moved items
   for (const item of overlayItems) {
     const orig = stratData.items?.find(o => o.id === item.id);
     if (!orig || (orig.x === item.x && orig.y === item.y)) continue;
 
-    if (item.category === 'character' && orig._lineStart !== undefined) {
-      // Replace the coordinates line within the character block
-      for (let li = orig._lineStart; li <= orig._lineEnd; li++) {
-        const cl = cleanLine(lines[li] || '');
-        const cm = cl.match(/^coordinates\s+\d+[,\s]+\d+/);
-        if (cm) {
-          const indent = lines[li].match(/^(\s*)/)[1];
-          lines[li] = `${indent}coordinates ${item.x}, ${item.y}`;
-          break;
-        }
+    if (item.category === 'character' && orig._lineNum !== undefined) {
+      const old = lineArr[orig._lineNum];
+      if (old) {
+        lineArr[orig._lineNum] = old
+          .replace(/\bx\s+\d+/, `x ${item.x}`)
+          .replace(/\by\s+\d+/, `y ${item.y}`);
       }
     }
 
     if (item.category === 'resource' && orig._lineNum !== undefined) {
-      const old = lines[orig._lineNum];
+      const old = lineArr[orig._lineNum];
       if (old) {
-        lines[orig._lineNum] = old
-          .replace(/x\s*\d+/, `x ${item.x}`)
-          .replace(/y\s*\d+/, `y ${item.y}`);
+        lineArr[orig._lineNum] = old.replace(/,\s*\d+\s*,\s*\d+/, `,\t${item.x},\t${item.y}`);
       }
     }
 
     if (item.category === 'fortification' && orig._lineNum !== undefined) {
-      const old = lines[orig._lineNum];
+      const old = lineArr[orig._lineNum];
       if (old) {
-        lines[orig._lineNum] = old
-          .replace(/x\s*\d+/, `x ${item.x}`)
-          .replace(/y\s*\d+/, `y ${item.y}`);
+        lineArr[orig._lineNum] = old.replace(/^(\s*(?:fort|watchtower)\s+)\d+\s+\d+/i, `$1${item.x} ${item.y}`);
       }
     }
   }
 
-  // Patch edited settlement blocks (replace their line range)
+  // Patch edited settlement blocks
+  const replacements = [];
   for (const [id, edits] of Object.entries(editedSettlements)) {
     const orig = stratData.items?.find(it => it.id == id && it.category === 'settlement');
     if (!orig || orig._lineStart === undefined) continue;
     const merged = { ...orig, ...edits };
-    // Detect indent from original
-    const indentMatch = (lines[orig._lineStart] || '').match(/^(\s*)/);
+    const indentMatch = (lineArr[orig._lineStart] || '').match(/^(\s*)/);
     const indent = indentMatch ? indentMatch[1] : '    ';
     const newBlock = generateSettlementBlock(merged, indent);
     replacements.push({ start: orig._lineStart, end: orig._lineEnd, newLines: newBlock });
   }
 
-  // Apply replacements in reverse order to preserve line numbers
   replacements.sort((a, b) => b.start - a.start);
-  const result = [...lines];
+  const result = [...lineArr];
   for (const { start, end, newLines } of replacements) {
     result.splice(start, end - start + 1, ...newLines);
   }
@@ -339,19 +385,19 @@ export function parseDescrRegions(text) {
   const lines = text.split('\n').map(l => l.replace(/;.*$/, '').trim()).filter(Boolean);
   let i = 0;
   while (i < lines.length) {
-    const regionName    = lines[i++]; if (!regionName || !lines[i]) break;
-    const settlementName= lines[i++];
-    const factionCreator= lines[i++];
-    const rebelFaction  = lines[i++];
-    const rgbParts      = (lines[i++] || '').split(/\s+/);
+    const regionName     = lines[i++]; if (!regionName || !lines[i]) break;
+    const settlementName = lines[i++];
+    const factionCreator = lines[i++];
+    const rebelFaction   = lines[i++];
+    const rgbParts       = (lines[i++] || '').split(/\s+/);
     const r = parseInt(rgbParts[0]), g = parseInt(rgbParts[1]), b = parseInt(rgbParts[2]);
-    const resourcesLine = lines[i++] || '';
-    const resources     = resourcesLine.split(',').map(s => s.trim()).filter(Boolean);
-    const val1          = parseInt(lines[i++]) || 0;
-    const val2          = parseInt(lines[i++]) || 0;
-    const relLine       = lines[i++] || '';
-    const relMatch      = relLine.match(/religions\s*\{([^}]*)\}/);
-    const religions     = {};
+    const resourcesLine  = lines[i++] || '';
+    const resources      = resourcesLine.split(',').map(s => s.trim()).filter(Boolean);
+    const val1           = parseInt(lines[i++]) || 0;
+    const val2           = parseInt(lines[i++]) || 0;
+    const relLine        = lines[i++] || '';
+    const relMatch       = relLine.match(/religions\s*\{([^}]*)\}/);
+    const religions      = {};
     if (relMatch) {
       const parts = relMatch[1].trim().split(/\s+/);
       for (let j = 0; j < parts.length; j += 2) {
@@ -363,7 +409,6 @@ export function parseDescrRegions(text) {
   return regions;
 }
 
-// ─── Regions serializer ───────────────────────────────────────────────────────
 export function serializeDescrRegions(regions) {
   return regions.map(reg => {
     const relEntries = Object.entries(reg.religions || {}).map(([k, v]) => `${k} ${v}`).join(' ');
@@ -381,7 +426,7 @@ export function serializeDescrRegions(regions) {
   }).join('\n\n');
 }
 
-// ─── regions_and_settlement_names.txt ─────────────────────────────────────────
+// ─── regions_and_settlement_names.txt ────────────────────────────────────────
 export function parseSettlementNames(text) {
   const names = {};
   const regex = /\{([^}]+)\}([^\n{]+)/g;
