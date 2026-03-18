@@ -200,6 +200,10 @@ export default function Export() {
 
   const hasEDB = !!edbData;
   const hasText = textData && Object.keys(textData).length > 0;
+  const hasTraits = !!traitsData;
+  const hasTraitsText = traitsTextData && Object.keys(traitsTextData).length > 0;
+  const hasAnc = !!ancData;
+  const hasAncText = ancTextData && Object.keys(ancTextData).length > 0;
   const edbStats = edbData ? {
     buildings: edbData.buildings.length,
     levels: edbData.buildings.reduce((s, b) => s + b.levels.length, 0),
