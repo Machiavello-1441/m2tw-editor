@@ -49,30 +49,26 @@ export default function TraitEditor() {
 
   const update = (field, value) => {
     if (field === 'name') {
-      // Rename all text keys that use the old trait name as prefix
       const oldName = trait.name;
       const newName = value;
-      // Rename level text keys
-      const renamedLevels = trait.levels.map((l, li) => {
+      // Rename level text keys that have old name as prefix
+      const renamedLevels = trait.levels.map(l => {
         const renamedLevel = { ...l };
-        // Replace oldName prefix with newName in level keys
+        if (l.name && l.name.startsWith(oldName)) renamedLevel.name = newName + l.name.slice(oldName.length);
         if (l.description && l.description.startsWith(oldName)) {
-          const newKey = newName + l.description.slice(oldName.length);
-          updateTextEntry(l.description, null, l.description, newKey);
-          renamedLevel.description = newKey;
+          const nk = newName + l.description.slice(oldName.length);
+          renameTextKey(l.description, nk);
+          renamedLevel.description = nk;
         }
         if (l.effectsDescription && l.effectsDescription.startsWith(oldName)) {
-          const newKey = newName + l.effectsDescription.slice(oldName.length);
-          updateTextEntry(l.effectsDescription, null, l.effectsDescription, newKey);
-          renamedLevel.effectsDescription = newKey;
+          const nk = newName + l.effectsDescription.slice(oldName.length);
+          renameTextKey(l.effectsDescription, nk);
+          renamedLevel.effectsDescription = nk;
         }
         if (l.epithet && l.epithet.startsWith(oldName)) {
-          const newKey = newName + l.epithet.slice(oldName.length);
-          updateTextEntry(l.epithet, null, l.epithet, newKey);
-          renamedLevel.epithet = newKey;
-        }
-        if (l.name && l.name.startsWith(oldName)) {
-          renamedLevel.name = newName + l.name.slice(oldName.length);
+          const nk = newName + l.epithet.slice(oldName.length);
+          renameTextKey(l.epithet, nk);
+          renamedLevel.epithet = nk;
         }
         return renamedLevel;
       });
