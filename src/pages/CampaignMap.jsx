@@ -218,6 +218,7 @@ export default function CampaignMap() {
       if (name === 'descr_strat.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_strat_raw', text); } catch {}
+        setLoadedFiles(p => ({ ...p, 'descr_strat.txt': true }));
         const parsed = parseDescrStrat(text);
         // Try to apply positions immediately if we already have regions data
         setRegionsDataRaw(prevReg => {
