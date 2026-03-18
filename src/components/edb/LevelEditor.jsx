@@ -213,7 +213,7 @@ export default function LevelEditor() {
 }
 
 function BuildingOverview({ building, edbData }) {
-  const { updateBuilding } = useEDB();
+  const { updateBuilding, deleteBuilding, setSelectedBuilding } = useEDB();
   const buildingOptions = edbData.buildings
     .filter(b => b.name !== building.name)
     .map(b => ({ value: b.name, label: b.name }));
