@@ -7,7 +7,7 @@ import { getStringsBinStore, setStringsBinStore } from '@/lib/stringsBinStore';
 
 export default function TraitsFileLoader() {
   const {
-    traitsData, textData, traitsFilename, textFilename,
+    traitsData, textData, textBinMeta, traitsFilename, textFilename,
     loadTraitsFile, loadTextFile,
     exportTraitsFile, exportTextFile,
     saveTraits, revertTraits,
