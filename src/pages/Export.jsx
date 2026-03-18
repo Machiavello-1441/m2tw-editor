@@ -259,6 +259,34 @@ export default function Export() {
                 />
               )}
               <ExportRow
+                icon={<FileText className="w-4 h-4 text-purple-400/70" />}
+                label="export_descr_character_traits.txt"
+                path={`${modName}/data/`}
+                status={hasTraits ? 'ready' : 'skip'}
+                detail={hasTraits ? `${traitsData.traits.length} traits, ${traitsData.triggers?.length || 0} triggers` : 'No traits loaded'}
+              />
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-purple-300/70" />}
+                label={traitsTextFilename || 'export_VnVs.txt(.strings.bin)'}
+                path={`${modName}/data/text/`}
+                status={hasTraitsText ? 'ready' : 'skip'}
+                detail={hasTraitsText ? `${Object.keys(traitsTextData).length} entries${traitsBinMeta ? ' (.strings.bin)' : ' (.txt)'}` : 'No VnVs text loaded'}
+              />
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-yellow-400/70" />}
+                label="export_descr_ancillaries.txt"
+                path={`${modName}/data/`}
+                status={hasAnc ? 'ready' : 'skip'}
+                detail={hasAnc ? `${ancData.ancillaries.length} ancillaries, ${ancData.triggers?.length || 0} triggers` : 'No ancillaries loaded'}
+              />
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-yellow-300/70" />}
+                label={ancTextFilename || 'export_ancillaries.txt(.strings.bin)'}
+                path={`${modName}/data/text/`}
+                status={hasAncText ? 'ready' : 'skip'}
+                detail={hasAncText ? `${Object.keys(ancTextData).length} entries${ancBinMeta ? ' (.strings.bin)' : ' (.txt)'}` : 'No ancillaries text loaded'}
+              />
+              <ExportRow
                 icon={<Code2 className="w-4 h-4 text-green-500/70" />}
                 label="luaPluginScript.lua"
                 path={`${modName}/eopData/eopScripts/`}
