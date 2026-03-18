@@ -2,6 +2,8 @@ import React, { useRef } from 'react';
 import { useAncillaries } from './AncillariesContext';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Save, RotateCcw, Image } from 'lucide-react';
+import { parseStringsBin } from '@/components/strings/stringsBinCodec';
+import { getStringsBinStore, setStringsBinStore } from '@/lib/stringsBinStore';
 
 // Decode a TGA file (true-color 24/32-bit) to a data URL via canvas
 function decodeTgaToDataUrl(buffer) {
