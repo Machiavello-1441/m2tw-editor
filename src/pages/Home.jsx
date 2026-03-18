@@ -233,6 +233,7 @@ export default function Home() {
 
     // Storage keys for files loaded by their own editors
     const storeKeys = {
+      modeldb: 'm2tw_modeldb_file',
       traits: 'm2tw_traits_file',
       anc: 'm2tw_anc_file',
       vnvs: 'm2tw_vnvs_file',
