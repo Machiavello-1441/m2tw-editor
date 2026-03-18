@@ -32,7 +32,7 @@ function PreviewText({ text }) {
 }
 
 export default function TraitEditor() {
-  const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry, updateTrigger, addTrigger, deleteTrigger } = useTraits();
+  const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry, renameTextKey, updateTrigger, addTrigger, deleteTrigger } = useTraits();
   const { traitAttributeNames } = useModData();
   const [expandedLevel, setExpandedLevel] = useState(0);
 
@@ -47,7 +47,39 @@ export default function TraitEditor() {
   const trait = traitsData.traits[selectedTrait];
   if (!trait) return null;
 
-  const update = (field, value) => updateTrait(selectedTrait, { ...trait, [field]: value });
+  const update = (field, value) => {
+    if (field === 'name') {
+      // Rename all text keys that use the old trait name as prefix
+      const oldName = trait.name;
+      const newName = value;
+      // Rename level text keys
+      const renamedLevels = trait.levels.map((l) => {
+        const renamedLevel = { ...l };
+        if (l.description && l.description.startsWith(oldName)) {
+          const newKey = newName + l.description.slice(oldName.length);
+          renameTextKey(l.description, newKey);
+          renamedLevel.description = newKey;
+        }
+        if (l.effectsDescription && l.effectsDescription.startsWith(oldName)) {
+          const newKey = newName + l.effectsDescription.slice(oldName.length);
+          renameTextKey(l.effectsDescription, newKey);
+          renamedLevel.effectsDescription = newKey;
+        }
+        if (l.epithet && l.epithet.startsWith(oldName)) {
+          const newKey = newName + l.epithet.slice(oldName.length);
+          renameTextKey(l.epithet, newKey);
+          renamedLevel.epithet = newKey;
+        }
+        if (l.name && l.name.startsWith(oldName)) {
+          renamedLevel.name = newName + l.name.slice(oldName.length);
+        }
+        return renamedLevel;
+      });
+      updateTrait(selectedTrait, { ...trait, name: newName, levels: renamedLevels });
+      return;
+    }
+    updateTrait(selectedTrait, { ...trait, [field]: value });
+  };
 
   const toggleCharacter = (char) => {
     const chars = trait.characters.includes(char)
@@ -64,13 +96,11 @@ export default function TraitEditor() {
   };
 
   const addLevel = () => {
-    const levelName = `${trait.name}_Level${trait.levels.length + 1}`;
     const newLevel = {
-      name: levelName,
-      description: `${levelName}_desc`,
-      effectsDescription: `${levelName}_effects_desc`,
-      epithet: `${levelName}_epithet_desc`,
-      gainMessage: '', loseMessage: '',
+      name: `${trait.name}_Level${trait.levels.length + 1}`,
+      description: `${trait.name}_Level${trait.levels.length + 1}_desc`,
+      effectsDescription: `${trait.name}_Level${trait.levels.length + 1}_effects_desc`,
+      gainMessage: '', loseMessage: '', epithet: '',
       threshold: (trait.levels[trait.levels.length - 1]?.threshold || 0) * 2 || 1,
       effects: [],
     };
@@ -280,19 +310,21 @@ export default function TraitEditor() {
                           />
                         </div>
                         <div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[10px] text-muted-foreground">Epithet</Label>
-                            <span className="text-[9px] text-muted-foreground/50 font-mono">{level.epithet || `${level.name}_epithet_desc`}</span>
+                          <div className="flex items-center justify-between mb-1">
+                            <Label className="text-[10px] text-muted-foreground">Epithet key (ID)</Label>
                           </div>
                           <Input
+                            value={level.epithet}
+                            onChange={e => updateLevel(li, 'epithet', e.target.value)}
+                            className={inputSmCls + ' font-mono mb-1'}
+                            placeholder={`${trait.name}_Level${li + 1}_epithet_desc`}
+                          />
+                          <Input
                             value={epithText}
-                            onChange={e => {
-                              const key = level.epithet || `${level.name}_epithet_desc`;
-                              if (!level.epithet) updateLevel(li, 'epithet', key);
-                              updateTextEntry(key, e.target.value);
-                            }}
+                            onChange={e => level.epithet && updateTextEntry(level.epithet, e.target.value)}
                             className={inputSmCls}
-                            placeholder="Enter epithet text…"
+                            placeholder={level.epithet ? 'Enter epithet display text…' : 'Set epithet key above first'}
+                            disabled={!level.epithet}
                           />
                         </div>
                       </div>
