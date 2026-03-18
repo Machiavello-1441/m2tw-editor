@@ -80,7 +80,7 @@ export function TraitsProvider({ children }) {
     try { localStorage.setItem('m2tw_traits_file', content); localStorage.setItem('m2tw_traits_file_name', fn); } catch {}
   }, []);
 
-  const loadTextFile = useCallback((content, filename) => {
+  const loadTextFile = useCallback((content, filename, binMeta) => {
     // content may be a pre-parsed map (from .strings.bin) or a raw string
     const parsed = (typeof content === 'object' && content !== null && !(content instanceof ArrayBuffer))
       ? content
@@ -89,7 +89,10 @@ export function TraitsProvider({ children }) {
     setTextData(parsed);
     const fn = filename || 'export_VnVs.txt';
     setTextFilename(fn);
-    if (typeof content === 'string') {
+    if (binMeta) {
+      setTextBinMeta(binMeta);
+    } else if (typeof content === 'string') {
+      setTextBinMeta(null);
       try { localStorage.setItem('m2tw_vnvs_file', content); localStorage.setItem('m2tw_vnvs_file_name', fn); } catch {}
     }
   }, []);
