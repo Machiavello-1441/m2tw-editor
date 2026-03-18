@@ -66,8 +66,8 @@ function BuildingNode({ building, isFirst, isLast }) {
         </button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <button className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-              <Trash2 className="w-3 h-3 text-destructive" />
+            <button className="p-0.5 hover:bg-destructive/20 rounded text-destructive/60 hover:text-destructive transition-colors">
+              <Trash2 className="w-3 h-3" />
             </button>
           </AlertDialogTrigger>
           <AlertDialogContent>
