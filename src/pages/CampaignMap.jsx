@@ -255,6 +255,37 @@ export default function CampaignMap() {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {}
         setFactionColorsRaw(parseDescrSmFactions(text));
+        setLoadedFiles(p => ({ ...p, 'descr_sm_factions.txt': true }));
+      }
+      if (name === 'descr_rebel_factions.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_rebel_factions_raw', text); } catch {}
+        setRebelFactions(parseDescrRebelFactions(text));
+        setLoadedFiles(p => ({ ...p, 'descr_rebel_factions.txt': true }));
+      }
+      if (name === 'descr_religions.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_religions_raw', text); } catch {}
+        setReligions(parseDescrReligions(text));
+        setLoadedFiles(p => ({ ...p, 'descr_religions.txt': true }));
+      }
+      if (name === 'descr_sm_resources.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_sm_resources_raw', text); } catch {}
+        setNaturalRes(parseDescrSmResources(text));
+        setLoadedFiles(p => ({ ...p, 'descr_sm_resources.txt': true }));
+      }
+      if (name === 'descr_mercenaries.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_mercenaries_raw', text); } catch {}
+        setMercenaryPools(parseDescrMercenaries(text));
+        setLoadedFiles(p => ({ ...p, 'descr_mercenaries.txt': true }));
+      }
+      if (name === 'descr_sounds_music_types.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_music_types_raw', text); } catch {}
+        setMusicTypes(parseDescrSoundsMusicTypes(text));
+        setLoadedFiles(p => ({ ...p, 'descr_sounds_music_types.txt': true }));
       }
       if (name.endsWith('_regions_and_settlement_names.txt')) {
         const text = await file.text();
