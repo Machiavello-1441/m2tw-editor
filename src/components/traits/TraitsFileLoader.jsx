@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Upload, Download, Save, RotateCcw } from 'lucide-react';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { getStringsBinStore, setStringsBinStore } from '@/lib/stringsBinStore';
-import { useTraits } from './TraitsContext';
 
 export default function TraitsFileLoader() {
   const {
