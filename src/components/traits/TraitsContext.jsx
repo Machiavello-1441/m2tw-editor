@@ -151,22 +151,31 @@ export function TraitsProvider({ children }) {
   }, []);
 
   const addTrait = useCallback(() => {
+    const baseName = 'NewTrait';
     const newTrait = {
-      name: 'NewTrait',
+      name: baseName,
       characters: ['family'],
       hidden: false,
       excludeCultures: [],
       noGoingBackLevel: null,
       antiTraits: [],
       levels: [{
-        name: 'NewTrait_Level1',
-        description: 'NewTrait_Level1_desc',
-        effectsDescription: 'NewTrait_Level1_effects_desc',
-        gainMessage: '', loseMessage: '', epithet: '',
+        name: `${baseName}_Level1`,
+        description: `${baseName}_Level1_desc`,
+        effectsDescription: `${baseName}_Level1_effects_desc`,
+        gainMessage: '', loseMessage: '',
+        epithet: `${baseName}_Level1_epithet_desc`,
         threshold: 1, effects: [],
       }],
     };
     setTraitsData(prev => ({ ...prev, traits: [...(prev?.traits || []), newTrait] }));
+    // Pre-populate empty text entries so they show up in the .strings.bin export
+    setTextData(prev => ({
+      ...prev,
+      [`${baseName}_Level1_desc`]: '',
+      [`${baseName}_Level1_effects_desc`]: '',
+      [`${baseName}_Level1_epithet_desc`]: '',
+    }));
     setIsDirty(true);
     return (traitsData?.traits?.length || 0);
   }, [traitsData]);
