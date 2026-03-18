@@ -114,6 +114,41 @@ export function TraitsProvider({ children }) {
 
   const updateTrait = useCallback((index, updated) => {
     setTraitsData(prev => {
+      const old = prev.traits[index];
+      // If trait name changed, rename all level text keys that used the old name as prefix
+      if (old && updated.name !== old.name) {
+        setTextData(textPrev => {
+          if (!textPrev) return textPrev;
+          const newText = { ...textPrev };
+          for (const level of (old.levels || [])) {
+            for (const suffix of ['_desc', '_effects_desc', '_epithet_desc']) {
+              const oldKey = level.name + suffix;
+              // Derive new key by replacing old trait-name prefix with new one
+              const newLevelName = level.name.replace(new RegExp(`^${old.name}`), updated.name);
+              const newKey = newLevelName + suffix;
+              if (oldKey !== newKey && oldKey in newText) {
+                newText[newKey] = newText[oldKey];
+                delete newText[oldKey];
+              }
+            }
+          }
+          return newText;
+        });
+        // Also rename levels names
+        updated = {
+          ...updated,
+          levels: (updated.levels || []).map(level => {
+            const newLevelName = level.name.replace(new RegExp(`^${old.name}`), updated.name);
+            return {
+              ...level,
+              name: newLevelName,
+              description: level.description.replace(new RegExp(`^${old.name}`), updated.name),
+              effectsDescription: level.effectsDescription.replace(new RegExp(`^${old.name}`), updated.name),
+              epithet: level.epithet ? level.epithet.replace(new RegExp(`^${old.name}`), updated.name) : level.epithet,
+            };
+          }),
+        };
+      }
       const traits = [...prev.traits];
       traits[index] = updated;
       return { ...prev, traits };
