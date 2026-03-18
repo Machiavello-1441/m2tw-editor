@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import { useAncillaries } from './AncillariesContext';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Save, RotateCcw, Image } from 'lucide-react';
-import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 
 // Decode a TGA file (true-color 24/32-bit) to a data URL via canvas
 function decodeTgaToDataUrl(buffer) {
@@ -85,7 +84,7 @@ function decodeTgaToDataUrl(buffer) {
 export default function AncillariesFileLoader() {
   const {
     ancData, textData, ancFilename, textFilename,
-    loadAncFile, loadTextFile, loadTextFileFromBin, loadTgaImages,
+    loadAncFile, loadTextFile, loadTgaImages,
     exportAncFile, exportTextFile,
     saveAncillaries, revertAncillaries,
     isDirty,
@@ -106,20 +105,9 @@ export default function AncillariesFileLoader() {
   const handleTextFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const isBin = file.name.toLowerCase().endsWith('.bin');
     const reader = new FileReader();
-    if (isBin) {
-      reader.onload = ev => {
-        const parsed = parseStringsBin(ev.target.result);
-        const map = {};
-        for (const entry of parsed.entries) map[entry.key] = entry.value;
-        loadTextFileFromBin(map, file.name, parsed.magic1, parsed.magic2);
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.onload = ev => loadTextFile(ev.target.result, file.name);
-      reader.readAsText(file);
-    }
+    reader.onload = ev => loadTextFile(ev.target.result, file.name);
+    reader.readAsText(file);
     e.target.value = '';
   };
 
@@ -149,7 +137,7 @@ export default function AncillariesFileLoader() {
   return (
     <div className="flex flex-wrap items-center gap-2 p-3 border-b border-border bg-card">
       <input ref={ancRef} type="file" accept=".txt" className="hidden" onChange={handleAncFile} />
-      <input ref={textRef} type="file" accept=".txt,.bin" className="hidden" onChange={handleTextFile} />
+      <input ref={textRef} type="file" accept=".txt" className="hidden" onChange={handleTextFile} />
       <input ref={tgaFolderRef} type="file" className="hidden"
         webkitdirectory="" directory="" multiple onChange={handleTgaFolder} />
 
@@ -203,7 +191,7 @@ export default function AncillariesFileLoader() {
         <Button size="sm" variant="secondary" className="h-7 px-2 text-xs gap-1.5 text-white"
           onClick={() => downloadFile(exportTextFile(), textFilename)}>
           <Download className="w-3 h-3" />
-          Export {textFilename.endsWith('.bin') ? 'VnVs (.bin)' : 'Text'}
+          Export Text
         </Button>
       )}
     </div>

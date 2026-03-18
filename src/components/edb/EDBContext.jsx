@@ -187,20 +187,6 @@ export function EDBProvider({ children }) {
     setIsDirty(true);
   }, []);
 
-  const moveBuilding = useCallback((buildingName, direction) => {
-    setEdbData(prev => {
-      if (!prev) return prev;
-      const idx = prev.buildings.findIndex(b => b.name === buildingName);
-      if (idx < 0) return prev;
-      const newIdx = idx + direction;
-      if (newIdx < 0 || newIdx >= prev.buildings.length) return prev;
-      const buildings = [...prev.buildings];
-      [buildings[idx], buildings[newIdx]] = [buildings[newIdx], buildings[idx]];
-      return { ...prev, buildings };
-    });
-    setIsDirty(true);
-  }, []);
-
   const deleteLevel = useCallback((buildingName, levelName) => {
     setEdbData(prev => {
       if (!prev) return prev;
@@ -275,7 +261,7 @@ export function EDBProvider({ children }) {
     selectedBuilding, setSelectedBuilding,
     selectedLevel, setSelectedLevel,
     updateBuilding, updateLevel,
-    addBuilding, deleteBuilding, moveBuilding,
+    addBuilding, deleteBuilding,
     addLevel, deleteLevel,
     textData, setTextData,
     imageData, setImageData, loadTgaImages, loadBuildingTgaImages,

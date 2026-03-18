@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search, AlertTriangle, ArrowUp, ArrowDown } from
+  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search, AlertTriangle } from
 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -24,9 +24,9 @@ const PREFIXES = [
 { value: 'guild_', label: 'guild_', hint: 'Guild — needs entry in export_descr_guilds.txt (max 3 levels)' }];
 
 
-function BuildingNode({ building, isFirst, isLast }) {
+function BuildingNode({ building }) {
   const { selectedBuilding, setSelectedBuilding, selectedLevel, setSelectedLevel,
-    deleteBuilding, addLevel, deleteLevel, moveBuilding } = useEDB();
+    deleteBuilding, addLevel, deleteLevel } = useEDB();
   const [expanded, setExpanded] = useState(selectedBuilding === building.name);
   const isSelected = selectedBuilding === building.name && !selectedLevel;
 
@@ -52,22 +52,10 @@ function BuildingNode({ building, isFirst, isLast }) {
         <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
           {building.levels.length}L
         </span>
-        <button
-          onClick={(e) => { e.stopPropagation(); moveBuilding(building.name, -1); }}
-          disabled={isFirst}
-          className="p-0.5 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-20">
-          <ArrowUp className="w-3 h-3 text-muted-foreground" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); moveBuilding(building.name, 1); }}
-          disabled={isLast}
-          className="p-0.5 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-20">
-          <ArrowDown className="w-3 h-3 text-muted-foreground" />
-        </button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <button className="p-0.5 hover:bg-destructive/20 rounded text-destructive/60 hover:text-destructive transition-colors">
-              <Trash2 className="w-3 h-3" />
+            <button className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+              <Trash2 className="w-3 h-3 text-destructive" />
             </button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -119,9 +107,9 @@ function BuildingNode({ building, isFirst, isLast }) {
                       <AlertDialogTrigger asChild>
                         <button
                       onClick={(e) => e.stopPropagation()}
-                      className="p-0.5 hover:bg-destructive/20 rounded text-destructive/50 hover:text-destructive transition-colors">
+                      className="p-0.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100">
 
-                          <Trash2 className="w-2.5 h-2.5" />
+                          <Trash2 className="w-2.5 h-2.5 text-destructive" />
                         </button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -246,8 +234,8 @@ export default function BuildingTree() {
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2">
-          {filtered.map((building, idx) =>
-          <BuildingNode key={building.name} building={building} isFirst={idx === 0} isLast={idx === filtered.length - 1} />
+          {filtered.map((building) =>
+          <BuildingNode key={building.name} building={building} />
           )}
           {filtered.length === 0 &&
           <p className="text-xs text-muted-foreground text-center py-8">No buildings found</p>
