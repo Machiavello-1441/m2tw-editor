@@ -476,6 +476,19 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   repBlock('unlockable', stratData.unlockable);
   repBlock('nonplayable', stratData.nonplayable);
 
+  // Append newly added forts (items not present in original stratData)
+  const origIds = new Set((stratData.items || []).map(i => i.id));
+  const newForts = overlayItems.filter(i => !origIds.has(i.id) && i.category === 'fortification' && i.type === 'fort');
+  if (newForts.length > 0) {
+    for (const fort of newForts) {
+      let line = `\tfort\t${fort.x} ${fort.y}`;
+      if (fort.fortType) line += ` ${fort.fortType}`;
+      if (fort.culture) line += ` culture ${fort.culture}`;
+      if (fort.comment) line += `\t;;;;; ${fort.comment}`;
+      lines.push(line);
+    }
+  }
+
   // Patch moved characters/resources/forts
   for (const item of overlayItems) {
     const orig = stratData.items?.find(o => o.id === item.id);
