@@ -259,6 +259,10 @@ export default function CampaignMap() {
         try { sessionStorage.setItem('m2tw_names_raw', text); } catch {}
         setSettlementNamesRaw(parseSettlementNames(text));
       }
+      if (name === 'descr_cultures.txt') {
+        const text = await file.text();
+        setCultures(parseDescrCultures(text));
+      }
     }
 
     // ── Trigger DB import in background ──────────────────────────────────────
