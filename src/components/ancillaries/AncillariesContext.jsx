@@ -90,12 +90,17 @@ export function AncillariesProvider({ children }) {
   }, []);
 
   const loadTextFile = useCallback((content, filename) => {
-    const parsed = parseTextFile(content);
+    // content may be a pre-parsed map (from .strings.bin) or a raw string
+    const parsed = (typeof content === 'object' && content !== null && !(content instanceof ArrayBuffer))
+      ? content
+      : parseTextFile(content);
     originalTextData.current = JSON.stringify(parsed);
     setTextData(parsed);
     const fn = filename || 'export_ancillaries.txt';
     setTextFilename(fn);
-    try { localStorage.setItem('m2tw_anctxt_file', content); localStorage.setItem('m2tw_anctxt_file_name', fn); } catch {}
+    if (typeof content === 'string') {
+      try { localStorage.setItem('m2tw_anctxt_file', content); localStorage.setItem('m2tw_anctxt_file_name', fn); } catch {}
+    }
   }, []);
 
   const loadTgaImages = useCallback((images) => {
