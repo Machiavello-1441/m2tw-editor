@@ -24,21 +24,43 @@ export default function TraitsFileLoader() {
     e.target.value = '';
   };
 
-  const handleTextFile = (e) => {
+  const handleTextFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => loadTextFile(ev.target.result, file.name);
-    reader.readAsText(file);
+    const isBin = file.name.toLowerCase().endsWith('.bin');
+    if (isBin) {
+      const buf = await file.arrayBuffer();
+      const parsed = parseStringsBin(buf);
+      if (parsed) {
+        const map = {};
+        for (const entry of parsed.entries) map[entry.key] = entry.value;
+        loadTextFileFromBin(map, file.name, parsed.magic1, parsed.magic2);
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = ev => loadTextFile(ev.target.result, file.name);
+      reader.readAsText(file);
+    }
     e.target.value = '';
   };
 
   const downloadFile = (content, filename) => {
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
+    const isBin = filename.toLowerCase().endsWith('.bin');
+    if (isBin) {
+      const entries = Object.entries(content).map(([key, value]) => ({ key, value: String(value) }));
+      const buf = encodeStringsBin(entries);
+      const blob = new Blob([buf], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
