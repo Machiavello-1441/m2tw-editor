@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useTraits } from './TraitsContext';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Save, RotateCcw } from 'lucide-react';
+import { parseStringsBin, encodeStringsBin } from '../strings/stringsBinCodec';
 
 export default function TraitsFileLoader() {
   const {
