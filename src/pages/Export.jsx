@@ -122,6 +122,28 @@ export default function Export() {
       }
     }
 
+    // Export traits
+    if (traitsData) {
+      dataFolder.file('export_descr_character_traits.txt', exportTraitsFile());
+    }
+    if (traitsTextData && Object.keys(traitsTextData).length > 0) {
+      const isBin = traitsTextFilename.toLowerCase().endsWith('.bin');
+      const content = exportTraitsTextFile();
+      const outName = isBin ? traitsTextFilename : 'export_VnVs.txt';
+      dataFolder.folder('text').file(outName, content);
+    }
+
+    // Export ancillaries
+    if (ancData) {
+      dataFolder.file('export_descr_ancillaries.txt', exportAncFile());
+    }
+    if (ancTextData && Object.keys(ancTextData).length > 0) {
+      const isBin = ancTextFilename.toLowerCase().endsWith('.bin');
+      const content = exportAncTextFile();
+      const outName = isBin ? ancTextFilename : 'export_ancillaries.txt';
+      dataFolder.folder('text').file(outName, content);
+    }
+
     // Include Lua scripts
     const luaScripts = getLuaScripts();
     if (luaScripts.length > 0) {
