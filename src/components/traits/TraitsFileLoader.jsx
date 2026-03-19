@@ -104,7 +104,7 @@ export default function TraitsFileLoader() {
       )}
       {textData && (
         <Button size="sm" variant="secondary" className="h-7 px-2 text-xs gap-1.5 text-white"
-          onClick={() => downloadFile(exportTextFile(), textFilename)}>
+          onClick={() => downloadFile(exportTextFile(), textBinFilename)}>
           <Download className="w-3 h-3" />
           Export Text
         </Button>
