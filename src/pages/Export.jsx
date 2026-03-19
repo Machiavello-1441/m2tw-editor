@@ -101,7 +101,7 @@ export default function Export() {
       const magic2 = parseInt(localStorage.getItem('m2tw_edb_txt_bin_magic2') || '2048');
       const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
       const binBuf = encodeStringsBin(entries, magic1, magic2);
-      dataFolder.folder('text').file('export_buildings.txt.strings.bin', binBuf);
+      dataFolder.folder('text').file('export_buildings.txt.strings.bin', new Uint8Array(binBuf));
     }
 
     // Export building images as TGA files
