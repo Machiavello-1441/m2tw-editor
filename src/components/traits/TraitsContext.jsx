@@ -246,13 +246,14 @@ export function TraitsProvider({ children }) {
 
   const exportTextFile = useCallback(() => {
     if (!textData) return null;
-    // If the loaded file was a .strings.bin, export binary
-    if (textFilename.toLowerCase().endsWith('.bin')) {
-      const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
-      return encodeStringsBin(entries, textBinMeta.magic1, textBinMeta.magic2);
-    }
-    return serializeTextFile(textData);
-  }, [textData, textFilename, textBinMeta]);
+    const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
+    const meta = textBinMeta || { magic1: 2, magic2: 2048 };
+    return encodeStringsBin(entries, meta.magic1, meta.magic2);
+  }, [textData, textBinMeta]);
+
+  const textBinFilename = textFilename.toLowerCase().endsWith('.bin')
+    ? textFilename
+    : textFilename + '.strings.bin';
 
   const getText = useCallback((key) => {
     if (!textData || !key) return '';
