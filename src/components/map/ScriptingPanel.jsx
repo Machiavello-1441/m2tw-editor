@@ -165,7 +165,8 @@ export default function ScriptingPanel({ stratData }) {
 
   /* ── RENDER ─────────────────────────────────────────────────────────────── */
   return (
-    <div className="h-full flex flex-col bg-slate-950 text-slate-200" onClick={() => setAcShow(false)}>
+    <div className="h-full flex bg-slate-950 text-slate-200">
+    <div className="flex-1 flex flex-col min-w-0" onClick={() => setAcShow(false)}>
 
       {/* toolbar */}
       <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-slate-800 shrink-0 bg-slate-900/60 flex-wrap">
