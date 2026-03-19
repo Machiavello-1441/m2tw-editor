@@ -57,33 +57,6 @@ export function TraitsProvider({ children }) {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    loadFromStorage();
-    const handleTraits = (e) => {
-      if (e.detail?.content) {
-        loadTraitsFile(e.detail.content, e.detail.filename);
-      } else {
-        loadFromStorage();
-      }
-    };
-    const handleVnvs = (e) => {
-      if (e.detail?.content) {
-        loadTextFile(e.detail.content, e.detail.filename, e.detail.binMeta);
-      } else {
-        loadFromStorage();
-      }
-    };
-    const handleBin = () => loadFromStorage();
-    window.addEventListener('load-traits', handleTraits);
-    window.addEventListener('load-vnvs', handleVnvs);
-    window.addEventListener('strings-bin-updated', handleBin);
-    return () => {
-      window.removeEventListener('load-traits', handleTraits);
-      window.removeEventListener('load-vnvs', handleVnvs);
-      window.removeEventListener('strings-bin-updated', handleBin);
-    };
-  }, [loadFromStorage, loadTraitsFile, loadTextFile]);
-
   const loadTraitsFile = useCallback((content, filename) => {
     const parsed = parseTraitsFile(content);
     originalTraitsData.current = JSON.stringify(parsed);
