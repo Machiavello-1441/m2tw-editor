@@ -138,7 +138,8 @@ export default function Export() {
       dataFolder.file('export_descr_ancillaries.txt', exportAncFile());
     }
     if (ancTextData && Object.keys(ancTextData).length > 0) {
-      const ancTextContent = exportAncTextFile();
+      let ancTextContent = exportAncTextFile();
+      if (ancTextContent instanceof ArrayBuffer) ancTextContent = new Uint8Array(ancTextContent);
       const ancTextName = ancTextFilename || 'export_ancillaries.txt';
       dataFolder.folder('text').file(ancTextName, ancTextContent);
     }
