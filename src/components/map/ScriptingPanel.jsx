@@ -145,6 +145,19 @@ export default function ScriptingPanel({ stratData }) {
   };
   const doValidate = () => { setValidation(validateScript(text, stratData)); setShowValid(true); };
 
+  /* insert snippet at cursor (or end) */
+  const insertSnippet = useCallback((code) => {
+    const ta = textareaRef.current;
+    const cur = ta ? ta.selectionStart : text.length;
+    const before = text.slice(0, cur);
+    const after  = text.slice(cur);
+    const prefix = before.length && !before.endsWith('\n') ? '\n' : '';
+    const suffix = after.length && !after.startsWith('\n') ? '\n' : '';
+    const nv = before + prefix + code + suffix + after;
+    setText(nv); save(nv);
+    setTimeout(() => { if (ta) { ta.focus(); const p = cur + prefix.length + code.length; ta.setSelectionRange(p, p); } }, 0);
+  }, [text, save]);
+
   const ec = validation?.errors.length ?? 0;
   const wc = validation?.warnings.length ?? 0;
 
