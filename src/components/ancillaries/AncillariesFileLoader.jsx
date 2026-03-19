@@ -143,8 +143,10 @@ export default function AncillariesFileLoader() {
   };
 
   const downloadFile = (content, filename) => {
-    const type = content instanceof ArrayBuffer ? 'application/octet-stream' : 'text/plain';
-    const blob = new Blob([content], { type });
+    const isBinary = content instanceof ArrayBuffer;
+    const data = isBinary ? new Uint8Array(content) : content;
+    const type = isBinary ? 'application/octet-stream' : 'text/plain';
+    const blob = new Blob([data], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.click();
