@@ -310,5 +310,12 @@ export default function ScriptingPanel({ stratData }) {
         </div>
       )}
     </div>
+    {showTemplates && (
+      <ScriptTemplateSidebar
+        onInsert={insertSnippet}
+        onClose={() => setShowTemplates(false)}
+      />
+    )}
+    </div>
   );
 }
