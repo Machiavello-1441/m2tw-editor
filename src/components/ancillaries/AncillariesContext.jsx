@@ -80,7 +80,7 @@ export function AncillariesProvider({ children }) {
     };
     const handleAncTxt = (e) => {
       if (e.detail?.content) {
-        loadTextFile(e.detail.content, e.detail.filename);
+        loadTextFile(e.detail.content, e.detail.filename, e.detail.binMeta);
       } else {
         loadFromStorage();
       }
