@@ -127,14 +127,9 @@ export default function Export() {
       dataFolder.file('export_descr_character_traits.txt', exportTraitsFile());
     }
     if (traitsTextData && Object.keys(traitsTextData).length > 0) {
-      let traitsTextContent;
+      let traitsTextContent = exportTraitsTextFile();
+      if (traitsTextContent instanceof ArrayBuffer) traitsTextContent = new Uint8Array(traitsTextContent);
       const traitsTextName = traitsTextFilename || 'export_VnVs.txt';
-      if (traitsBinMeta) {
-        const entries = Object.entries(traitsTextData).map(([key, value]) => ({ key, value: String(value) }));
-        traitsTextContent = encodeStringsBin(entries, traitsBinMeta.magic1, traitsBinMeta.magic2);
-      } else {
-        traitsTextContent = exportTraitsTextFile();
-      }
       dataFolder.folder('text').file(traitsTextName, traitsTextContent);
     }
 
