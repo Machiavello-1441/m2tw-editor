@@ -343,16 +343,16 @@ export default function Home() {
             window.dispatchEvent(new CustomEvent('load-export-units'));
           }
           if (key === 'traits') {
-            window.dispatchEvent(new CustomEvent('load-traits'));
+            window.dispatchEvent(new CustomEvent('load-traits', { detail: { content: text, name: file.name } }));
           }
           if (key === 'vnvs') {
-            window.dispatchEvent(new CustomEvent('load-vnvs'));
+            window.dispatchEvent(new CustomEvent('load-vnvs', { detail: { content: text, name: file.name } }));
           }
           if (key === 'anc') {
-            window.dispatchEvent(new CustomEvent('load-ancillaries'));
+            window.dispatchEvent(new CustomEvent('load-ancillaries', { detail: { content: text, name: file.name } }));
           }
           if (key === 'anctxt') {
-            window.dispatchEvent(new CustomEvent('load-anctxt'));
+            window.dispatchEvent(new CustomEvent('load-anctxt', { detail: { content: text, name: file.name } }));
           }
           if (key === 'modeldb') {
             window.dispatchEvent(new CustomEvent('modeldb-file-loaded', { detail: text }));
