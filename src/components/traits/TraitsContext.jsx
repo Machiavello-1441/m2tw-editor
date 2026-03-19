@@ -263,7 +263,7 @@ export function TraitsProvider({ children }) {
   return (
     <TraitsContext.Provider value={{
       traitsData, textData,
-      traitsFilename, textFilename, textBinMeta,
+      traitsFilename, textFilename, textBinFilename, textBinMeta,
       isDirty, selectedTrait,
       setSelectedTrait,
       loadTraitsFile, loadTextFile,
