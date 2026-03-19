@@ -166,156 +166,147 @@ export default function ScriptingPanel({ stratData }) {
   /* ── RENDER ─────────────────────────────────────────────────────────────── */
   return (
     <div className="h-full flex bg-slate-950 text-slate-200">
-    <div className="flex-1 flex flex-col min-w-0" onClick={() => setAcShow(false)}>
+      <div className="flex-1 flex flex-col min-w-0" onClick={() => setAcShow(false)}>
 
-      {/* toolbar */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-slate-800 shrink-0 bg-slate-900/60 flex-wrap">
-        <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-        <span className="text-[10px] font-semibold text-slate-300 mr-1">{fileName || 'campaign_script.txt'}</span>
-        <label className="cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700">
-          <Upload className="w-3 h-3" /> Load
-          <input type="file" accept=".txt" className="hidden" onChange={loadFile} />
-        </label>
-        <button onClick={exportFile} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 disabled:opacity-40">
-          <Download className="w-3 h-3" /> Export
-        </button>
-        <button onClick={() => setShowTemplates(v => !v)} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 ml-auto">
-          <BookOpen className="w-3 h-3 text-violet-400" /> Templates
-        </button>
-        <button onClick={doValidate} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-violet-700/30 border border-violet-500/40 text-violet-300 hover:bg-violet-700/50 disabled:opacity-40">
-          <CheckCircle className="w-3 h-3" /> Validate
-        </button>
-      </div>
-
-      {/* validation */}
-      {validation && (
-        <div className="shrink-0 border-b border-slate-800 max-h-40 overflow-y-auto bg-slate-900/80">
-          <button onClick={() => setShowValid(v => !v)} className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold hover:bg-slate-800/50">
-            {showValid ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            {ec === 0 && wc === 0
-              ? <><CheckCircle className="w-3.5 h-3.5 text-green-400" /><span className="text-green-400">Script OK</span></>
-              : <>{ec > 0 && <><XCircle className="w-3.5 h-3.5 text-red-400" /><span className="text-red-400">{ec} error{ec > 1 ? 's' : ''}</span></>}
-                  {wc > 0 && <><AlertTriangle className="w-3.5 h-3.5 text-amber-400" /><span className="text-amber-400">{wc} warning{wc > 1 ? 's' : ''}</span></>}</>
-            }
-          </button>
-          {showValid && (
-            <div className="px-3 pb-2 space-y-0.5">
-              {validation.errors.map((e, i) => <div key={'e'+i} className="flex gap-2 text-[10px]"><span className="text-red-400 shrink-0">L{e.line}</span><span className="text-red-300">{e.msg}</span></div>)}
-              {validation.warnings.map((w, i) => <div key={'w'+i} className="flex gap-2 text-[10px]"><span className="text-amber-400 shrink-0">L{w.line}</span><span className="text-amber-300">{w.msg}</span></div>)}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* editor */}
-      {!text ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-500 p-6">
-          <FileText className="w-8 h-8 opacity-30" />
-          <p className="text-xs text-center">Load <code className="text-violet-400">campaign_script.txt</code></p>
-          <label className="cursor-pointer px-3 py-1.5 rounded bg-violet-700/30 border border-violet-500/40 text-violet-300 hover:bg-violet-700/50 text-xs">
-            <Upload className="w-3.5 h-3.5 inline mr-1" /> Load file
+        {/* toolbar */}
+        <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-slate-800 shrink-0 bg-slate-900/60 flex-wrap">
+          <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+          <span className="text-[10px] font-semibold text-slate-300 mr-1">{fileName || 'campaign_script.txt'}</span>
+          <label className="cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700">
+            <Upload className="w-3 h-3" /> Load
             <input type="file" accept=".txt" className="hidden" onChange={loadFile} />
           </label>
+          <button onClick={exportFile} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 disabled:opacity-40">
+            <Download className="w-3 h-3" /> Export
+          </button>
+          <button onClick={() => setShowTemplates(v => !v)} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 ml-auto">
+            <BookOpen className="w-3 h-3 text-violet-400" /> Templates
+          </button>
+          <button onClick={doValidate} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-violet-700/30 border border-violet-500/40 text-violet-300 hover:bg-violet-700/50 disabled:opacity-40">
+            <CheckCircle className="w-3 h-3" /> Validate
+          </button>
         </div>
-      ) : (
-        <div className="flex-1 min-h-0 overflow-hidden relative" ref={editorRef} onClick={e => e.stopPropagation()}>
-          {/*
-            KEY IDEA: both the line-number <pre> and the <textarea> sit
-            inside the SAME native-scrolling container.
-            The textarea IS the scrolling container — we just need to
-            give it left padding for the gutter, and position the gutter
-            with CSS so it moves with the scroll.
 
-            Simplest approach: a single <textarea> with a wide left-padding,
-            and a line-numbers <pre> that is absolutely-positioned and
-            whose top is synced via onScroll.
-          */}
+        {/* validation */}
+        {validation && (
+          <div className="shrink-0 border-b border-slate-800 max-h-40 overflow-y-auto bg-slate-900/80">
+            <button onClick={() => setShowValid(v => !v)} className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold hover:bg-slate-800/50">
+              {showValid ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              {ec === 0 && wc === 0
+                ? <span className="flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 text-green-400" /><span className="text-green-400">Script OK</span></span>
+                : <span className="flex items-center gap-2">
+                    {ec > 0 && <span className="flex items-center gap-1"><XCircle className="w-3.5 h-3.5 text-red-400" /><span className="text-red-400">{ec} error{ec > 1 ? 's' : ''}</span></span>}
+                    {wc > 0 && <span className="flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 text-amber-400" /><span className="text-amber-400">{wc} warning{wc > 1 ? 's' : ''}</span></span>}
+                  </span>
+              }
+            </button>
+            {showValid && (
+              <div className="px-3 pb-2 space-y-0.5">
+                {validation.errors.map((e, i) => (
+                  <div key={'e'+i} className="flex gap-2 text-[10px]"><span className="text-red-400 shrink-0">L{e.line}</span><span className="text-red-300">{e.msg}</span></div>
+                ))}
+                {validation.warnings.map((w, i) => (
+                  <div key={'w'+i} className="flex gap-2 text-[10px]"><span className="text-amber-400 shrink-0">L{w.line}</span><span className="text-amber-300">{w.msg}</span></div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* line gutter — absolutely positioned, translate-Y driven by scroll */}
-          <pre
-            aria-hidden
-            className="absolute left-0 top-0 w-12 select-none pointer-events-none text-right pr-2 border-r border-slate-800 bg-slate-900/70 z-10"
-            style={{
-              fontFamily: "'Courier New', Courier, monospace",
-              fontSize: 12,
-              lineHeight: '20px',
-              padding: '8px 6px 8px 0',
-              color: '#475569',
-              /* This will be transformed via JS to follow scroll */
-              transform: 'translateY(0px)',
-            }}
-            id="script-line-nums"
-          >
-            {lineNumberText}
-          </pre>
-
-          {/* The actual editable textarea — it owns the scroll */}
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={onChange}
-            onKeyDown={onKey}
-            onScroll={() => {
-              const ta = textareaRef.current;
-              if (!ta) return;
-              const gutter = document.getElementById('script-line-nums');
-              if (gutter) gutter.style.transform = `translateY(${-ta.scrollTop}px)`;
-            }}
-            spellCheck={false}
-            wrap="off"
-            className="absolute inset-0 w-full h-full resize-none outline-none"
-            style={{
-              fontFamily: "'Courier New', Courier, monospace",
-              fontSize: 12,
-              lineHeight: '20px',
-              padding: '8px 8px 8px 56px',  /* 56px left to leave room for the gutter */
-              background: '#020617',
-              color: '#cbd5e1',
-              caretColor: '#94a3b8',
-              whiteSpace: 'pre',
-              tabSize: 2,
-              overflowX: 'auto',
-              overflowY: 'auto',
-            }}
-          />
-
-          {/* autocomplete popup */}
-          {acShow && acItems.length > 0 && (
-            <div
-              className="absolute z-50 bg-slate-800 border border-slate-600 rounded shadow-xl overflow-hidden"
-              style={{ top: acPos.top, left: acPos.left + 56, minWidth: 240, maxWidth: 320 }}
-              onMouseDown={e => e.preventDefault()}
+        {/* editor */}
+        {!text ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-500 p-6">
+            <FileText className="w-8 h-8 opacity-30" />
+            <p className="text-xs text-center">Load <code className="text-violet-400">campaign_script.txt</code></p>
+            <label className="cursor-pointer px-3 py-1.5 rounded bg-violet-700/30 border border-violet-500/40 text-violet-300 hover:bg-violet-700/50 text-xs">
+              <Upload className="w-3.5 h-3.5 inline mr-1" /> Load file
+              <input type="file" accept=".txt" className="hidden" onChange={loadFile} />
+            </label>
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 overflow-hidden relative" ref={editorRef} onClick={e => e.stopPropagation()}>
+            <pre
+              aria-hidden
+              className="absolute left-0 top-0 w-12 select-none pointer-events-none text-right pr-2 border-r border-slate-800 bg-slate-900/70 z-10"
+              style={{
+                fontFamily: "'Courier New', Courier, monospace",
+                fontSize: 12,
+                lineHeight: '20px',
+                padding: '8px 6px 8px 0',
+                color: '#475569',
+                transform: 'translateY(0px)',
+              }}
+              id="script-line-nums"
             >
-              {acItems.map((item, i) => (
-                <div key={item.label} onClick={() => insertAc(item)}
-                  className={`flex items-start gap-2 px-2 py-1.5 cursor-pointer text-[11px] ${i === acIdx ? 'bg-slate-700' : 'hover:bg-slate-700/60'}`}>
-                  <span className={`shrink-0 w-14 font-semibold text-[9px] uppercase pt-0.5 ${TYPE_CLR[item.type] || 'text-slate-400'}`}>{item.type}</span>
-                  <div className="min-w-0">
-                    <span className="text-slate-100 font-mono">{item.label}</span>
-                    {item.params && <span className="text-slate-500 ml-1">{item.params}</span>}
-                    {item.desc && <div className="text-slate-500 text-[10px] truncate">{item.desc}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              {lineNumberText}
+            </pre>
 
-      {/* status bar */}
-      {text && (
-        <div className="shrink-0 flex items-center gap-3 px-2 py-1 border-t border-slate-800 bg-slate-900/40">
-          <span className="text-[9px] text-slate-500">{lineCount} lines</span>
-          <span className="text-[9px] text-slate-600 ml-auto">autosave ✓</span>
-        </div>
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={onChange}
+              onKeyDown={onKey}
+              onScroll={() => {
+                const ta = textareaRef.current;
+                if (!ta) return;
+                const gutter = document.getElementById('script-line-nums');
+                if (gutter) gutter.style.transform = `translateY(${-ta.scrollTop}px)`;
+              }}
+              spellCheck={false}
+              wrap="off"
+              className="absolute inset-0 w-full h-full resize-none outline-none"
+              style={{
+                fontFamily: "'Courier New', Courier, monospace",
+                fontSize: 12,
+                lineHeight: '20px',
+                padding: '8px 8px 8px 56px',
+                background: '#020617',
+                color: '#cbd5e1',
+                caretColor: '#94a3b8',
+                whiteSpace: 'pre',
+                tabSize: 2,
+                overflowX: 'auto',
+                overflowY: 'auto',
+              }}
+            />
+
+            {acShow && acItems.length > 0 && (
+              <div
+                className="absolute z-50 bg-slate-800 border border-slate-600 rounded shadow-xl overflow-hidden"
+                style={{ top: acPos.top, left: acPos.left + 56, minWidth: 240, maxWidth: 320 }}
+                onMouseDown={e => e.preventDefault()}
+              >
+                {acItems.map((item, i) => (
+                  <div key={item.label} onClick={() => insertAc(item)}
+                    className={`flex items-start gap-2 px-2 py-1.5 cursor-pointer text-[11px] ${i === acIdx ? 'bg-slate-700' : 'hover:bg-slate-700/60'}`}>
+                    <span className={`shrink-0 w-14 font-semibold text-[9px] uppercase pt-0.5 ${TYPE_CLR[item.type] || 'text-slate-400'}`}>{item.type}</span>
+                    <div className="min-w-0">
+                      <span className="text-slate-100 font-mono">{item.label}</span>
+                      {item.params && <span className="text-slate-500 ml-1">{item.params}</span>}
+                      {item.desc && <div className="text-slate-500 text-[10px] truncate">{item.desc}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* status bar */}
+        {text && (
+          <div className="shrink-0 flex items-center gap-3 px-2 py-1 border-t border-slate-800 bg-slate-900/40">
+            <span className="text-[9px] text-slate-500">{lineCount} lines</span>
+            <span className="text-[9px] text-slate-600 ml-auto">autosave ✓</span>
+          </div>
+        )}
+      </div>
+
+      {showTemplates && (
+        <ScriptTemplateSidebar
+          onInsert={insertSnippet}
+          onClose={() => setShowTemplates(false)}
+        />
       )}
-    </div>
-    {showTemplates && (
-      <ScriptTemplateSidebar
-        onInsert={insertSnippet}
-        onClose={() => setShowTemplates(false)}
-      />
-    )}
     </div>
   );
 }
