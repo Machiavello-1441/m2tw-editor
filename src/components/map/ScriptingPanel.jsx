@@ -376,8 +376,8 @@ export default function ScriptingPanel({ stratData }) {
               onKeyDown={handleKeyDown}
               spellCheck={false}
               wrap="off"
-              className="absolute inset-0 p-2 w-full h-full bg-transparent text-transparent caret-slate-300 resize-none outline-none leading-5 overflow-auto"
-              style={{ tabSize: 2, caretColor: '#94a3b8', whiteSpace: 'pre' }}
+              className="absolute inset-0 p-2 w-full h-full bg-transparent resize-none outline-none leading-5 overflow-auto"
+              style={{ tabSize: 2, caretColor: '#94a3b8', whiteSpace: 'pre', color: 'transparent' }}
             />
 
             {/* Autocomplete dropdown */}
