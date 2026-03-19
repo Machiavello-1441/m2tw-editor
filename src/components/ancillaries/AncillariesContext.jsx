@@ -97,6 +97,33 @@ export function AncillariesProvider({ children }) {
     }
   }, []);
 
+  useEffect(() => {
+    loadFromStorage();
+    const handleAnc = (e) => {
+      if (e.detail?.content) {
+        loadAncFile(e.detail.content, e.detail.filename);
+      } else {
+        loadFromStorage();
+      }
+    };
+    const handleAncTxt = (e) => {
+      if (e.detail?.content) {
+        loadTextFile(e.detail.content, e.detail.filename, e.detail.binMeta);
+      } else {
+        loadFromStorage();
+      }
+    };
+    const handleBin = () => loadFromStorage();
+    window.addEventListener('load-ancillaries', handleAnc);
+    window.addEventListener('load-anctxt', handleAncTxt);
+    window.addEventListener('strings-bin-updated', handleBin);
+    return () => {
+      window.removeEventListener('load-ancillaries', handleAnc);
+      window.removeEventListener('load-anctxt', handleAncTxt);
+      window.removeEventListener('strings-bin-updated', handleBin);
+    };
+  }, [loadFromStorage, loadAncFile, loadTextFile]);
+
   const loadTgaImages = useCallback((images) => {
     // images: { [key]: dataUrl }
     setTgaImages(prev => ({ ...prev, ...images }));
