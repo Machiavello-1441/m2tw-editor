@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { FileText, Upload, Download, CheckCircle, AlertTriangle, XCircle, ChevronRight, ChevronDown } from 'lucide-react';
+import { FileText, Upload, Download, CheckCircle, AlertTriangle, XCircle, ChevronRight, ChevronDown, BookOpen } from 'lucide-react';
 import { AUTOCOMPLETE_BY_PREFIX } from './scriptAutocomplete';
+import ScriptTemplateSidebar from './ScriptTemplateSidebar';
 
 /* ── tiny validator ──────────────────────────────────────────────────────── */
 function validateScript(text, stratData) {
