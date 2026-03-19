@@ -68,7 +68,7 @@ export function TraitsProvider({ children }) {
     };
     const handleVnvs = (e) => {
       if (e.detail?.content) {
-        loadTextFile(e.detail.content, e.detail.filename);
+        loadTextFile(e.detail.content, e.detail.filename, e.detail.binMeta);
       } else {
         loadFromStorage();
       }
