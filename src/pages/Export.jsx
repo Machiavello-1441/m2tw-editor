@@ -69,8 +69,8 @@ const IMAGE_SLOT_DEFS = [
 
 export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile, imageData } = useEDB();
-  const { traitsData, traitsFilename, exportTraitsFile, textData: traitsTextData, textBinMeta: traitsBinMeta, textFilename: traitsTextFilename, exportTextFile: exportTraitsTextFile } = useTraits();
-  const { ancData, ancFilename, exportAncFile, textData: ancTextData, textBinMeta: ancBinMeta, textFilename: ancTextFilename, exportTextFile: exportAncTextFile } = useAncillaries();
+  const { traitsData, traitsFilename, exportTraitsFile, textData: traitsTextData, textBinFilename: traitsTextBinFilename, exportTextFile: exportTraitsTextFile } = useTraits();
+  const { ancData, ancFilename, exportAncFile, textData: ancTextData, textBinFilename: ancTextBinFilename, exportTextFile: exportAncTextFile } = useAncillaries();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
   const [exportingTwemp, setExportingTwemp] = useState(false);
