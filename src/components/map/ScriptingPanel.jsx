@@ -178,7 +178,10 @@ export default function ScriptingPanel({ stratData }) {
         <button onClick={exportFile} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 disabled:opacity-40">
           <Download className="w-3 h-3" /> Export
         </button>
-        <button onClick={doValidate} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-violet-700/30 border border-violet-500/40 text-violet-300 hover:bg-violet-700/50 disabled:opacity-40 ml-auto">
+        <button onClick={() => setShowTemplates(v => !v)} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 ml-auto">
+          <BookOpen className="w-3 h-3 text-violet-400" /> Templates
+        </button>
+        <button onClick={doValidate} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-violet-700/30 border border-violet-500/40 text-violet-300 hover:bg-violet-700/50 disabled:opacity-40">
           <CheckCircle className="w-3 h-3" /> Validate
         </button>
       </div>
