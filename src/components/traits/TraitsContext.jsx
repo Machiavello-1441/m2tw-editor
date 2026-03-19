@@ -68,6 +68,33 @@ export function TraitsProvider({ children }) {
     try { localStorage.setItem('m2tw_traits_file', content); localStorage.setItem('m2tw_traits_file_name', fn); } catch {}
   }, []);
 
+  useEffect(() => {
+    loadFromStorage();
+    const handleTraits = (e) => {
+      if (e.detail?.content) {
+        loadTraitsFile(e.detail.content, e.detail.filename);
+      } else {
+        loadFromStorage();
+      }
+    };
+    const handleVnvs = (e) => {
+      if (e.detail?.content) {
+        loadTextFile(e.detail.content, e.detail.filename, e.detail.binMeta);
+      } else {
+        loadFromStorage();
+      }
+    };
+    const handleBin = () => loadFromStorage();
+    window.addEventListener('load-traits', handleTraits);
+    window.addEventListener('load-vnvs', handleVnvs);
+    window.addEventListener('strings-bin-updated', handleBin);
+    return () => {
+      window.removeEventListener('load-traits', handleTraits);
+      window.removeEventListener('load-vnvs', handleVnvs);
+      window.removeEventListener('strings-bin-updated', handleBin);
+    };
+  }, [loadFromStorage, loadTraitsFile, loadTextFile]);
+
   const loadTextFile = useCallback((content, filename, binMeta) => {
     // content may be a pre-parsed map (from .strings.bin) or a raw string
     const parsed = (typeof content === 'object' && content !== null && !(content instanceof ArrayBuffer))
