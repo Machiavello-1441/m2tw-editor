@@ -25,7 +25,7 @@ const TYPE_COLORS = {
 };
 
 export default function AncillaryList() {
-  const { ancData, selectedAnc, setSelectedAnc, addAncillary, deleteAncillary } = useAncillaries();
+  const { ancData, selectedAnc, setSelectedAnc, addAncillary, deleteAncillary, getText } = useAncillaries();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
