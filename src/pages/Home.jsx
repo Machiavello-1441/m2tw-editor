@@ -370,6 +370,18 @@ export default function Home() {
       const existing = getStringsBinStore();
       const merged = { ...existing, ...stringsBinFiles };
       setStringsBinStore(merged);
+      // Dispatch specific events for vnvs/ancillaries text bins so contexts pick them up directly
+      for (const [filename, binData] of Object.entries(stringsBinFiles)) {
+        const lname = filename.toLowerCase();
+        const map = {};
+        for (const e of binData.entries) map[e.key] = e.value;
+        const binMeta = { magic1: binData.magic1 ?? 2, magic2: binData.magic2 ?? 2048 };
+        if (lname.includes('vnv')) {
+          window.dispatchEvent(new CustomEvent('load-vnvs', { detail: { content: map, filename, binMeta } }));
+        } else if (lname.includes('ancillar')) {
+          window.dispatchEvent(new CustomEvent('load-anctxt', { detail: { content: map, filename, binMeta } }));
+        }
+      }
       window.dispatchEvent(new CustomEvent('strings-bin-updated', { detail: { bulk: true } }));
       setStringsBinCount(Object.keys(merged).length);
       setFileStatus((prev) => ({ ...prev, strings_bin: 'ok' }));
