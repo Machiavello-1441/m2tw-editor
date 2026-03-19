@@ -59,31 +59,21 @@ export function TraitsProvider({ children }) {
 
   useEffect(() => {
     loadFromStorage();
-
     const handleTraits = (e) => {
       if (e.detail?.content) {
-        // Direct load from event (bypasses localStorage quota issues)
-        const parsed = parseTraitsFile(e.detail.content);
-        originalTraitsData.current = JSON.stringify(parsed);
-        setTraitsData(parsed);
-        if (e.detail.name) setTraitsFilename(e.detail.name);
+        loadTraitsFile(e.detail.content, e.detail.filename);
       } else {
         loadFromStorage();
       }
     };
     const handleVnvs = (e) => {
       if (e.detail?.content) {
-        const parsed = parseTextFile(e.detail.content);
-        originalTextData.current = JSON.stringify(parsed);
-        setTextData(parsed);
-        setTextBinMeta(null);
-        if (e.detail.name) setTextFilename(e.detail.name);
+        loadTextFile(e.detail.content, e.detail.filename);
       } else {
         loadFromStorage();
       }
     };
     const handleBin = () => loadFromStorage();
-
     window.addEventListener('load-traits', handleTraits);
     window.addEventListener('load-vnvs', handleVnvs);
     window.addEventListener('strings-bin-updated', handleBin);
@@ -92,7 +82,7 @@ export function TraitsProvider({ children }) {
       window.removeEventListener('load-vnvs', handleVnvs);
       window.removeEventListener('strings-bin-updated', handleBin);
     };
-  }, [loadFromStorage]);
+  }, [loadFromStorage, loadTraitsFile, loadTextFile]);
 
   const loadTraitsFile = useCallback((content, filename) => {
     const parsed = parseTraitsFile(content);
