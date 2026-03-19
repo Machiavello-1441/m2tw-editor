@@ -2,36 +2,6 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { FileText, Upload, Download, CheckCircle, AlertTriangle, XCircle, ChevronRight, ChevronDown } from 'lucide-react';
 import { AUTOCOMPLETE_BY_PREFIX } from './scriptAutocomplete';
 
-// ── Syntax token rules ────────────────────────────────────────────────────────
-const BLOCK_OPEN  = /^(monitor_event|monitor_conditions|if|while|declare_counter)\b/i;
-const BLOCK_CLOSE = /^(end_monitor|end_if|end_while)\b/i;
-const KEYWORDS    = /\b(monitor_event|monitor_conditions|end_monitor|if|else|end_if|while|end_while|declare_counter|set_counter|change_counter|inc_counter|dec_counter|clear_counter|store_counter|restore_counter|and|not|or)\b/g;
-const EVENTS      = /\b(FactionTurnStart|FactionTurnEnd|GeneralCaptureSettlement|SettlementTurnStart|CharacterTurnStart|CharacterTurnEnd|GeneralAssaultSettlement|PreBattle|PostBattle|EndOfTurn|StartOfTurn|FactionDestroyed|BattleStarted|BattleEnded|CharacterComesOfAge|CharacterDies|NewCharacter|FactionLeaderDied|AmbassadorAudience|DiplomacySucceeded|DiplomacyFailed|RebelsSpawned|BuildingCompleted|TechnologyResearched|UnitBuilt|UnitDisbanded|TradeRouteSucceeded|TradeRouteFailed|AgentCreated|AgentDies|MerchantBankrupt)\b/g;
-const COMMANDS    = /\b(console_command|add_money|add_population|spawn_army|create_unit|create_building|destroy_building|set_building_health|move_character|kill_character|give_ancillary|remove_ancillary|give_trait|remove_trait|win_campaign|lose_campaign|show_message|play_sound|play_movie|trigger_advice|set_counter|change_counter|declare_counter|spawn_agent|destroy_army|make_faction_ai|make_faction_player|set_faction_standing|set_region_religion|set_counter_value|historic_event|show_me_message|disable_movement|enable_movement|set_scroll_speed|clear_objectives|set_objective|destroy_unit|disband_unit|add_unit_to_army|transfer_unit|make_alliance|break_alliance|offer_peace|declare_war|ai_gta_plan_set)\b/g;
-const CONDITIONS  = /\b(FactionIsLocal|FactionIsHuman|FactionType|FactionIsAlive|FactionIsDefeated|SettlementName|TargetSettlementName|RegionName|CharacterName|CharacterType|IsGeneral|IsMerchant|IsSpy|IsAssassin|IsPriest|IsAdmiral|IsPrincess|IsNakedFanatic|IsGunpowderUnit|TurnNumber|ResourceType|SettlementLevel|SettlementMinLevel|SettlementMaxLevel|CharacterInRegion|FactionInRegion|CounterValue|I_CounterEqualTo|I_CounterLessThan|I_CounterGreaterThan|I_TurnNumber|I_NumberOfSettlements|I_NumberOfUnits|I_IsAlly|I_IsEnemy|I_IsSameTeam|MoneyBalance|PopulationSize|WonBattle|LostBattle|WasAttacker|WasDefender|IsOnCrusade|IsOnJihad|HasAncillary|HasTrait|TraitLevel|I_InBattle)\b/g;
-
-function tokenize(line) {
-  if (/^\s*(;|--)/.test(line)) {
-    return `<span class="sc-comment">${esc(line)}</span>`;
-  }
-  let out = esc(line);
-  out = out.replace(EVENTS,     m => `<span class="sc-event">${m}</span>`);
-  out = out.replace(COMMANDS,   m => `<span class="sc-cmd">${m}</span>`);
-  out = out.replace(CONDITIONS, m => `<span class="sc-cond">${m}</span>`);
-  out = out.replace(KEYWORDS,   m => `<span class="sc-kw">${m}</span>`);
-  out = out.replace(/\b(\d+)\b/g, '<span class="sc-num">$1</span>');
-  out = out.replace(/(&quot;[^&]*&quot;)/g, '<span class="sc-str">$1</span>');
-  return out;
-}
-
-function esc(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function buildHighlightedHTML(text) {
-  return text.split('\n').map(tokenize).join('\n');
-}
-
 // ── Validator ────────────────────────────────────────────────────────────────
 function validateScript(text, stratData) {
   const lines = text.split('\n');
@@ -100,12 +70,16 @@ const TYPE_COLORS = {
   condition: 'text-orange-400',
 };
 
+const LINE_H = 20; // px — must match textarea line-height
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function ScriptingPanel({ stratData }) {
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState(null);
   const [validationResult, setValidationResult] = useState(null);
   const [showValidation, setShowValidation] = useState(false);
+  const [scrollTop, setScrollTop] = useState(0);
+
   // Autocomplete state
   const [acItems, setAcItems] = useState([]);
   const [acIndex, setAcIndex] = useState(0);
@@ -113,13 +87,12 @@ export default function ScriptingPanel({ stratData }) {
   const [acPos, setAcPos] = useState({ top: 0, left: 0 });
 
   const textareaRef = useRef(null);
-  const highlightRef = useRef(null);
-  const lineNumRef = useRef(null);
+  const lineNumRef  = useRef(null);
   const fileInputRef = useRef(null);
   const autosaveTimer = useRef(null);
   const acRef = useRef(null);
 
-  // ── Restore from storage on mount ─────────────────────────────────────────
+  // ── Restore from storage ───────────────────────────────────────────────────
   useEffect(() => {
     try {
       const cached = localStorage.getItem('m2tw_campaign_script') || sessionStorage.getItem('m2tw_script_raw');
@@ -127,18 +100,13 @@ export default function ScriptingPanel({ stratData }) {
     } catch {}
   }, []);
 
-  // ── Sync scroll across all 3 panels ───────────────────────────────────────
-  const syncScroll = () => {
+  // ── Sync line numbers scroll ───────────────────────────────────────────────
+  const handleScroll = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop  = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
-    }
-    if (lineNumRef.current) {
-      lineNumRef.current.scrollTop = ta.scrollTop;
-    }
-  };
+    setScrollTop(ta.scrollTop);
+    if (lineNumRef.current) lineNumRef.current.scrollTop = ta.scrollTop;
+  }, []);
 
   // ── Debounced autosave ─────────────────────────────────────────────────────
   const scheduleAutosave = useCallback((val) => {
@@ -151,40 +119,26 @@ export default function ScriptingPanel({ stratData }) {
     }, 2000);
   }, []);
 
-  // ── Autocomplete positioning (mirrors cursor to a DOM rect) ───────────────
+  // ── Autocomplete positioning ───────────────────────────────────────────────
   const updateAcPosition = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    // Use a hidden mirror div to find cursor coordinates
     const mirror = document.createElement('div');
     const style = window.getComputedStyle(ta);
     ['padding','border','font','lineHeight','whiteSpace','wordBreak','overflowWrap','tabSize'].forEach(p => {
       mirror.style[p] = style[p];
     });
-    mirror.style.position = 'absolute';
-    mirror.style.visibility = 'hidden';
-    mirror.style.top = '0';
-    mirror.style.left = '0';
-    mirror.style.width = ta.offsetWidth + 'px';
-    mirror.style.height = 'auto';
-    mirror.style.overflow = 'hidden';
-    mirror.style.whiteSpace = 'pre';
-
+    Object.assign(mirror.style, { position: 'absolute', visibility: 'hidden', top: '0', left: '0', width: ta.offsetWidth + 'px', height: 'auto', overflow: 'hidden', whiteSpace: 'pre' });
     const cursor = ta.selectionStart;
-    const before = ta.value.slice(0, cursor);
-    mirror.textContent = before;
+    mirror.textContent = ta.value.slice(0, cursor);
     const span = document.createElement('span');
     span.textContent = '|';
     mirror.appendChild(span);
     document.body.appendChild(mirror);
-
     const taRect = ta.getBoundingClientRect();
     const spanRect = span.getBoundingClientRect();
     document.body.removeChild(mirror);
-
-    // Position relative to the editor container
-    const container = ta.parentElement;
-    const containerRect = container.getBoundingClientRect();
+    const containerRect = ta.parentElement.getBoundingClientRect();
     setAcPos({
       top:  spanRect.bottom - containerRect.top + ta.scrollTop - (spanRect.top - taRect.top) + 4,
       left: Math.min(spanRect.left - containerRect.left, containerRect.width - 260),
@@ -198,22 +152,15 @@ export default function ScriptingPanel({ stratData }) {
     setValidationResult(null);
     scheduleAutosave(val);
 
-    // Autocomplete trigger
     const cursor = e.target.selectionStart;
     const word = getWordBeforeCursor(val, cursor);
     if (word.length >= 2) {
       const matches = AUTOCOMPLETE_BY_PREFIX(word);
       if (matches.length > 0) {
-        setAcItems(matches);
-        setAcIndex(0);
-        setAcVisible(true);
+        setAcItems(matches); setAcIndex(0); setAcVisible(true);
         setTimeout(updateAcPosition, 0);
-      } else {
-        setAcVisible(false);
-      }
-    } else {
-      setAcVisible(false);
-    }
+      } else { setAcVisible(false); }
+    } else { setAcVisible(false); }
   }, [scheduleAutosave, updateAcPosition]);
 
   // ── Insert autocomplete suggestion ────────────────────────────────────────
@@ -228,7 +175,6 @@ export default function ScriptingPanel({ stratData }) {
     setText(newVal);
     scheduleAutosave(newVal);
     setAcVisible(false);
-    // Restore focus + move cursor to end of inserted text
     setTimeout(() => {
       ta.focus();
       const newCursor = cursor - word.length + insert.length;
@@ -277,20 +223,19 @@ export default function ScriptingPanel({ stratData }) {
   };
 
   const handleValidate = () => {
-    const result = validateScript(text, stratData);
-    setValidationResult(result);
+    setValidationResult(validateScript(text, stratData));
     setShowValidation(true);
   };
 
-  // ── Rendered data ──────────────────────────────────────────────────────────
+  // ── Line numbers ───────────────────────────────────────────────────────────
   const lineCount = text ? text.split('\n').length : 1;
-  const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
-  const highlightedHTML = buildHighlightedHTML(text || '');
+
   const errCount  = validationResult?.errors.length  ?? 0;
   const warnCount = validationResult?.warnings.length ?? 0;
 
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-200" onClick={() => setAcVisible(false)}>
+
       {/* Header bar */}
       <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-slate-800 shrink-0 bg-slate-900/60 flex-wrap">
         <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
@@ -315,7 +260,7 @@ export default function ScriptingPanel({ stratData }) {
             {errCount === 0 && warnCount === 0
               ? <><CheckCircle className="w-3.5 h-3.5 text-green-400" /><span className="text-green-400">Script OK — no issues found</span></>
               : <>
-                  {errCount > 0 && <><XCircle className="w-3.5 h-3.5 text-red-400" /><span className="text-red-400">{errCount} error{errCount > 1 ? 's' : ''}</span></>}
+                  {errCount > 0  && <><XCircle className="w-3.5 h-3.5 text-red-400" /><span className="text-red-400">{errCount} error{errCount > 1 ? 's' : ''}</span></>}
                   {warnCount > 0 && <><AlertTriangle className="w-3.5 h-3.5 text-amber-400" /><span className="text-amber-400">{warnCount} warning{warnCount > 1 ? 's' : ''}</span></>}
                 </>
             }
@@ -338,46 +283,49 @@ export default function ScriptingPanel({ stratData }) {
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-500 p-6">
           <FileText className="w-8 h-8 opacity-30" />
           <p className="text-xs text-center">Load <code className="text-violet-400">campaign_script.txt</code> to begin editing</p>
-          <p className="text-[10px] text-center text-slate-600">Syntax highlighting · autocomplete · autosave</p>
           <label className="cursor-pointer px-3 py-1.5 rounded bg-violet-700/30 border border-violet-500/40 text-violet-300 hover:bg-violet-700/50 text-xs transition-colors">
             <Upload className="w-3.5 h-3.5 inline mr-1" /> Load campaign_script.txt
             <input type="file" accept=".txt" className="hidden" onChange={handleLoad} />
           </label>
         </div>
       ) : (
-        <div className="flex-1 flex min-h-0 overflow-hidden relative" onClick={e => e.stopPropagation()}>
+        <div className="flex-1 flex min-h-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+
           {/* Line numbers */}
           <div
             ref={lineNumRef}
-            className="shrink-0 w-10 overflow-hidden bg-slate-900/60 border-r border-slate-800 text-right select-none"
-            style={{ fontFamily: 'monospace', fontSize: '12px', lineHeight: '20px', paddingTop: '8px', paddingRight: '6px', paddingBottom: '8px' }}
+            className="shrink-0 w-10 overflow-hidden bg-slate-900/60 border-r border-slate-800 select-none"
+            style={{ fontFamily: "'Courier New', Courier, monospace", fontSize: '12px', lineHeight: `${LINE_H}px` }}
           >
-            {lineNumbers.map(n => (
-              <div key={n} style={{ height: '20px', color: '#475569', lineHeight: '20px' }}>{n}</div>
-            ))}
+            <div style={{ paddingTop: 8, paddingBottom: 8, paddingRight: 6, textAlign: 'right' }}>
+              {Array.from({ length: lineCount }, (_, i) => (
+                <div key={i + 1} style={{ height: LINE_H, color: '#475569', lineHeight: `${LINE_H}px` }}>{i + 1}</div>
+              ))}
+            </div>
           </div>
 
-          {/* Code area */}
-          <div className="flex-1 relative font-mono text-xs overflow-hidden">
-            {/* Textarea — interactive layer, text camouflaged to bg color */}
+          {/* Textarea */}
+          <div className="flex-1 relative" onClick={e => e.stopPropagation()}>
             <textarea
               ref={textareaRef}
               value={text}
               onChange={handleChange}
-              onScroll={syncScroll}
+              onScroll={handleScroll}
               onKeyDown={handleKeyDown}
               spellCheck={false}
               wrap="off"
-              className="absolute inset-0 p-2 w-full h-full bg-transparent resize-none outline-none leading-5 overflow-auto sc-textarea"
-              style={{ tabSize: 2, caretColor: '#94a3b8', whiteSpace: 'pre', zIndex: 1 }}
-            />
-            {/* Highlight pre — visual layer on top, no pointer events */}
-            <pre
-              ref={highlightRef}
-              aria-hidden="true"
-              className="absolute inset-0 p-2 overflow-auto pointer-events-none whitespace-pre leading-5 text-slate-300"
-              style={{ tabSize: 2, zIndex: 2 }}
-              dangerouslySetInnerHTML={{ __html: highlightedHTML + '\n' }}
+              className="absolute inset-0 w-full h-full resize-none outline-none overflow-auto"
+              style={{
+                fontFamily: "'Courier New', Courier, monospace",
+                fontSize: '12px',
+                lineHeight: `${LINE_H}px`,
+                padding: '8px',
+                background: 'transparent',
+                color: '#cbd5e1',
+                caretColor: '#94a3b8',
+                whiteSpace: 'pre',
+                tabSize: 2,
+              }}
             />
 
             {/* Autocomplete dropdown */}
@@ -404,34 +352,15 @@ export default function ScriptingPanel({ stratData }) {
                 ))}
               </div>
             )}
-
-            <style>{`
-              .sc-kw   { color: #c084fc; font-weight: 600; }
-              .sc-event{ color: #38bdf8; }
-              .sc-cmd  { color: #4ade80; }
-              .sc-cond { color: #fb923c; }
-              .sc-num  { color: #fbbf24; }
-              .sc-str  { color: #f9a8d4; }
-              .sc-comment { color: #6b7280; font-style: italic; }
-              .sc-textarea, .dark .sc-textarea { color: #0f172a !important; background: transparent !important; }
-              .sc-textarea::selection { background: rgba(148,163,184,0.4); }
-            `}</style>
           </div>
         </div>
       )}
 
-      {/* Legend + autosave status */}
+      {/* Status bar */}
       {text && (
-        <div className="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1 border-t border-slate-800 bg-slate-900/40">
-          {[
-            ['sc-kw','Keywords'],['sc-event','Events'],['sc-cmd','Commands'],['sc-cond','Conditions'],['sc-num','Numbers'],['sc-comment','Comments'],
-          ].map(([cls, label]) => (
-            <span key={cls} className="text-[9px] flex items-center gap-1">
-              <span dangerouslySetInnerHTML={{ __html: `<span class="${cls}">■</span>` }} />
-              <span className="text-slate-500">{label}</span>
-            </span>
-          ))}
-          <span className="ml-auto text-[9px] text-slate-600">autosave ✓</span>
+        <div className="shrink-0 flex items-center gap-3 px-2 py-1 border-t border-slate-800 bg-slate-900/40">
+          <span className="text-[9px] text-slate-500">{lineCount} lines</span>
+          <span className="text-[9px] text-slate-600 ml-auto">autosave ✓</span>
         </div>
       )}
     </div>
