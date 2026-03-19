@@ -39,6 +39,8 @@ export default function ScriptingPanel({ stratData }) {
   const [validation, setValidation] = useState(null);
   const [showValid, setShowValid]   = useState(false);
 
+  const [showTemplates, setShowTemplates] = useState(false);
+
   // autocomplete
   const [acItems, setAcItems]     = useState([]);
   const [acIdx, setAcIdx]         = useState(0);
