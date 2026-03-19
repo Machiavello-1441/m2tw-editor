@@ -7,7 +7,7 @@ import { getStringsBinStore, setStringsBinStore } from '@/lib/stringsBinStore';
 
 export default function TraitsFileLoader() {
   const {
-    traitsData, textData, traitsFilename, textFilename, textBinFilename,
+    traitsData, textData, textBinMeta, traitsFilename, textFilename,
     loadTraitsFile, loadTextFile,
     exportTraitsFile, exportTextFile,
     saveTraits, revertTraits,
@@ -104,7 +104,7 @@ export default function TraitsFileLoader() {
       )}
       {textData && (
         <Button size="sm" variant="secondary" className="h-7 px-2 text-xs gap-1.5 text-white"
-          onClick={() => downloadFile(exportTextFile(), textBinFilename)}>
+          onClick={() => downloadFile(exportTextFile(), textFilename)}>
           <Download className="w-3 h-3" />
           Export Text
         </Button>

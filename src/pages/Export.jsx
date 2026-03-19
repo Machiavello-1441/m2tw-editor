@@ -69,8 +69,8 @@ const IMAGE_SLOT_DEFS = [
 
 export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile, imageData } = useEDB();
-  const { traitsData, traitsFilename, exportTraitsFile, textData: traitsTextData, textBinFilename: traitsTextBinFilename, exportTextFile: exportTraitsTextFile } = useTraits();
-  const { ancData, ancFilename, exportAncFile, textData: ancTextData, textBinFilename: ancTextBinFilename, exportTextFile: exportAncTextFile } = useAncillaries();
+  const { traitsData, traitsFilename, exportTraitsFile, textData: traitsTextData, textBinMeta: traitsBinMeta, textFilename: traitsTextFilename, exportTextFile: exportTraitsTextFile } = useTraits();
+  const { ancData, ancFilename, exportAncFile, textData: ancTextData, textBinMeta: ancBinMeta, textFilename: ancTextFilename, exportTextFile: exportAncTextFile } = useAncillaries();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
   const [exportingTwemp, setExportingTwemp] = useState(false);
@@ -127,8 +127,9 @@ export default function Export() {
       dataFolder.file('export_descr_character_traits.txt', exportTraitsFile());
     }
     if (traitsTextData && Object.keys(traitsTextData).length > 0) {
-      const traitsTextContent = new Uint8Array(exportTraitsTextFile());
-      const traitsTextName = traitsTextBinFilename || 'export_VnVs.txt.strings.bin';
+      let traitsTextContent = exportTraitsTextFile();
+      if (traitsTextContent instanceof ArrayBuffer) traitsTextContent = new Uint8Array(traitsTextContent);
+      const traitsTextName = traitsTextFilename || 'export_VnVs.txt';
       dataFolder.folder('text').file(traitsTextName, traitsTextContent);
     }
 
@@ -137,8 +138,9 @@ export default function Export() {
       dataFolder.file('export_descr_ancillaries.txt', exportAncFile());
     }
     if (ancTextData && Object.keys(ancTextData).length > 0) {
-      const ancTextContent = new Uint8Array(exportAncTextFile());
-      const ancTextName = ancTextBinFilename || 'export_ancillaries.txt.strings.bin';
+      let ancTextContent = exportAncTextFile();
+      if (ancTextContent instanceof ArrayBuffer) ancTextContent = new Uint8Array(ancTextContent);
+      const ancTextName = ancTextFilename || 'export_ancillaries.txt';
       dataFolder.folder('text').file(ancTextName, ancTextContent);
     }
 
@@ -267,10 +269,10 @@ export default function Export() {
               />
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-purple-300/70" />}
-                label={traitsTextBinFilename || 'export_VnVs.txt.strings.bin'}
+                label={traitsTextFilename || 'export_VnVs.txt(.strings.bin)'}
                 path={`${modName}/data/text/`}
                 status={hasTraitsText ? 'ready' : 'skip'}
-                detail={hasTraitsText ? `${Object.keys(traitsTextData).length} entries (.strings.bin)` : 'No VnVs text loaded'}
+                detail={hasTraitsText ? `${Object.keys(traitsTextData).length} entries${traitsBinMeta ? ' (.strings.bin)' : ' (.txt)'}` : 'No VnVs text loaded'}
               />
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-yellow-400/70" />}
@@ -281,10 +283,10 @@ export default function Export() {
               />
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-yellow-300/70" />}
-                label={ancTextBinFilename || 'export_ancillaries.txt.strings.bin'}
+                label={ancTextFilename || 'export_ancillaries.txt(.strings.bin)'}
                 path={`${modName}/data/text/`}
                 status={hasAncText ? 'ready' : 'skip'}
-                detail={hasAncText ? `${Object.keys(ancTextData).length} entries (.strings.bin)` : 'No ancillaries text loaded'}
+                detail={hasAncText ? `${Object.keys(ancTextData).length} entries${ancBinMeta ? ' (.strings.bin)' : ' (.txt)'}` : 'No ancillaries text loaded'}
               />
               <ExportRow
                 icon={<Code2 className="w-4 h-4 text-green-500/70" />}
