@@ -50,7 +50,8 @@ export default function TraitsFileLoader() {
 
   const downloadFile = (content, filename) => {
     const isBinary = content instanceof ArrayBuffer;
-    const blob = new Blob([content], { type: isBinary ? 'application/octet-stream' : 'text/plain' });
+    const data = isBinary ? new Uint8Array(content) : content;
+    const blob = new Blob([data], { type: isBinary ? 'application/octet-stream' : 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.click();
