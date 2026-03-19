@@ -413,8 +413,8 @@ export default function ScriptingPanel({ stratData }) {
               .sc-num  { color: #fbbf24; }
               .sc-str  { color: #f9a8d4; }
               .sc-comment { color: #6b7280; font-style: italic; }
-              .sc-textarea, .dark .sc-textarea { color: transparent !important; }
-              .sc-textarea::selection { background: rgba(148,163,184,0.3); color: transparent; }
+              .sc-textarea, .dark .sc-textarea { color: #0f172a !important; background: transparent !important; }
+              .sc-textarea::selection { background: rgba(148,163,184,0.4); }
             `}</style>
           </div>
         </div>
