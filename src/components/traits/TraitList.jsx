@@ -78,6 +78,11 @@ export default function TraitList() {
                 <Shield className={`w-3 h-3 shrink-0 ${isSelected ? 'text-primary' : charColor}`} />
                 <div className="flex-1 min-w-0">
                   <div className="font-mono truncate">{trait.name}</div>
+                  {trait.levels?.[0]?.description && getText(trait.levels[0].description) && (
+                    <div className={`text-[10px] truncate italic ${isSelected ? 'text-primary/60' : 'text-muted-foreground/80'}`}>
+                      {getText(trait.levels[0].description)}
+                    </div>
+                  )}
                   <div className={`text-[10px] truncate ${isSelected ? 'text-primary/70' : 'text-muted-foreground'}`}>
                     {trait.characters.join(', ')} · {trait.levels.length} level{trait.levels.length !== 1 ? 's' : ''}
                   </div>
