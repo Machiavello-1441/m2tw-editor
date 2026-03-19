@@ -267,7 +267,7 @@ export default function Export() {
               />
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-purple-300/70" />}
-                label={traitsTextFilename || 'export_VnVs.txt(.strings.bin)'}
+                label={traitsTextBinFilename || 'export_VnVs.txt.strings.bin'}
                 path={`${modName}/data/text/`}
                 status={hasTraitsText ? 'ready' : 'skip'}
                 detail={hasTraitsText ? `${Object.keys(traitsTextData).length} entries${traitsBinMeta ? ' (.strings.bin)' : ' (.txt)'}` : 'No VnVs text loaded'}
