@@ -157,6 +157,15 @@ export default function TraitEditor() {
             <Input value={trait.name} onChange={e => update('name', e.target.value)} className={inputCls} />
           </div>
           <div>
+            <Label className="text-[10px] text-muted-foreground">Display Name</Label>
+            <Input
+              value={getText(trait.name)}
+              onChange={e => updateTextEntry(trait.name, e.target.value)}
+              className={inputCls + ' text-amber-400'}
+              placeholder="In-game display name…"
+            />
+          </div>
+          <div>
             <Label className="text-[10px] text-muted-foreground">Anti-Traits (comma separated)</Label>
             <Input
               value={trait.antiTraits.join(', ')}
