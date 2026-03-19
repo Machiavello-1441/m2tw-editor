@@ -8,7 +8,7 @@ import { Plus, Search, Trash2, Shield } from 'lucide-react';
 const CHARACTER_FILTERS = ['family', 'spy', 'assassin', 'diplomat', 'admiral', 'merchant', 'priest', 'all'];
 
 export default function TraitList() {
-  const { traitsData, selectedTrait, setSelectedTrait, addTrait, deleteTrait } = useTraits();
+  const { traitsData, selectedTrait, setSelectedTrait, addTrait, deleteTrait, getText } = useTraits();
   const [search, setSearch] = useState('');
   const [charFilter, setCharFilter] = useState('');
 
