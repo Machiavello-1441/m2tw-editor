@@ -284,7 +284,7 @@ export default function Export() {
                 label={ancTextBinFilename || 'export_ancillaries.txt.strings.bin'}
                 path={`${modName}/data/text/`}
                 status={hasAncText ? 'ready' : 'skip'}
-                detail={hasAncText ? `${Object.keys(ancTextData).length} entries${ancBinMeta ? ' (.strings.bin)' : ' (.txt)'}` : 'No ancillaries text loaded'}
+                detail={hasAncText ? `${Object.keys(ancTextData).length} entries (.strings.bin)` : 'No ancillaries text loaded'}
               />
               <ExportRow
                 icon={<Code2 className="w-4 h-4 text-green-500/70" />}
