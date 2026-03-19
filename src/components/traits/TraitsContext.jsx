@@ -68,6 +68,21 @@ export function TraitsProvider({ children }) {
     try { localStorage.setItem('m2tw_traits_file', content); localStorage.setItem('m2tw_traits_file_name', fn); } catch {}
   }, []);
 
+  const loadTextFile = useCallback((content, filename, binMeta) => {
+    // content may be a pre-parsed map (from .strings.bin) or a raw string
+    const parsed = (typeof content === 'object' && content !== null && !(content instanceof ArrayBuffer))
+      ? content
+      : parseTextFile(content);
+    originalTextData.current = JSON.stringify(parsed);
+    setTextData(parsed);
+    if (binMeta) setTextBinMeta(binMeta);
+    const fn = filename || 'export_VnVs.txt';
+    setTextFilename(fn);
+    if (typeof content === 'string') {
+      try { localStorage.setItem('m2tw_vnvs_file', content); localStorage.setItem('m2tw_vnvs_file_name', fn); } catch {}
+    }
+  }, []);
+
   useEffect(() => {
     loadFromStorage();
     const handleTraits = (e) => {
@@ -93,21 +108,6 @@ export function TraitsProvider({ children }) {
       window.removeEventListener('load-vnvs', handleVnvs);
       window.removeEventListener('strings-bin-updated', handleBin);
     };
-  const loadTextFile = useCallback((content, filename, binMeta) => {
-    // content may be a pre-parsed map (from .strings.bin) or a raw string
-    const parsed = (typeof content === 'object' && content !== null && !(content instanceof ArrayBuffer))
-      ? content
-      : parseTextFile(content);
-    originalTextData.current = JSON.stringify(parsed);
-    setTextData(parsed);
-    if (binMeta) setTextBinMeta(binMeta);
-    const fn = filename || 'export_VnVs.txt';
-    setTextFilename(fn);
-    if (typeof content === 'string') {
-      try { localStorage.setItem('m2tw_vnvs_file', content); localStorage.setItem('m2tw_vnvs_file_name', fn); } catch {}
-    }
-  }, []);
-
   }, [loadFromStorage, loadTraitsFile, loadTextFile]);
 
   // Persist to localStorage whenever traitsData or textData changes (crash protection)
