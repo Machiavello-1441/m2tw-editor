@@ -59,15 +59,38 @@ export function TraitsProvider({ children }) {
 
   useEffect(() => {
     loadFromStorage();
-    // Listen for Home page loading traits
-    const handler = () => loadFromStorage();
-    window.addEventListener('load-traits', handler);
-    window.addEventListener('load-vnvs', handler);
-    window.addEventListener('strings-bin-updated', handler);
+
+    const handleTraits = (e) => {
+      if (e.detail?.content) {
+        // Direct load from event (bypasses localStorage quota issues)
+        const parsed = parseTraitsFile(e.detail.content);
+        originalTraitsData.current = JSON.stringify(parsed);
+        setTraitsData(parsed);
+        if (e.detail.name) setTraitsFilename(e.detail.name);
+      } else {
+        loadFromStorage();
+      }
+    };
+    const handleVnvs = (e) => {
+      if (e.detail?.content) {
+        const parsed = parseTextFile(e.detail.content);
+        originalTextData.current = JSON.stringify(parsed);
+        setTextData(parsed);
+        setTextBinMeta(null);
+        if (e.detail.name) setTextFilename(e.detail.name);
+      } else {
+        loadFromStorage();
+      }
+    };
+    const handleBin = () => loadFromStorage();
+
+    window.addEventListener('load-traits', handleTraits);
+    window.addEventListener('load-vnvs', handleVnvs);
+    window.addEventListener('strings-bin-updated', handleBin);
     return () => {
-      window.removeEventListener('load-traits', handler);
-      window.removeEventListener('load-vnvs', handler);
-      window.removeEventListener('strings-bin-updated', handler);
+      window.removeEventListener('load-traits', handleTraits);
+      window.removeEventListener('load-vnvs', handleVnvs);
+      window.removeEventListener('strings-bin-updated', handleBin);
     };
   }, [loadFromStorage]);
 
