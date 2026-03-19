@@ -85,7 +85,7 @@ function decodeTgaToDataUrl(buffer) {
 
 export default function AncillariesFileLoader() {
   const {
-    ancData, textData, textBinMeta, ancFilename, textFilename,
+    ancData, textData, ancFilename, textFilename, textBinFilename,
     loadAncFile, loadTextFile, loadTgaImages,
     exportAncFile, exportTextFile,
     saveAncillaries, revertAncillaries,
