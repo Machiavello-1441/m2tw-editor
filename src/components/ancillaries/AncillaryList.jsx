@@ -85,6 +85,9 @@ export default function AncillaryList() {
                 <Package className={`w-3 h-3 shrink-0 ${isSelected ? 'text-primary' : typeColor}`} />
                 <div className="flex-1 min-w-0">
                   <div className="font-mono truncate">{anc.name}</div>
+                  {getText(anc.name) && (
+                    <div className="text-[10px] truncate text-amber-400/80 italic">{getText(anc.name)}</div>
+                  )}
                   <div className={`text-[10px] truncate ${isSelected ? 'text-primary/70' : 'text-muted-foreground'}`}>
                     {anc.type}{anc.unique ? ' · Unique' : ''}{anc.transferable ? ' · Transferable' : ''}
                   </div>
