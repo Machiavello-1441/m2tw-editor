@@ -127,9 +127,8 @@ export default function Export() {
       dataFolder.file('export_descr_character_traits.txt', exportTraitsFile());
     }
     if (traitsTextData && Object.keys(traitsTextData).length > 0) {
-      let traitsTextContent = exportTraitsTextFile();
-      if (traitsTextContent instanceof ArrayBuffer) traitsTextContent = new Uint8Array(traitsTextContent);
-      const traitsTextName = traitsTextFilename || 'export_VnVs.txt';
+      const traitsTextContent = new Uint8Array(exportTraitsTextFile());
+      const traitsTextName = traitsTextBinFilename || 'export_VnVs.txt.strings.bin';
       dataFolder.folder('text').file(traitsTextName, traitsTextContent);
     }
 
