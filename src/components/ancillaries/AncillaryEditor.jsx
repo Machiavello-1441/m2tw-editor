@@ -136,6 +136,15 @@ export default function AncillaryEditor() {
             <Label className="text-[10px] text-muted-foreground">Ancillary Name (ID)</Label>
             <Input value={anc.name} onChange={e => update('name', e.target.value)} className={inputCls} />
           </div>
+          <div className="col-span-2">
+            <Label className="text-[10px] text-amber-400">Display Name <span className="text-muted-foreground">(text key: {anc.name})</span></Label>
+            <Input
+              value={getText(anc.name) || ''}
+              onChange={e => updateTextEntry(anc.name, e.target.value)}
+              className="h-8 text-xs font-mono mt-1 text-amber-300 bg-background border-amber-500/40 focus:border-amber-400"
+              placeholder="Enter display name…"
+            />
+          </div>
           <div>
             <Label className="text-[10px] text-muted-foreground">Type</Label>
             <select value={anc.type} onChange={e => update('type', e.target.value)} className={selectCls}>
