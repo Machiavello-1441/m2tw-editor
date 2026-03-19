@@ -359,15 +359,7 @@ export default function ScriptingPanel({ stratData }) {
 
           {/* Code area */}
           <div className="flex-1 relative font-mono text-xs overflow-hidden">
-            {/* Highlight pre */}
-            <pre
-              ref={highlightRef}
-              aria-hidden="true"
-              className="absolute inset-0 p-2 overflow-auto pointer-events-none whitespace-pre leading-5 text-slate-300"
-              style={{ tabSize: 2 }}
-              dangerouslySetInnerHTML={{ __html: highlightedHTML + '\n' }}
-            />
-            {/* Textarea */}
+            {/* Textarea — interactive layer, text camouflaged to bg color */}
             <textarea
               ref={textareaRef}
               value={text}
@@ -377,7 +369,15 @@ export default function ScriptingPanel({ stratData }) {
               spellCheck={false}
               wrap="off"
               className="absolute inset-0 p-2 w-full h-full bg-transparent resize-none outline-none leading-5 overflow-auto sc-textarea"
-              style={{ tabSize: 2, caretColor: '#94a3b8', whiteSpace: 'pre' }}
+              style={{ tabSize: 2, caretColor: '#94a3b8', whiteSpace: 'pre', zIndex: 1 }}
+            />
+            {/* Highlight pre — visual layer on top, no pointer events */}
+            <pre
+              ref={highlightRef}
+              aria-hidden="true"
+              className="absolute inset-0 p-2 overflow-auto pointer-events-none whitespace-pre leading-5 text-slate-300"
+              style={{ tabSize: 2, zIndex: 2 }}
+              dangerouslySetInnerHTML={{ __html: highlightedHTML + '\n' }}
             />
 
             {/* Autocomplete dropdown */}
