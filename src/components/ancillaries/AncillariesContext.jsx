@@ -71,15 +71,37 @@ export function AncillariesProvider({ children }) {
 
   useEffect(() => {
     loadFromStorage();
-    // Listen for Home page loading ancillaries
-    const handler = () => loadFromStorage();
-    window.addEventListener('load-ancillaries', handler);
-    window.addEventListener('load-anctxt', handler);
-    window.addEventListener('strings-bin-updated', handler);
+
+    const handleAnc = (e) => {
+      if (e.detail?.content) {
+        const parsed = parseAncillariesFile(e.detail.content);
+        originalAncData.current = JSON.stringify(parsed);
+        setAncData(parsed);
+        if (e.detail.name) setAncFilename(e.detail.name);
+      } else {
+        loadFromStorage();
+      }
+    };
+    const handleAncTxt = (e) => {
+      if (e.detail?.content) {
+        const parsed = parseTextFile(e.detail.content);
+        originalTextData.current = JSON.stringify(parsed);
+        setTextData(parsed);
+        setTextBinMeta(null);
+        if (e.detail.name) setTextFilename(e.detail.name);
+      } else {
+        loadFromStorage();
+      }
+    };
+    const handleBin = () => loadFromStorage();
+
+    window.addEventListener('load-ancillaries', handleAnc);
+    window.addEventListener('load-anctxt', handleAncTxt);
+    window.addEventListener('strings-bin-updated', handleBin);
     return () => {
-      window.removeEventListener('load-ancillaries', handler);
-      window.removeEventListener('load-anctxt', handler);
-      window.removeEventListener('strings-bin-updated', handler);
+      window.removeEventListener('load-ancillaries', handleAnc);
+      window.removeEventListener('load-anctxt', handleAncTxt);
+      window.removeEventListener('strings-bin-updated', handleBin);
     };
   }, [loadFromStorage]);
 
