@@ -71,30 +71,21 @@ export function AncillariesProvider({ children }) {
 
   useEffect(() => {
     loadFromStorage();
-
     const handleAnc = (e) => {
       if (e.detail?.content) {
-        const parsed = parseAncillariesFile(e.detail.content);
-        originalAncData.current = JSON.stringify(parsed);
-        setAncData(parsed);
-        if (e.detail.name) setAncFilename(e.detail.name);
+        loadAncFile(e.detail.content, e.detail.filename);
       } else {
         loadFromStorage();
       }
     };
     const handleAncTxt = (e) => {
       if (e.detail?.content) {
-        const parsed = parseTextFile(e.detail.content);
-        originalTextData.current = JSON.stringify(parsed);
-        setTextData(parsed);
-        setTextBinMeta(null);
-        if (e.detail.name) setTextFilename(e.detail.name);
+        loadTextFile(e.detail.content, e.detail.filename);
       } else {
         loadFromStorage();
       }
     };
     const handleBin = () => loadFromStorage();
-
     window.addEventListener('load-ancillaries', handleAnc);
     window.addEventListener('load-anctxt', handleAncTxt);
     window.addEventListener('strings-bin-updated', handleBin);
@@ -103,7 +94,7 @@ export function AncillariesProvider({ children }) {
       window.removeEventListener('load-anctxt', handleAncTxt);
       window.removeEventListener('strings-bin-updated', handleBin);
     };
-  }, [loadFromStorage]);
+  }, [loadFromStorage, loadAncFile, loadTextFile]);
 
   const loadAncFile = useCallback((content, filename) => {
     const parsed = parseAncillariesFile(content);
