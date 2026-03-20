@@ -573,7 +573,17 @@ export default function StratPanel({
 
         {/* ── Regions tab ── */}
         {tab === 'regions' && (
-          <RegionsEditor regionsData={regionsData} onSave={onRegionsDataUpdate} />
+          regionsData?.length
+            ? <div className="space-y-1">
+                {regionsData.map(reg => (
+                  <div key={reg.regionName} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800/40 text-slate-400">
+                    <span className="w-3 h-3 rounded-sm border border-white/10 shrink-0" style={{ background: `rgb(${reg.r},${reg.g},${reg.b})` }} />
+                    <span className="text-[10px] font-mono flex-1 truncate">{reg.regionName}</span>
+                    <span className="text-[9px] text-slate-600">{reg.settlementName}</span>
+                  </div>
+                ))}
+              </div>
+            : <div className="text-[10px] text-slate-600 text-center py-4">Load descr_regions.txt first</div>
         )}
       </div>
     </div>
