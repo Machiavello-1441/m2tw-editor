@@ -620,47 +620,62 @@ export default function StratPanel({
 
         {/* ── Overview tab ── */}
         {tab === 'overview' && <>
-          {/* File loaders */}
+          {/* Campaign Files */}
           <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Load Files</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Files</p>
+            {/* Text files — load + download inline */}
             {[
-              { label: 'descr_strat.txt',                    type: 'strat',   loaded: !!stratData },
-              { label: 'descr_regions.txt',                  type: 'regions', loaded: !!regionsData },
-              { label: '*_regions_and_settlement_names.txt / .bin', type: 'names', loaded: !!settlementNames, accept: '.txt,.bin,.strings.bin' },
-              { label: 'descr_sm_factions.txt',              type: 'factions',loaded: !!factionColors },
-            ].map(({ label, type, loaded, accept }) => (
-              <label key={type} className="flex items-center gap-2 cursor-pointer group">
+              { label: 'descr_strat.txt', type: 'strat', loaded: !!stratData, onDl: handleExportStrat, ready: !!stratData?.raw },
+              { label: 'descr_regions.txt', type: 'regions', loaded: !!regionsData, onDl: handleExportRegions, ready: !!regionsData?.length },
+              { label: 'settlement_names', type: 'names', loaded: !!settlementNames, onDl: handleExportNames, ready: !!settlementNames && Object.keys(settlementNames).length > 0, accept: '.txt,.bin,.strings.bin' },
+              { label: 'descr_sm_factions.txt', type: 'factions', loaded: !!factionColors, onDl: handleExportFactions, ready: !!factionColors },
+            ].map(({ label, type, loaded, onDl, ready, accept }) => (
+              <div key={type} className="flex items-center gap-1.5">
                 <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
-                <span className="text-[10px] font-mono flex-1 truncate text-slate-400 group-hover:text-slate-200 transition-colors">{label}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 flex items-center gap-1">
+                <span className="text-[10px] font-mono flex-1 truncate text-slate-400">{label}</span>
+                <label className="cursor-pointer text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100 flex items-center gap-0.5 transition-colors">
                   <Upload className="w-2.5 h-2.5" />{loaded ? 'Replace' : 'Load'}
-                </span>
-                <input type="file" accept={accept || '.txt'} className="hidden" onChange={e => loadFile(e, type)} />
-              </label>
+                  <input type="file" accept={accept || '.txt'} className="hidden" onChange={e => loadFile(e, type)} />
+                </label>
+                <button onClick={onDl} disabled={!ready}
+                  className={`text-[10px] px-1.5 py-0.5 rounded border flex items-center gap-0.5 transition-colors ${
+                    ready ? 'bg-amber-600/20 hover:bg-amber-600/40 border-amber-500/30 text-amber-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'
+                  }`}>
+                  <Download className="w-2.5 h-2.5" />
+                </button>
+              </div>
             ))}
-            {/* Export loaded files */}
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider pt-1">Export Files</p>
-            {[
-              { label: 'descr_strat.txt', ready: !!stratData?.raw, onClick: handleExportStrat },
-              { label: 'descr_regions.txt', ready: !!regionsData?.length, onClick: handleExportRegions },
-              { label: 'settlement_names.txt', ready: !!settlementNames && Object.keys(settlementNames).length > 0, onClick: handleExportNames },
-              { label: 'descr_sm_factions.txt', ready: !!factionColors, onClick: handleExportFactions },
-            ].map(({ label, ready, onClick }) => (
-              <button key={label} onClick={onClick} disabled={!ready}
-                className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] border transition-colors font-mono ${
-                  ready ? 'bg-amber-600/20 hover:bg-amber-600/40 border-amber-500/30 text-amber-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'
-                }`}>
-                <Download className="w-2.5 h-2.5 shrink-0" /> {label}
-              </button>
-            ))}
-            {/* Export loaded TGA layers */}
-            {LAYER_DEFS.filter(d => layers?.[d.id]?.data).map(def => (
-              <button key={def.id} onClick={() => handleExportTGA(def.id)}
-                className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 text-blue-400 transition-colors font-mono">
-                <Download className="w-2.5 h-2.5 shrink-0" /> {def.filename || `${def.id}.tga`}
-                {dirtyLayers?.has(def.id) && <span className="ml-auto text-[8px] text-amber-400">modified</span>}
-              </button>
-            ))}
+
+            {/* TGA layers — load in MapLayerPanel, download inline */}
+            {LAYER_DEFS.map(def => {
+              const loaded = !!layers?.[def.id]?.data;
+              const dirty = dirtyLayers?.has(def.id);
+              return (
+                <div key={def.id} className="flex items-center gap-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
+                  <span className="text-[10px] font-mono flex-1 truncate text-slate-400">
+                    {def.filename || `${def.id}.tga`}
+                    {dirty && <span className="ml-1 text-[8px] text-amber-400">●</span>}
+                  </span>
+                  <button onClick={() => handleExportTGA(def.id)} disabled={!loaded}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border flex items-center gap-0.5 transition-colors ${
+                      loaded ? 'bg-blue-600/20 hover:bg-blue-600/40 border-blue-500/30 text-blue-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'
+                    }`}>
+                    <Download className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* Download Campaign Folder ZIP */}
+            <button
+              onClick={handleExportCampaignZip}
+              disabled={!hasAnyModifiedData}
+              className={`w-full flex items-center justify-center gap-1.5 px-2 py-2 mt-1 rounded text-[11px] font-semibold border transition-colors ${
+                hasAnyModifiedData ? 'bg-green-600/20 hover:bg-green-600/40 border-green-500/40 text-green-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'
+              }`}>
+              <FolderDown className="w-3.5 h-3.5" /> Download Campaign Folder (.zip)
+            </button>
           </div>
 
           {/* Campaign settings editor */}
