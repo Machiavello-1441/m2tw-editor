@@ -224,6 +224,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       regionR: regionInfo?.r ?? 0,
       regionG: regionInfo?.g ?? 0,
       regionB: regionInfo?.b ?? 0,
+      hiddenResources: [...regionHiddenResources],
     });
     setEditing(true);
     setExpanded(true);
