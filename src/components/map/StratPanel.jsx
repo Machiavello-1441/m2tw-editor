@@ -571,10 +571,7 @@ export default function StratPanel({
           }
         </>}
 
-        {/* ── Regions tab ── */}
-        {tab === 'regions' && (
-          <RegionsEditor regionsData={regionsData} onSave={onRegionsDataUpdate} />
-        )}
+
       </div>
     </div>
   );
