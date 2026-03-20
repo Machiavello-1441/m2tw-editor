@@ -17,12 +17,17 @@ function identifyPixel(def, r, g, b) {
 
 function identifyRegion(regionsData, r, g, b) {
   if (!regionsData?.length) return null;
+  // Exact match first
   for (const reg of regionsData) {
-    if (reg.r === r && reg.g === g && reg.b === b) {
-      return reg;
-    }
+    if (reg.r === r && reg.g === g && reg.b === b) return reg;
   }
-  return null;
+  // Tolerance match (±2) to handle rounding from TGA sampling
+  let best = null, bestDist = Infinity;
+  for (const reg of regionsData) {
+    const d = Math.abs(reg.r - r) + Math.abs(reg.g - g) + Math.abs(reg.b - b);
+    if (d < bestDist) { bestDist = d; best = reg; }
+  }
+  return bestDist <= 6 ? best : null;
 }
 
 export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, regionsData }) {
