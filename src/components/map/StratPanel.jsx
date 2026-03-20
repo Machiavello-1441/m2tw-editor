@@ -371,6 +371,46 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                 )}
               </div>
 
+              {/* Natural Resources (read-only) */}
+              {naturalResources.length > 0 && (
+                <div>
+                  <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Resources (from descr_regions)</p>
+                  <div className="flex flex-wrap gap-0.5">
+                    {naturalResources.map(r => (
+                      <span key={r} className="px-1.5 py-0.5 bg-slate-800/60 rounded text-[10px] text-slate-400 font-mono">{r}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Hidden Resources (editable, from EDB) */}
+              <div>
+                <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Hidden Resources (EDB)</p>
+                {(draft.hiddenResources?.length > 0) && (
+                  <div className="space-y-0.5 mb-1 max-h-20 overflow-y-auto">
+                    {draft.hiddenResources.map(hr => (
+                      <div key={hr} className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-800/60 rounded text-[10px]">
+                        <span className="text-purple-300 font-mono flex-1 truncate">{hr}</span>
+                        <button onClick={() => setDraft(d => ({ ...d, hiddenResources: d.hiddenResources.filter(x => x !== hr) }))}
+                          className="text-slate-600 hover:text-red-400 shrink-0"><X className="w-2.5 h-2.5" /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <select value="" onChange={e => {
+                  const val = e.target.value;
+                  if (val && !draft.hiddenResources?.includes(val)) {
+                    setDraft(d => ({ ...d, hiddenResources: [...(d.hiddenResources || []), val] }));
+                  }
+                }}
+                  className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                  <option value="">{hiddenResourceMasterList.length ? '— add hidden resource —' : 'Load EDB for list'}</option>
+                  {hiddenResourceMasterList
+                    .filter(hr => !draft.hiddenResources?.includes(hr))
+                    .map(hr => <option key={hr} value={hr}>{hr}</option>)}
+                </select>
+              </div>
+
               {/* Buildings editor — two-step dropdown */}
               <div>
                 <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Buildings</p>
