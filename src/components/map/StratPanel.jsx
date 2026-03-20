@@ -662,8 +662,8 @@ export default function StratPanel({
               <div key={factionName}>
                 <div className="flex items-center gap-1.5 px-1 py-0.5 mb-0.5">
                   <FactionDot factionColors={factionColors} factionName={factionName} />
-                  <span className="text-[10px] font-semibold text-slate-400 font-mono">{factionName}</span>
-                  <span className="text-[9px] text-slate-600">({setts.length})</span>
+                  <span className="text-[10px] font-semibold text-slate-400">{settlementNames?.[factionName] || factionName}</span>
+                  <span className="text-[9px] text-slate-600 font-mono">({setts.length})</span>
                 </div>
                 <div className="space-y-0.5 ml-2">
                   {setts.map(s => (
