@@ -215,12 +215,6 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     return entry ? entry[1] : [];
   }, [buildingTrees, selectedTree]);
 
-  // Find matching region from regionsData — match by region internal name
-  const regionInfo = useMemo(() => {
-    if (!regionsData?.length || !item.region) return null;
-    return regionsData.find(r => r.regionName === item.region);
-  }, [regionsData, item.region]);
-
   // Build faction list from factionColors (descr_sm_factions.txt)
   const factionList = useMemo(() => {
     if (!factionColors) return [];
