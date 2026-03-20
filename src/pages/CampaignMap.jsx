@@ -584,6 +584,7 @@ export default function CampaignMap() {
             showPixelGrid={showPixelGrid}
             showTooltip={!paintState.active}
             onTransformChange={setTransform}
+            regionsData={regionsData}
           />
           {/* Strat SVG overlay */}
           <StratOverlay
