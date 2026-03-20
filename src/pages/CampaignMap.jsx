@@ -17,6 +17,7 @@ import { parseStringsBin } from '../components/strings/stringsBinCodec';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
 
 const INITIAL_PAINT = {
   active: false,
