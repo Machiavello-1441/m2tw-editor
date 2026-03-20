@@ -160,7 +160,7 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
   );
 }
 
-// ─── Settlement editor (inline) ───────────────────────────────────────────────
+// ─── Settlement editor (inline) ──────────────────────────────────────────────
 function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
