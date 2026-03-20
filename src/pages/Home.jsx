@@ -552,8 +552,6 @@ export default function Home() {
     // Campaign-specific text files stored in localStorage for campaign map editor
     const CAMPAIGN_STORE = {
       'descr_strat.txt': 'm2tw_campaign_strat',
-      'descr_regions.txt': 'm2tw_campaign_regions',
-      'descr_sm_factions.txt': 'm2tw_campaign_factions',
       'campaign_script.txt': 'm2tw_campaign_script',
       'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
       'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
@@ -629,8 +627,6 @@ export default function Home() {
       localStorage.removeItem('m2tw_rebel_factions_file');
       localStorage.removeItem('m2tw_religions_file');
       localStorage.removeItem('m2tw_campaign_strat');
-      localStorage.removeItem('m2tw_campaign_regions');
-      localStorage.removeItem('m2tw_campaign_factions');
       localStorage.removeItem('m2tw_campaign_script');
       localStorage.removeItem('m2tw_campaign_mercenaries');
       localStorage.removeItem('m2tw_campaign_win_conditions');

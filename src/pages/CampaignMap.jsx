@@ -17,7 +17,6 @@ import { parseStringsBin } from '../components/strings/stringsBinCodec';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
-import { getStringsBinStore } from '@/lib/stringsBinStore';
 
 const INITIAL_PAINT = {
   active: false,
@@ -171,28 +170,6 @@ export default function CampaignMap() {
         const parsed = parseDescrStrat(stratRaw);
         setStratDataRaw(parsed);
         setOverlayItems(parsed.items || []);
-      }
-    } catch {}
-
-    // Auto-restore factions from localStorage if not in sessionStorage
-    try {
-      if (!sessionStorage.getItem('m2tw_factions_raw')) {
-        const facRaw = localStorage.getItem('m2tw_factions_file');
-        if (facRaw) {
-          sessionStorage.setItem('m2tw_factions_raw', facRaw);
-          setFactionColorsRaw(parseDescrSmFactions(facRaw));
-        }
-      }
-    } catch {}
-
-    // Auto-load settlement names from strings bin store (imperial_campaign_regions_and_settlement_names.txt.strings.bin)
-    try {
-      const store = getStringsBinStore();
-      const binKey = Object.keys(store).find(k => k.toLowerCase().includes('regions_and_settlement_names'));
-      if (binKey && store[binKey]?.entries?.length) {
-        const namesMap = {};
-        for (const { key, value } of store[binKey].entries) if (key) namesMap[key] = value;
-        setSettlementNamesRaw(prev => prev && Object.keys(prev).length > 0 ? prev : namesMap);
       }
     } catch {}
 
@@ -845,16 +822,7 @@ export default function CampaignMap() {
                       setOverlayItems(enriched.items);
                     }
                   }}
-                  onNamesLoad={(data) => {
-                    if (typeof data === 'object' && !Array.isArray(data)) {
-                      // Already parsed names map (from .strings.bin)
-                      setSettlementNamesRaw(prev => ({ ...(prev || {}), ...data }));
-                    } else {
-                      // Raw text from .txt file
-                      try { sessionStorage.setItem('m2tw_names_raw', data); } catch {}
-                      setSettlementNamesRaw(parseSettlementNames(data));
-                    }
-                  }}
+                  onNamesLoad={(text) => { try { sessionStorage.setItem('m2tw_names_raw', text); } catch {} setSettlementNamesRaw(parseSettlementNames(text)); }}
                   onFactionsLoad={(text) => { try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {} setFactionColorsRaw(parseDescrSmFactions(text)); }}
                   onRegionsDataUpdate={setRegionsDataRaw}
                   onSettlementChange={(id, edits) => {

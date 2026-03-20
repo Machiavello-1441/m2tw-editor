@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, ArrowRight } from 'lucide-react';
 import { getItemIcon, getItemLabel } from './StratOverlay';
 import { serializeDescrStrat, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { downloadBlob } from './tgaExporter';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
-import { parseStringsBin } from '../strings/stringsBinCodec';
 import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';
 
@@ -537,22 +536,11 @@ export default function StratPanel({
 
   const loadFile = async (e, type) => {
     const file = e.target.files?.[0]; if (!file) return;
-    if (type === 'names' && (file.name.toLowerCase().endsWith('.bin') || file.name.toLowerCase().endsWith('.strings.bin'))) {
-      // Parse binary .strings.bin for settlement names
-      const buf = await file.arrayBuffer();
-      const decoded = parseStringsBin(buf);
-      if (decoded?.entries?.length) {
-        const namesMap = {};
-        for (const { key, value } of decoded.entries) if (key) namesMap[key] = value;
-        onNamesLoad(namesMap);
-      }
-    } else {
-      const text = await file.text();
-      if (type === 'strat')    onStratLoad(text, file.name);
-      else if (type === 'regions')  onRegionsLoad(text);
-      else if (type === 'names')    onNamesLoad(text);
-      else if (type === 'factions') onFactionsLoad(text);
-    }
+    const text = await file.text();
+    if (type === 'strat')    onStratLoad(text, file.name);
+    else if (type === 'regions')  onRegionsLoad(text);
+    else if (type === 'names')    onNamesLoad(text);
+    else if (type === 'factions') onFactionsLoad(text);
     e.target.value = '';
   };
 
@@ -601,30 +589,23 @@ export default function StratPanel({
 
         {/* ── Overview tab ── */}
         {tab === 'overview' && <>
-          {/* File status & fallback loaders */}
+          {/* File loaders */}
           <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Files</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Load Files</p>
             {[
-              { label: 'descr_strat.txt',                                          type: 'strat',   loaded: !!stratData },
-              { label: 'descr_regions.txt',                                        type: 'regions', loaded: !!regionsData },
-              { label: 'imperial_campaign_regions_and_settlement_names.txt.strings.bin', type: 'names', loaded: !!settlementNames, accept: '.txt,.bin,.strings.bin' },
-              { label: 'descr_sm_factions.txt',                                    type: 'factions',loaded: !!factionColors },
+              { label: 'descr_strat.txt',                    type: 'strat',   loaded: !!stratData },
+              { label: 'descr_regions.txt',                  type: 'regions', loaded: !!regionsData },
+              { label: '*_regions_and_settlement_names.txt / .bin', type: 'names', loaded: !!settlementNames, accept: '.txt,.bin,.strings.bin' },
+              { label: 'descr_sm_factions.txt',              type: 'factions',loaded: !!factionColors },
             ].map(({ label, type, loaded, accept }) => (
-              loaded ? (
-                <div key={type} className="flex items-center gap-2 px-1 py-0.5">
-                  <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />
-                  <span className="text-[10px] font-mono text-green-400/80 flex-1 truncate">{label}</span>
-                </div>
-              ) : (
-                <label key={type} className="flex items-center gap-2 cursor-pointer group">
-                  <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
-                  <span className="text-[10px] font-mono flex-1 truncate text-amber-400">{label}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-amber-500/30 text-amber-300 flex items-center gap-1">
-                    <Upload className="w-2.5 h-2.5" /> Load
-                  </span>
-                  <input type="file" accept={accept || '.txt'} className="hidden" onChange={e => loadFile(e, type)} />
-                </label>
-              )
+              <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
+                <span className="text-[10px] font-mono flex-1 truncate text-slate-400 group-hover:text-slate-200 transition-colors">{label}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 flex items-center gap-1">
+                  <Upload className="w-2.5 h-2.5" />{loaded ? 'Replace' : 'Load'}
+                </span>
+                <input type="file" accept={accept || '.txt'} className="hidden" onChange={e => loadFile(e, type)} />
+              </label>
             ))}
             {stratData && (
               <button onClick={handleExportStrat}
