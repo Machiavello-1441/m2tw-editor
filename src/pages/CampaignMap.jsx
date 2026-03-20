@@ -7,6 +7,7 @@ import MapPaintToolbar from '../components/map/MapPaintToolbar';
 import MapValidationPanel from '../components/map/MapValidationPanel';
 import StratOverlay from '../components/map/StratOverlay';
 import StratPanel from '../components/map/StratPanel';
+import NewRegionPaintWizard from '../components/map/NewRegionPaintWizard';
 import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
@@ -92,6 +93,7 @@ export default function CampaignMap() {
   const [visibleCategories, setVisibleCategories] = useState(new Set(['settlement', 'resource', 'character', 'fortification']));
   const [editedSettlements, setEditedSettlements] = useState({});
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
+  const [regionWizard, setRegionWizard] = useState(null); // { draft, step: 'paint'|'city'|'port' }
 
   // ── Extra data sources for region editor ──────────────────────────────────
   const [rebelFactions, setRebelFactions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_rebel_factions_raw'); return r ? parseDescrRebelFactions(r) : []; } catch { return []; } });
@@ -355,8 +357,103 @@ export default function CampaignMap() {
     return 0;
   })();
 
+  // ── Helper: place a single pixel on the regions layer ────────────────────
+  const placePixelOnRegions = useCallback((rx, ry, r, g, b) => {
+    setLayers(prev => {
+      const regLayer = prev['regions'];
+      if (!regLayer?.data) return prev;
+      const newData = new Uint8ClampedArray(regLayer.data);
+      const idx = (ry * regLayer.width + rx) * 4;
+      newData[idx] = r; newData[idx + 1] = g; newData[idx + 2] = b;
+      createImageBitmap(new ImageData(newData, regLayer.width, regLayer.height)).then(bitmap => {
+        setLayers(p => ({ ...p, regions: { ...p['regions'], bitmap, data: newData } }));
+      });
+      return { ...prev, regions: { ...regLayer, data: newData } };
+    });
+    setDirtyLayers(prev => new Set([...prev, 'regions']));
+  }, []);
+
+  // ── Region paint wizard step handlers ─────────────────────────────────────
+  const handleWizardFinishPaint = useCallback(() => {
+    if (!regionWizard) return;
+    // Move to 'city' step: disable paint, wait for click
+    setPaintState(prev => ({ ...prev, active: false }));
+    setRegionWizard(prev => ({ ...prev, step: 'city' }));
+  }, [regionWizard]);
+
+  const handleWizardSkipPort = useCallback(() => {
+    if (!regionWizard) return;
+    // Finish wizard: create the region + settlement without port
+    finalizeNewRegion(regionWizard.draft, regionWizard.cityX, regionWizard.cityY, null, null);
+    setRegionWizard(null);
+  }, [regionWizard]);
+
+  const finalizeNewRegion = useCallback((draft, cityX, cityY, portX, portY) => {
+    // 1. Add to regionsData
+    const newRegion = {
+      regionName: draft.regionName,
+      settlementName: draft.settlementName,
+      factionCreator: draft.faction || '',
+      r: draft.r, g: draft.g, b: draft.b,
+      resources: [],
+      religions: {},
+    };
+    setRegionsDataRaw(prev => [...(prev || []), newRegion]);
+
+    // 2. Add settlement overlay item with the placed city position
+    const stratY = mapH > 0 ? mapH - 1 - cityY : cityY;
+    const newItem = {
+      id: Date.now(),
+      category: 'settlement',
+      region: draft.regionName,
+      faction: draft.faction || 'slave',
+      factionCreator: draft.faction || 'slave',
+      level: draft.level || 'village',
+      population: draft.population || 400,
+      yearFounded: draft.yearFounded || 0,
+      buildings: [],
+      x: cityX, y: stratY,
+    };
+    setOverlayItems(prev => [...prev, newItem]);
+    setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
+    setOverlayDirty(true);
+
+    // 3. Update settlement names
+    if (draft.regionDisplayName || draft.settlementDisplayName) {
+      const nameUpdates = {};
+      if (draft.regionDisplayName) nameUpdates[draft.regionName] = draft.regionDisplayName;
+      if (draft.settlementDisplayName) nameUpdates[draft.settlementName] = draft.settlementDisplayName;
+      setSettlementNamesRaw(prev => ({ ...(prev || {}), ...nameUpdates }));
+    }
+
+    // 4. Store port coordinates in regionsData if placed
+    if (portX != null && portY != null) {
+      setRegionsDataRaw(prev => (prev || []).map(r =>
+        r.regionName === draft.regionName ? { ...r, portX, portY: mapH > 0 ? mapH - 1 - portY : portY } : r
+      ));
+    }
+  }, [mapH]);
+
   // ── Canvas click — place strat item OR select region ──────────────────────
   const handleCanvasClick = useCallback((rx, ry) => {
+    // Region wizard: place city or port pixel
+    if (regionWizard) {
+      if (regionWizard.step === 'city') {
+        // Place black pixel (0,0,0) for settlement location
+        placePixelOnRegions(rx, ry, 0, 0, 0);
+        setRegionWizard(prev => ({ ...prev, step: 'port', cityX: rx, cityY: ry }));
+        return;
+      }
+      if (regionWizard.step === 'port') {
+        // Place white pixel (255,255,255) for port location
+        placePixelOnRegions(rx, ry, 255, 255, 255);
+        finalizeNewRegion(regionWizard.draft, regionWizard.cityX, regionWizard.cityY, rx, ry);
+        setRegionWizard(null);
+        return;
+      }
+      return; // During 'paint' step, clicks go to the paint handler in MapCanvas
+    }
+
     if (pendingPlace) {
       // ry from MapCanvas is in pixel-space (y=0 top), flip to M2TW space
       const stratY = mapH > 0 ? mapH - 1 - ry : ry;
@@ -404,7 +501,7 @@ export default function CampaignMap() {
         }
       });
     }
-  }, [pendingPlace, mapH, regionsData, layers]);
+  }, [pendingPlace, mapH, regionsData, layers, regionWizard, placePixelOnRegions, finalizeNewRegion]);
 
   const handleAddItem = (itemTemplate) => {
     setPendingPlace(itemTemplate);
