@@ -386,7 +386,7 @@ export default function CampaignMap() {
     // Finish wizard: create the region + settlement without port
     finalizeNewRegion(regionWizard.draft, regionWizard.cityX, regionWizard.cityY, null, null);
     setRegionWizard(null);
-  }, [regionWizard]);
+  }, [regionWizard, finalizeNewRegion]);
 
   const finalizeNewRegion = useCallback((draft, cityX, cityY, portX, portY) => {
     // 1. Add to regionsData
