@@ -42,7 +42,18 @@ export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, re
           const pd = pixelData[def.id];
           if (!pd) return null;
           const { r, g, b, a } = pd;
-          const match = identifyPixel(def, r, g, b);
+          // For the regions layer, try to match against descr_regions.txt data first
+          let label = null;
+          if (def.id === 'regions') {
+            const regionMatch = identifyRegion(regionsData, r, g, b);
+            if (regionMatch) {
+              label = regionMatch.settlementName || regionMatch.regionName;
+            }
+          }
+          if (!label) {
+            const legendMatch = identifyPixel(def, r, g, b);
+            if (legendMatch) label = legendMatch.label;
+          }
           return (
             <div key={def.id} className="flex items-center gap-1.5">
               <span
@@ -51,7 +62,7 @@ export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, re
               />
               <span className="text-slate-400 w-16 shrink-0">{def.label}:</span>
               <span className="text-slate-200 font-mono text-[10px]">
-                {match ? match.label : `rgb(${r},${g},${b})`}
+                {label || `rgb(${r},${g},${b})`}
               </span>
             </div>
           );
