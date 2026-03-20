@@ -74,17 +74,6 @@ export default function CampaignMap() {
       const raw = sessionStorage.getItem('m2tw_names_raw');
       if (raw) return parseSettlementNames(raw);
     } catch {}
-    // Fallback: try strings bin store for imperial_campaign_regions_and_settlement_names
-    try {
-      const store = getStringsBinStore();
-      for (const [fname, binData] of Object.entries(store)) {
-        if (fname.toLowerCase().includes('regions_and_settlement_names')) {
-          const namesMap = {};
-          for (const { key, value } of (binData.entries || [])) if (key) namesMap[key] = value;
-          if (Object.keys(namesMap).length > 0) return namesMap;
-        }
-      }
-    } catch {}
     return null;
   });
   const [factionColors, setFactionColorsRaw] = useState(() => {
