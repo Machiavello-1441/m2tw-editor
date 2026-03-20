@@ -52,7 +52,7 @@ export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, re
           if (def.id === 'regions') {
             const regionMatch = identifyRegion(regionsData, r, g, b);
             if (regionMatch) {
-              label = regionMatch.settlementName || regionMatch.regionName;
+              label = `${regionMatch.settlementName || '?'} (${regionMatch.regionName || '?'})`;
             }
           }
           if (!label) {
