@@ -74,17 +74,6 @@ export default function CampaignMap() {
       const raw = sessionStorage.getItem('m2tw_names_raw');
       if (raw) return parseSettlementNames(raw);
     } catch {}
-    // Fallback: try strings bin store for imperial_campaign_regions_and_settlement_names
-    try {
-      const store = getStringsBinStore();
-      for (const [fname, binData] of Object.entries(store)) {
-        if (fname.toLowerCase().includes('regions_and_settlement_names')) {
-          const namesMap = {};
-          for (const { key, value } of (binData.entries || [])) if (key) namesMap[key] = value;
-          if (Object.keys(namesMap).length > 0) return namesMap;
-        }
-      }
-    } catch {}
     return null;
   });
   const [factionColors, setFactionColorsRaw] = useState(() => {
@@ -185,18 +174,7 @@ export default function CampaignMap() {
       }
     } catch {}
 
-    // Auto-restore descr_regions.txt from localStorage
-    try {
-      if (!sessionStorage.getItem('m2tw_regions_raw')) {
-        const regRaw = localStorage.getItem('m2tw_campaign_regions');
-        if (regRaw) {
-          sessionStorage.setItem('m2tw_regions_raw', regRaw);
-          setRegionsDataRaw(parseDescrRegions(regRaw));
-        }
-      }
-    } catch {}
-
-    // Auto-restore descr_sm_factions.txt from localStorage
+    // Auto-restore factions from localStorage if not in sessionStorage
     try {
       if (!sessionStorage.getItem('m2tw_factions_raw')) {
         const facRaw = localStorage.getItem('m2tw_factions_file');
@@ -207,20 +185,14 @@ export default function CampaignMap() {
       }
     } catch {}
 
-    // Auto-restore settlement names from strings bin store
+    // Auto-load settlement names from strings bin store (imperial_campaign_regions_and_settlement_names.txt.strings.bin)
     try {
-      if (!settlementNames) {
-        const store = getStringsBinStore();
-        for (const [fname, binData] of Object.entries(store)) {
-          if (fname.toLowerCase().includes('regions_and_settlement_names')) {
-            const namesMap = {};
-            for (const { key, value } of (binData.entries || [])) if (key) namesMap[key] = value;
-            if (Object.keys(namesMap).length > 0) {
-              setSettlementNamesRaw(namesMap);
-              break;
-            }
-          }
-        }
+      const store = getStringsBinStore();
+      const binKey = Object.keys(store).find(k => k.toLowerCase().includes('regions_and_settlement_names'));
+      if (binKey && store[binKey]?.entries?.length) {
+        const namesMap = {};
+        for (const { key, value } of store[binKey].entries) if (key) namesMap[key] = value;
+        setSettlementNamesRaw(prev => prev && Object.keys(prev).length > 0 ? prev : namesMap);
       }
     } catch {}
 
