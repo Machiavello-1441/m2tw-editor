@@ -744,6 +744,8 @@ export default function CampaignMap() {
                   onSettlementNamesChange={(nameUpdates) => {
                     setSettlementNamesRaw(prev => ({ ...(prev || {}), ...nameUpdates }));
                   }}
+                  onRecolorRegion={handleRecolorRegion}
+                  onAddNewRegion={handleAddNewRegion}
                   />
               </div>
             )}
