@@ -4,6 +4,7 @@ import { getItemIcon, getItemLabel } from './StratOverlay';
 import { serializeDescrStrat, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { downloadBlob } from './tgaExporter';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
+import { parseStringsBin } from '../strings/stringsBinCodec';
 import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';
 
