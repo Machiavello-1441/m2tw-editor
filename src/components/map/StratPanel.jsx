@@ -798,6 +798,8 @@ export default function StratPanel({
                         }
                       }}
                       onRecolorRegion={onRecolorRegion}
+                      overlayItems={overlayItems}
+                      regionsLayer={regionsLayer}
                     />
                   ))}
                 </div>
