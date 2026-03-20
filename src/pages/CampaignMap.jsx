@@ -430,6 +430,72 @@ export default function CampaignMap() {
     }
   }, []);
 
+  // ── Recolor region TGA pixels (old color → new color) ──────────────────────
+  const handleRecolorRegion = useCallback((oldColor, newColor) => {
+    setLayers(prev => {
+      const regLayer = prev['regions'];
+      if (!regLayer?.data) return prev;
+      const newData = new Uint8ClampedArray(regLayer.data);
+      const { oldR, oldG, oldB } = oldColor;
+      const { newR, newG, newB } = newColor;
+      let count = 0;
+      for (let i = 0; i < newData.length; i += 4) {
+        if (newData[i] === oldR && newData[i + 1] === oldG && newData[i + 2] === oldB) {
+          newData[i] = newR;
+          newData[i + 1] = newG;
+          newData[i + 2] = newB;
+          count++;
+        }
+      }
+      if (count === 0) return prev;
+      // Rebuild bitmap
+      createImageBitmap(new ImageData(newData, regLayer.width, regLayer.height)).then(bitmap => {
+        setLayers(p => ({ ...p, regions: { ...p['regions'], bitmap, data: newData } }));
+      });
+      return { ...prev, regions: { ...regLayer, data: newData } };
+    });
+    setDirtyLayers(prev => new Set([...prev, 'regions']));
+  }, []);
+
+  // ── Add brand-new region ──────────────────────────────────────────────────
+  const handleAddNewRegion = useCallback((draft) => {
+    // 1. Add to regionsData
+    const newRegion = {
+      regionName: draft.regionName,
+      settlementName: draft.settlementName,
+      factionCreator: draft.faction || '',
+      r: draft.r, g: draft.g, b: draft.b,
+      resources: [],
+      religions: {},
+    };
+    setRegionsDataRaw(prev => [...(prev || []), newRegion]);
+
+    // 2. Add settlement overlay item
+    const newItem = {
+      id: Date.now(),
+      category: 'settlement',
+      region: draft.regionName,
+      faction: draft.faction || 'slave',
+      factionCreator: draft.faction || 'slave',
+      level: draft.level || 'village',
+      population: draft.population || 400,
+      yearFounded: draft.yearFounded || 0,
+      buildings: [],
+      x: null, y: null,
+    };
+    setOverlayItems(prev => [...prev, newItem]);
+    setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
+    setOverlayDirty(true);
+
+    // 3. Update settlement names
+    if (draft.regionDisplayName || draft.settlementDisplayName) {
+      const nameUpdates = {};
+      if (draft.regionDisplayName) nameUpdates[draft.regionName] = draft.regionDisplayName;
+      if (draft.settlementDisplayName) nameUpdates[draft.settlementName] = draft.settlementDisplayName;
+      setSettlementNamesRaw(prev => ({ ...(prev || {}), ...nameUpdates }));
+    }
+  }, []);
+
   const handleToggleCategory = (catId) => {
     setVisibleCategories(prev => {
       const next = new Set(prev);
