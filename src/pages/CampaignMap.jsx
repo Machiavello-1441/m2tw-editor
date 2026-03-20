@@ -199,7 +199,7 @@ export default function CampaignMap() {
     // Auto-restore descr_sm_factions.txt from localStorage
     try {
       if (!sessionStorage.getItem('m2tw_factions_raw')) {
-        const facRaw = localStorage.getItem('m2tw_factions_file');
+        const facRaw = localStorage.getItem('m2tw_campaign_factions') || localStorage.getItem('m2tw_factions_file');
         if (facRaw) {
           sessionStorage.setItem('m2tw_factions_raw', facRaw);
           setFactionColorsRaw(parseDescrSmFactions(facRaw));
