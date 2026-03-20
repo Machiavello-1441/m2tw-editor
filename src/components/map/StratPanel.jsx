@@ -4,6 +4,7 @@ import { getItemIcon, getItemLabel } from './StratOverlay';
 import { serializeDescrStrat, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { downloadBlob } from './tgaExporter';
 import { extractBuildingLevelsFromEDB } from './additionalParsers';
+import RegionColorDetector from './RegionColorDetector';
 
 const CATEGORIES = [
   { id: 'settlement',    label: 'Settlements',   emoji: '🏛️' },
@@ -432,7 +433,7 @@ export default function StratPanel({
   overlayItems, selectedItem, onSelectItem,
   visibleCategories, onToggleCategory,
   onDeleteItem, onAddItem, onSettlementChange,
-  cultureList, edbData,
+  cultureList, edbData, regionsLayer,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -654,6 +655,11 @@ export default function StratPanel({
 
         {/* ── Settlements tab ── */}
         {tab === 'settlements' && <>
+          <RegionColorDetector
+            regionsLayer={regionsLayer}
+            regionsData={regionsData}
+            onRegionsDataUpdate={onRegionsDataUpdate}
+          />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search region or faction…"
             className="w-full h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
           {settlements.length === 0

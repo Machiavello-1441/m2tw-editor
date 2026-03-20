@@ -673,6 +673,7 @@ export default function CampaignMap() {
                   onToggleCategory={handleToggleCategory}
                   onDeleteItem={handleDeleteItem}
                   onAddItem={handleAddItem}
+                  regionsLayer={layers['regions']}
                   onSettlementNamesChange={(nameUpdates) => {
                     setSettlementNamesRaw(prev => ({ ...(prev || {}), ...nameUpdates }));
                   }}
