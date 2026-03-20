@@ -420,6 +420,19 @@ export default function CampaignMap() {
     }
   }, [mapH]);
 
+  // ── Region paint wizard step handlers ─────────────────────────────────────
+  const handleWizardFinishPaint = useCallback(() => {
+    if (!regionWizard) return;
+    setPaintState(prev => ({ ...prev, active: false }));
+    setRegionWizard(prev => ({ ...prev, step: 'city' }));
+  }, [regionWizard]);
+
+  const handleWizardSkipPort = useCallback(() => {
+    if (!regionWizard) return;
+    finalizeNewRegion(regionWizard.draft, regionWizard.cityX, regionWizard.cityY, null, null);
+    setRegionWizard(null);
+  }, [regionWizard, finalizeNewRegion]);
+
   // ── Canvas click — place strat item OR select region ──────────────────────
   const handleCanvasClick = useCallback((rx, ry) => {
     // Region wizard: place city or port pixel
