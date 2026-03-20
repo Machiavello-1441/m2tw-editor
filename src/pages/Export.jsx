@@ -335,7 +335,7 @@ export default function Export() {
           <Button
             className="w-full h-12 text-base gap-2"
             onClick={handleExportZip}
-            disabled={building || (!hasEDB && !hasTraits && !hasAnc)}
+            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns)}
           >
             {building ? (
               <>
@@ -357,10 +357,10 @@ export default function Export() {
             </div>
           )}
 
-          {!hasEDB && (
+          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && (
             <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
               <AlertCircle className="w-3.5 h-3.5" />
-              Load the EDB file on the Home page first to enable export.
+              Load at least one moddable file to enable export.
             </div>
           )}
         </div>
