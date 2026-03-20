@@ -629,6 +629,8 @@ export default function Home() {
       localStorage.removeItem('m2tw_rebel_factions_file');
       localStorage.removeItem('m2tw_religions_file');
       localStorage.removeItem('m2tw_campaign_strat');
+      localStorage.removeItem('m2tw_campaign_regions');
+      localStorage.removeItem('m2tw_campaign_factions');
       localStorage.removeItem('m2tw_campaign_script');
       localStorage.removeItem('m2tw_campaign_mercenaries');
       localStorage.removeItem('m2tw_campaign_win_conditions');
