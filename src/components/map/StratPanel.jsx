@@ -471,6 +471,18 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               <span className="text-slate-500">Faction</span><span className="text-slate-300 font-mono truncate">{item.faction}</span>
               <span className="text-slate-500">Population</span><span className="text-slate-300 font-mono">{item.population}</span>
               <span className="text-slate-500">Founded</span><span className="text-slate-300 font-mono">{item.yearFounded}</span>
+              {naturalResources.length > 0 && (
+                <>
+                  <span className="text-slate-500 col-span-2">Resources ({naturalResources.length})</span>
+                  <span className="text-slate-300 font-mono col-span-2 text-[9px] break-all">{naturalResources.join(', ')}</span>
+                </>
+              )}
+              {regionHiddenResources.length > 0 && (
+                <>
+                  <span className="text-purple-400 col-span-2">Hidden Res. ({regionHiddenResources.length})</span>
+                  <span className="text-purple-300 font-mono col-span-2 text-[9px] break-all">{regionHiddenResources.join(', ')}</span>
+                </>
+              )}
               {item.buildings?.length > 0 && (
                 <>
                   <span className="text-slate-500 col-span-2">Buildings ({item.buildings.length})</span>
