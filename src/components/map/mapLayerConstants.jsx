@@ -23,7 +23,7 @@ export const LAYER_DEFS = [
     id: 'ground',
     label: 'Ground Types',
     filename: 'map_ground_types.tga',
-    defaultOpacity: 0.75,
+    defaultOpacity: 1.0,
     defaultVisible: true,
     blendMode: 'source-over',
     description: 'Terrain type per tile (2× region size +1).',
