@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, ArrowRight } from 'lucide-react';
 import { getItemIcon, getItemLabel } from './StratOverlay';
 import { serializeDescrStrat, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { downloadBlob } from './tgaExporter';
@@ -589,24 +589,35 @@ export default function StratPanel({
 
         {/* ── Overview tab ── */}
         {tab === 'overview' && <>
-          {/* File loaders */}
+          {/* File status / loaders — show missing files as manual loaders, loaded files as status indicators */}
           <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Load Files</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Files</p>
             {[
               { label: 'descr_strat.txt',                    type: 'strat',   loaded: !!stratData },
               { label: 'descr_regions.txt',                  type: 'regions', loaded: !!regionsData },
-              { label: '*_regions_and_settlement_names.txt / .bin', type: 'names', loaded: !!settlementNames, accept: '.txt,.bin,.strings.bin' },
+              { label: 'imperial_campaign_regions_and_settlement_names.txt.strings.bin', type: 'names', loaded: !!settlementNames, accept: '.txt,.bin,.strings.bin' },
               { label: 'descr_sm_factions.txt',              type: 'factions',loaded: !!factionColors },
-            ].map(({ label, type, loaded, accept }) => (
-              <label key={type} className="flex items-center gap-2 cursor-pointer group">
-                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
-                <span className="text-[10px] font-mono flex-1 truncate text-slate-400 group-hover:text-slate-200 transition-colors">{label}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 flex items-center gap-1">
-                  <Upload className="w-2.5 h-2.5" />{loaded ? 'Replace' : 'Load'}
-                </span>
-                <input type="file" accept={accept || '.txt'} className="hidden" onChange={e => loadFile(e, type)} />
-              </label>
-            ))}
+            ].map(({ label, type, loaded, accept }) => 
+              loaded ? (
+                <div key={type} className="flex items-center gap-2 px-1 py-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-green-400" />
+                  <span className="text-[10px] font-mono flex-1 truncate text-green-400/80">{label}</span>
+                  <label className="cursor-pointer text-[9px] px-1 py-0.5 rounded text-slate-600 hover:text-slate-400 transition-colors">
+                    replace
+                    <input type="file" accept={accept || '.txt'} className="hidden" onChange={e => loadFile(e, type)} />
+                  </label>
+                </div>
+              ) : (
+                <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500/60" />
+                  <span className="text-[10px] font-mono flex-1 truncate text-slate-400 group-hover:text-slate-200 transition-colors">{label}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 flex items-center gap-1">
+                    <Upload className="w-2.5 h-2.5" /> Load
+                  </span>
+                  <input type="file" accept={accept || '.txt'} className="hidden" onChange={e => loadFile(e, type)} />
+                </label>
+              )
+            )}
             {stratData && (
               <button onClick={handleExportStrat}
                 className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-400 transition-colors font-semibold">
