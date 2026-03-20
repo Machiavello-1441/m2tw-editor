@@ -844,6 +844,9 @@ export default function CampaignMap() {
                   }}
                   onRecolorRegion={handleRecolorRegion}
                   onAddNewRegion={handleAddNewRegion}
+                  layers={layers}
+                  dirtyLayers={dirtyLayers}
+                  editedSettlements={editedSettlements}
                   />
               </div>
             )}
