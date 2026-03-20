@@ -598,7 +598,7 @@ export default function CampaignMap() {
         </div>
 
         {/* Right panel */}
-        <div className="w-64 xl:w-72 border-l border-slate-800 flex flex-col shrink-0">
+        <div className="w-80 xl:w-[22rem] border-l border-slate-800 flex flex-col shrink-0">
           {/* Tab bar */}
           <div className="flex border-b border-slate-800 shrink-0">
             {tabs.map(({ id, label, Icon }) => (
