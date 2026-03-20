@@ -7,7 +7,6 @@ import MapPaintToolbar from '../components/map/MapPaintToolbar';
 import MapValidationPanel from '../components/map/MapValidationPanel';
 import StratOverlay from '../components/map/StratOverlay';
 import StratPanel from '../components/map/StratPanel';
-import RegionEditorPanel from '../components/map/RegionEditorPanel';
 import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
