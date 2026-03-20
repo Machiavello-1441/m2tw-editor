@@ -161,7 +161,7 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
 }
 
 // ─── Settlement editor (inline) ───────────────────────────────────────────────
-function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion }) {
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
@@ -169,15 +169,29 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
 
   const buildingLevels = useMemo(() => extractBuildingLevelsFromEDB(edbData), [edbData]);
   const hiddenResourceMasterList = useMemo(() => extractHiddenResourcesFromEDB(edbData), [edbData]);
-  const hiddenResourceSet = useMemo(() => new Set(hiddenResourceMasterList), [hiddenResourceMasterList]);
 
-  // Split regionInfo.resources into natural (non-hidden, read-only) vs hidden (editable)
-  const { naturalResources, regionHiddenResources } = useMemo(() => {
-    const all = regionInfo?.resources || [];
-    const natural = all.filter(r => !hiddenResourceSet.has(r));
-    const hidden = all.filter(r => hiddenResourceSet.has(r));
-    return { naturalResources: natural, regionHiddenResources: hidden };
-  }, [regionInfo, hiddenResourceSet]);
+  // Compute which resource overlay items sit on this region's territory via pixel lookup
+  const regionResources = useMemo(() => {
+    if (!regionInfo || !regionsLayer?.data || !overlayItems?.length) return [];
+    const { r: regR, g: regG, b: regB } = regionInfo;
+    const { data, width, height } = regionsLayer;
+    const resources = overlayItems.filter(oi => {
+      if (oi.category !== 'resource' || oi.x == null || oi.y == null) return false;
+      // oi.y is in strat space (y=0 bottom), pixel space y=0 top → flip
+      const px = Math.round(oi.x);
+      const py = height - 1 - Math.round(oi.y);
+      if (px < 0 || px >= width || py < 0 || py >= height) return false;
+      const idx = (py * width + px) * 4;
+      return data[idx] === regR && data[idx + 1] === regG && data[idx + 2] === regB;
+    });
+    return resources;
+  }, [regionInfo, regionsLayer, overlayItems]);
+
+  // Hidden resources from descr_regions resources list (editable)
+  const regionHiddenResources = useMemo(() => {
+    const hiddenSet = new Set(hiddenResourceMasterList);
+    return (regionInfo?.resources || []).filter(r => hiddenSet.has(r));
+  }, [regionInfo, hiddenResourceMasterList]);
 
   // Group building levels by tree name for two-step dropdown
   const buildingTrees = useMemo(() => {
