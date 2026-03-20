@@ -262,7 +262,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
         <span className="text-sm shrink-0">{iconChar}</span>
         <FactionDot factionColors={factionColors} factionName={item.faction} />
         <span className={`text-[11px] font-mono flex-1 truncate ${isSelected ? 'text-amber-300' : 'text-slate-300'}`}>
-          {item.region}
+          {settlementNames?.[item.region] || item.region}
         </span>
         <span className="text-[9px] text-slate-600 font-mono shrink-0">{posText}</span>
         <button onClick={e => { e.stopPropagation(); open(); }} title="Edit" className="p-0.5 text-slate-600 hover:text-slate-300 transition-colors">

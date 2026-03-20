@@ -693,6 +693,12 @@ export default function CampaignMap() {
       {activeTab === '3d' && (
         <div className="absolute inset-0 z-10" style={{ top: '6.5rem' }}>
           <Map3DPreview layers={layers} />
+          <button
+            onClick={() => setActiveTab('layers')}
+            className="absolute top-3 right-3 z-20 flex items-center gap-1 px-3 py-1.5 rounded bg-slate-800/90 border border-slate-600/50 text-slate-200 text-xs font-semibold hover:bg-slate-700 transition-colors"
+          >
+            ✕ Close 3D
+          </button>
         </div>
       )}
     </div>
