@@ -159,18 +159,36 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
 }
 
 // ─── Settlement editor (inline) ───────────────────────────────────────────────
-function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData }) {
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
-  const [buildingSearch, setBuildingSearch] = useState('');
+  const [selectedTree, setSelectedTree] = useState('');
 
   const buildingLevels = useMemo(() => extractBuildingLevelsFromEDB(edbData), [edbData]);
 
-  const filteredBuildingLevels = useMemo(() => {
-    if (!buildingSearch) return buildingLevels.slice(0, 40);
-    return buildingLevels.filter(b => b.name.toLowerCase().includes(buildingSearch.toLowerCase())).slice(0, 40);
-  }, [buildingLevels, buildingSearch]);
+  // Group building levels by tree name for two-step dropdown
+  const buildingTrees = useMemo(() => {
+    const map = {};
+    for (const bl of buildingLevels) {
+      const tree = bl.building || '(unknown)';
+      if (!map[tree]) map[tree] = [];
+      map[tree].push(bl.name);
+    }
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [buildingLevels]);
+
+  const treeLevels = useMemo(() => {
+    if (!selectedTree) return [];
+    const entry = buildingTrees.find(([t]) => t === selectedTree);
+    return entry ? entry[1] : [];
+  }, [buildingTrees, selectedTree]);
+
+  // Find matching region from regionsData
+  const regionInfo = useMemo(() => {
+    if (!regionsData?.length || !item.region) return null;
+    return regionsData.find(r => r.regionName === item.region);
+  }, [regionsData, item.region]);
 
   const open = () => {
     setDraft({
@@ -181,6 +199,12 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       factionCreator: item.factionCreator,
       faction: item.faction,
       buildings: [...(item.buildings || [])],
+      region: item.region || '',
+      regionDisplayName: regionInfo?.regionName || item.region || '',
+      settlementName: regionInfo?.settlementName || '',
+      regionR: regionInfo?.r ?? 0,
+      regionG: regionInfo?.g ?? 0,
+      regionB: regionInfo?.b ?? 0,
     });
     setEditing(true);
     setExpanded(true);
@@ -194,7 +218,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   const addBuilding = (bldName) => {
     if (!bldName || draft.buildings.includes(bldName)) return;
     setDraft(d => ({ ...d, buildings: [...d.buildings, bldName] }));
-    setBuildingSearch('');
+    setSelectedTree('');
   };
 
   const removeBuilding = (bldName) => {
