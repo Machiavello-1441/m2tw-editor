@@ -354,6 +354,23 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
             </>
           ) : (
             <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+              <span className="text-slate-500">Region</span><span className="text-slate-300 font-mono truncate">{item.region}</span>
+              {settlementNames?.[item.region] && (
+                <><span className="text-slate-500">Region Name</span><span className="text-slate-300 font-mono truncate">{settlementNames[item.region]}</span></>
+              )}
+              {regionInfo && (
+                <>
+                  <span className="text-slate-500">Settlement</span><span className="text-slate-300 font-mono truncate">{regionInfo.settlementName}</span>
+                  {settlementNames?.[regionInfo.settlementName] && (
+                    <><span className="text-slate-500">Settl. Name</span><span className="text-slate-300 font-mono truncate">{settlementNames[regionInfo.settlementName]}</span></>
+                  )}
+                  <span className="text-slate-500">RGB</span>
+                  <span className="text-slate-300 font-mono flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-sm border border-white/20 inline-block" style={{ background: `rgb(${regionInfo.r},${regionInfo.g},${regionInfo.b})` }} />
+                    {regionInfo.r}, {regionInfo.g}, {regionInfo.b}
+                  </span>
+                </>
+              )}
               <span className="text-slate-500">Level</span><span className="text-slate-300 font-mono">{item.level}</span>
               <span className="text-slate-500">Faction</span><span className="text-slate-300 font-mono truncate">{item.faction}</span>
               <span className="text-slate-500">Population</span><span className="text-slate-300 font-mono">{item.population}</span>
