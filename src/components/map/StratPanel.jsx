@@ -669,8 +669,24 @@ export default function StratPanel({
             regionsData={regionsData}
             onRegionsDataUpdate={onRegionsDataUpdate}
           />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search region or faction…"
-            className="w-full h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
+          <div className="flex gap-1.5">
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search region or faction…"
+              className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
+            <button onClick={() => setShowNewRegion(v => !v)}
+              className={`flex items-center gap-0.5 px-2 h-6 rounded text-[10px] border transition-colors shrink-0 ${showNewRegion ? 'bg-green-600/20 border-green-500/40 text-green-400' : 'border-slate-600/40 text-slate-400 hover:text-slate-200'}`}>
+              <Plus className="w-3 h-3" /> Region
+            </button>
+          </div>
+          {showNewRegion && (
+            <NewRegionForm
+              factionColors={factionColors}
+              onCancel={() => setShowNewRegion(false)}
+              onAdd={(draft) => {
+                if (onAddNewRegion) onAddNewRegion(draft);
+                setShowNewRegion(false);
+              }}
+            />
+          )}
           {settlements.length === 0
             ? <div className="text-[10px] text-slate-600 text-center py-4">Load descr_strat.txt to see settlements</div>
             : byFaction.map(([factionName, setts]) => (
