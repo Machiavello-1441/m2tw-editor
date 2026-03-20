@@ -659,7 +659,7 @@ export default function CampaignMap() {
                   }}
                   onNamesLoad={(text) => { try { sessionStorage.setItem('m2tw_names_raw', text); } catch {} setSettlementNamesRaw(parseSettlementNames(text)); }}
                   onFactionsLoad={(text) => { try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {} setFactionColorsRaw(parseDescrSmFactions(text)); }}
-                  onRegionsDataUpdate={(updatedRegions) => { setRegionsDataRaw(updatedRegions); }}
+                  onRegionsDataUpdate={setRegionsDataRaw}
                   onSettlementChange={(id, edits) => {
                     setEditedSettlements(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...edits } }));
                     setOverlayItems(prev => prev.map(i => i.id === id ? { ...i, ...edits } : i));
@@ -673,7 +673,10 @@ export default function CampaignMap() {
                   onToggleCategory={handleToggleCategory}
                   onDeleteItem={handleDeleteItem}
                   onAddItem={handleAddItem}
-                />
+                  onSettlementNamesChange={(nameUpdates) => {
+                    setSettlementNamesRaw(prev => ({ ...(prev || {}), ...nameUpdates }));
+                  }}
+                  />
               </div>
             )}
 
