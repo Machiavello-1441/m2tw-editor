@@ -262,15 +262,13 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       if ((oldR !== newR || oldG !== newG || oldB !== newB) && onRecolorRegion) {
         onRecolorRegion({ oldR, oldG, oldB }, { newR, newG, newB });
       }
-      // Merge natural resources (unchanged) + edited hidden resources
-      const mergedResources = [...naturalResources, ...(draft.hiddenResources || [])];
       onRegionsDataChange(regionInfo.regionName, {
         settlementName: draft.settlementName,
         factionCreator: draft.factionCreator,
         r: draft.regionR,
         g: draft.regionG,
         b: draft.regionB,
-        resources: mergedResources,
+        resources: draft.hiddenResources || [],
       });
     }
     setEditing(false);
