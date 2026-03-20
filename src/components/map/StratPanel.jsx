@@ -537,11 +537,22 @@ export default function StratPanel({
 
   const loadFile = async (e, type) => {
     const file = e.target.files?.[0]; if (!file) return;
-    const text = await file.text();
-    if (type === 'strat')    onStratLoad(text, file.name);
-    else if (type === 'regions')  onRegionsLoad(text);
-    else if (type === 'names')    onNamesLoad(text);
-    else if (type === 'factions') onFactionsLoad(text);
+    if (type === 'names' && (file.name.toLowerCase().endsWith('.bin') || file.name.toLowerCase().endsWith('.strings.bin'))) {
+      // Parse binary .strings.bin for settlement names
+      const buf = await file.arrayBuffer();
+      const decoded = parseStringsBin(buf);
+      if (decoded?.entries?.length) {
+        const namesMap = {};
+        for (const { key, value } of decoded.entries) if (key) namesMap[key] = value;
+        onNamesLoad(namesMap);
+      }
+    } else {
+      const text = await file.text();
+      if (type === 'strat')    onStratLoad(text, file.name);
+      else if (type === 'regions')  onRegionsLoad(text);
+      else if (type === 'names')    onNamesLoad(text);
+      else if (type === 'factions') onFactionsLoad(text);
+    }
     e.target.value = '';
   };
 
