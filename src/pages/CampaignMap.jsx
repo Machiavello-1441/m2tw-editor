@@ -74,6 +74,17 @@ export default function CampaignMap() {
       const raw = sessionStorage.getItem('m2tw_names_raw');
       if (raw) return parseSettlementNames(raw);
     } catch {}
+    // Fallback: try strings bin store for imperial_campaign_regions_and_settlement_names
+    try {
+      const store = getStringsBinStore();
+      for (const [fname, binData] of Object.entries(store)) {
+        if (fname.toLowerCase().includes('regions_and_settlement_names')) {
+          const namesMap = {};
+          for (const { key, value } of (binData.entries || [])) if (key) namesMap[key] = value;
+          if (Object.keys(namesMap).length > 0) return namesMap;
+        }
+      }
+    } catch {}
     return null;
   });
   const [factionColors, setFactionColorsRaw] = useState(() => {
@@ -171,6 +182,45 @@ export default function CampaignMap() {
         const parsed = parseDescrStrat(stratRaw);
         setStratDataRaw(parsed);
         setOverlayItems(parsed.items || []);
+      }
+    } catch {}
+
+    // Auto-restore descr_regions.txt from localStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_regions_raw')) {
+        const regRaw = localStorage.getItem('m2tw_campaign_regions');
+        if (regRaw) {
+          sessionStorage.setItem('m2tw_regions_raw', regRaw);
+          setRegionsDataRaw(parseDescrRegions(regRaw));
+        }
+      }
+    } catch {}
+
+    // Auto-restore descr_sm_factions.txt from localStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_factions_raw')) {
+        const facRaw = localStorage.getItem('m2tw_factions_file');
+        if (facRaw) {
+          sessionStorage.setItem('m2tw_factions_raw', facRaw);
+          setFactionColorsRaw(parseDescrSmFactions(facRaw));
+        }
+      }
+    } catch {}
+
+    // Auto-restore settlement names from strings bin store
+    try {
+      if (!settlementNames) {
+        const store = getStringsBinStore();
+        for (const [fname, binData] of Object.entries(store)) {
+          if (fname.toLowerCase().includes('regions_and_settlement_names')) {
+            const namesMap = {};
+            for (const { key, value } of (binData.entries || [])) if (key) namesMap[key] = value;
+            if (Object.keys(namesMap).length > 0) {
+              setSettlementNamesRaw(namesMap);
+              break;
+            }
+          }
+        }
       }
     } catch {}
 
