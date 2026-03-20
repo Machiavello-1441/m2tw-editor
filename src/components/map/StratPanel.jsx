@@ -167,6 +167,12 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   const [draft, setDraft] = useState({});
   const [selectedTree, setSelectedTree] = useState('');
 
+  // Find matching region from regionsData — match by region internal name
+  const regionInfo = useMemo(() => {
+    if (!regionsData?.length || !item.region) return null;
+    return regionsData.find(r => r.regionName === item.region);
+  }, [regionsData, item.region]);
+
   const buildingLevels = useMemo(() => extractBuildingLevelsFromEDB(edbData), [edbData]);
   const hiddenResourceMasterList = useMemo(() => extractHiddenResourcesFromEDB(edbData), [edbData]);
 
@@ -177,7 +183,6 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     const { data, width, height } = regionsLayer;
     const resources = overlayItems.filter(oi => {
       if (oi.category !== 'resource' || oi.x == null || oi.y == null) return false;
-      // oi.y is in strat space (y=0 bottom), pixel space y=0 top → flip
       const px = Math.round(oi.x);
       const py = height - 1 - Math.round(oi.y);
       if (px < 0 || px >= width || py < 0 || py >= height) return false;
