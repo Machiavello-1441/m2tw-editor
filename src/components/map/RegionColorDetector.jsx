@@ -188,7 +188,7 @@ export default function RegionColorDetector({ regionsLayer, regionsData, onRegio
                   <div key={r.regionName} className="flex items-center gap-1.5 px-1 py-0.5">
                     <span className="w-3 h-3 rounded-sm border border-white/20 shrink-0" style={{ background: `rgb(${r.r},${r.g},${r.b})` }} />
                     <span className="text-[10px] text-slate-300 font-mono flex-1 truncate">{r.regionName}</span>
-                    <span className="text-[9px] text-red-500 font-mono">{r.r},{r.g},{r.b}</span>
+                    <span className="text-[9px] text-red-500 font-mono">{r.r}, {r.g}, {r.b}</span>
                   </div>
                 ))}
               </div>

@@ -568,11 +568,20 @@ export function parseDescrRegions(text) {
   const stripped = [];
   for (const raw of lines) {
     const t = raw.trim();
-    if (t) stripped.push(t);
+    // Skip empty lines and any residual comment-only lines (e.g. lines that were purely semicolons)
+    if (!t || /^[;\s]+$/.test(t)) continue;
+    stripped.push(t);
   }
 
   let i = 0;
   while (i + 8 < stripped.length) {
+    // The 5th line in a block must be RGB values (3 numbers). If not, skip this line
+    // to re-sync (handles stray comment remnants or section headers).
+    const rgbCandidate = stripped[i + 4];
+    if (!rgbCandidate || !/^\d+\s+\d+\s+\d+$/.test(rgbCandidate)) {
+      i++;
+      continue;
+    }
     const regionName     = stripped[i++];
     const settlementName = stripped[i++];
     const factionCreator = stripped[i++];
