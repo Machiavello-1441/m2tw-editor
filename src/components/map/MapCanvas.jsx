@@ -260,7 +260,7 @@ export default function MapCanvas({
 
   const handleMouseDown = useCallback((e) => {
     if (e.button !== 0) return;
-    if (paintState?.active && !onRegionClick) {
+    if (paintState?.active) {
       isPainting.current = true;
       didDrag.current = false;
       if (paintState.tool === 'bucket') doBucket(e.clientX, e.clientY);
@@ -271,7 +271,7 @@ export default function MapCanvas({
     dragging.current = true;
     didDrag.current = false;
     lastMouse.current = { x: e.clientX, y: e.clientY };
-  }, [paintState, onRegionClick, doPencil, doBucket, doPipette]);
+  }, [paintState, doPencil, doBucket, doPipette]);
 
   const handleMouseMove = useCallback((e) => {
     if (isPainting.current && paintState?.active && paintState.tool === 'pencil') doPencil(e.clientX, e.clientY);
