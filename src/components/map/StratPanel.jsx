@@ -159,7 +159,7 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
 }
 
 // ─── Settlement editor (inline) ───────────────────────────────────────────────
-function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames }) {
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
@@ -184,11 +184,17 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     return entry ? entry[1] : [];
   }, [buildingTrees, selectedTree]);
 
-  // Find matching region from regionsData
+  // Find matching region from regionsData — match by region internal name
   const regionInfo = useMemo(() => {
     if (!regionsData?.length || !item.region) return null;
     return regionsData.find(r => r.regionName === item.region);
   }, [regionsData, item.region]);
+
+  // Build faction list from factionColors (descr_sm_factions.txt)
+  const factionList = useMemo(() => {
+    if (!factionColors) return [];
+    return Object.keys(factionColors).sort();
+  }, [factionColors]);
 
   const open = () => {
     setDraft({
@@ -196,12 +202,13 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       population: item.population,
       yearFounded: item.yearFounded,
       planSet: item.planSet,
-      factionCreator: item.factionCreator,
+      factionCreator: item.factionCreator || regionInfo?.factionCreator || '',
       faction: item.faction,
       buildings: [...(item.buildings || [])],
       region: item.region || '',
-      regionDisplayName: regionInfo?.regionName || item.region || '',
+      regionDisplayName: settlementNames?.[item.region] || '',
       settlementName: regionInfo?.settlementName || '',
+      settlementDisplayName: settlementNames?.[regionInfo?.settlementName] || '',
       regionR: regionInfo?.r ?? 0,
       regionG: regionInfo?.g ?? 0,
       regionB: regionInfo?.b ?? 0,
@@ -211,7 +218,25 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   };
 
   const commit = () => {
+    // Save settlement/strat edits
     onChange(item.id, draft);
+    // Propagate display name edits back to settlementNames
+    if (onSettlementNamesChange) {
+      const nameUpdates = {};
+      if (draft.region && draft.regionDisplayName) nameUpdates[draft.region] = draft.regionDisplayName;
+      if (draft.settlementName && draft.settlementDisplayName) nameUpdates[draft.settlementName] = draft.settlementDisplayName;
+      if (Object.keys(nameUpdates).length > 0) onSettlementNamesChange(nameUpdates);
+    }
+    // Propagate RGB / region data changes back to regionsData
+    if (onRegionsDataChange && regionInfo) {
+      onRegionsDataChange(regionInfo.regionName, {
+        settlementName: draft.settlementName,
+        factionCreator: draft.factionCreator,
+        r: draft.regionR,
+        g: draft.regionG,
+        b: draft.regionB,
+      });
+    }
     setEditing(false);
   };
 
