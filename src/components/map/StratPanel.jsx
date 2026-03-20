@@ -636,12 +636,29 @@ export default function StratPanel({
                 <input type="file" accept={accept || '.txt'} className="hidden" onChange={e => loadFile(e, type)} />
               </label>
             ))}
-            {stratData && (
-              <button onClick={handleExportStrat}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-400 transition-colors font-semibold">
-                <Download className="w-3 h-3" /> Export descr_strat.txt
+            {/* Export loaded files */}
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider pt-1">Export Files</p>
+            {[
+              { label: 'descr_strat.txt', ready: !!stratData?.raw, onClick: handleExportStrat },
+              { label: 'descr_regions.txt', ready: !!regionsData?.length, onClick: handleExportRegions },
+              { label: 'settlement_names.txt', ready: !!settlementNames && Object.keys(settlementNames).length > 0, onClick: handleExportNames },
+              { label: 'descr_sm_factions.txt', ready: !!factionColors, onClick: handleExportFactions },
+            ].map(({ label, ready, onClick }) => (
+              <button key={label} onClick={onClick} disabled={!ready}
+                className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] border transition-colors font-mono ${
+                  ready ? 'bg-amber-600/20 hover:bg-amber-600/40 border-amber-500/30 text-amber-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'
+                }`}>
+                <Download className="w-2.5 h-2.5 shrink-0" /> {label}
               </button>
-            )}
+            ))}
+            {/* Export loaded TGA layers */}
+            {LAYER_DEFS.filter(d => layers?.[d.id]?.data).map(def => (
+              <button key={def.id} onClick={() => handleExportTGA(def.id)}
+                className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 text-blue-400 transition-colors font-mono">
+                <Download className="w-2.5 h-2.5 shrink-0" /> {def.filename || `${def.id}.tga`}
+                {dirtyLayers?.has(def.id) && <span className="ml-auto text-[8px] text-amber-400">modified</span>}
+              </button>
+            ))}
           </div>
 
           {/* Campaign settings editor */}
