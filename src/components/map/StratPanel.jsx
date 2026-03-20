@@ -160,7 +160,7 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
 }
 
 // ─── Settlement editor (inline) ───────────────────────────────────────────────
-function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange }) {
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
@@ -230,6 +230,12 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     }
     // Propagate RGB / region data changes back to regionsData
     if (onRegionsDataChange && regionInfo) {
+      // If the RGB changed, recolor the TGA layer first
+      const oldR = regionInfo.r, oldG = regionInfo.g, oldB = regionInfo.b;
+      const newR = draft.regionR, newG = draft.regionG, newB = draft.regionB;
+      if ((oldR !== newR || oldG !== newG || oldB !== newB) && onRecolorRegion) {
+        onRecolorRegion({ oldR, oldG, oldB }, { newR, newG, newB });
+      }
       onRegionsDataChange(regionInfo.regionName, {
         settlementName: draft.settlementName,
         factionCreator: draft.factionCreator,
