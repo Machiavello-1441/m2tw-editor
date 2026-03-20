@@ -440,6 +440,7 @@ export default function StratPanel({
   visibleCategories, onToggleCategory,
   onDeleteItem, onAddItem, onSettlementChange,
   cultureList, edbData, regionsLayer,
+  onRecolorRegion, onAddNewRegion,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -696,6 +697,7 @@ export default function StratPanel({
                           onRegionsDataUpdate(prev => prev ? prev.map(r => r.regionName === regionName ? { ...r, ...edits } : r) : prev);
                         }
                       }}
+                      onRecolorRegion={onRecolorRegion}
                     />
                   ))}
                 </div>
