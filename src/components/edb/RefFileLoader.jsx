@@ -22,18 +22,6 @@ function FileBtn({ label, hint, onLoad, loaded }) {
   };
   return null;
 
-
-
-
-
-
-
-
-
-
-
-
-
 }
 
 export default function RefFileLoader() {
