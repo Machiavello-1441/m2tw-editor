@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { MapPin, Anchor, Check, SkipForward, Paintbrush } from 'lucide-react';
 
 const STEPS = [
