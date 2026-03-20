@@ -87,6 +87,7 @@ export default function MapCanvas({
   showTooltip = true,
   onTransformChange,
   regionsData,
+  settlementNames,
 }) {
   const canvasRef    = useRef(null);
   const containerRef = useRef(null);
@@ -354,7 +355,7 @@ export default function MapCanvas({
         onMouseLeave={handleMouseLeave}
       />
       {probe && showTooltip && (
-        <MapPixelTooltip probe={probe} layers={layers} mapWidth={dispW} mapHeight={dispH} regionsData={regionsData} />
+        <MapPixelTooltip probe={probe} layers={layers} mapWidth={dispW} mapHeight={dispH} regionsData={regionsData} settlementNames={settlementNames} />
       )}
       <div className="absolute bottom-3 right-3 flex flex-col gap-1">
         <button onClick={() => setTransform(t => ({ ...t, scale: Math.min(MAX_SCALE, t.scale*1.5) }))}

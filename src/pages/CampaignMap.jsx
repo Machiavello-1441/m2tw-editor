@@ -583,6 +583,7 @@ export default function CampaignMap() {
             showTooltip={!paintState.active}
             onTransformChange={setTransform}
             regionsData={regionsData}
+            settlementNames={settlementNames}
           />
           {/* Strat SVG overlay */}
           <StratOverlay

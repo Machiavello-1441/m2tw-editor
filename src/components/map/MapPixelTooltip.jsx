@@ -30,7 +30,7 @@ function identifyRegion(regionsData, r, g, b) {
   return bestDist <= 6 ? best : null;
 }
 
-export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, regionsData }) {
+export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, regionsData, settlementNames }) {
   if (!probe) return null;
   const { x, y, pixelData } = probe;
 
@@ -52,7 +52,9 @@ export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, re
           if (def.id === 'regions') {
             const regionMatch = identifyRegion(regionsData, r, g, b);
             if (regionMatch) {
-              label = `${regionMatch.settlementName || '?'} (${regionMatch.regionName || '?'})`;
+              const displaySettlement = settlementNames?.[regionMatch.settlementName] || regionMatch.settlementName || '?';
+              const displayRegion = settlementNames?.[regionMatch.regionName] || regionMatch.regionName || '?';
+              label = `${displaySettlement} (${displayRegion})`;
             }
           }
           if (!label) {
