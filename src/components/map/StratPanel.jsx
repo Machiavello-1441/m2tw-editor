@@ -311,6 +311,78 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   );
 }
 
+// ─── RegionsEditor ────────────────────────────────────────────────────────────
+function RegionsEditor({ regionsData, onSave }) {
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [draft, setDraft] = useState({});
+
+  const filtered = useMemo(() =>
+    (regionsData || []).filter(r => r.regionName?.toLowerCase().includes(search.toLowerCase())),
+  [regionsData, search]);
+
+  const openEdit = (reg) => { setSelected(reg.regionName); setDraft({ ...reg }); };
+  const commit = () => {
+    onSave(regionsData.map(r => r.regionName === draft.regionName ? draft : r));
+    setSelected(null);
+  };
+
+  if (!regionsData?.length) return (
+    <div className="text-[10px] text-slate-600 text-center py-4">Load descr_regions.txt first</div>
+  );
+
+  return (
+    <div className="space-y-1.5">
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search regions…"
+        className="w-full h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
+      <div className="max-h-56 overflow-y-auto space-y-0.5">
+        {filtered.map(reg => (
+          <div key={reg.regionName} className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors ${selected === reg.regionName ? 'bg-amber-500/20 text-amber-300' : 'hover:bg-slate-800/40 text-slate-400'}`}
+            onClick={() => openEdit(reg)}>
+            <span className="w-3 h-3 rounded-sm border border-white/10 shrink-0" style={{ background: `rgb(${reg.r},${reg.g},${reg.b})` }} />
+            <span className="text-[10px] font-mono flex-1 truncate">{reg.regionName}</span>
+            <span className="text-[9px] text-slate-600">{reg.settlementName}</span>
+          </div>
+        ))}
+      </div>
+      {selected && draft.regionName && (
+        <div className="border-t border-slate-700/40 pt-2 space-y-1.5">
+          <p className="text-[10px] font-semibold text-amber-400">{draft.regionName}</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div>
+              <span className="text-[9px] text-slate-500">Settlement Name</span>
+              <input value={draft.settlementName||''} onChange={e => setDraft(d=>({...d, settlementName: e.target.value}))}
+                className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono w-full" />
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Faction Creator</span>
+              <input value={draft.factionCreator||''} onChange={e => setDraft(d=>({...d, factionCreator: e.target.value}))}
+                className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono w-full" />
+            </div>
+          </div>
+          <div>
+            <span className="text-[9px] text-slate-500">Resources (comma-separated)</span>
+            <input value={(draft.resources||[]).join(', ')} onChange={e => setDraft(d=>({...d, resources: e.target.value.split(',').map(s=>s.trim()).filter(Boolean)}))}
+              className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono w-full" />
+          </div>
+          <div className="flex gap-1.5 justify-end">
+            <button onClick={() => setSelected(null)} className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-slate-200 border border-slate-700/40">
+              <X className="w-2.5 h-2.5" /> Cancel
+            </button>
+            <button onClick={commit} className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] bg-green-700/80 hover:bg-green-700 border border-green-600/40 text-green-200 font-semibold">
+              <Check className="w-2.5 h-2.5" /> Save
+            </button>
+          </div>
+        </div>
+      )}
+      <button onClick={() => { const text = serializeDescrRegions(regionsData); downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_regions.txt'); }}
+        className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-400 transition-colors font-semibold">
+        <Download className="w-3 h-3" /> Export descr_regions.txt
+      </button>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function StratPanel({
   stratData, regionsData, settlementNames, factionColors,
@@ -573,17 +645,7 @@ export default function StratPanel({
 
         {/* ── Regions tab ── */}
         {tab === 'regions' && (
-          regionsData?.length
-            ? <div className="space-y-1">
-                {regionsData.map(reg => (
-                  <div key={reg.regionName} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-800/40 text-slate-400">
-                    <span className="w-3 h-3 rounded-sm border border-white/10 shrink-0" style={{ background: `rgb(${reg.r},${reg.g},${reg.b})` }} />
-                    <span className="text-[10px] font-mono flex-1 truncate">{reg.regionName}</span>
-                    <span className="text-[9px] text-slate-600">{reg.settlementName}</span>
-                  </div>
-                ))}
-              </div>
-            : <div className="text-[10px] text-slate-600 text-center py-4">Load descr_regions.txt first</div>
+          <RegionsEditor regionsData={regionsData} onSave={onRegionsDataUpdate} />
         )}
       </div>
     </div>
