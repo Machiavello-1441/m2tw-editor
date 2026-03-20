@@ -552,6 +552,7 @@ export default function Home() {
     // Campaign-specific text files stored in localStorage for campaign map editor
     const CAMPAIGN_STORE = {
       'descr_strat.txt': 'm2tw_campaign_strat',
+      'descr_regions.txt': 'm2tw_campaign_regions',
       'campaign_script.txt': 'm2tw_campaign_script',
       'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
       'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
