@@ -694,7 +694,32 @@ export default function CampaignMap() {
             <button onClick={() => setPendingPlace(null)} className="ml-1 text-amber-600 hover:text-amber-400">✕</button>
           </span>
         )}
+
+        {/* Region wizard step indicator in toolbar */}
+        {regionWizard?.step === 'city' && (
+          <span className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900/80 border border-slate-500/40 text-slate-200 text-[10px] font-semibold animate-pulse">
+            ⬛ Click map to place <b>settlement</b> (black pixel)
+          </span>
+        )}
+        {regionWizard?.step === 'port' && (
+          <span className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 border border-white/30 text-white text-[10px] font-semibold animate-pulse">
+            ⬜ Click map to place <b>port</b> (white pixel) or
+            <button onClick={handleWizardSkipPort} className="ml-1 underline text-slate-400 hover:text-white">skip</button>
+          </span>
+        )}
       </div>
+
+      {/* Region paint wizard panel */}
+      {regionWizard && (
+        <div className="px-3 py-1.5 bg-slate-900/90 border-b border-amber-500/30">
+          <NewRegionPaintWizard
+            regionDraft={regionWizard.draft}
+            currentStep={regionWizard.step}
+            onFinish={handleWizardFinishPaint}
+            onSkipPort={handleWizardSkipPort}
+          />
+        </div>
+      )}
 
       {/* Paint toolbar */}
       <MapPaintToolbar
