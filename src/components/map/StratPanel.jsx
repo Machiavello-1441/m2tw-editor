@@ -252,6 +252,47 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
         <div className="border-t border-slate-700/40 px-2 py-2 space-y-1.5">
           {editing ? (
             <>
+              {/* Settlement & Region names */}
+              <div>
+                <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Settlement Identity</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <span className="text-[9px] text-slate-500">Region Internal</span>
+                    <input value={draft.region} onChange={e => setDraft(d => ({...d, region: e.target.value}))}
+                      className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500">Region Display</span>
+                    <input value={settlementNames?.[draft.region] || ''} readOnly
+                      className="h-6 px-1.5 text-[11px] bg-slate-800/50 border border-slate-700/30 rounded text-slate-400 w-full font-mono cursor-default" title="From names file (read-only)" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500">Settlement Internal</span>
+                    <input value={draft.settlementName} onChange={e => setDraft(d => ({...d, settlementName: e.target.value}))}
+                      className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500">Settlement Display</span>
+                    <input value={settlementNames?.[draft.settlementName] || ''} readOnly
+                      className="h-6 px-1.5 text-[11px] bg-slate-800/50 border border-slate-700/30 rounded text-slate-400 w-full font-mono cursor-default" title="From names file (read-only)" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Region RGB */}
+              <div>
+                <span className="text-[9px] text-slate-500">Region Color (RGB)</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded border border-slate-600/40 shrink-0" style={{ background: `rgb(${draft.regionR},${draft.regionG},${draft.regionB})` }} />
+                  <input type="number" min="0" max="255" value={draft.regionR} onChange={e => setDraft(d => ({...d, regionR: parseInt(e.target.value)||0}))}
+                    className="h-6 px-1 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-red-400 w-14 font-mono text-center" />
+                  <input type="number" min="0" max="255" value={draft.regionG} onChange={e => setDraft(d => ({...d, regionG: parseInt(e.target.value)||0}))}
+                    className="h-6 px-1 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-green-400 w-14 font-mono text-center" />
+                  <input type="number" min="0" max="255" value={draft.regionB} onChange={e => setDraft(d => ({...d, regionB: parseInt(e.target.value)||0}))}
+                    className="h-6 px-1 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-blue-400 w-14 font-mono text-center" />
+                </div>
+              </div>
+
               <select value={draft.level} onChange={e => setDraft(d => ({...d, level: e.target.value}))}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                 {SETTLEMENT_LEVELS.map(l => <option key={l}>{l}</option>)}
@@ -274,7 +315,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                   className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
               </div>
 
-              {/* Buildings editor */}
+              {/* Buildings editor — two-step dropdown */}
               <div>
                 <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Buildings</p>
                 {draft.buildings.length > 0 && (
@@ -287,23 +328,19 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                     ))}
                   </div>
                 )}
-                <input value={buildingSearch} onChange={e => setBuildingSearch(e.target.value)}
-                  placeholder={buildingLevels.length ? "Search EDB buildings…" : "Load EDB first"}
-                  className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600 mb-0.5" />
-                {buildingSearch && (
-                  <div className="max-h-24 overflow-y-auto bg-slate-800/80 rounded border border-slate-700/40">
-                    {filteredBuildingLevels.length === 0
-                      ? <div className="text-[10px] text-slate-600 p-1 text-center">No matches</div>
-                      : filteredBuildingLevels.map(b => (
-                        <button key={b.name} onClick={() => addBuilding(b.name)}
-                          className="w-full text-left px-2 py-0.5 text-[10px] text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 font-mono truncate block">
-                          {b.name}
-                          {b.building && <span className="text-slate-600 ml-1">({b.building})</span>}
-                        </button>
-                      ))
-                    }
-                  </div>
-                )}
+                <div className="grid grid-cols-2 gap-1">
+                  <select value={selectedTree} onChange={e => setSelectedTree(e.target.value)}
+                    className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="">{buildingTrees.length ? '— tree —' : 'Load EDB'}</option>
+                    {buildingTrees.map(([tree]) => <option key={tree} value={tree}>{tree}</option>)}
+                  </select>
+                  <select value="" onChange={e => addBuilding(e.target.value)}
+                    disabled={!selectedTree}
+                    className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 disabled:opacity-40">
+                    <option value="">— level —</option>
+                    {treeLevels.map(lv => <option key={lv} value={lv}>{lv}</option>)}
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-1.5 justify-end pt-0.5">
