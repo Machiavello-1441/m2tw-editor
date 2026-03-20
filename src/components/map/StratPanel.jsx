@@ -288,8 +288,8 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                   </div>
                   <div>
                     <span className="text-[9px] text-slate-500">Region Display</span>
-                    <input value={settlementNames?.[draft.region] || ''} readOnly
-                      className="h-6 px-1.5 text-[11px] bg-slate-800/50 border border-slate-700/30 rounded text-slate-400 w-full font-mono cursor-default" title="From names file (read-only)" />
+                    <input value={draft.regionDisplayName} onChange={e => setDraft(d => ({...d, regionDisplayName: e.target.value}))}
+                      className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
                   </div>
                   <div>
                     <span className="text-[9px] text-slate-500">Settlement Internal</span>
@@ -298,8 +298,8 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                   </div>
                   <div>
                     <span className="text-[9px] text-slate-500">Settlement Display</span>
-                    <input value={settlementNames?.[draft.settlementName] || ''} readOnly
-                      className="h-6 px-1.5 text-[11px] bg-slate-800/50 border border-slate-700/30 rounded text-slate-400 w-full font-mono cursor-default" title="From names file (read-only)" />
+                    <input value={draft.settlementDisplayName} onChange={e => setDraft(d => ({...d, settlementDisplayName: e.target.value}))}
+                      className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
                   </div>
                 </div>
               </div>
@@ -336,8 +336,17 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               </div>
               <div>
                 <span className="text-[9px] text-slate-500">Faction Creator</span>
-                <input value={draft.factionCreator} onChange={e => setDraft(d => ({...d, factionCreator: e.target.value}))}
-                  className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                {factionList.length > 0 ? (
+                  <select value={draft.factionCreator} onChange={e => setDraft(d => ({...d, factionCreator: e.target.value}))}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="">— select faction —</option>
+                    {factionList.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                ) : (
+                  <input value={draft.factionCreator} onChange={e => setDraft(d => ({...d, factionCreator: e.target.value}))}
+                    placeholder="Load descr_sm_factions.txt"
+                    className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                )}
               </div>
 
               {/* Buildings editor — two-step dropdown */}
