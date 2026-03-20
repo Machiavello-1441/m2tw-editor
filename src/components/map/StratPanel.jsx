@@ -3,7 +3,7 @@ import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight,
 import { getItemIcon, getItemLabel } from './StratOverlay';
 import { serializeDescrStrat, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { downloadBlob } from './tgaExporter';
-import { extractBuildingLevelsFromEDB } from './additionalParsers';
+import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
 import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';
 
@@ -168,6 +168,16 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   const [selectedTree, setSelectedTree] = useState('');
 
   const buildingLevels = useMemo(() => extractBuildingLevelsFromEDB(edbData), [edbData]);
+  const hiddenResourceMasterList = useMemo(() => extractHiddenResourcesFromEDB(edbData), [edbData]);
+  const hiddenResourceSet = useMemo(() => new Set(hiddenResourceMasterList), [hiddenResourceMasterList]);
+
+  // Split regionInfo.resources into natural (non-hidden, read-only) vs hidden (editable)
+  const { naturalResources, regionHiddenResources } = useMemo(() => {
+    const all = regionInfo?.resources || [];
+    const natural = all.filter(r => !hiddenResourceSet.has(r));
+    const hidden = all.filter(r => hiddenResourceSet.has(r));
+    return { naturalResources: natural, regionHiddenResources: hidden };
+  }, [regionInfo, hiddenResourceSet]);
 
   // Group building levels by tree name for two-step dropdown
   const buildingTrees = useMemo(() => {
