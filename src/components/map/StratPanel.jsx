@@ -680,8 +680,8 @@ export default function StratPanel({
                       settlementNames={settlementNames}
                       onSettlementNamesChange={onSettlementNamesChange}
                       onRegionsDataChange={(regionName, edits) => {
-                        if (onRegionsDataUpdate) {
-                          onRegionsDataUpdate(prev => prev ? prev.map(r => r.regionName === regionName ? { ...r, ...edits } : r) : prev);
+                        if (onRegionsDataUpdate && regionsData) {
+                          onRegionsDataUpdate(regionsData.map(r => r.regionName === regionName ? { ...r, ...edits } : r));
                         }
                       }}
                     />
