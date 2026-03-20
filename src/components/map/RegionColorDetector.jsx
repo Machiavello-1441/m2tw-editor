@@ -13,9 +13,10 @@ function extractUniqueColors(layerData) {
 
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i], g = data[i + 1], b = data[i + 2];
-    // Skip black (borders/sea) and white (unused)
+    // Skip black (borders), white (unused), and sea (41,140,233)
     if (r < 5 && g < 5 && b < 5) continue;
     if (r > 245 && g > 245 && b > 245) continue;
+    if (r === 41 && g === 140 && b === 233) continue;
     const key = `${r},${g},${b}`;
     colorCounts[key] = (colorCounts[key] || 0) + 1;
   }
