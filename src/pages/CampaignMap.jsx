@@ -745,7 +745,7 @@ export default function CampaignMap() {
             paintState={paintState}
             onPaint={handlePaint}
             showPixelGrid={showPixelGrid}
-            showTooltip={!paintState.active}
+            showTooltip={!paintState.active || !!regionWizard}
             onTransformChange={setTransform}
             regionsData={regionsData}
             settlementNames={settlementNames}
