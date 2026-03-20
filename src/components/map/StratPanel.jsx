@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, ArrowRight } from 'lucide-react';
 import { getItemIcon, getItemLabel } from './StratOverlay';
-import { serializeDescrStrat, serializeDescrRegions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
+import { serializeDescrStrat, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { downloadBlob } from './tgaExporter';
 import { extractBuildingLevelsFromEDB } from './additionalParsers';
 
