@@ -5,6 +5,7 @@ import { serializeDescrStrat, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from '
 import { downloadBlob } from './tgaExporter';
 import { extractBuildingLevelsFromEDB } from './additionalParsers';
 import RegionColorDetector from './RegionColorDetector';
+import NewRegionForm from './NewRegionForm';
 
 const CATEGORIES = [
   { id: 'settlement',    label: 'Settlements',   emoji: '🏛️' },
@@ -450,6 +451,7 @@ export default function StratPanel({
   const [newFortComment, setNewFortComment] = useState('');
   const [tab, setTab] = useState('overview');
   const [search, setSearch] = useState('');
+  const [showNewRegion, setShowNewRegion] = useState(false);
 
   const loadFile = async (e, type) => {
     const file = e.target.files?.[0]; if (!file) return;
