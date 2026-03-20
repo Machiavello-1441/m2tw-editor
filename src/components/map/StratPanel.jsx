@@ -581,6 +581,73 @@ export default function StratPanel({
     downloadBlob(blob, def?.filename || `${layerId}.tga`);
   };
 
+  // Determine if any campaign data has been modified/loaded
+  const hasAnyModifiedData = !!(stratData?.raw || regionsData?.length || settlementNames || factionColors || LAYER_DEFS.some(d => layers?.[d.id]?.data));
+
+  const handleExportCampaignZip = async () => {
+    const zip = new JSZip();
+    const campaignName = stratData?.campaignName || 'imperial_campaign';
+    const basePath = `data/world/maps/campaign/custom/${campaignName}`;
+
+    // descr_strat.txt
+    if (stratData?.raw) {
+      const text = serializeDescrStrat(stratData, overlayItems, editedSettlements);
+      zip.file(`${basePath}/descr_strat.txt`, text);
+    }
+    // descr_regions.txt
+    if (regionsData?.length) {
+      zip.file(`${basePath}/descr_regions.txt`, serializeDescrRegions(regionsData));
+    }
+    // campaign script file
+    const scriptName = stratData?.scriptFile || 'campaign_script.txt';
+    const scriptRaw = sessionStorage.getItem('m2tw_script_raw');
+    if (scriptRaw) {
+      zip.file(`${basePath}/${scriptName}`, scriptRaw);
+    }
+    // descr_sm_factions.txt — stored via sessionStorage raw
+    const factionsRaw = sessionStorage.getItem('m2tw_factions_raw');
+    if (factionsRaw) {
+      zip.file(`${basePath}/descr_sm_factions.txt`, factionsRaw);  
+    }
+    // Other text files from sessionStorage if present
+    const extraFiles = [
+      { key: 'm2tw_events_raw', name: 'descr_events.txt' },
+      { key: 'm2tw_mercenaries_raw', name: 'descr_mercenaries.txt' },
+      { key: 'm2tw_music_types_raw', name: 'descr_sounds_music_types.txt' },
+      { key: 'm2tw_terrain_raw', name: 'descr_terrain.txt' },
+      { key: 'm2tw_win_conditions_raw', name: 'descr_win_conditions.txt' },
+    ];
+    for (const { key, name } of extraFiles) {
+      const raw = sessionStorage.getItem(key);
+      if (raw) zip.file(`${basePath}/${name}`, raw);
+    }
+    // TGA map layers
+    const tgaLayerMap = {
+      heights: 'map_heights.tga',
+      ground: 'map_ground_types.tga',
+      climates: 'map_climates.tga',
+      regions: 'map_regions.tga',
+      features: 'map_features.tga',
+      fog: 'map_fog.tga',
+    };
+    for (const [layerId, filename] of Object.entries(tgaLayerMap)) {
+      const layer = layers?.[layerId];
+      if (layer?.data) {
+        const blob = exportTGA(layer.data, layer.width, layer.height);
+        zip.file(`${basePath}/${filename}`, blob);
+      }
+    }
+    // Settlement names as .strings.bin
+    if (settlementNames && Object.keys(settlementNames).length > 0) {
+      const entries = Object.entries(settlementNames).map(([key, value]) => ({ key, value }));
+      const binBuf = encodeStringsBin(entries);
+      zip.file(`data/text/${campaignName}_regions_and_settlement_names.txt.strings.bin`, binBuf);
+    }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    downloadBlob(content, `${campaignName}_campaign.zip`);
+  };
+
   const settlements = useMemo(() =>
     (overlayItems || []).filter(i => i.category === 'settlement'),
   [overlayItems]);
