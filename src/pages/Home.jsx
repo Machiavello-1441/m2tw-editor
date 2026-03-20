@@ -553,6 +553,7 @@ export default function Home() {
     const CAMPAIGN_STORE = {
       'descr_strat.txt': 'm2tw_campaign_strat',
       'descr_regions.txt': 'm2tw_campaign_regions',
+      'descr_sm_factions.txt': 'm2tw_campaign_factions',
       'campaign_script.txt': 'm2tw_campaign_script',
       'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
       'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
