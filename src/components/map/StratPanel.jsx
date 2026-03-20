@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, ArrowRight } from 'lucide-react';
 import { getItemIcon, getItemLabel } from './StratOverlay';
-import { serializeDescrStrat, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
-import { downloadBlob } from './tgaExporter';
+import { serializeDescrStrat, serializeDescrRegions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
+import { exportTGA, downloadBlob } from './tgaExporter';
+import { LAYER_DEFS } from './mapLayerConstants';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
 import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';

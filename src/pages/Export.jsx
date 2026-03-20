@@ -241,8 +241,8 @@ export default function Export() {
                 icon={<FileText className="w-4 h-4 text-primary/70" />}
                 label="export_descr_buildings.txt"
                 path={`${modName}/data/`}
-                status={hasEDB ? 'ready' : 'missing'}
-                detail={edbStats ? `${edbStats.buildings} buildings, ${edbStats.levels} levels` : 'No EDB loaded'}
+                status={hasEDB ? 'ready' : 'skip'}
+                detail={edbStats ? `${edbStats.buildings} buildings, ${edbStats.levels} levels` : 'No EDB loaded — will be skipped'}
               />
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-chart-4/70" />}
