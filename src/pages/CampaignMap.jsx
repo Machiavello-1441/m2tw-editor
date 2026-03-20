@@ -373,21 +373,7 @@ export default function CampaignMap() {
     setDirtyLayers(prev => new Set([...prev, 'regions']));
   }, []);
 
-  // ── Region paint wizard step handlers ─────────────────────────────────────
-  const handleWizardFinishPaint = useCallback(() => {
-    if (!regionWizard) return;
-    // Move to 'city' step: disable paint, wait for click
-    setPaintState(prev => ({ ...prev, active: false }));
-    setRegionWizard(prev => ({ ...prev, step: 'city' }));
-  }, [regionWizard]);
-
-  const handleWizardSkipPort = useCallback(() => {
-    if (!regionWizard) return;
-    // Finish wizard: create the region + settlement without port
-    finalizeNewRegion(regionWizard.draft, regionWizard.cityX, regionWizard.cityY, null, null);
-    setRegionWizard(null);
-  }, [regionWizard, finalizeNewRegion]);
-
+  // ── Finalize new region (must be defined before handlers that reference it) ─
   const finalizeNewRegion = useCallback((draft, cityX, cityY, portX, portY) => {
     // 1. Add to regionsData
     const newRegion = {
