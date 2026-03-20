@@ -641,6 +641,8 @@ export default function StratPanel({
                       onDelete={onDeleteItem}
                       onChange={onSettlementChange}
                       edbData={edbData}
+                      regionsData={regionsData}
+                      settlementNames={settlementNames}
                     />
                   ))}
                 </div>
