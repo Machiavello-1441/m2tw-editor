@@ -15,7 +15,17 @@ function identifyPixel(def, r, g, b) {
   return bestDist < 30 ? best : null;
 }
 
-export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight }) {
+function identifyRegion(regionsData, r, g, b) {
+  if (!regionsData?.length) return null;
+  for (const reg of regionsData) {
+    if (reg.r === r && reg.g === g && reg.b === b) {
+      return reg;
+    }
+  }
+  return null;
+}
+
+export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, regionsData }) {
   if (!probe) return null;
   const { x, y, pixelData } = probe;
 
