@@ -385,17 +385,21 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                 )}
               </div>
 
-              {/* Natural Resources (read-only) */}
-              {naturalResources.length > 0 && (
-                <div>
-                  <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Resources (from descr_regions)</p>
+              {/* Map Resources in this region (read-only, from overlay items) */}
+              <div>
+                <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Map Resources ({regionResources.length})</p>
+                {regionResources.length > 0 ? (
                   <div className="flex flex-wrap gap-0.5">
-                    {naturalResources.map(r => (
-                      <span key={r} className="px-1.5 py-0.5 bg-slate-800/60 rounded text-[10px] text-slate-400 font-mono">{r}</span>
+                    {regionResources.map(r => (
+                      <span key={r.id} className="px-1.5 py-0.5 bg-slate-800/60 rounded text-[10px] text-emerald-400 font-mono">
+                        {r.type} <span className="text-slate-600">({r.x},{r.y})</span>
+                      </span>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-[9px] text-slate-600 italic">No resources placed in this region</p>
+                )}
+              </div>
 
               {/* Hidden Resources (editable, from EDB) */}
               <div>
