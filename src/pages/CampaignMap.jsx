@@ -554,43 +554,20 @@ export default function CampaignMap() {
     setDirtyLayers(prev => new Set([...prev, 'regions']));
   }, []);
 
-  // ── Add brand-new region ──────────────────────────────────────────────────
+  // ── Add brand-new region — start paint wizard ───────────────────────────
   const handleAddNewRegion = useCallback((draft) => {
-    // 1. Add to regionsData
-    const newRegion = {
-      regionName: draft.regionName,
-      settlementName: draft.settlementName,
-      factionCreator: draft.faction || '',
-      r: draft.r, g: draft.g, b: draft.b,
-      resources: [],
-      religions: {},
-    };
-    setRegionsDataRaw(prev => [...(prev || []), newRegion]);
-
-    // 2. Add settlement overlay item
-    const newItem = {
-      id: Date.now(),
-      category: 'settlement',
-      region: draft.regionName,
-      faction: draft.faction || 'slave',
-      factionCreator: draft.faction || 'slave',
-      level: draft.level || 'village',
-      population: draft.population || 400,
-      yearFounded: draft.yearFounded || 0,
-      buildings: [],
-      x: null, y: null,
-    };
-    setOverlayItems(prev => [...prev, newItem]);
-    setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
-    setOverlayDirty(true);
-
-    // 3. Update settlement names
-    if (draft.regionDisplayName || draft.settlementDisplayName) {
-      const nameUpdates = {};
-      if (draft.regionDisplayName) nameUpdates[draft.regionName] = draft.regionDisplayName;
-      if (draft.settlementDisplayName) nameUpdates[draft.settlementName] = draft.settlementDisplayName;
-      setSettlementNamesRaw(prev => ({ ...(prev || {}), ...nameUpdates }));
-    }
+    // Start the region paint wizard
+    setRegionWizard({ draft, step: 'paint' });
+    // Auto-activate paint mode on regions layer with the new color
+    setPaintState({
+      active: true,
+      layerId: 'regions',
+      paintColor: { r: draft.r, g: draft.g, b: draft.b },
+      tool: 'pencil',
+      brushSize: 3,
+    });
+    // Ensure regions layer is visible
+    setLayers(prev => ({ ...prev, regions: { ...prev.regions, visible: true } }));
   }, []);
 
   const handleToggleCategory = (catId) => {
