@@ -87,8 +87,8 @@ function regionsToEntities(regionsData, stratData) {
 
   return regionsData.map(reg => {
     const strat = settlementMap[reg.regionName?.toLowerCase()] || {};
-    const religions = reg.religions || {};
-    const relKeys = Object.keys(religions);
+    const religionsObj = reg.religions || {};
+    const religionsArr = Object.entries(religionsObj).map(([name, percentage]) => ({ name, percentage: percentage ?? 0 }));
     return {
       province_in: reg.regionName,
       city_in: reg.settlementName,
@@ -100,11 +100,7 @@ function regionsToEntities(regionsData, stratData) {
       resources: reg.resources || [],
       agriculture: reg.val2 ?? 0,
       victory_points: reg.val1 ?? 0,
-      religion_0: religions[relKeys[0]] ?? 0,
-      religion_1: religions[relKeys[1]] ?? 0,
-      religion_2: religions[relKeys[2]] ?? 0,
-      religion_3: religions[relKeys[3]] ?? 0,
-      religion_4: religions[relKeys[4]] ?? 0,
+      religions: religionsArr,
       // from strat settlement block
       faction: strat.faction ?? '',
       castle: strat.castle ?? false,
