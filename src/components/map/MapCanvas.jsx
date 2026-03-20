@@ -86,6 +86,7 @@ export default function MapCanvas({
   showPixelGrid = false,
   showTooltip = true,
   onTransformChange,
+  regionsData,
 }) {
   const canvasRef    = useRef(null);
   const containerRef = useRef(null);
