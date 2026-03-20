@@ -524,6 +524,7 @@ export default function StratPanel({
   onDeleteItem, onAddItem, onSettlementChange,
   cultureList, edbData, regionsLayer,
   onRecolorRegion, onAddNewRegion,
+  layers, dirtyLayers, editedSettlements,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -547,8 +548,35 @@ export default function StratPanel({
 
   const handleExportStrat = () => {
     if (!stratData?.raw) return;
-    const text = serializeDescrStrat(stratData, overlayItems);
+    const text = serializeDescrStrat(stratData, overlayItems, editedSettlements);
     downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_strat.txt');
+  };
+
+  const handleExportRegions = () => {
+    if (!regionsData?.length) return;
+    const text = serializeDescrRegions(regionsData);
+    downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_regions.txt');
+  };
+
+  const handleExportNames = () => {
+    if (!settlementNames || !Object.keys(settlementNames).length) return;
+    const lines = Object.entries(settlementNames).map(([k, v]) => `{${k}}${v}`);
+    downloadBlob(new Blob([lines.join('\n')], { type: 'text/plain' }), 'regions_and_settlement_names.txt');
+  };
+
+  const handleExportFactions = () => {
+    // Re-export from sessionStorage raw text
+    const raw = sessionStorage.getItem('m2tw_factions_raw');
+    if (!raw) return;
+    downloadBlob(new Blob([raw], { type: 'text/plain' }), 'descr_sm_factions.txt');
+  };
+
+  const handleExportTGA = (layerId) => {
+    const layer = layers?.[layerId];
+    if (!layer?.data) return;
+    const def = LAYER_DEFS.find(d => d.id === layerId);
+    const blob = exportTGA(layer.data, layer.width, layer.height);
+    downloadBlob(blob, def?.filename || `${layerId}.tga`);
   };
 
   const settlements = useMemo(() =>
