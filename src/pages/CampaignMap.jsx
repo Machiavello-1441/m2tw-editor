@@ -292,6 +292,18 @@ export default function CampaignMap() {
         try { sessionStorage.setItem('m2tw_cultures_raw', text); } catch {}
         setCultures(parseDescrCultures(text));
       }
+      // Store additional campaign text files for ZIP export
+      const extraSessionMap = {
+        'descr_events.txt': 'm2tw_events_raw',
+        'descr_mercenaries.txt': 'm2tw_mercenaries_raw',
+        'descr_sounds_music_types.txt': 'm2tw_music_types_raw',
+        'descr_terrain.txt': 'm2tw_terrain_raw',
+        'descr_win_conditions.txt': 'm2tw_win_conditions_raw',
+      };
+      if (extraSessionMap[name]) {
+        const text = await file.text();
+        try { sessionStorage.setItem(extraSessionMap[name], text); } catch {}
+      }
     }
 
     // ── Trigger DB import in background ──────────────────────────────────────
