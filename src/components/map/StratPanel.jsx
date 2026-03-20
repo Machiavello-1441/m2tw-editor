@@ -428,6 +428,7 @@ export default function StratPanel({
   stratData, regionsData, settlementNames, factionColors,
   onStratLoad, onRegionsLoad, onNamesLoad, onFactionsLoad,
   onRegionsDataUpdate, onStratDataChange,
+  onSettlementNamesChange,
   overlayItems, selectedItem, onSelectItem,
   visibleCategories, onToggleCategory,
   onDeleteItem, onAddItem, onSettlementChange,
@@ -677,6 +678,12 @@ export default function StratPanel({
                       edbData={edbData}
                       regionsData={regionsData}
                       settlementNames={settlementNames}
+                      onSettlementNamesChange={onSettlementNamesChange}
+                      onRegionsDataChange={(regionName, edits) => {
+                        if (onRegionsDataUpdate) {
+                          onRegionsDataUpdate(prev => prev ? prev.map(r => r.regionName === regionName ? { ...r, ...edits } : r) : prev);
+                        }
+                      }}
                     />
                   ))}
                 </div>
