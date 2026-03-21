@@ -183,6 +183,13 @@ export default function MapCanvas({
       }
     }
 
+    // Draw region highlight overlay
+    if (transCache.current.highlight?.bmp) {
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(transCache.current.highlight.bmp, 0, 0, mapW, mapH);
+    }
+
     if (showPixelGrid) {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
