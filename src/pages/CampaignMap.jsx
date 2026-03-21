@@ -496,6 +496,53 @@ export default function CampaignMap() {
       return; // During 'paint' step, clicks go to the paint handler in MapCanvas
     }
 
+    // Handle pending relocate (city or port pixel)
+    if (pendingRelocate) {
+      const { type, regionInfo, settlement } = pendingRelocate;
+      const regLayer = layers['regions'];
+      if (regLayer?.data) {
+        // Find and replace old pixel: scan for old city/port adjacent to this region
+        const { r: rr, g: rg, b: rb } = regionInfo;
+        const { data, width, height } = regLayer;
+        const oldColor = type === 'city' ? 0 : 255; // black for city, white for port
+        const threshold = type === 'city' ? 5 : 250;
+        for (let py = 0; py < height; py++) {
+          for (let px = 0; px < width; px++) {
+            const idx = (py * width + px) * 4;
+            const isTarget = type === 'city'
+              ? (data[idx] < threshold && data[idx + 1] < threshold && data[idx + 2] < threshold)
+              : (data[idx] > threshold && data[idx + 1] > threshold && data[idx + 2] > threshold);
+            if (!isTarget) continue;
+            // Check adjacency to region
+            for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+              const nx = px + dx, ny = py + dy;
+              if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+              const ni = (ny * width + nx) * 4;
+              if (data[ni] === rr && data[ni + 1] === rg && data[ni + 2] === rb) {
+                // Replace old pixel with region color
+                placePixelOnRegions(px, py, rr, rg, rb);
+                break;
+              }
+            }
+          }
+        }
+      }
+      // Place new pixel
+      const newR = type === 'city' ? 0 : 255;
+      const newG = type === 'city' ? 0 : 255;
+      const newB = type === 'city' ? 0 : 255;
+      placePixelOnRegions(rx, ry, newR, newG, newB);
+      // Update settlement overlay position if it's a city relocation
+      if (type === 'city' && settlement) {
+        const stratY = mapH > 0 ? mapH - 1 - ry : ry;
+        setOverlayItems(prev => prev.map(i => i.id === settlement.id ? { ...i, x: rx, y: stratY } : i));
+        setStratDataRaw(prev => prev ? { ...prev, items: (prev.items || []).map(i => i.id === settlement.id ? { ...i, x: rx, y: stratY } : i) } : prev);
+        setOverlayDirty(true);
+      }
+      setPendingRelocate(null);
+      return;
+    }
+
     if (pendingPlace) {
       // ry from MapCanvas is in pixel-space (y=0 top), flip to M2TW space
       const stratY = mapH > 0 ? mapH - 1 - ry : ry;
