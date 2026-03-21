@@ -859,6 +859,11 @@ export default function CampaignMap() {
                   layers={layers}
                   dirtyLayers={dirtyLayers}
                   editedSettlements={editedSettlements}
+                  rebelFactionList={rebelFactionList}
+                  hiddenResourceList={hiddenResourceList}
+                  musicTypeList={musicTypeList}
+                  mercenaryPoolList={mercenaryPoolList}
+                  religionList={religionList}
                   />
               </div>
             )}
