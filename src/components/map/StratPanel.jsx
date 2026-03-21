@@ -892,6 +892,12 @@ export default function StratPanel({
           {showNewRegion && (
             <NewRegionForm
               factionColors={factionColors}
+              edbData={edbData}
+              rebelFactionList={rebelFactionList}
+              hiddenResourceList={hiddenResourceList}
+              musicTypeList={musicTypeList}
+              mercenaryPoolList={mercenaryPoolList}
+              religionList={religionList}
               onCancel={() => setShowNewRegion(false)}
               onAdd={(draft) => {
                 if (onAddNewRegion) onAddNewRegion(draft);
