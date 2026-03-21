@@ -19,6 +19,7 @@ import GoatTools from './pages/GoatTools';
 import ScriptEditor from './pages/ScriptEditor';
 import FactionsEditor from './pages/FactionsEditor';
 import CampaignSettings from './pages/CampaignSettings';
+import MinorFiles from './pages/MinorFiles';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
