@@ -597,7 +597,12 @@ export default function CampaignMap() {
         }
       });
     }
-  }, [pendingPlace, mapH, regionsData, layers, regionWizard, placePixelOnRegions, finalizeNewRegion]);
+  }, [pendingPlace, pendingRelocate, mapH, regionsData, layers, regionWizard, placePixelOnRegions, finalizeNewRegion, overlayItems]);
+
+  // Handle relocate pixel request from SettlementRow
+  const handleRelocatePixel = useCallback((settlement, type, regionInfo) => {
+    setPendingRelocate({ type, regionInfo, settlement });
+  }, []);
 
   const handleAddItem = (itemTemplate) => {
     setPendingPlace(itemTemplate);
