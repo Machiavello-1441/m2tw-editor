@@ -22,6 +22,7 @@ const navItems = [
   { name: 'Assets', icon: Package, page: 'AssetsConverter' },
   { name: 'Animations', icon: Swords, page: 'AnimationEditor' },
   { name: 'Factions', icon: Shield, page: 'FactionsEditor' },
+  { name: 'Minor Files', icon: Gem, page: 'MinorFiles' },
   { name: 'Cmp Settings', icon: Globe, page: 'CampaignSettings' },
   { name: 'GOAT Tools', icon: Swords, page: 'GoatTools' },
   { name: 'Lua Scripts', icon: Code2, page: 'LuaScripts' },
