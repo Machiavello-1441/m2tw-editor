@@ -601,6 +601,7 @@ export default function StratPanel({
   onRecolorRegion, onAddNewRegion,
   layers, dirtyLayers, editedSettlements,
   rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList,
+  onRelocatePixel, mapH,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -611,6 +612,11 @@ export default function StratPanel({
   const [tab, setTab] = useState('overview');
   const [search, setSearch] = useState('');
   const [showNewRegion, setShowNewRegion] = useState(false);
+
+  // Auto-switch to settlements tab when a settlement is selected
+  useEffect(() => {
+    if (selectedItem?.category === 'settlement') setTab('settlements');
+  }, [selectedItem?.id]);
 
   const loadFile = async (e, type) => {
     const file = e.target.files?.[0]; if (!file) return;
