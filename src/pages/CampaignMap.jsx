@@ -173,6 +173,46 @@ export default function CampaignMap() {
         setOverlayItems(parsed.items || []);
       }
     } catch {}
+    // Auto-restore factions from localStorage if not in sessionStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_factions_raw')) {
+        const facRaw = localStorage.getItem('m2tw_factions_file');
+        if (facRaw) {
+          sessionStorage.setItem('m2tw_factions_raw', facRaw);
+          setFactionColorsRaw(parseDescrSmFactions(facRaw));
+        }
+      }
+    } catch {}
+    // Auto-restore religions from localStorage if not in sessionStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_religions_raw')) {
+        const relRaw = localStorage.getItem('m2tw_religions_file');
+        if (relRaw) {
+          sessionStorage.setItem('m2tw_religions_raw', relRaw);
+          setReligions(parseDescrReligions(relRaw));
+        }
+      }
+    } catch {}
+    // Auto-restore rebel factions from localStorage if not in sessionStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_rebel_factions_raw')) {
+        const rebRaw = localStorage.getItem('m2tw_rebel_factions_file');
+        if (rebRaw) {
+          sessionStorage.setItem('m2tw_rebel_factions_raw', rebRaw);
+          setRebelFactions(parseDescrRebelFactions(rebRaw));
+        }
+      }
+    } catch {}
+    // Auto-restore resources from localStorage if not in sessionStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_sm_resources_raw')) {
+        const resRaw = localStorage.getItem('m2tw_resources_file');
+        if (resRaw) {
+          sessionStorage.setItem('m2tw_sm_resources_raw', resRaw);
+          setNaturalRes(parseDescrSmResources(resRaw));
+        }
+      }
+    } catch {}
 
     const handler = (e) => {
       if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
