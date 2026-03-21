@@ -582,6 +582,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                 </>
               )}
             </div>
+            </>
           )}
         </div>
       )}
