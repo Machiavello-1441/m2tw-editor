@@ -105,7 +105,7 @@ export default function MapCanvas({
   const [transCacheVer, setTransCacheVer] = useState(0);
   const { w: mapW, h: mapH } = getCanvasSize(layers);
 
-  // Build highlight bitmap when a region is selected
+  // Build highlight bitmap — border-only outline of the selected region
   useEffect(() => {
     const regState = layers['regions'];
     if (!regState?.data || !highlightRegion) {
@@ -115,10 +115,28 @@ export default function MapCanvas({
     }
     const { r: hr, g: hg, b: hb } = highlightRegion;
     const { data, width, height } = regState;
+    // Build a mask of which pixels belong to the region
+    const mask = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        if (data[i] === hr && data[i + 1] === hg && data[i + 2] === hb) mask[y * width + x] = 1;
+      }
+    }
+    // Only draw pixels that are on the edge (have at least one non-region neighbour)
     const out = new Uint8ClampedArray(width * height * 4);
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i] === hr && data[i + 1] === hg && data[i + 2] === hb) {
-        out[i] = 255; out[i + 1] = 220; out[i + 2] = 50; out[i + 3] = 120;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (!mask[y * width + x]) continue;
+        let isBorder = false;
+        for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height || !mask[ny * width + nx]) { isBorder = true; break; }
+        }
+        if (isBorder) {
+          const oi = (y * width + x) * 4;
+          out[oi] = 255; out[oi + 1] = 220; out[oi + 2] = 0; out[oi + 3] = 255;
+        }
       }
     }
     createImageBitmap(new ImageData(out, width, height)).then(bmp => {
