@@ -153,8 +153,7 @@ export default function ResourcesTab() {
       </div>
 
       <p className="text-[9px] text-slate-500 italic">
-        Note: strat.txt.strings.bin uses a special format where keys are display names (not internal names).
-        Each entry maps "{`{Display Name 1}`}Display Name 2".
+        Note: strat.txt.strings.bin keys use the format <code className="text-slate-400">{'{SMT_RESOURCE_<NAME>}'}Display Name</code> — e.g. <code className="text-slate-400">{'{SMT_RESOURCE_GOLD}'}Gold</code>.
       </p>
 
       {issues.length > 0 && (
