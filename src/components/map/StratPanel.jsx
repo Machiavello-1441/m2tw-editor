@@ -527,6 +527,7 @@ export default function StratPanel({
   cultureList, edbData, regionsLayer,
   onRecolorRegion, onAddNewRegion,
   layers, dirtyLayers, editedSettlements,
+  rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
