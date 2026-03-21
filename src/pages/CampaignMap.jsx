@@ -500,7 +500,7 @@ export default function CampaignMap() {
     if (pendingRelocate) {
       const { type, regionInfo, settlement } = pendingRelocate;
       const regLayer = layers['regions'];
-      if (regLayer?.data) {
+      if (regLayer?.data && regionInfo) {
         // Find and replace old pixel: scan for old city/port adjacent to this region
         const { r: rr, g: rg, b: rb } = regionInfo;
         const { data, width, height } = regLayer;
