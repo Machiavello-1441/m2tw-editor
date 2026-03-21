@@ -392,9 +392,12 @@ export default function CampaignMap() {
       regionName: draft.regionName,
       settlementName: draft.settlementName,
       factionCreator: draft.faction || '',
+      rebelFaction: draft.rebelFaction || 'slave',
       r: draft.r, g: draft.g, b: draft.b,
-      resources: [],
-      religions: {},
+      resources: draft.hiddenResources || [],
+      val1: draft.val1 || 0,
+      val2: draft.val2 || 0,
+      religions: draft.religions || {},
     };
     setRegionsDataRaw(prev => [...(prev || []), newRegion]);
 
