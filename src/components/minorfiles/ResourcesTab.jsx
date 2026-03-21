@@ -70,6 +70,15 @@ export default function ResourcesTab() {
     e.target.value = '';
   };
 
+  // Build the strings.bin key for a resource: {SMT_RESOURCE_<NAME>}
+  const resourceBinKey = (name) => `{SMT_RESOURCE_${name.toUpperCase()}}`;
+  // Look up display name from the bin map for a resource
+  const getDisplayName = (name) => names[resourceBinKey(name)] ?? '';
+  // Update display name for a resource
+  const setDisplayName = (name, displayName) => {
+    setNames(prev => ({ ...prev, [resourceBinKey(name)]: displayName }));
+  };
+
   const handleExportTxt = () => {
     const text = serializeResources(resources);
     downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_sm_resources.txt');
