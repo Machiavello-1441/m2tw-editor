@@ -292,6 +292,31 @@ export default function CampaignMap() {
         try { sessionStorage.setItem('m2tw_cultures_raw', text); } catch {}
         setCultures(parseDescrCultures(text));
       }
+      if (name === 'descr_rebel_factions.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_rebel_factions_raw', text); } catch {}
+        setRebelFactions(parseDescrRebelFactions(text));
+      }
+      if (name === 'descr_religions.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_religions_raw', text); } catch {}
+        setReligions(parseDescrReligions(text));
+      }
+      if (name === 'descr_sm_resources.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_sm_resources_raw', text); } catch {}
+        setNaturalRes(parseDescrSmResources(text));
+      }
+      if (name === 'descr_mercenaries.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_mercenaries_raw', text); } catch {}
+        setMercenaryPools(parseDescrMercenaries(text));
+      }
+      if (name === 'descr_sounds_music_types.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_music_types_raw', text); } catch {}
+        setMusicTypes(parseDescrSoundsMusicTypes(text));
+      }
       // Store additional campaign text files for ZIP export
       const extraSessionMap = {
         'descr_events.txt': 'm2tw_events_raw',
