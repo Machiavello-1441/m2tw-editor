@@ -528,11 +528,18 @@ export default function CampaignMap() {
             _dbRecord: dbReg,
           };
           setSelectedRegion(region);
-          setActiveTab('region');
+          setActiveTab('strat');
+          // Auto-select matching settlement overlay item
+          const matchSettlement = overlayItems.find(oi => oi.category === 'settlement' && oi.region === region.regionName);
+          if (matchSettlement) setSelectedItem(matchSettlement);
         } else if (regionsData) {
           // Fallback to in-memory
           const region = regionsData.find(reg => reg.r === r && reg.g === g && reg.b === b);
-          if (region) { setSelectedRegion(region); setActiveTab('region'); }
+          if (region) {
+            setSelectedRegion(region); setActiveTab('strat');
+            const matchSettlement = overlayItems.find(oi => oi.category === 'settlement' && oi.region === region.regionName);
+            if (matchSettlement) setSelectedItem(matchSettlement);
+          }
         }
       }).catch(() => {
         // Fallback to in-memory if DB unavailable
