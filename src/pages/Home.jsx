@@ -602,38 +602,15 @@ export default function Home() {
 
   const handleClearMemory = () => {
     try {
-      localStorage.removeItem('m2tw_edb_file');
-      localStorage.removeItem('m2tw_edb_file_name');
-      localStorage.removeItem('m2tw_edb_txt_file');
-      localStorage.removeItem('m2tw_edb_images');
-      localStorage.removeItem('m2tw_factions_file');
-      localStorage.removeItem('m2tw_resources_file');
-      localStorage.removeItem('m2tw_events_file');
-      localStorage.removeItem('m2tw_units_file');
-      localStorage.removeItem('m2tw_traits_file');
-      localStorage.removeItem('m2tw_traits_file_name');
-      localStorage.removeItem('m2tw_anc_file');
-      localStorage.removeItem('m2tw_anc_file_name');
-      localStorage.removeItem('m2tw_vnvs_file');
-      localStorage.removeItem('m2tw_vnvs_file_name');
-      localStorage.removeItem('m2tw_anctxt_file');
-      localStorage.removeItem('m2tw_anctxt_file_name');
-      localStorage.removeItem('m2tw_export_units_file');
-      localStorage.removeItem('m2tw_export_units_file_name');
-      localStorage.removeItem('m2tw_lua_scripts');
-      localStorage.removeItem('m2tw_campaigns');
-      localStorage.removeItem('m2tw_cultures_file');
-      localStorage.removeItem('m2tw_names_file');
-      localStorage.removeItem('m2tw_rebel_factions_file');
-      localStorage.removeItem('m2tw_religions_file');
-      localStorage.removeItem('m2tw_campaign_strat');
-      localStorage.removeItem('m2tw_campaign_script');
-      localStorage.removeItem('m2tw_campaign_mercenaries');
-      localStorage.removeItem('m2tw_campaign_win_conditions');
-      window._m2tw_resource_icons = {};
+      // Nuke everything — localStorage, sessionStorage, and window globals
+      localStorage.clear();
+      sessionStorage.clear();
       clearStringsBinStore();
+      window._m2tw_resource_icons = {};
       window._m2tw_map_files = [];
       window._m2tw_unit_images = {};
+      window._m2tw_ground_textures = {};
+      window._m2tw_aerial_ground_types = {};
       window.location.reload();
     } catch {}
   };
