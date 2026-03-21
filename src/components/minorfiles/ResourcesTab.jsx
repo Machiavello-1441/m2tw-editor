@@ -200,31 +200,17 @@ export default function ResourcesTab() {
                   className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
               </div>
             </div>
-            {/* Display names from strings.bin */}
+            {/* Display name from strings.bin: key = {SMT_RESOURCE_<NAME>}, value = display name */}
             <div className="grid grid-cols-2 gap-1.5">
               <div>
-                <span className="text-[9px] text-slate-500">Display Name 1 (key)</span>
-                <input value={Object.keys(names).find(k => k.toLowerCase().includes(r.name.toLowerCase())) || ''}
-                  onChange={e => {
-                    // This is the key in the strings.bin
-                    const oldKey = Object.keys(names).find(k => k.toLowerCase().includes(r.name.toLowerCase()));
-                    const newNames = { ...names };
-                    if (oldKey) { newNames[e.target.value] = newNames[oldKey]; delete newNames[oldKey]; }
-                    else newNames[e.target.value] = '';
-                    setNames(newNames);
-                  }}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200" />
+                <span className="text-[9px] text-slate-500">Bin Key (auto)</span>
+                <input value={resourceBinKey(r.name)} readOnly
+                  className="w-full h-5 px-1 text-[10px] bg-slate-800/50 border border-slate-700/30 rounded text-slate-500 font-mono cursor-default" />
               </div>
               <div>
-                <span className="text-[9px] text-slate-500">Display Name 2 (value)</span>
-                <input value={(() => {
-                    const key = Object.keys(names).find(k => k.toLowerCase().includes(r.name.toLowerCase()));
-                    return key ? names[key] : '';
-                  })()}
-                  onChange={e => {
-                    const key = Object.keys(names).find(k => k.toLowerCase().includes(r.name.toLowerCase()));
-                    if (key) setNames(prev => ({ ...prev, [key]: e.target.value }));
-                  }}
+                <span className="text-[9px] text-slate-500">Display Name</span>
+                <input value={getDisplayName(r.name)}
+                  onChange={e => setDisplayName(r.name, e.target.value)}
                   className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200" />
               </div>
             </div>
