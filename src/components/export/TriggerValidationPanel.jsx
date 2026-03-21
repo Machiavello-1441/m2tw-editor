@@ -18,6 +18,7 @@ const VALID_WHEN_TO_TEST = [
   'SufferAssassinationAttempt', 'SabotageMission', 'LeaderOrderedSabotage',
   'CharacterTurnEndInSettlement', 'GovernorCityRiots', 'GovernorUnitTrained',
   'SackSettlement', 'HireMercenaries', 'LeaderOrderedSpyingMission', 'GovernorBuildingCompleted',
+  'GovernorThrowGames',
 ];
 
 const VALID_CONDITION_PREFIXES = [
