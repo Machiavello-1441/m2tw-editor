@@ -105,6 +105,28 @@ export default function MapCanvas({
   const [transCacheVer, setTransCacheVer] = useState(0);
   const { w: mapW, h: mapH } = getCanvasSize(layers);
 
+  // Build highlight bitmap when a region is selected
+  useEffect(() => {
+    const regState = layers['regions'];
+    if (!regState?.data || !highlightRegion) {
+      delete transCache.current.highlight;
+      setTransCacheVer(v => v + 1);
+      return;
+    }
+    const { r: hr, g: hg, b: hb } = highlightRegion;
+    const { data, width, height } = regState;
+    const out = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] === hr && data[i + 1] === hg && data[i + 2] === hb) {
+        out[i] = 255; out[i + 1] = 220; out[i + 2] = 50; out[i + 3] = 120;
+      }
+    }
+    createImageBitmap(new ImageData(out, width, height)).then(bmp => {
+      transCache.current.highlight = { bmp, r: hr, g: hg, b: hb };
+      setTransCacheVer(v => v + 1);
+    });
+  }, [layers, highlightRegion]);
+
   useEffect(() => {
     const featState = layers['features'];
     if (featState?.data && transCache.current.features?.src !== featState.data) {
