@@ -152,11 +152,23 @@ export default function Export() {
       zip.folder(`${modName}/eopData/eopScripts`).file('luaPluginScript.lua', mergedLua);
     }
 
-    // Include campaigns
+    // Include campaigns — use modified strat data from sessionStorage if available
     const campaigns = getCampaigns();
     for (const c of campaigns) {
       const campFolder = zip.folder(`${modName}/data/world/maps/campaign/custom/${c.name}`);
-      campFolder.file('descr_strat.txt', c.descrStrat || `campaign\t${c.name}\n`);
+      // Check if there's a modified version in sessionStorage (from CampaignMap edits)
+      let stratText = c.descrStrat || `campaign\t${c.name}\n`;
+      try {
+        const sessionRaw = sessionStorage.getItem('m2tw_strat_raw');
+        if (sessionRaw) {
+          const parsed = parseDescrStrat(sessionRaw);
+          // Match by campaign name to use the right modified data
+          if (parsed.campaignName === c.name || !c.descrStrat) {
+            stratText = serializeDescrStrat(parsed, parsed.items || [], {});
+          }
+        }
+      } catch {}
+      campFolder.file('descr_strat.txt', stratText);
     }
     if (campaigns.length > 0) {
       // Merge all campaign descriptions into one file
