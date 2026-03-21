@@ -974,6 +974,8 @@ export default function CampaignMap() {
                   musicTypeList={musicTypeList}
                   mercenaryPoolList={mercenaryPoolList}
                   religionList={religionList}
+                  onRelocatePixel={handleRelocatePixel}
+                  mapH={mapH}
                   />
               </div>
             )}
