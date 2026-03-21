@@ -1,8 +1,16 @@
-import React, { useState, useMemo } from 'react';
-import { Upload, Download, Plus, X, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Upload, Download, Plus, X, AlertCircle, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
+import RebelFactionRow from './RebelFactionRow';
 
-// Parser: extract rebel factions with full details
+// ─── Parser ──────────────────────────────────────────────────────────────────
+// Format:
+//   rebel_faction  <name>
+//     category       <gladiator_revolt|brigands|peasant_revolt>
+//     chance         <int>
+//     description    <internal_key>
+//     unit           <UnitType>,  <min_exp>, <max_count>
+//     unit           ...
 function parseRebelFactionsFull(text) {
   const factions = [];
   let current = null;
@@ -12,24 +20,39 @@ function parseRebelFactionsFull(text) {
     const m = line.match(/^rebel_faction\s+(\S+)/i) || line.match(/^faction\s+(\S+)/i);
     if (m) {
       if (current) factions.push(current);
-      current = { name: m[1], category: '', description: '' };
+      current = { name: m[1], category: '', chance: 50, description: '', units: [] };
       continue;
     }
     if (!current) continue;
-    const cm = line.match(/^category\s+(.+)/i);
-    if (cm) { current.category = cm[1].trim(); continue; }
-    const dm = line.match(/^description\s+(.+)/i);
-    if (dm) { current.description = dm[1].trim(); continue; }
+    let cm;
+    if ((cm = line.match(/^category\s+(.+)/i))) { current.category = cm[1].trim(); continue; }
+    if ((cm = line.match(/^chance\s+(\d+)/i))) { current.chance = parseInt(cm[1]); continue; }
+    if ((cm = line.match(/^description\s+(.+)/i))) { current.description = cm[1].trim(); continue; }
+    if ((cm = line.match(/^unit\s+(.+)/i))) {
+      const parts = cm[1].split(',').map(s => s.trim());
+      const unitName = parts[0] || '';
+      const minExp = parseInt(parts[1]) || 1;
+      const maxCount = parseInt(parts[2]) || 1;
+      if (unitName) current.units.push({ unitName, minExp, maxCount });
+      continue;
+    }
   }
   if (current) factions.push(current);
   return factions;
 }
 
+// ─── Serializer ──────────────────────────────────────────────────────────────
 function serializeRebelFactions(factions) {
   return factions.map(f => {
     const lines = [`rebel_faction\t\t\t${f.name}`];
     if (f.category) lines.push(`\tcategory\t\t\t${f.category}`);
+    lines.push(`\tchance\t\t\t\t${f.chance ?? 50}`);
     if (f.description) lines.push(`\tdescription\t\t\t${f.description}`);
+    for (const u of (f.units || [])) {
+      // Pad unit name to 24 chars for alignment
+      const padded = u.unitName.padEnd(24, ' ');
+      lines.push(`\tunit\t\t\t\t${padded}${u.minExp}, ${u.maxCount}`);
+    }
     return lines.join('\n');
   }).join('\n\n');
 }
@@ -40,17 +63,53 @@ function downloadBlob(blob, name) {
   URL.revokeObjectURL(url);
 }
 
+// ─── Get unit names from EDU (localStorage) ──────────────────────────────────
+function getEduUnitNames() {
+  try {
+    const raw = localStorage.getItem('m2tw_units_file');
+    if (!raw) return [];
+    const names = [];
+    for (const line of raw.split('\n')) {
+      const m = line.trim().match(/^type\s+(.+)/);
+      if (m && !line.trim().startsWith('voice_type')) {
+        names.push(m[1].split(';')[0].trim());
+      }
+    }
+    return names;
+  } catch { return []; }
+}
+
+const CATEGORIES = ['gladiator_revolt', 'brigands', 'peasant_revolt'];
+
 export default function RebelFactionsTab() {
   const [factions, setFactions] = useState([]);
-  const [names, setNames] = useState({}); // key→display name from .strings.bin
+  const [names, setNames] = useState({});
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const eduUnitNames = useMemo(() => getEduUnitNames(), []);
+
+  // Auto-load from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('m2tw_rebel_factions_file');
+      if (raw) {
+        setFactions(parseRebelFactionsFull(raw));
+        setLoaded(true);
+      }
+    } catch {}
+  }, []);
 
   const handleLoadTxt = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
-    setFactions(parseRebelFactionsFull(text));
-    try { sessionStorage.setItem('m2tw_rebel_factions_raw', text); } catch {}
+    const parsed = parseRebelFactionsFull(text);
+    setFactions(parsed);
+    try {
+      localStorage.setItem('m2tw_rebel_factions_file', text);
+      sessionStorage.setItem('m2tw_rebel_factions_raw', text);
+    } catch {}
     setLoaded(true);
     e.target.value = '';
   };
@@ -80,11 +139,11 @@ export default function RebelFactionsTab() {
   };
 
   const addFaction = () => {
-    setFactions(prev => [...prev, { name: 'new_rebel_faction', category: '', description: '' }]);
+    setFactions(prev => [...prev, { name: 'new_rebel_faction', category: 'brigands', chance: 50, description: '', units: [] }]);
   };
 
-  const updateFaction = (idx, field, value) => {
-    setFactions(prev => prev.map((f, i) => i === idx ? { ...f, [field]: value } : f));
+  const updateFaction = (idx, updates) => {
+    setFactions(prev => prev.map((f, i) => i === idx ? { ...f, ...updates } : f));
   };
 
   const removeFaction = (idx) => {
@@ -101,6 +160,14 @@ export default function RebelFactionsTab() {
     }
     return iss;
   }, [factions]);
+
+  const filteredFactions = useMemo(() => {
+    if (!search) return factions.map((f, i) => ({ ...f, _idx: i }));
+    const s = search.toLowerCase();
+    return factions
+      .map((f, i) => ({ ...f, _idx: i }))
+      .filter(f => f.name.toLowerCase().includes(s) || (names[f.name] || '').toLowerCase().includes(s));
+  }, [factions, search, names]);
 
   return (
     <div className="space-y-3">
@@ -124,6 +191,13 @@ export default function RebelFactionsTab() {
         </button>
       </div>
 
+      {eduUnitNames.length === 0 && loaded && (
+        <div className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-900/10 border border-amber-500/20 rounded p-2">
+          <AlertCircle className="w-3 h-3 shrink-0" />
+          Load export_descr_unit.txt from the Home page to enable unit selection.
+        </div>
+      )}
+
       {/* Validation */}
       {issues.length > 0 && (
         <div className="rounded border border-red-500/30 bg-red-900/10 p-2 space-y-0.5">
@@ -135,30 +209,29 @@ export default function RebelFactionsTab() {
         </div>
       )}
 
+      {/* Search */}
+      {factions.length > 5 && (
+        <div className="flex items-center gap-1.5">
+          <Search className="w-3 h-3 text-slate-500" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search factions…"
+            className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
+          <span className="text-[9px] text-slate-600">{filteredFactions.length}/{factions.length}</span>
+        </div>
+      )}
+
       {/* Faction list */}
       <div className="space-y-1.5">
-        {factions.map((f, idx) => (
-          <div key={idx} className="rounded border border-slate-700/40 bg-slate-900/20 p-2 space-y-1">
-            <div className="flex items-center gap-1.5">
-              <input value={f.name} onChange={e => updateFaction(idx, 'name', e.target.value)}
-                className="flex-1 h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              <button onClick={() => removeFaction(idx)} className="text-slate-600 hover:text-red-400 transition-colors">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <div>
-                <span className="text-[9px] text-slate-500">Category</span>
-                <input value={f.category} onChange={e => updateFaction(idx, 'category', e.target.value)}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-500">Display Name</span>
-                <input value={names[f.name] || ''} onChange={e => setNames(prev => ({ ...prev, [f.name]: e.target.value }))}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200" />
-              </div>
-            </div>
-          </div>
+        {filteredFactions.map((f) => (
+          <RebelFactionRow
+            key={f._idx}
+            faction={f}
+            displayName={names[f.name] || ''}
+            categories={CATEGORIES}
+            eduUnitNames={eduUnitNames}
+            onUpdate={(updates) => updateFaction(f._idx, updates)}
+            onDisplayNameChange={(val) => setNames(prev => ({ ...prev, [f.name]: val }))}
+            onRemove={() => removeFaction(f._idx)}
+          />
         ))}
       </div>
 
@@ -168,7 +241,7 @@ export default function RebelFactionsTab() {
       </button>
 
       {!loaded && factions.length === 0 && (
-        <p className="text-[10px] text-slate-600 text-center py-4">Load descr_rebel_factions.txt to start editing</p>
+        <p className="text-[10px] text-slate-600 text-center py-4">Load descr_rebel_factions.txt to start editing (upload here or load from Home page)</p>
       )}
     </div>
   );
