@@ -526,6 +526,42 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               <span className="text-slate-500">Faction</span><span className="text-slate-300 font-mono truncate">{item.faction}</span>
               <span className="text-slate-500">Population</span><span className="text-slate-300 font-mono">{item.population}</span>
               <span className="text-slate-500">Founded</span><span className="text-slate-300 font-mono">{item.yearFounded}</span>
+              </div>
+              {/* City / Port coordinates box */}
+              <div className="rounded border border-slate-700/40 bg-slate-800/30 p-1.5 space-y-1">
+                <p className="text-[9px] text-slate-500 uppercase font-semibold">Map Positions (TGA pixels)</p>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="text-[10px] text-slate-400 w-8">City</span>
+                  {cityPortPos.city ? (
+                    <span className="text-[10px] text-slate-200 font-mono">x:{cityPortPos.city.px} y:{cityPortPos.city.stratY}</span>
+                  ) : (
+                    <span className="text-[10px] text-slate-600 italic">not found</span>
+                  )}
+                  {onRelocatePixel && (
+                    <button onClick={(e) => { e.stopPropagation(); onRelocatePixel(item, 'city', regionInfo); }}
+                      className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 transition-colors">
+                      Relocate
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Anchor className="w-3 h-3 text-blue-400 shrink-0" />
+                  <span className="text-[10px] text-slate-400 w-8">Port</span>
+                  {cityPortPos.port ? (
+                    <span className="text-[10px] text-slate-200 font-mono">x:{cityPortPos.port.px} y:{cityPortPos.port.stratY}</span>
+                  ) : (
+                    <span className="text-[10px] text-slate-600 italic">none</span>
+                  )}
+                  {onRelocatePixel && (
+                    <button onClick={(e) => { e.stopPropagation(); onRelocatePixel(item, 'port', regionInfo); }}
+                      className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600/40 transition-colors">
+                      {cityPortPos.port ? 'Relocate' : 'Place'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
               {regionResources.length > 0 && (
                 <>
                   <span className="text-emerald-400 col-span-2">Resources ({regionResources.length})</span>
