@@ -164,11 +164,19 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
 }
 
 // ─── Settlement editor (inline) ──────────────────────────────────────────────
-function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer }) {
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer, onRelocatePixel, mapH }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
   const [selectedTree, setSelectedTree] = useState('');
+  const [relocating, setRelocating] = useState(null); // null | 'city' | 'port'
+
+  // Auto-expand when selected from map click
+  const prevSelected = useRef(false);
+  React.useEffect(() => {
+    if (isSelected && !prevSelected.current) setExpanded(true);
+    prevSelected.current = isSelected;
+  }, [isSelected]);
 
   // Find matching region from regionsData — match by region internal name
   const regionInfo = useMemo(() => {
