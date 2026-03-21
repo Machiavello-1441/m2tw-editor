@@ -504,6 +504,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               </div>
             </>
           ) : (
+            <>
             <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
               <span className="text-slate-500">Region</span><span className="text-slate-300 font-mono truncate">{item.region}</span>
               {settlementNames?.[item.region] && (
