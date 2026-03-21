@@ -874,7 +874,15 @@ export default function CampaignMap() {
                   }}
                   overlayItems={overlayItems}
                   selectedItem={selectedItem}
-                  onSelectItem={(item) => { setSelectedItem(item); if (jumpRef.current && item.x != null) jumpRef.current(item.x, mapH > 0 ? mapH - 1 - item.y : item.y); }}
+                  onSelectItem={(item) => {
+                    setSelectedItem(item);
+                    if (jumpRef.current && item.x != null) jumpRef.current(item.x, mapH > 0 ? mapH - 1 - item.y : item.y);
+                    // Highlight region on map when selecting a settlement
+                    if (item.category === 'settlement' && item.region && regionsData) {
+                      const reg = regionsData.find(r => r.regionName === item.region);
+                      if (reg) setSelectedRegion(reg);
+                    }
+                  }}
                   visibleCategories={visibleCategories}
                   onToggleCategory={handleToggleCategory}
                   onDeleteItem={handleDeleteItem}
