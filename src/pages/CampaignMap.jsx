@@ -882,7 +882,10 @@ export default function CampaignMap() {
                     // Highlight region on map when selecting a settlement
                     if (item.category === 'settlement' && item.region && regionsData) {
                       const reg = regionsData.find(r => r.regionName === item.region);
-                      if (reg) setSelectedRegion(reg);
+                      if (reg) {
+                        setSelectedRegion(reg);
+                        setActiveTab('strat');
+                      }
                     }
                   }}
                   visibleCategories={visibleCategories}
