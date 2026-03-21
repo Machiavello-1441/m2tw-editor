@@ -612,13 +612,14 @@ export function parseDescrRegions(text) {
 export function serializeDescrRegions(regions) {
   return regions.map(reg => {
     const relEntries = Object.entries(reg.religions || {}).map(([k, v]) => `${k} ${v}`).join(' ');
+    const resourcesLine = (reg.resources || []).length > 0 ? (reg.resources || []).join(', ') : 'none';
     return [
       reg.regionName,
       reg.settlementName,
       reg.factionCreator,
-      reg.rebelFaction,
+      reg.rebelFaction || 'slave',
       `${reg.r} ${reg.g} ${reg.b}`,
-      (reg.resources || []).join(', '),
+      resourcesLine,
       String(reg.val1 ?? 0),
       String(reg.val2 ?? 0),
       relEntries ? `religions { ${relEntries} }` : 'religions {  }',
