@@ -618,7 +618,8 @@ export default function StratPanel({
     if (selectedItem?.category === 'settlement') setTab('settlements');
   }, [selectedItem?.id]);
 
-  const loadFile = async (e, type) => {
+  const loadFile = useRef(async (e, type) => {}).current;
+  const loadFileHandler = async (e, type) => {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
     if (type === 'strat')    onStratLoad(text, file.name);
