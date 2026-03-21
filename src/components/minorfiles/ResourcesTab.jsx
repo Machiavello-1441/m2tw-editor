@@ -97,7 +97,23 @@ export default function ResourcesTab() {
   };
 
   const updateResource = (idx, field, value) => {
-    setResources(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+    setResources(prev => {
+      const old = prev[idx];
+      if (field === 'name' && old) {
+        // Rename the bin key when internal name changes
+        const oldKey = resourceBinKey(old.name);
+        const newKey = resourceBinKey(value);
+        if (oldKey !== newKey) {
+          setNames(p => {
+            const next = { ...p };
+            next[newKey] = next[oldKey] ?? value;
+            delete next[oldKey];
+            return next;
+          });
+        }
+      }
+      return prev.map((r, i) => i === idx ? { ...r, [field]: value } : r);
+    });
   };
 
   const removeResource = (idx) => {
