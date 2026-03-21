@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Upload, Download, Plus, X, AlertCircle } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
 
 function parseReligionsFull(text) {
   const religions = [];
@@ -45,11 +46,36 @@ export default function ReligionsTab() {
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
+  // Auto-load from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('m2tw_religions_file');
+      if (raw) {
+        setReligions(parseReligionsFull(raw));
+        setLoaded(true);
+      }
+    } catch {}
+    // Auto-load strings.bin for religion display names
+    try {
+      const store = getStringsBinStore();
+      const relBinEntry = Object.entries(store).find(([k]) => k.toLowerCase().includes('religion'));
+      if (relBinEntry?.[1]) {
+        const map = {};
+        for (const e of relBinEntry[1].entries) if (e.key) map[e.key] = e.value;
+        setNames(map);
+        setBinMeta({ magic1: relBinEntry[1].magic1 ?? 2, magic2: relBinEntry[1].magic2 ?? 2048 });
+      }
+    } catch {}
+  }, []);
+
   const handleLoadTxt = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
     setReligions(parseReligionsFull(text));
-    try { sessionStorage.setItem('m2tw_religions_raw', text); } catch {}
+    try {
+      sessionStorage.setItem('m2tw_religions_raw', text);
+      localStorage.setItem('m2tw_religions_file', text);
+    } catch {}
     setLoaded(true);
     e.target.value = '';
   };
@@ -154,13 +180,23 @@ export default function ReligionsTab() {
             <div className="grid grid-cols-2 gap-1.5">
               <div>
                 <span className="text-[9px] text-slate-500">Pip icon path</span>
-                <input value={r.pip} onChange={e => updateReligion(idx, 'pip', e.target.value)}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                <div className="flex items-center gap-1">
+                  <input value={r.pip} onChange={e => updateReligion(idx, 'pip', e.target.value)}
+                    className="flex-1 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  {r.pip && window._m2tw_religion_pips?.[r.pip.split('/').pop()?.replace(/\.tga$/i, '').toLowerCase()] && (
+                    <img src={window._m2tw_religion_pips[r.pip.split('/').pop().replace(/\.tga$/i, '').toLowerCase()]} className="w-5 h-5 rounded border border-slate-600/40 object-contain" />
+                  )}
+                </div>
               </div>
               <div>
                 <span className="text-[9px] text-slate-500">Anti-pip path</span>
-                <input value={r.antiPip} onChange={e => updateReligion(idx, 'antiPip', e.target.value)}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                <div className="flex items-center gap-1">
+                  <input value={r.antiPip} onChange={e => updateReligion(idx, 'antiPip', e.target.value)}
+                    className="flex-1 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  {r.antiPip && window._m2tw_religion_pips?.[r.antiPip.split('/').pop()?.replace(/\.tga$/i, '').toLowerCase()] && (
+                    <img src={window._m2tw_religion_pips[r.antiPip.split('/').pop().replace(/\.tga$/i, '').toLowerCase()]} className="w-5 h-5 rounded border border-slate-600/40 object-contain" />
+                  )}
+                </div>
               </div>
               <div className="col-span-2">
                 <span className="text-[9px] text-slate-500">Display Name</span>

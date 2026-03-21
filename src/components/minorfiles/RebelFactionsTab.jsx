@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Upload, Download, Plus, X, AlertCircle, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
 import RebelFactionRow from './RebelFactionRow';
 
 // ─── Parser ──────────────────────────────────────────────────────────────────
@@ -97,6 +98,20 @@ export default function RebelFactionsTab() {
       if (raw) {
         setFactions(parseRebelFactionsFull(raw));
         setLoaded(true);
+      }
+    } catch {}
+    // Auto-load strings.bin for rebel faction display names
+    try {
+      const store = getStringsBinStore();
+      const rebelBinEntry = Object.entries(store).find(([k]) => {
+        const lk = k.toLowerCase();
+        return lk.includes('rebel_faction') || lk.includes('rebel_fac');
+      });
+      if (rebelBinEntry?.[1]) {
+        const map = {};
+        for (const e of rebelBinEntry[1].entries) if (e.key) map[e.key] = e.value;
+        setNames(map);
+        setBinMeta({ magic1: rebelBinEntry[1].magic1 ?? 2, magic2: rebelBinEntry[1].magic2 ?? 2048 });
       }
     } catch {}
   }, []);

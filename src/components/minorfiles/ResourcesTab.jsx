@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Upload, Download, Plus, X, AlertCircle } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
 
 function parseResourcesFull(text) {
   const resources = [];
@@ -48,12 +49,54 @@ export default function ResourcesTab() {
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
+  // Auto-load from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('m2tw_resources_file');
+      if (raw) {
+        setResources(parseResourcesFull(raw));
+        setLoaded(true);
+      }
+    } catch {}
+    // Auto-load strat.txt.strings.bin or strat.txt from strings.bin store
+    try {
+      const store = getStringsBinStore();
+      // Prefer strat.txt entries from the bin store
+      const stratBinEntry = Object.entries(store).find(([k]) => {
+        const lk = k.toLowerCase();
+        return lk === 'strat.txt.strings.bin' || (lk.includes('strat') && lk.endsWith('.bin'));
+      });
+      if (stratBinEntry?.[1]) {
+        const map = {};
+        for (const e of stratBinEntry[1].entries) if (e.key) map[e.key] = e.value;
+        setNames(map);
+        setBinMeta({ magic1: stratBinEntry[1].magic1 ?? 2, magic2: stratBinEntry[1].magic2 ?? 2048 });
+      }
+    } catch {}
+  }, []);
+
   const handleLoadTxt = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
     setResources(parseResourcesFull(text));
-    try { sessionStorage.setItem('m2tw_sm_resources_raw', text); } catch {}
+    try {
+      sessionStorage.setItem('m2tw_sm_resources_raw', text);
+      localStorage.setItem('m2tw_resources_file', text);
+    } catch {}
     setLoaded(true);
+    e.target.value = '';
+  };
+
+  const handleLoadStratTxt = async (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const text = await file.text();
+    // Parse {key}value format
+    const map = {};
+    for (const line of text.split('\n')) {
+      const m = line.match(/^\{([^}]+)\}(.*)/);
+      if (m) map[m[1]] = m[2].replace(/^[¬\t ]/, '').trim();
+    }
+    setNames(map);
     e.target.value = '';
   };
 
@@ -141,6 +184,10 @@ export default function ResourcesTab() {
         <label className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
           <Upload className="w-3 h-3" /> Load strat.txt.strings.bin
           <input type="file" accept=".bin,.strings.bin" className="hidden" onChange={handleLoadBin} />
+        </label>
+        <label className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
+          <Upload className="w-3 h-3" /> Load strat.txt
+          <input type="file" accept=".txt" className="hidden" onChange={handleLoadStratTxt} />
         </label>
         <button onClick={handleExportTxt} disabled={!resources.length}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 disabled:opacity-40 transition-colors">
