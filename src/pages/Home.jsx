@@ -262,6 +262,7 @@ export default function Home() {
     const baseMapFiles = [];
     const groundTypeTgaFiles = [];
     const resourceTgaFiles = [];
+    const religionPipFiles = [];
     const stringsBinFiles = {};
 
     for (const file of files) {
@@ -290,6 +291,8 @@ export default function Home() {
           bldTgaFiles.push(file);
         } else if (pathLower.includes('/ui/resources/') || pathLower.includes('/ui/resource/')) {
           resourceTgaFiles.push(file);
+        } else if (pathLower.includes('/pips/') || pathLower.includes('/religion/')) {
+          religionPipFiles.push(file);
         } else if (pathLower.includes('/maps/base/')) {
           baseMapFiles.push(file);
         } else if (pathLower.includes('/terrain/aerial_map/ground_types/')) {
@@ -453,6 +456,17 @@ export default function Home() {
       window.dispatchEvent(new CustomEvent('load-unit-images', { detail: images }));
       setUnitImgCount(Object.keys(images).length);
       setFileStatus((prev) => ({ ...prev, unit_images: 'ok' }));
+    }
+
+    // Auto-load religion pip images
+    if (religionPipFiles.length > 0) {
+      const pips = {};
+      for (const file of religionPipFiles) {
+        const buf = await file.arrayBuffer();
+        const dataUrl = decodeTgaToDataUrl(buf);
+        if (dataUrl) pips[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
+      }
+      window._m2tw_religion_pips = { ...(window._m2tw_religion_pips || {}), ...pips };
     }
 
     // Auto-load resource icons (ui/resources/*.tga)
