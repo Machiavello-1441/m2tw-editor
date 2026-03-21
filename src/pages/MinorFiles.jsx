@@ -1,0 +1,56 @@
+import React, { useState } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileText, Shield, Sparkles, Gem } from 'lucide-react';
+import RebelFactionsTab from '../components/minorfiles/RebelFactionsTab';
+import ReligionsTab from '../components/minorfiles/ReligionsTab';
+import ResourcesTab from '../components/minorfiles/ResourcesTab';
+
+const TABS = [
+  { id: 'rebels', label: 'Rebel Factions', Icon: Shield, description: 'descr_rebel_factions.txt + rebel_faction_descr.txt.strings.bin' },
+  { id: 'religions', label: 'Religions', Icon: Sparkles, description: 'descr_religions.txt + lookup + .strings.bin' },
+  { id: 'resources', label: 'Resources', Icon: Gem, description: 'descr_sm_resources.txt + strat.txt.strings.bin' },
+];
+
+export default function MinorFiles() {
+  const [activeTab, setActiveTab] = useState('rebels');
+
+  return (
+    <div className="h-screen flex flex-col">
+      <div className="h-10 border-b border-border flex items-center px-4 gap-3 shrink-0 bg-card/50">
+        <FileText className="w-4 h-4 text-muted-foreground" />
+        <span className="text-xs font-medium text-foreground">Minor Files Editor</span>
+        <span className="text-[10px] text-muted-foreground font-mono hidden lg:block">— Rebel factions, Religions, Resources</span>
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex border-b border-border shrink-0 bg-card/30">
+        {TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-semibold border-b-2 transition-colors ${
+              activeTab === id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Icon className="w-3.5 h-3.5" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab description */}
+      <div className="px-4 py-2 bg-muted/20 border-b border-border">
+        <p className="text-[10px] text-muted-foreground font-mono">
+          {TABS.find(t => t.id === activeTab)?.description}
+        </p>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="p-4 max-w-3xl mx-auto">
+          {activeTab === 'rebels' && <RebelFactionsTab />}
+          {activeTab === 'religions' && <ReligionsTab />}
+          {activeTab === 'resources' && <ResourcesTab />}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
