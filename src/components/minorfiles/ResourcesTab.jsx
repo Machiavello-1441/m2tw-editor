@@ -91,7 +91,9 @@ export default function ResourcesTab() {
   };
 
   const addResource = () => {
-    setResources(prev => [...prev, { name: 'new_resource', tradeValue: 0, model: '', icon: '', hasMine: false }]);
+    const newName = 'new_resource';
+    setResources(prev => [...prev, { name: newName, tradeValue: 0, model: '', icon: '', hasMine: false }]);
+    setNames(prev => ({ ...prev, [resourceBinKey(newName)]: 'New Resource' }));
   };
 
   const updateResource = (idx, field, value) => {
