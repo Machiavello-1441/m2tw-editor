@@ -173,7 +173,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
 
   // Auto-expand when selected from map click
   const prevSelected = useRef(false);
-  React.useEffect(() => {
+  useEffect(() => {
     if (isSelected && !prevSelected.current) setExpanded(true);
     prevSelected.current = isSelected;
   }, [isSelected]);
