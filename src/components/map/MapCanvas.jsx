@@ -199,7 +199,7 @@ export default function MapCanvas({
       if (coarseLayer?.width) drawPixelGrid(ctx, coarseLayer.width, coarseLayer.height, mapW, mapH, transform.scale, 'rgba(255,200,80,0.10)');
     }
     ctx.restore();
-  }, [layers, transform, mapW, mapH, regionsMode, transCacheVer, showPixelGrid]);
+  }, [layers, transform, mapW, mapH, regionsMode, transCacheVer, showPixelGrid, highlightRegion]);
 
   const fitToContainer = useCallback(() => {
     const container = containerRef.current;
