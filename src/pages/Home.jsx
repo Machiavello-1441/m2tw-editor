@@ -305,6 +305,30 @@ export default function Home() {
         continue;
       }
 
+      // Imperial campaign files (data\world\maps\campaign\imperial_campaign\*)
+      const CAMPAIGN_MAP_TXTS = ['descr_strat.txt', 'descr_regions.txt', 'descr_mercenaries.txt', 'descr_win_conditions.txt', 'campaign_script.txt', 'descr_event.txt', 'descr_events.txt'];
+      if (CAMPAIGN_MAP_TXTS.includes(name) && pathLower.includes('/maps/campaign/')) {
+        baseMapFiles.push(file);
+        // Also store campaign text files in localStorage for map editor
+        const CAMPAIGN_STORE_MAP = {
+          'descr_strat.txt': 'm2tw_campaign_strat',
+          'campaign_script.txt': 'm2tw_campaign_script',
+          'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
+          'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
+        };
+        const csKey = CAMPAIGN_STORE_MAP[name];
+        if (csKey) {
+          const csTxt = await readText(file);
+          try { localStorage.setItem(csKey, csTxt); } catch {}
+        }
+        continue;
+      }
+      // Campaign TGA files
+      if (name.endsWith('.tga') && pathLower.includes('/maps/campaign/')) {
+        baseMapFiles.push(file);
+        continue;
+      }
+
       const key = DATA_FILE_MAP[name];
       if (!key) continue;
 
@@ -338,7 +362,11 @@ export default function Home() {
       } else if (storeKeys[key]) {
         try {
           localStorage.setItem(storeKeys[key], text);
-          localStorage.setItem(nameKeys[key], file.name);
+          if (nameKeys[key]) localStorage.setItem(nameKeys[key], file.name);
+          // Also store in sessionStorage for editors that need it
+          if (key === 'religions') sessionStorage.setItem('m2tw_religions_raw', text);
+          if (key === 'rebel_fac') sessionStorage.setItem('m2tw_rebel_factions_raw', text);
+          if (key === 'cultures') sessionStorage.setItem('m2tw_cultures_raw', text);
           if (key === 'expunits') {
             window.dispatchEvent(new CustomEvent('load-export-units'));
           }
@@ -360,6 +388,17 @@ export default function Home() {
         } catch {}
       } else {
         loaderMap[key]?.(text);
+        // Store factions in sessionStorage for campaign map editor
+        if (key === 'fac') {
+          try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {}
+        }
+        // Store resources in sessionStorage + localStorage
+        if (key === 'res') {
+          try {
+            sessionStorage.setItem('m2tw_sm_resources_raw', text);
+            localStorage.setItem('m2tw_resources_file', text);
+          } catch {}
+        }
       }
       setFileStatus((prev) => ({ ...prev, [key]: 'ok' }));
     }

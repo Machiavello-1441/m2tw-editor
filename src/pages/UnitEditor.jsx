@@ -8,7 +8,7 @@ import { parseModeldb, serializeModeldb } from '../lib/modeldbCodec';
 import { modeldbStore } from '../lib/modeldbStore';
 
 const STORAGE_KEY = 'm2tw_edu_units';
-const EDU_FILE_KEY = 'm2tw_edu_file';
+const EDU_FILE_KEY = 'm2tw_units_file';
 const EDU_FILE_NAME_KEY = 'm2tw_edu_file_name';
 const EXPORT_UNITS_KEY = 'm2tw_export_units_file';
 const UNIT_IMAGES_KEY = 'm2tw_unit_images';
