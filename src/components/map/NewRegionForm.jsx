@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Plus, X, Check } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Plus, X, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { extractHiddenResourcesFromEDB } from './additionalParsers';
 
-export default function NewRegionForm({ factionColors, onAdd, onCancel }) {
+export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList }) {
   const [draft, setDraft] = useState({
     regionName: '',
     settlementName: '',
@@ -15,9 +16,18 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel }) {
     level: 'village',
     population: 400,
     yearFounded: 0,
+    rebelFaction: '',
+    hiddenResources: [],
+    val1: 0,
+    val2: 0,
+    musicType: '',
+    mercenaryPool: '',
+    religions: {},
   });
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const factionList = factionColors ? Object.keys(factionColors).sort() : [];
+  const edbHiddenRes = useMemo(() => hiddenResourceList || extractHiddenResourcesFromEDB(edbData), [hiddenResourceList, edbData]);
 
   const handleSubmit = () => {
     if (!draft.regionName || !draft.settlementName) return;
@@ -91,6 +101,22 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel }) {
         )}
       </div>
 
+      {/* Rebel Faction */}
+      <div>
+        <span className="text-[9px] text-slate-500">Rebel Faction</span>
+        {(rebelFactionList?.length > 0) ? (
+          <select value={draft.rebelFaction} onChange={e => setDraft(d => ({ ...d, rebelFaction: e.target.value }))}
+            className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+            <option value="">— select rebel faction —</option>
+            {rebelFactionList.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+        ) : (
+          <input value={draft.rebelFaction} onChange={e => setDraft(d => ({ ...d, rebelFaction: e.target.value }))}
+            placeholder="e.g. slave (load descr_rebel_factions.txt)"
+            className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-1.5">
         <div>
           <span className="text-[9px] text-slate-500">Population</span>
@@ -105,6 +131,107 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel }) {
             className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
         </div>
       </div>
+
+      {/* Triumph & Agriculture */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <div>
+          <span className="text-[9px] text-slate-500">Triumph value</span>
+          <input type="number" value={draft.val1}
+            onChange={e => setDraft(d => ({ ...d, val1: parseInt(e.target.value) || 0 }))}
+            className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+        </div>
+        <div>
+          <span className="text-[9px] text-slate-500">Agriculture value</span>
+          <input type="number" value={draft.val2}
+            onChange={e => setDraft(d => ({ ...d, val2: parseInt(e.target.value) || 0 }))}
+            className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+        </div>
+      </div>
+
+      {/* Advanced toggle */}
+      <button onClick={() => setShowAdvanced(v => !v)}
+        className="flex items-center gap-1 text-[9px] text-slate-500 hover:text-slate-300 transition-colors">
+        {showAdvanced ? <ChevronDown className="w-2.5 h-2.5" /> : <ChevronRight className="w-2.5 h-2.5" />}
+        Advanced (Hidden Resources, Music, Mercenaries, Religions)
+      </button>
+
+      {showAdvanced && (
+        <div className="space-y-1.5 border-t border-slate-700/30 pt-1.5">
+          {/* Hidden Resources */}
+          <div>
+            <span className="text-[9px] text-slate-500">Hidden Resources (EDB)</span>
+            {draft.hiddenResources.length > 0 && (
+              <div className="flex flex-wrap gap-0.5 mb-1">
+                {draft.hiddenResources.map(hr => (
+                  <span key={hr} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-800/60 rounded text-[9px] text-purple-300 font-mono">
+                    {hr}
+                    <button onClick={() => setDraft(d => ({ ...d, hiddenResources: d.hiddenResources.filter(x => x !== hr) }))}
+                      className="text-slate-600 hover:text-red-400"><X className="w-2 h-2" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <select value="" onChange={e => {
+              const val = e.target.value;
+              if (val && !draft.hiddenResources.includes(val))
+                setDraft(d => ({ ...d, hiddenResources: [...d.hiddenResources, val] }));
+            }}
+              className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+              <option value="">{edbHiddenRes.length ? '— add hidden resource —' : 'Load EDB for list'}</option>
+              {edbHiddenRes.filter(hr => !draft.hiddenResources.includes(hr)).map(hr => <option key={hr} value={hr}>{hr}</option>)}
+            </select>
+          </div>
+
+          {/* Music Type */}
+          <div>
+            <span className="text-[9px] text-slate-500">Music Type</span>
+            {(musicTypeList?.length > 0) ? (
+              <select value={draft.musicType} onChange={e => setDraft(d => ({ ...d, musicType: e.target.value }))}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                <option value="">— select music type —</option>
+                {musicTypeList.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            ) : (
+              <input value={draft.musicType} onChange={e => setDraft(d => ({ ...d, musicType: e.target.value }))}
+                placeholder="Load descr_sounds_music_types.txt"
+                className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+            )}
+          </div>
+
+          {/* Mercenary Pool */}
+          <div>
+            <span className="text-[9px] text-slate-500">Mercenary Pool</span>
+            {(mercenaryPoolList?.length > 0) ? (
+              <select value={draft.mercenaryPool} onChange={e => setDraft(d => ({ ...d, mercenaryPool: e.target.value }))}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                <option value="">— select pool —</option>
+                {mercenaryPoolList.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            ) : (
+              <input value={draft.mercenaryPool} onChange={e => setDraft(d => ({ ...d, mercenaryPool: e.target.value }))}
+                placeholder="Load descr_mercenaries.txt"
+                className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+            )}
+          </div>
+
+          {/* Religions */}
+          {religionList?.length > 0 && (
+            <div>
+              <span className="text-[9px] text-slate-500">Religions</span>
+              <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                {religionList.map(rel => (
+                  <div key={rel} className="flex items-center gap-1.5">
+                    <span className="text-[9px] text-slate-400 font-mono flex-1 truncate">{rel}</span>
+                    <input type="number" min="0" max="100" value={draft.religions[rel] || 0}
+                      onChange={e => setDraft(d => ({ ...d, religions: { ...d.religions, [rel]: parseInt(e.target.value) || 0 } }))}
+                      className="w-14 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-1.5 justify-end pt-0.5">
         <button onClick={onCancel}
