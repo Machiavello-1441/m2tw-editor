@@ -88,6 +88,7 @@ export default function MapCanvas({
   onTransformChange,
   regionsData,
   settlementNames,
+  highlightRegion,
 }) {
   const canvasRef    = useRef(null);
   const containerRef = useRef(null);
