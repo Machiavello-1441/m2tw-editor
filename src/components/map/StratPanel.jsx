@@ -294,6 +294,35 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     setDraft(d => ({ ...d, buildings: d.buildings.filter(b => b !== bldName) }));
   };
 
+  // Find city (black pixel) and port (white pixel) positions adjacent to this region's color
+  const cityPortPos = useMemo(() => {
+    if (!regionInfo || !regionsLayer?.data) return { city: null, port: null };
+    const { r: rr, g: rg, b: rb } = regionInfo;
+    const { data, width, height } = regionsLayer;
+    let city = null, port = null;
+    for (let py = 0; py < height && (!city || !port); py++) {
+      for (let px = 0; px < width && (!city || !port); px++) {
+        const idx = (py * width + px) * 4;
+        const pr = data[idx], pg = data[idx + 1], pb = data[idx + 2];
+        const isBlack = pr < 5 && pg < 5 && pb < 5;
+        const isWhite = pr > 250 && pg > 250 && pb > 250;
+        if (!isBlack && !isWhite) continue;
+        // Check if adjacent to this region's color
+        for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+          const nx = px + dx, ny = py + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          const ni = (ny * width + nx) * 4;
+          if (data[ni] === rr && data[ni + 1] === rg && data[ni + 2] === rb) {
+            if (isBlack && !city) city = { px, py, stratY: height - 1 - py };
+            if (isWhite && !port) port = { px, py, stratY: height - 1 - py };
+            break;
+          }
+        }
+      }
+    }
+    return { city, port };
+  }, [regionInfo, regionsLayer]);
+
   const iconChar = SETTLEMENT_LEVEL_ICONS[item.level] || '🏘️';
   const posText = item.x != null ? `${item.x},${item.y}` : 'pos?';
 
