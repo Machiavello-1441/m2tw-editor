@@ -3,6 +3,7 @@ import { useEDB } from '../components/edb/EDBContext';
 import { useTraits } from '../components/traits/TraitsContext';
 import { useAncillaries } from '../components/ancillaries/AncillariesContext';
 import { encodeStringsBin } from '../components/strings/stringsBinCodec';
+import { parseDescrStrat, serializeDescrStrat } from '../components/map/stratParser';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
