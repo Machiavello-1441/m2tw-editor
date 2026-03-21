@@ -88,6 +88,7 @@ const AuthenticatedApp = () => {
       <Route path="/ScriptEditor" element={<LayoutWrapper currentPageName="ScriptEditor"><ScriptEditor /></LayoutWrapper>} />
       <Route path="/FactionsEditor" element={<LayoutWrapper currentPageName="FactionsEditor"><FactionsEditor /></LayoutWrapper>} />
       <Route path="/CampaignSettings" element={<LayoutWrapper currentPageName="CampaignSettings"><CampaignSettings /></LayoutWrapper>} />
+      <Route path="/MinorFiles" element={<LayoutWrapper currentPageName="MinorFiles"><MinorFiles /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
