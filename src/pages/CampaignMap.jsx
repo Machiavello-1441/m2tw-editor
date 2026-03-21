@@ -94,6 +94,7 @@ export default function CampaignMap() {
   const [editedSettlements, setEditedSettlements] = useState({});
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
   const [regionWizard, setRegionWizard] = useState(null); // { draft, step: 'paint'|'city'|'port' }
+  const [pendingRelocate, setPendingRelocate] = useState(null); // { type: 'city'|'port', regionInfo, settlement }
 
   // ── Extra data sources for region editor ──────────────────────────────────
   const [rebelFactions, setRebelFactions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_rebel_factions_raw'); return r ? parseDescrRebelFactions(r) : []; } catch { return []; } });
