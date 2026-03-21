@@ -788,6 +788,7 @@ export default function CampaignMap() {
             onTransformChange={setTransform}
             regionsData={regionsData}
             settlementNames={settlementNames}
+            highlightRegion={selectedRegion}
           />
           {/* Strat SVG overlay */}
           <StratOverlay
