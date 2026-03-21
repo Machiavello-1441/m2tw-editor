@@ -16,6 +16,8 @@ const VALID_WHEN_TO_TEST = [
   'CharacterMarries', 'CharacterMarriesPrincess', 'CharacterBecomesAFather', 'SpyMission',
   'LeaderOrderedSpyingMisssion', 'AssassinationMission', 'LeaderOrderedAssassination',
   'SufferAssassinationAttempt', 'SabotageMission', 'LeaderOrderedSabotage',
+  'CharacterTurnEndInSettlement', 'GovernorCityRiots', 'GovernorUnitTrained',
+  'SackSettlement', 'HireMercenaries', 'LeaderOrderedSpyingMission', 'GovernorBuildingCompleted',
 ];
 
 const VALID_CONDITION_PREFIXES = [
