@@ -423,6 +423,8 @@ export default function CampaignMap() {
       val1: draft.val1 || 0,
       val2: draft.val2 || 0,
       religions: draft.religions || {},
+      musicType: draft.musicType || '',
+      mercenaryPool: draft.mercenaryPool || '',
     };
     setRegionsDataRaw(prev => [...(prev || []), newRegion]);
 
