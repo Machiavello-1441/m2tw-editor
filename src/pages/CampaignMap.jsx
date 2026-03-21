@@ -796,6 +796,14 @@ export default function CampaignMap() {
           </span>
         )}
 
+        {/* Relocate pixel indicator */}
+        {pendingRelocate && (
+          <span className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-[10px] font-semibold animate-pulse">
+            {pendingRelocate.type === 'city' ? '⬛' : '⬜'} Click map to place new <b>{pendingRelocate.type}</b> pixel
+            <button onClick={() => setPendingRelocate(null)} className="ml-1 text-cyan-600 hover:text-cyan-400">✕</button>
+          </span>
+        )}
+
         {/* Region wizard step indicator in toolbar */}
         {regionWizard?.step === 'city' && (
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-slate-900/80 border border-slate-500/40 text-slate-200 text-[10px] font-semibold animate-pulse">
