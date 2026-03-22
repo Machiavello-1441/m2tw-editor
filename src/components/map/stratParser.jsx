@@ -388,16 +388,25 @@ export function computeSettlementPositions(settlements, regionsData, regionsLaye
   if (!settlements?.length || !regionsData?.length || !regionsLayer?.data) return settlements;
   const { data, width, height } = regionsLayer;
 
+  // Build a set of known region colors for quick lookup
+  const knownColors = new Set();
   const colorMap = {};
   for (const reg of regionsData) {
-    if (reg.regionName) colorMap[reg.regionName.toLowerCase()] = { r: reg.r, g: reg.g, b: reg.b };
+    if (reg.regionName) {
+      colorMap[reg.regionName.toLowerCase()] = { r: reg.r, g: reg.g, b: reg.b };
+      knownColors.add(`${reg.r},${reg.g},${reg.b}`);
+    }
   }
 
+  // For each black pixel, find the best adjacent region color.
+  // Prefer neighbors whose color matches a known region (avoids sea/border colors).
   const cityPx = {};
   for (let py = 0; py < height; py++) {
     for (let px = 0; px < width; px++) {
       const idx = (py * width + px) * 4;
       if (data[idx] > 5 || data[idx+1] > 5 || data[idx+2] > 5) continue;
+
+      let bestKey = null;
       for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
         const nx = px + dx, ny = py + dy;
         if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
@@ -406,8 +415,13 @@ export function computeSettlementPositions(settlements, regionsData, regionsLaye
         if (nr < 5 && ng < 5 && nb < 5) continue;
         if (nr > 245 && ng > 245 && nb > 245) continue;
         const key = `${nr},${ng},${nb}`;
-        if (!cityPx[key]) cityPx[key] = { x: px, y: height - 1 - py };
-        break;
+        // If this neighbor matches a known region, use it immediately
+        if (knownColors.has(key)) { bestKey = key; break; }
+        // Otherwise remember as fallback
+        if (!bestKey) bestKey = key;
+      }
+      if (bestKey && !cityPx[bestKey]) {
+        cityPx[bestKey] = { x: px, y: height - 1 - py };
       }
     }
   }
