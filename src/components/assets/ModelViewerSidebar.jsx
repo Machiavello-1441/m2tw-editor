@@ -130,14 +130,20 @@ export default function ModelViewerSidebar({
   );
 }
 
-function MeshGroupRow({ info, index, onToggleVisibility, onTextureFile, onRemoveTexture }) {
+function MeshGroupRow({ info, index, flag = -1, onToggleVisibility, onTextureFile, onRemoveTexture }) {
   const inputRef = useRef(null);
+  const flagLabel = flag === 1 ? 'always' : flag === 0 ? 'random' : null;
 
   return (
     <div className="bg-slate-800 rounded-lg p-2 space-y-1.5">
-      {/* Name + visibility toggle */}
-      <div className="flex items-center justify-between">
-        <span className="text-slate-200 font-medium truncate flex-1 mr-1" title={info.name}>{info.name}</span>
+      {/* Name + flag + visibility toggle */}
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-slate-200 font-medium truncate flex-1" title={info.name}>{info.name}</span>
+        {flagLabel && (
+          <span className={`text-[9px] px-1 py-0.5 rounded ${flag === 1 ? 'bg-green-900/40 text-green-400' : 'bg-yellow-900/40 text-yellow-400'}`}>
+            {flagLabel}
+          </span>
+        )}
         <button onClick={() => onToggleVisibility(index)}
           className={`p-1 rounded transition-colors ${info.visible ? 'text-blue-400 hover:bg-blue-500/20' : 'text-slate-500 hover:bg-slate-700'}`}
         >
