@@ -329,6 +329,22 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       window.removeEventListener('mousemove', onMove);
       el.removeEventListener('wheel', onWheel);
       ro.disconnect();
+      // Dispose all Three.js resources
+      meshObjsRef.current.forEach(obj => {
+        obj.geometry?.dispose();
+        if (obj.material?.map) obj.material.map.dispose();
+        obj.material?.dispose();
+        obj.children.forEach(c => { c.geometry?.dispose(); c.material?.dispose(); });
+      });
+      meshObjsRef.current = [];
+      if (skeletonObjRef.current) {
+        skeletonObjRef.current.traverse(child => { child.geometry?.dispose(); child.material?.dispose(); });
+        skeletonObjRef.current = null;
+      }
+      posedWorldMatsRef.current = null;
+      skinnedBufRef.current = null;
+      jointPosRef.current = null;
+      groupVertMapsRef.current = [];
       renderer.dispose();
       while (el.firstChild) el.removeChild(el.firstChild);
     };
