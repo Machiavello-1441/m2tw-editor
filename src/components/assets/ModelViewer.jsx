@@ -203,6 +203,27 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       const bindPose = buildBindPoseMatrices(joints);
       bindPoseRef.current = bindPose;
 
+      // Pre-allocate reusable buffers for posing (avoids GC pressure)
+      posedWorldMatsRef.current = joints.map(() => new THREE.Matrix4());
+      jointPosRef.current = joints.map(() => new THREE.Vector3());
+      if (skeletonData.vertices?.length > 0) {
+        skinnedBufRef.current = new Float32Array(skeletonData.vertices.length * 3);
+      }
+
+      // Pre-compute per-group vertex index maps (avoids rebuilding each pose tick)
+      if (skeletonData.groups?.length > 0 && skeletonData.triangles?.length > 0) {
+        groupVertMapsRef.current = skeletonData.groups.map(grp => {
+          const vertSet = new Set();
+          for (const ti of grp.triIndices) {
+            const tri = skeletonData.triangles[ti];
+            if (tri) { tri.vi.forEach(vi => vertSet.add(vi)); }
+          }
+          return [...vertSet].sort((a, b) => a - b);
+        });
+      } else {
+        groupVertMapsRef.current = [];
+      }
+
       // Build skeleton visualization
       const skelGroup = new THREE.Group();
       skelGroup.name = '__skeleton__';
