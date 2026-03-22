@@ -90,80 +90,87 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* Top row: drop zone (compact) + info/export side-by-side */}
-      <div className="flex gap-3 items-start">
-        <label
-          className="shrink-0 w-52 cursor-pointer border-2 border-dashed border-slate-600 rounded-xl p-4 text-center hover:border-blue-500 transition-colors"
-          onDragOver={e => e.preventDefault()}
-          onDrop={handleDrop}
-        >
-          <input type="file" className="hidden" multiple accept={accept} onChange={handleInput} />
-          <Box className="w-5 h-5 mx-auto mb-1 text-slate-400" />
-          <p className="text-xs text-slate-300">{label}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">{hint}</p>
-        </label>
-
-        {/* Right side: file tabs + info + export buttons */}
-        <div className="flex-1 min-w-0 flex flex-col gap-2">
-          {files.length > 0 && (
-            <div className="flex gap-2 flex-wrap">
-              {files.map((f, i) => (
-                <div key={f.name} className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded border transition-colors ${i === selected ? 'bg-blue-700 border-blue-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'}`}>
-                  <button onClick={() => setSelected(i)} className="truncate max-w-[140px]">{f.name}</button>
-                  <button onClick={() => removeFile(i)} className="opacity-50 hover:opacity-100 ml-0.5"><X className="w-3 h-3" /></button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {current && (
-            <>
-              {current.parsed.errors?.length > 0 && (
-                <div className="bg-amber-950/40 border border-amber-700 rounded-lg p-2 space-y-0.5 text-[10px]">
-                  <p className="text-amber-400 font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Warnings</p>
-                  {current.parsed.errors.map((e, i) => <p key={i} className="text-amber-300 leading-snug">{e}</p>)}
-                </div>
-              )}
-              <div className="bg-slate-900 rounded-lg border border-slate-700 px-3 py-2 text-[11px] flex flex-wrap gap-x-4 gap-y-1 items-center">
-                <span className="text-slate-500">Format: <span className="text-slate-200 font-mono">{current.sourceFormat}</span></span>
-                <span className="text-slate-500">Groups: <span className="text-slate-200 font-mono">{current.parsed.meshes.length}</span></span>
-                <span className="text-slate-500">Verts: <span className="text-slate-200 font-mono">{current.totalVerts.toLocaleString()}</span></span>
-                <span className="text-slate-500">Faces: <span className="text-slate-200 font-mono">{current.totalFaces.toLocaleString()}</span></span>
-                {current.ms3dFull?.joints?.length > 0 && (
-                  <span className="text-slate-500">Joints: <span className="text-green-300 font-mono">{current.ms3dFull.joints.length}</span></span>
-                )}
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {(current.sourceFormat === 'cas' || current.sourceFormat === 'mesh') && (
-                  <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white h-7 text-xs" onClick={exportMs3d}>
-                    <Download className="w-3 h-3" /> .ms3d
-                  </Button>
-                )}
-                {current.sourceFormat === 'ms3d' && onFromMs3d && (
-                  <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white h-7 text-xs" onClick={exportNative}>
-                    <Download className="w-3 h-3" /> {accept.includes('cas') ? '.cas' : '.mesh'}
-                  </Button>
-                )}
-                <Button size="sm" variant="outline" className="gap-1.5 border-slate-600 text-slate-200 hover:bg-slate-700 h-7 text-xs"
-                  onClick={() => downloadBuffer(current.rawBuffer, current.name)}>
-                  <Download className="w-3 h-3" /> Original
-                </Button>
-              </div>
-            </>
-          )}
+      {/* When no model loaded: drop zone centered */}
+      {!current && (
+        <div className="flex flex-col items-center gap-3">
+          <label
+            className="w-full max-w-md cursor-pointer border-2 border-dashed border-slate-600 rounded-xl p-6 text-center hover:border-blue-500 transition-colors"
+            onDragOver={e => e.preventDefault()}
+            onDrop={handleDrop}
+          >
+            <input type="file" className="hidden" multiple accept={accept} onChange={handleInput} />
+            <Box className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+            <p className="text-sm text-slate-300">{label}</p>
+            <p className="text-[11px] text-slate-500 mt-1">{hint}</p>
+          </label>
         </div>
-      </div>
+      )}
 
-      {/* 3D Viewer — square-ish, not stretching full height */}
+      {/* When model loaded: 3D preview fills space, info panel on top */}
       {current && (
-        <div className="rounded-xl border border-slate-700 overflow-hidden bg-slate-900" style={{ height: 420 }}>
-          <ModelViewer
-            parsedMesh={current.parsed}
-            skeletonData={current.ms3dFull || null}
-            groupComments={current.ms3dFull?.groupComments || null}
-            className="w-full h-full"
-          />
-        </div>
+        <>
+          {/* Compact top bar: drop new + file tabs + info + export */}
+          <div className="flex items-center gap-2 flex-wrap text-[11px]">
+            <label
+              className="shrink-0 cursor-pointer border border-dashed border-slate-600 rounded-lg px-3 py-1.5 text-center hover:border-blue-500 transition-colors"
+              onDragOver={e => e.preventDefault()}
+              onDrop={handleDrop}
+            >
+              <input type="file" className="hidden" multiple accept={accept} onChange={handleInput} />
+              <span className="flex items-center gap-1.5 text-slate-400 text-[11px]"><Box className="w-3 h-3" /> Drop / Add</span>
+            </label>
+
+            {files.map((f, i) => (
+              <div key={f.name} className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors ${i === selected ? 'bg-blue-700 border-blue-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'}`}>
+                <button onClick={() => setSelected(i)} className="truncate max-w-[120px]">{f.name}</button>
+                <button onClick={() => removeFile(i)} className="opacity-50 hover:opacity-100 ml-0.5"><X className="w-3 h-3" /></button>
+              </div>
+            ))}
+
+            <div className="h-4 w-px bg-slate-700 mx-1" />
+
+            <span className="text-slate-500">{current.sourceFormat}</span>
+            <span className="text-slate-500">{current.parsed.meshes.length}g</span>
+            <span className="text-slate-500">{current.totalVerts.toLocaleString()}v</span>
+            <span className="text-slate-500">{current.totalFaces.toLocaleString()}f</span>
+            {current.ms3dFull?.joints?.length > 0 && (
+              <span className="text-green-400">{current.ms3dFull.joints.length}j</span>
+            )}
+
+            <div className="h-4 w-px bg-slate-700 mx-1" />
+
+            {(current.sourceFormat === 'cas' || current.sourceFormat === 'mesh') && (
+              <Button size="sm" className="gap-1 bg-blue-600 hover:bg-blue-500 text-white h-6 text-[11px] px-2" onClick={exportMs3d}>
+                <Download className="w-3 h-3" /> .ms3d
+              </Button>
+            )}
+            {current.sourceFormat === 'ms3d' && onFromMs3d && (
+              <Button size="sm" className="gap-1 bg-blue-600 hover:bg-blue-500 text-white h-6 text-[11px] px-2" onClick={exportNative}>
+                <Download className="w-3 h-3" /> {accept.includes('cas') ? '.cas' : '.mesh'}
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="gap-1 border-slate-600 text-slate-200 hover:bg-slate-700 h-6 text-[11px] px-2"
+              onClick={() => downloadBuffer(current.rawBuffer, current.name)}>
+              <Download className="w-3 h-3" /> Raw
+            </Button>
+
+            {current.parsed.errors?.length > 0 && (
+              <span className="text-amber-400 flex items-center gap-1" title={current.parsed.errors.join('\n')}>
+                <AlertTriangle className="w-3 h-3" /> {current.parsed.errors.length} warning{current.parsed.errors.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {/* 3D Viewer — fills remaining space */}
+          <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900 min-h-0">
+            <ModelViewer
+              parsedMesh={current.parsed}
+              skeletonData={current.ms3dFull || null}
+              groupComments={current.ms3dFull?.groupComments || null}
+              className="w-full h-full"
+            />
+          </div>
+        </>
       )}
     </div>
   );

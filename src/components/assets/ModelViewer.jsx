@@ -3,6 +3,15 @@ import * as THREE from 'three';
 import { loadTextureBuffer } from '@/lib/textureLoader';
 import ModelViewerSidebar from './ModelViewerSidebar';
 
+const LIGHTING_PRESETS = {
+  default: { name: 'Default', ambient: 0.6, dirIntensity: 0.9, dirPos: [5, 10, 7] },
+  studio: { name: 'Studio', ambient: 0.4, dirIntensity: 1.2, dirPos: [3, 8, 5], fill: { intensity: 0.4, pos: [-5, 3, -3] } },
+  warm: { name: 'Warm', ambient: 0.5, dirIntensity: 0.8, dirPos: [4, 8, 6], color: 0xfff0dd, ambientColor: 0xffe8cc },
+  cool: { name: 'Cool', ambient: 0.5, dirIntensity: 0.8, dirPos: [4, 8, 6], color: 0xd4e5ff, ambientColor: 0xc8d8f0 },
+  dramatic: { name: 'Dramatic', ambient: 0.15, dirIntensity: 1.5, dirPos: [2, 12, 4] },
+  flat: { name: 'Flat', ambient: 1.0, dirIntensity: 0.1, dirPos: [0, 10, 0] },
+};
+
 /**
  * Enhanced 3D model viewer with:
  * - Large square preview with transparent background
@@ -64,9 +73,12 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
   const isRotatingRef = useRef(true);
   const isDraggingRef = useRef(false);
 
+  const lightsRef = useRef({ ambient: null, dir: null, fill: null });
+
   const [isRotating, setIsRotating] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [showWireframe, setShowWireframe] = useState(true);
+  const [lightingPreset, setLightingPreset] = useState('default');
   const [meshInfos, setMeshInfos] = useState([]); // [{ name, visible, textureFile }]
   const [hasSkeleton, setHasSkeleton] = useState(false);
   const [superGroups, setSuperGroups] = useState([]);
@@ -101,10 +113,15 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     const camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 10000);
     cameraRef.current = camera;
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
     const dir = new THREE.DirectionalLight(0xffffff, 0.9);
     dir.position.set(5, 10, 7);
     scene.add(dir);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0);
+    fillLight.position.set(-5, 3, -3);
+    scene.add(fillLight);
+    lightsRef.current = { ambient: ambientLight, dir, fill: fillLight };
 
     const mainGroup = new THREE.Group();
     scene.add(mainGroup);
@@ -254,6 +271,23 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     if (skeletonObjRef.current) skeletonObjRef.current.visible = showSkeleton;
   }, [showSkeleton]);
 
+  // ── Lighting preset ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const { ambient, dir, fill } = lightsRef.current;
+    if (!ambient || !dir) return;
+    const p = LIGHTING_PRESETS[lightingPreset] || LIGHTING_PRESETS.default;
+    ambient.intensity = p.ambient;
+    ambient.color.set(p.ambientColor || 0xffffff);
+    dir.intensity = p.dirIntensity;
+    dir.color.set(p.color || 0xffffff);
+    dir.position.set(...p.dirPos);
+    if (fill) {
+      fill.intensity = p.fill?.intensity || 0;
+      if (p.fill?.pos) fill.position.set(...p.fill.pos);
+      fill.color.set(p.color || 0xffffff);
+    }
+  }, [lightingPreset]);
+
   // ── Wireframe visibility ────────────────────────────────────────────────
   useEffect(() => {
     meshObjsRef.current.forEach((obj, idx) => {
@@ -342,6 +376,15 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     });
   }, []);
 
+  // ── Fix normals ──────────────────────────────────────────────────────────
+  const handleFixNormals = useCallback(() => {
+    meshObjsRef.current.forEach(obj => {
+      const geo = obj.geometry;
+      geo.computeVertexNormals();
+      geo.attributes.normal.needsUpdate = true;
+    });
+  }, []);
+
   // ── Screenshot ──────────────────────────────────────────────────────────
   const handleScreenshot = useCallback(() => {
     const renderer = rendererRef.current;
@@ -377,6 +420,10 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
         hasSkeleton={hasSkeleton}
         showWireframe={showWireframe}
         onToggleWireframe={() => setShowWireframe(w => !w)}
+        lightingPreset={lightingPreset}
+        onLightingChange={setLightingPreset}
+        lightingPresets={LIGHTING_PRESETS}
+        onFixNormals={handleFixNormals}
         meshInfos={meshInfos}
         superGroups={superGroups}
         onToggleVisibility={handleToggleVisibility}

@@ -1,16 +1,18 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Camera, RotateCw, Pause, Eye, EyeOff, Bone, ImageIcon, X, ChevronRight, ChevronDown, Grid3x3 } from 'lucide-react';
+import { Camera, RotateCw, Pause, Eye, EyeOff, Bone, ImageIcon, X, ChevronRight, ChevronDown, Grid3x3, Sun, Wrench } from 'lucide-react';
 
 export default function ModelViewerSidebar({
   isRotating, onToggleRotation,
   showSkeleton, onToggleSkeleton, hasSkeleton,
   showWireframe, onToggleWireframe,
+  lightingPreset, onLightingChange, lightingPresets,
+  onFixNormals,
   meshInfos, superGroups, onToggleVisibility, onToggleSuperGroup, onTextureFile, onRemoveTexture,
   onScreenshot,
 }) {
-  const [collapsed, setCollapsed] = useState({}); // { sgIndex: true/false }
+  const [collapsed, setCollapsed] = useState({});
   const hasSuperGroups = superGroups?.length > 0;
 
   const toggleCollapse = (sgIdx) => {
@@ -18,14 +20,14 @@ export default function ModelViewerSidebar({
   };
 
   return (
-    <div className="w-56 border-l border-slate-700 bg-slate-900 flex flex-col shrink-0 text-[11px]">
+    <div className="w-52 border-l border-slate-700 bg-slate-900 flex flex-col shrink-0 text-[11px]">
       {/* Controls */}
-      <div className="p-3 border-b border-slate-700 space-y-1.5">
-        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-2">Controls</p>
+      <div className="p-2.5 border-b border-slate-700 space-y-1">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1.5">Controls</p>
 
         <button
           onClick={onToggleRotation}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors ${
+          className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left transition-colors ${
             isRotating ? 'bg-blue-600/30 text-blue-300' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
           }`}
         >
@@ -35,7 +37,7 @@ export default function ModelViewerSidebar({
 
         <button
           onClick={onToggleWireframe}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors ${
+          className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left transition-colors ${
             showWireframe ? 'bg-purple-600/30 text-purple-300' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
           }`}
         >
@@ -46,7 +48,7 @@ export default function ModelViewerSidebar({
         <button
           onClick={onToggleSkeleton}
           disabled={!hasSkeleton}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors ${
+          className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left transition-colors ${
             !hasSkeleton ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500' :
             showSkeleton ? 'bg-green-600/30 text-green-300' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
           }`}
@@ -54,21 +56,55 @@ export default function ModelViewerSidebar({
           <Bone className="w-3 h-3" />
           {hasSkeleton ? (showSkeleton ? 'Hide Skeleton' : 'Show Skeleton') : 'No Skeleton'}
         </button>
+      </div>
 
+      {/* Lighting */}
+      <div className="p-2.5 border-b border-slate-700 space-y-1">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1.5 flex items-center gap-1">
+          <Sun className="w-3 h-3" /> Lighting
+        </p>
+        <div className="grid grid-cols-2 gap-1">
+          {lightingPresets && Object.entries(lightingPresets).map(([key, preset]) => (
+            <button
+              key={key}
+              onClick={() => onLightingChange(key)}
+              className={`px-2 py-1 rounded text-[10px] transition-colors ${
+                lightingPreset === key
+                  ? 'bg-yellow-600/30 text-yellow-300 border border-yellow-600/50'
+                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tools */}
+      <div className="p-2.5 border-b border-slate-700 space-y-1">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1.5">Tools</p>
+        <button
+          onClick={onFixNormals}
+          className="w-full flex items-center gap-2 px-2 py-1 rounded text-left bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+          title="Recompute vertex normals from face geometry to fix shading artifacts"
+        >
+          <Wrench className="w-3 h-3" />
+          Fix Normals
+        </button>
         <Button size="sm" variant="outline"
-          className="w-full gap-2 border-slate-600 text-slate-200 hover:bg-slate-700 h-7 text-[11px]"
+          className="w-full gap-2 border-slate-600 text-slate-200 hover:bg-slate-700 h-6 text-[11px]"
           onClick={onScreenshot}
         >
-          <Camera className="w-3 h-3" /> Screenshot (.png)
+          <Camera className="w-3 h-3" /> Screenshot
         </Button>
       </div>
 
       {/* Mesh groups */}
       <div className="flex-1 min-h-0 flex flex-col">
-        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold px-3 pt-3 pb-1">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold px-2.5 pt-2 pb-1">
           Mesh Groups ({meshInfos.length})
         </p>
-        <ScrollArea className="flex-1 px-3 pb-3">
+        <ScrollArea className="flex-1 px-2.5 pb-2">
           <div className="space-y-1 pt-1">
             {hasSuperGroups ? (
               superGroups.map((sg, sgIdx) => {
@@ -77,8 +113,7 @@ export default function ModelViewerSidebar({
                 const noneVisible = sg.entries.every(e => !meshInfos[e.meshIndex]?.visible);
                 return (
                   <div key={sg.superGroup + sgIdx}>
-                    {/* Super-group header */}
-                    <div className="flex items-center gap-1 py-1">
+                    <div className="flex items-center gap-1 py-0.5">
                       <button onClick={() => toggleCollapse(sgIdx)} className="text-slate-400 hover:text-slate-200 p-0.5">
                         {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
@@ -98,7 +133,6 @@ export default function ModelViewerSidebar({
                         {noneVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                       </button>
                     </div>
-                    {/* Child meshes */}
                     {!isCollapsed && (
                       <div className="ml-2 space-y-1 mb-1">
                         {sg.entries.map(entry => {
@@ -146,23 +180,21 @@ function MeshGroupRow({ info, index, flag = -1, onToggleVisibility, onTextureFil
   const flagLabel = flag === 1 ? 'always' : flag === 0 ? 'random' : null;
 
   return (
-    <div className="bg-slate-800 rounded-lg p-2 space-y-1.5">
-      {/* Name + flag + visibility toggle */}
+    <div className="bg-slate-800 rounded p-1.5 space-y-1">
       <div className="flex items-center justify-between gap-1">
-        <span className="text-slate-200 font-medium truncate flex-1" title={info.name}>{info.name}</span>
+        <span className="text-slate-200 font-medium truncate flex-1 text-[10px]" title={info.name}>{info.name}</span>
         {flagLabel && (
           <span className={`text-[9px] px-1 py-0.5 rounded ${flag === 1 ? 'bg-green-900/40 text-green-400' : 'bg-yellow-900/40 text-yellow-400'}`}>
             {flagLabel}
           </span>
         )}
         <button onClick={() => onToggleVisibility(index)}
-          className={`p-1 rounded transition-colors ${info.visible ? 'text-blue-400 hover:bg-blue-500/20' : 'text-slate-500 hover:bg-slate-700'}`}
+          className={`p-0.5 rounded transition-colors ${info.visible ? 'text-blue-400 hover:bg-blue-500/20' : 'text-slate-500 hover:bg-slate-700'}`}
         >
           {info.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
         </button>
       </div>
 
-      {/* Texture assignment */}
       <div className="flex items-center gap-1">
         {info.textureFile ? (
           <>
