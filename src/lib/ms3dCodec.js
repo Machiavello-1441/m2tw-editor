@@ -135,6 +135,10 @@ export function parseMs3d(buffer) {
   // ── Group Comments (MS3D extended section) ────────────────────────────────
   // After joints, MS3D v4 files may have sub-version and comments sections.
   // Group comments contain super-group metadata used by M2TW modding tools.
+  // Format per comment: lines of text, e.g.:
+  //   SuperGroupName\n
+  //   MeshName\n
+  //   0 or 1  (0=random, 1=always visible)
   const groupComments = [];
   try {
     if (off + 4 <= buffer.byteLength) {
