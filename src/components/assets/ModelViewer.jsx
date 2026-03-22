@@ -66,6 +66,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
 
   const [isRotating, setIsRotating] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
+  const [showWireframe, setShowWireframe] = useState(true);
   const [meshInfos, setMeshInfos] = useState([]); // [{ name, visible, textureFile }]
   const [hasSkeleton, setHasSkeleton] = useState(false);
   const [superGroups, setSuperGroups] = useState([]);
@@ -253,6 +254,18 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     if (skeletonObjRef.current) skeletonObjRef.current.visible = showSkeleton;
   }, [showSkeleton]);
 
+  // ── Wireframe visibility ────────────────────────────────────────────────
+  useEffect(() => {
+    meshObjsRef.current.forEach((obj, idx) => {
+      // Only toggle wireframe overlay on meshes without a texture applied
+      obj.children.forEach(c => {
+        if (c.isLineSegments) {
+          c.visible = showWireframe && !meshInfos[idx]?.textureFile;
+        }
+      });
+    });
+  }, [showWireframe, meshInfos]);
+
   // ── Mesh visibility ─────────────────────────────────────────────────────
   const handleToggleVisibility = useCallback((index) => {
     setMeshInfos(prev => {
@@ -362,6 +375,8 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
         showSkeleton={showSkeleton}
         onToggleSkeleton={() => setShowSkeleton(s => !s)}
         hasSkeleton={hasSkeleton}
+        showWireframe={showWireframe}
+        onToggleWireframe={() => setShowWireframe(w => !w)}
         meshInfos={meshInfos}
         superGroups={superGroups}
         onToggleVisibility={handleToggleVisibility}

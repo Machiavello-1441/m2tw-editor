@@ -89,75 +89,80 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
   };
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <label
-        className="block cursor-pointer border-2 border-dashed border-slate-600 rounded-xl p-5 text-center hover:border-blue-500 transition-colors"
-        onDragOver={e => e.preventDefault()}
-        onDrop={handleDrop}
-      >
-        <input type="file" className="hidden" multiple accept={accept} onChange={handleInput} />
-        <Box className="w-5 h-5 mx-auto mb-1.5 text-slate-400" />
-        <p className="text-sm text-slate-300">{label}</p>
-        <p className="text-[11px] text-slate-500 mt-0.5">{hint}</p>
-      </label>
+    <div className="flex flex-col gap-3 h-full">
+      {/* Top row: drop zone (compact) + info/export side-by-side */}
+      <div className="flex gap-3 items-start">
+        <label
+          className="shrink-0 w-52 cursor-pointer border-2 border-dashed border-slate-600 rounded-xl p-4 text-center hover:border-blue-500 transition-colors"
+          onDragOver={e => e.preventDefault()}
+          onDrop={handleDrop}
+        >
+          <input type="file" className="hidden" multiple accept={accept} onChange={handleInput} />
+          <Box className="w-5 h-5 mx-auto mb-1 text-slate-400" />
+          <p className="text-xs text-slate-300">{label}</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">{hint}</p>
+        </label>
 
-      {files.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          {files.map((f, i) => (
-            <div key={f.name} className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded border transition-colors ${i === selected ? 'bg-blue-700 border-blue-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'}`}>
-              <button onClick={() => setSelected(i)} className="truncate max-w-[140px]">{f.name}</button>
-              <button onClick={() => removeFile(i)} className="opacity-50 hover:opacity-100 ml-0.5"><X className="w-3 h-3" /></button>
+        {/* Right side: file tabs + info + export buttons */}
+        <div className="flex-1 min-w-0 flex flex-col gap-2">
+          {files.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {files.map((f, i) => (
+                <div key={f.name} className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded border transition-colors ${i === selected ? 'bg-blue-700 border-blue-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'}`}>
+                  <button onClick={() => setSelected(i)} className="truncate max-w-[140px]">{f.name}</button>
+                  <button onClick={() => removeFile(i)} className="opacity-50 hover:opacity-100 ml-0.5"><X className="w-3 h-3" /></button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {current && (
-        <div className="flex flex-col flex-1 min-h-0 gap-3">
-          {/* Info bar + Convert — compact horizontal strip */}
-          <div className="flex flex-wrap items-start gap-3">
-            {current.parsed.errors?.length > 0 && (
-              <div className="bg-amber-950/40 border border-amber-700 rounded-lg p-2 space-y-0.5 text-[10px]">
-                <p className="text-amber-400 font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Warnings</p>
-                {current.parsed.errors.map((e, i) => <p key={i} className="text-amber-300 leading-snug">{e}</p>)}
+          {current && (
+            <>
+              {current.parsed.errors?.length > 0 && (
+                <div className="bg-amber-950/40 border border-amber-700 rounded-lg p-2 space-y-0.5 text-[10px]">
+                  <p className="text-amber-400 font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Warnings</p>
+                  {current.parsed.errors.map((e, i) => <p key={i} className="text-amber-300 leading-snug">{e}</p>)}
+                </div>
+              )}
+              <div className="bg-slate-900 rounded-lg border border-slate-700 px-3 py-2 text-[11px] flex flex-wrap gap-x-4 gap-y-1 items-center">
+                <span className="text-slate-500">Format: <span className="text-slate-200 font-mono">{current.sourceFormat}</span></span>
+                <span className="text-slate-500">Groups: <span className="text-slate-200 font-mono">{current.parsed.meshes.length}</span></span>
+                <span className="text-slate-500">Verts: <span className="text-slate-200 font-mono">{current.totalVerts.toLocaleString()}</span></span>
+                <span className="text-slate-500">Faces: <span className="text-slate-200 font-mono">{current.totalFaces.toLocaleString()}</span></span>
+                {current.ms3dFull?.joints?.length > 0 && (
+                  <span className="text-slate-500">Joints: <span className="text-green-300 font-mono">{current.ms3dFull.joints.length}</span></span>
+                )}
               </div>
-            )}
-            <div className="bg-slate-900 rounded-lg border border-slate-700 px-3 py-2 text-[11px] flex gap-4 items-center">
-              <span className="text-slate-500">Format: <span className="text-slate-200 font-mono">{current.sourceFormat}</span></span>
-              <span className="text-slate-500">Groups: <span className="text-slate-200 font-mono">{current.parsed.meshes.length}</span></span>
-              <span className="text-slate-500">Verts: <span className="text-slate-200 font-mono">{current.totalVerts.toLocaleString()}</span></span>
-              <span className="text-slate-500">Faces: <span className="text-slate-200 font-mono">{current.totalFaces.toLocaleString()}</span></span>
-              {current.ms3dFull?.joints?.length > 0 && (
-                <span className="text-slate-500">Joints: <span className="text-green-300 font-mono">{current.ms3dFull.joints.length}</span></span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {(current.sourceFormat === 'cas' || current.sourceFormat === 'mesh') && (
-                <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs" onClick={exportMs3d}>
-                  <Download className="w-3 h-3" /> .ms3d
+              <div className="flex gap-2 flex-wrap">
+                {(current.sourceFormat === 'cas' || current.sourceFormat === 'mesh') && (
+                  <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white h-7 text-xs" onClick={exportMs3d}>
+                    <Download className="w-3 h-3" /> .ms3d
+                  </Button>
+                )}
+                {current.sourceFormat === 'ms3d' && onFromMs3d && (
+                  <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white h-7 text-xs" onClick={exportNative}>
+                    <Download className="w-3 h-3" /> {accept.includes('cas') ? '.cas' : '.mesh'}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="gap-1.5 border-slate-600 text-slate-200 hover:bg-slate-700 h-7 text-xs"
+                  onClick={() => downloadBuffer(current.rawBuffer, current.name)}>
+                  <Download className="w-3 h-3" /> Original
                 </Button>
-              )}
-              {current.sourceFormat === 'ms3d' && onFromMs3d && (
-                <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs" onClick={exportNative}>
-                  <Download className="w-3 h-3" /> {accept.includes('cas') ? '.cas' : '.mesh'}
-                </Button>
-              )}
-              <Button size="sm" variant="outline" className="gap-1.5 border-slate-600 text-slate-200 hover:bg-slate-700 h-8 text-xs"
-                onClick={() => downloadBuffer(current.rawBuffer, current.name)}>
-                <Download className="w-3 h-3" /> Original
-              </Button>
-            </div>
-          </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
-          {/* 3D Viewer — fills remaining space */}
-          <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900" style={{ minHeight: 500 }}>
-            <ModelViewer
-              parsedMesh={current.parsed}
-              skeletonData={current.ms3dFull || null}
-              groupComments={current.ms3dFull?.groupComments || null}
-              className="w-full h-full"
-            />
-          </div>
+      {/* 3D Viewer — square-ish, not stretching full height */}
+      {current && (
+        <div className="rounded-xl border border-slate-700 overflow-hidden bg-slate-900" style={{ height: 420 }}>
+          <ModelViewer
+            parsedMesh={current.parsed}
+            skeletonData={current.ms3dFull || null}
+            groupComments={current.ms3dFull?.groupComments || null}
+            className="w-full h-full"
+          />
         </div>
       )}
     </div>

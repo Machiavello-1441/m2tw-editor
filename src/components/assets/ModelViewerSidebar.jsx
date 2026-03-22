@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Camera, RotateCw, Pause, Eye, EyeOff, Bone, ImageIcon, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { Camera, RotateCw, Pause, Eye, EyeOff, Bone, ImageIcon, X, ChevronRight, ChevronDown, Grid3x3 } from 'lucide-react';
 
 export default function ModelViewerSidebar({
   isRotating, onToggleRotation,
   showSkeleton, onToggleSkeleton, hasSkeleton,
+  showWireframe, onToggleWireframe,
   meshInfos, superGroups, onToggleVisibility, onToggleSuperGroup, onTextureFile, onRemoveTexture,
   onScreenshot,
 }) {
@@ -30,6 +31,16 @@ export default function ModelViewerSidebar({
         >
           {isRotating ? <Pause className="w-3 h-3" /> : <RotateCw className="w-3 h-3" />}
           {isRotating ? 'Stop Rotation' : 'Start Rotation'}
+        </button>
+
+        <button
+          onClick={onToggleWireframe}
+          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors ${
+            showWireframe ? 'bg-purple-600/30 text-purple-300' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+          }`}
+        >
+          <Grid3x3 className="w-3 h-3" />
+          {showWireframe ? 'Hide Wireframe' : 'Show Wireframe'}
         </button>
 
         <button
