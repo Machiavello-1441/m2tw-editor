@@ -24,16 +24,14 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     const buf = await file.arrayBuffer();
     const ext = file.name.split('.').pop().toLowerCase();
     let result;
-    let ms3dExtra = null; // skeleton + group comments from full ms3d parser
 
+    let ms3dFull = null;
     if (ext === 'ms3d') {
       result = parseMs3d(buf);
       result.sourceFormat = 'ms3d';
-      // Also parse with full ms3dCodec for skeleton & group comments
+      // Also parse with full ms3d codec to get skeleton + group comments
       const full = parseMs3dFull(buf);
-      if (full && !full.error) {
-        ms3dExtra = { joints: full.joints || [], groupComments: full.groupComments || [] };
-      }
+      if (full && !full.error) ms3dFull = full;
     } else if (ext === 'mesh') {
       result = parseMeshFile(buf);
       result.sourceFormat = 'mesh';
@@ -55,7 +53,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
 
     setFiles(prev => {
       const next = prev.filter(f => f.name !== file.name);
-      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf, ms3dExtra }];
+      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf, ms3dFull }];
     });
     setSelected(0);
   };
@@ -116,54 +114,49 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
 
       {current && (
         <div className="flex flex-col flex-1 min-h-0 gap-3">
-          {/* 3D Preview — fills available space */}
-          <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900" style={{ minHeight: 500 }}>
-            <ModelViewer
-              parsedMesh={current.parsed}
-              skeletonData={current.ms3dExtra || null}
-              className="w-full h-full"
-            />
-          </div>
-
-          {/* Info + actions row below */}
-          <div className="flex gap-3 flex-wrap">
+          {/* Info bar + Convert — compact horizontal strip */}
+          <div className="flex flex-wrap items-start gap-3">
             {current.parsed.errors?.length > 0 && (
-              <div className="bg-amber-950/40 border border-amber-700 rounded-xl p-3 space-y-1 flex-1 min-w-[200px]">
-                <p className="text-[11px] text-amber-400 font-semibold flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" /> Warnings</p>
-                {current.parsed.errors.map((e, i) => <p key={i} className="text-[10px] text-amber-300 leading-snug">{e}</p>)}
+              <div className="bg-amber-950/40 border border-amber-700 rounded-lg p-2 space-y-0.5 text-[10px]">
+                <p className="text-amber-400 font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Warnings</p>
+                {current.parsed.errors.map((e, i) => <p key={i} className="text-amber-300 leading-snug">{e}</p>)}
               </div>
             )}
-
-            <div className="bg-slate-900 rounded-xl border border-slate-700 p-3 space-y-1.5 min-w-[180px]">
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1.5"><Info className="w-3 h-3" /> Info</p>
-              <div className="space-y-0.5 text-[11px]">
-                <div className="flex justify-between gap-4"><span className="text-slate-500">Format</span><span className="text-slate-200 font-mono">{current.sourceFormat}</span></div>
-                <div className="flex justify-between gap-4"><span className="text-slate-500">Meshes</span><span className="text-slate-200 font-mono">{current.parsed.meshes.length}</span></div>
-                <div className="flex justify-between gap-4"><span className="text-slate-500">Verts</span><span className="text-slate-200 font-mono">{current.totalVerts.toLocaleString()}</span></div>
-                <div className="flex justify-between gap-4"><span className="text-slate-500">Faces</span><span className="text-slate-200 font-mono">{current.totalFaces.toLocaleString()}</span></div>
-                {current.ms3dExtra?.joints?.length > 0 && (
-                  <div className="flex justify-between gap-4"><span className="text-slate-500">Bones</span><span className="text-slate-200 font-mono">{current.ms3dExtra.joints.length}</span></div>
-                )}
-              </div>
+            <div className="bg-slate-900 rounded-lg border border-slate-700 px-3 py-2 text-[11px] flex gap-4 items-center">
+              <span className="text-slate-500">Format: <span className="text-slate-200 font-mono">{current.sourceFormat}</span></span>
+              <span className="text-slate-500">Groups: <span className="text-slate-200 font-mono">{current.parsed.meshes.length}</span></span>
+              <span className="text-slate-500">Verts: <span className="text-slate-200 font-mono">{current.totalVerts.toLocaleString()}</span></span>
+              <span className="text-slate-500">Faces: <span className="text-slate-200 font-mono">{current.totalFaces.toLocaleString()}</span></span>
+              {current.ms3dFull?.joints?.length > 0 && (
+                <span className="text-slate-500">Joints: <span className="text-green-300 font-mono">{current.ms3dFull.joints.length}</span></span>
+              )}
             </div>
-
-            <div className="bg-slate-900 rounded-xl border border-slate-700 p-3 space-y-1.5 min-w-[180px]">
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1.5"><ArrowLeftRight className="w-3 h-3" /> Convert</p>
+            <div className="flex gap-2">
               {(current.sourceFormat === 'cas' || current.sourceFormat === 'mesh') && (
-                <Button size="sm" className="w-full gap-2 bg-blue-600 hover:bg-blue-500 text-white h-7 text-[11px]" onClick={exportMs3d}>
-                  <Download className="w-3 h-3" /> Export .ms3d
+                <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs" onClick={exportMs3d}>
+                  <Download className="w-3 h-3" /> .ms3d
                 </Button>
               )}
               {current.sourceFormat === 'ms3d' && onFromMs3d && (
-                <Button size="sm" className="w-full gap-2 bg-blue-600 hover:bg-blue-500 text-white h-7 text-[11px]" onClick={exportNative}>
-                  <Download className="w-3 h-3" /> Export {accept.includes('cas') ? '.cas' : '.mesh'}
+                <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs" onClick={exportNative}>
+                  <Download className="w-3 h-3" /> {accept.includes('cas') ? '.cas' : '.mesh'}
                 </Button>
               )}
-              <Button size="sm" variant="outline" className="w-full gap-2 border-slate-600 text-slate-200 hover:bg-slate-700 h-7 text-[11px]"
+              <Button size="sm" variant="outline" className="gap-1.5 border-slate-600 text-slate-200 hover:bg-slate-700 h-8 text-xs"
                 onClick={() => downloadBuffer(current.rawBuffer, current.name)}>
                 <Download className="w-3 h-3" /> Original
               </Button>
             </div>
+          </div>
+
+          {/* 3D Viewer — fills remaining space */}
+          <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900" style={{ minHeight: 500 }}>
+            <ModelViewer
+              parsedMesh={current.parsed}
+              skeletonData={current.ms3dFull || null}
+              groupComments={current.ms3dFull?.groupComments || null}
+              className="w-full h-full"
+            />
           </div>
         </div>
       )}
