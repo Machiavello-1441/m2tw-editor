@@ -20,7 +20,7 @@ export default function ModelViewerSidebar({
   };
 
   return (
-    <div className="w-52 border-l border-slate-700 bg-slate-900 flex flex-col shrink-0 text-[11px]">
+    <div className="flex flex-col flex-1 min-h-0 text-[11px]">
       {/* Controls */}
       <div className="p-2.5 border-b border-slate-700 space-y-1">
         <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1.5">Controls</p>
