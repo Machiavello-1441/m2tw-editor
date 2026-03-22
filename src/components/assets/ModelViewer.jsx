@@ -263,6 +263,23 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     });
   }, []);
 
+  // ── Super-group visibility toggle ─────────────────────────────────────
+  const handleToggleSuperGroup = useCallback((sgIndex) => {
+    const sg = superGroups[sgIndex];
+    if (!sg) return;
+    // Determine target: if any mesh in group is visible, hide all; otherwise show all
+    const anyVisible = sg.entries.some(e => meshInfos[e.meshIndex]?.visible);
+    const newVisible = !anyVisible;
+    setMeshInfos(prev => {
+      const next = [...prev];
+      for (const entry of sg.entries) {
+        next[entry.meshIndex] = { ...next[entry.meshIndex], visible: newVisible };
+        if (meshObjsRef.current[entry.meshIndex]) meshObjsRef.current[entry.meshIndex].visible = newVisible;
+      }
+      return next;
+    });
+  }, [superGroups, meshInfos]);
+
   // ── Texture assignment ──────────────────────────────────────────────────
   const handleTextureFile = useCallback(async (index, file) => {
     if (!file) return;
