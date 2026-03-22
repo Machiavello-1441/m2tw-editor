@@ -132,5 +132,37 @@ export function parseMs3d(buffer) {
   joints.forEach((j, i) => { nameToIdx[j.name] = i; });
   joints.forEach(j => { j.parentIdx = nameToIdx[j.parentName] ?? -1; });
 
-  return { vertices, triangles, groups, materials, animFPS, totalFrames, joints };
+  // ── Group Comments (MS3D extended section) ────────────────────────────────
+  // After joints, MS3D v4 files may have sub-version and comments sections.
+  // Group comments contain super-group metadata used by M2TW modding tools.
+  const groupComments = [];
+  try {
+    if (off + 4 <= buffer.byteLength) {
+      const subVersion = view.getInt32(off, true); off += 4;
+      if (subVersion === 1 || subVersion === 2) {
+        // Comment sections: group, material, joint, model (each uint32 count)
+        for (let section = 0; section < 4; section++) {
+          if (off + 4 > buffer.byteLength) break;
+          const numComments = view.getUint32(off, true); off += 4;
+          for (let c = 0; c < numComments; c++) {
+            if (off + 8 > buffer.byteLength) break;
+            const commentIndex = view.getInt32(off, true); off += 4;
+            const commentLen = view.getUint32(off, true); off += 4;
+            let commentText = '';
+            if (commentLen > 0 && off + commentLen <= buffer.byteLength) {
+              for (let ci = 0; ci < commentLen; ci++) {
+                commentText += String.fromCharCode(view.getUint8(off + ci));
+              }
+              off += commentLen;
+            }
+            if (section === 0) { // group comments
+              groupComments.push({ groupIndex: commentIndex, text: commentText });
+            }
+          }
+        }
+      }
+    }
+  } catch { /* comments section may be absent or truncated */ }
+
+  return { vertices, triangles, groups, materials, animFPS, totalFrames, joints, groupComments };
 }
