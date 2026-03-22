@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, RotateCcw, Trash2, ChevronRight, ChevronDown, Download } from 'lucide-react';
+import { Save, RotateCcw, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
 
 const DEG = Math.PI / 180;
 const toDeg = (rad) => Math.round((rad / DEG) * 10) / 10;
@@ -55,7 +55,6 @@ export default function PoseEditor({ joints, poseRotations, onPoseChange, onRese
   const handleBoneRotation = (boneIdx, axis, degValue) => {
     const current = poseRotations[boneIdx] || { rx: 0, ry: 0, rz: 0 };
     const updated = { ...current, [axis]: toRad(degValue) };
-    // Clean up zero rotations
     if (Math.abs(updated.rx) < 0.001 && Math.abs(updated.ry) < 0.001 && Math.abs(updated.rz) < 0.001) {
       const next = { ...poseRotations };
       delete next[boneIdx];
@@ -77,8 +76,8 @@ export default function PoseEditor({ joints, poseRotations, onPoseChange, onRese
     );
   }
 
-  // Build hierarchy for display — pre-compute children map once (avoids O(n²) per render)
-  const { rootJoints, childrenMap } = React.useMemo(() => {
+  // Build flat ordered list with depth info (for display indentation of names only)
+  const { flatList } = React.useMemo(() => {
     const indexedJoints = joints.map((j, i) => ({ ...j, index: i }));
     const cMap = {};
     const roots = [];
@@ -90,66 +89,40 @@ export default function PoseEditor({ joints, poseRotations, onPoseChange, onRese
         cMap[j.parentIdx].push(j);
       }
     }
-    return { rootJoints: roots, childrenMap: cMap };
+    const list = [];
+    const walk = (joint, depth) => {
+      const children = cMap[joint.index] || [];
+      list.push({ ...joint, depth, hasChildren: children.length > 0 });
+      for (const child of children) walk(child, depth + 1);
+    };
+    for (const r of roots) walk(r, 0);
+    return { flatList: list };
   }, [joints]);
-  
-  const renderBone = (joint, depth = 0) => {
-    const idx = joint.index;
-    const isExpanded = expanded[idx];
-    const rot = poseRotations[idx] || { rx: 0, ry: 0, rz: 0 };
-    const hasOverride = poseRotations[idx] !== undefined;
-    const children = childrenMap[idx] || [];
 
-    return (
-      <div key={idx}>
-        <div
-          className={`flex items-center gap-1 py-0.5 cursor-pointer hover:bg-slate-800 rounded px-1 ${hasOverride ? 'text-yellow-300' : 'text-slate-300'}`}
-          style={{ paddingLeft: depth * 12 + 4 }}
-          onClick={() => toggleBone(idx)}
-        >
-          {children.length > 0 ? (
-            isExpanded ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />
-          ) : <span className="w-3" />}
-          <span className="text-[11px] truncate flex-1">{joint.name}</span>
-          {hasOverride && <span className="text-[9px] text-yellow-500">●</span>}
-        </div>
-
-        {isExpanded && (
-          <div className="ml-4 mb-1 space-y-1 bg-slate-800/50 rounded p-2" style={{ marginLeft: depth * 12 + 16 }}>
-            {['rx', 'ry', 'rz'].map(axis => (
-              <div key={axis} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 w-5 uppercase">{axis.slice(1)}</span>
-                <Slider
-                  min={-180}
-                  max={180}
-                  step={1}
-                  value={[toDeg(rot[axis] || 0)]}
-                  onValueChange={([v]) => handleBoneRotation(idx, axis, v)}
-                  className="flex-1"
-                />
-                <span className="text-[10px] text-slate-400 w-10 text-right font-mono">
-                  {toDeg(rot[axis] || 0)}°
-                </span>
-              </div>
-            ))}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const next = { ...poseRotations };
-                delete next[idx];
-                onPoseChange(next);
-              }}
-              className="text-[10px] text-slate-500 hover:text-red-400 mt-0.5"
-            >
-              Reset bone
-            </button>
-          </div>
-        )}
-
-        {isExpanded && children.map(child => renderBone(child, depth + 1))}
-      </div>
-    );
-  };
+  // Filter visible items: show all top-level items, and children only if their parent chain is expanded
+  const visibleItems = React.useMemo(() => {
+    const result = [];
+    const depthStack = []; // track expanded state at each depth
+    for (const item of flatList) {
+      // An item is visible if all its ancestors are expanded
+      // Check: for depth 0, always visible. For depth > 0, the item at depth-1 in the stack must be expanded
+      if (item.depth === 0) {
+        result.push(item);
+        depthStack[0] = expanded[item.index];
+      } else {
+        // visible if all depths above are expanded
+        let visible = true;
+        for (let d = 0; d < item.depth; d++) {
+          if (!depthStack[d]) { visible = false; break; }
+        }
+        if (visible) {
+          result.push(item);
+          depthStack[item.depth] = expanded[item.index];
+        }
+      }
+    }
+    return result;
+  }, [flatList, expanded]);
 
   return (
     <div className="flex flex-col h-full text-[11px]">
@@ -201,15 +174,115 @@ export default function PoseEditor({ joints, poseRotations, onPoseChange, onRese
         </div>
       )}
 
-      {/* Bone hierarchy */}
+      {/* Bone hierarchy — flat, no indent on sliders */}
       <div className="flex-1 min-h-0 flex flex-col">
         <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold px-2.5 pt-2 pb-1">
           Bones ({joints.length})
         </p>
         <ScrollArea className="flex-1 px-2.5 pb-2">
-          {rootJoints.map(j => renderBone(j))}
+          {visibleItems.map(item => {
+            const idx = item.index;
+            const isExp = expanded[idx];
+            const rot = poseRotations[idx] || { rx: 0, ry: 0, rz: 0 };
+            const hasOverride = poseRotations[idx] !== undefined;
+
+            return (
+              <div key={idx}>
+                {/* Bone name row — indent name only for hierarchy clarity */}
+                <div
+                  className={`flex items-center gap-1 py-0.5 cursor-pointer hover:bg-slate-800 rounded px-1 ${hasOverride ? 'text-yellow-300' : 'text-slate-300'}`}
+                  onClick={() => toggleBone(idx)}
+                >
+                  {item.hasChildren ? (
+                    isExp ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />
+                  ) : <span className="w-3 shrink-0" />}
+                  {item.depth > 0 && (
+                    <span className="text-[8px] text-slate-600 shrink-0">{'·'.repeat(Math.min(item.depth, 4))}</span>
+                  )}
+                  <span className="text-[11px] truncate flex-1">{item.name}</span>
+                  {hasOverride && <span className="text-[9px] text-yellow-500">●</span>}
+                </div>
+
+                {/* Sliders — NO indent, full width */}
+                {isExp && (
+                  <div className="mb-1 space-y-1 bg-slate-800/50 rounded p-2">
+                    {['rx', 'ry', 'rz'].map(axis => (
+                      <BoneAxisSlider
+                        key={axis}
+                        axis={axis}
+                        value={toDeg(rot[axis] || 0)}
+                        onChange={(v) => handleBoneRotation(idx, axis, v)}
+                      />
+                    ))}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = { ...poseRotations };
+                        delete next[idx];
+                        onPoseChange(next);
+                      }}
+                      className="text-[10px] text-slate-500 hover:text-red-400 mt-0.5"
+                    >
+                      Reset bone
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </ScrollArea>
       </div>
+    </div>
+  );
+}
+
+function BoneAxisSlider({ axis, value, onChange }) {
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+
+  const startEdit = () => {
+    setEditText(String(value));
+    setEditing(true);
+  };
+
+  const commitEdit = () => {
+    setEditing(false);
+    const num = parseFloat(editText);
+    if (!isNaN(num)) {
+      onChange(Math.max(-180, Math.min(180, num)));
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] text-slate-400 w-4 uppercase shrink-0">{axis.slice(1)}</span>
+      <Slider
+        min={-180}
+        max={180}
+        step={1}
+        value={[value]}
+        onValueChange={([v]) => onChange(v)}
+        className="flex-1"
+      />
+      {editing ? (
+        <input
+          type="number"
+          autoFocus
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(false); }}
+          className="w-12 h-5 text-[10px] text-right font-mono bg-slate-700 border border-slate-500 rounded px-1 text-slate-200 outline-none"
+        />
+      ) : (
+        <span
+          className="w-12 text-[10px] text-slate-400 text-right font-mono cursor-pointer hover:text-slate-200 shrink-0"
+          onClick={(e) => { e.stopPropagation(); startEdit(); }}
+          title="Click to type a value"
+        >
+          {value}°
+        </span>
+      )}
     </div>
   );
 }

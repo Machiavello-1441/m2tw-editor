@@ -9,7 +9,10 @@ export default function ModelViewerSidebar({
   showWireframe, onToggleWireframe,
   lightingPreset, onLightingChange, lightingPresets,
   onFixNormals,
-  meshInfos, superGroups, onToggleVisibility, onToggleSuperGroup, onTextureFile, onRemoveTexture,
+  meshInfos, superGroups, onToggleVisibility, onToggleSuperGroup,
+  onTextureFile, onRemoveTexture,
+  onNormalMapFile, onRemoveNormalMap,
+  onSpecularMapFile, onRemoveSpecularMap,
   onScreenshot,
 }) {
   const [collapsed, setCollapsed] = useState({});
@@ -147,6 +150,10 @@ export default function ModelViewerSidebar({
                               onToggleVisibility={onToggleVisibility}
                               onTextureFile={onTextureFile}
                               onRemoveTexture={onRemoveTexture}
+                              onNormalMapFile={onNormalMapFile}
+                              onRemoveNormalMap={onRemoveNormalMap}
+                              onSpecularMapFile={onSpecularMapFile}
+                              onRemoveSpecularMap={onRemoveSpecularMap}
                             />
                           );
                         })}
@@ -165,6 +172,10 @@ export default function ModelViewerSidebar({
                   onToggleVisibility={onToggleVisibility}
                   onTextureFile={onTextureFile}
                   onRemoveTexture={onRemoveTexture}
+                  onNormalMapFile={onNormalMapFile}
+                  onRemoveNormalMap={onRemoveNormalMap}
+                  onSpecularMapFile={onSpecularMapFile}
+                  onRemoveSpecularMap={onRemoveSpecularMap}
                 />
               ))
             )}
@@ -175,50 +186,75 @@ export default function ModelViewerSidebar({
   );
 }
 
-function MeshGroupRow({ info, index, flag = -1, onToggleVisibility, onTextureFile, onRemoveTexture }) {
+function TextureSlot({ label, fileName, onFile, onRemove, accept = ".texture,.tga,.dds" }) {
   const inputRef = useRef(null);
+  return (
+    <div className="flex items-center gap-1 h-5">
+      <span className="text-[9px] text-slate-500 w-7 shrink-0">{label}</span>
+      {fileName ? (
+        <>
+          <div className="flex items-center gap-0.5 bg-slate-700 rounded px-1 py-0.5 min-w-0 flex-1 overflow-hidden">
+            <ImageIcon className="w-2.5 h-2.5 text-green-400 shrink-0" />
+            <span className="text-green-300 text-[9px] whitespace-nowrap overflow-hidden text-ellipsis" title={fileName}>{fileName}</span>
+          </div>
+          <button onClick={onRemove} className="text-slate-500 hover:text-red-400 p-0.5 shrink-0">
+            <X className="w-2.5 h-2.5" />
+          </button>
+        </>
+      ) : (
+        <>
+          <input ref={inputRef} type="file" className="hidden" accept={accept}
+            onChange={(e) => { if (e.target.files[0]) onFile(e.target.files[0]); e.target.value = ''; }} />
+          <button onClick={() => inputRef.current?.click()}
+            className="flex-1 flex items-center gap-0.5 bg-slate-700 hover:bg-slate-600 rounded px-1 py-0.5 text-slate-400 transition-colors min-w-0">
+            <ImageIcon className="w-2.5 h-2.5 shrink-0" />
+            <span className="text-[9px] truncate">Assign…</span>
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MeshGroupRow({ info, index, flag = -1, onToggleVisibility, onTextureFile, onRemoveTexture, onNormalMapFile, onRemoveNormalMap, onSpecularMapFile, onRemoveSpecularMap }) {
   const flagLabel = flag === 1 ? 'always' : flag === 0 ? 'random' : null;
 
   return (
-    <div className="bg-slate-800 rounded p-1.5 space-y-1">
-      <div className="flex items-center justify-between gap-1">
+    <div className="bg-slate-800 rounded p-1.5 space-y-0.5">
+      {/* Header row — always same height */}
+      <div className="flex items-center justify-between gap-1 h-5">
         <span className="text-slate-200 font-medium truncate flex-1 text-[10px]" title={info.name}>{info.name}</span>
         {flagLabel && (
-          <span className={`text-[9px] px-1 py-0.5 rounded ${flag === 1 ? 'bg-green-900/40 text-green-400' : 'bg-yellow-900/40 text-yellow-400'}`}>
+          <span className={`text-[9px] px-1 py-0.5 rounded shrink-0 ${flag === 1 ? 'bg-green-900/40 text-green-400' : 'bg-yellow-900/40 text-yellow-400'}`}>
             {flagLabel}
           </span>
         )}
         <button onClick={() => onToggleVisibility(index)}
-          className={`p-0.5 rounded transition-colors ${info.visible ? 'text-blue-400 hover:bg-blue-500/20' : 'text-slate-500 hover:bg-slate-700'}`}
+          className={`p-0.5 rounded transition-colors shrink-0 ${info.visible ? 'text-blue-400 hover:bg-blue-500/20' : 'text-slate-500 hover:bg-slate-700'}`}
         >
           {info.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
         </button>
       </div>
 
-      <div className="flex items-center gap-1">
-        {info.textureFile ? (
-          <>
-            <div className="flex items-center gap-1 bg-slate-700 rounded px-1.5 py-0.5 overflow-hidden" style={{ maxWidth: 'calc(100% - 24px)' }}>
-              <ImageIcon className="w-2.5 h-2.5 text-green-400 shrink-0" />
-              <span className="text-green-300 text-[10px] whitespace-nowrap overflow-hidden text-ellipsis" title={info.textureFile}>{info.textureFile}</span>
-            </div>
-            <button onClick={() => onRemoveTexture(index)}
-              className="text-slate-500 hover:text-red-400 p-0.5 shrink-0">
-              <X className="w-3 h-3" />
-            </button>
-          </>
-        ) : (
-          <>
-            <input ref={inputRef} type="file" className="hidden" accept=".texture,.tga,.dds"
-              onChange={(e) => { if (e.target.files[0]) onTextureFile(index, e.target.files[0]); e.target.value = ''; }} />
-            <button onClick={() => inputRef.current?.click()}
-              className="flex-1 flex items-center gap-1 bg-slate-700 hover:bg-slate-600 rounded px-1.5 py-0.5 text-slate-400 transition-colors">
-              <ImageIcon className="w-2.5 h-2.5" />
-              <span className="text-[10px]">Assign texture…</span>
-            </button>
-          </>
-        )}
-      </div>
+      {/* Texture slots — always present, fixed height each */}
+      <TextureSlot
+        label="Tex"
+        fileName={info.textureFile}
+        onFile={(file) => onTextureFile(index, file)}
+        onRemove={() => onRemoveTexture(index)}
+      />
+      <TextureSlot
+        label="Nrm"
+        fileName={info.normalMapFile}
+        onFile={(file) => onNormalMapFile(index, file)}
+        onRemove={() => onRemoveNormalMap(index)}
+      />
+      <TextureSlot
+        label="Spc"
+        fileName={info.specularMapFile}
+        onFile={(file) => onSpecularMapFile(index, file)}
+        onRemove={() => onRemoveSpecularMap(index)}
+      />
     </div>
   );
 }
