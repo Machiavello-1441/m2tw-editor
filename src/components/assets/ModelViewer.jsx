@@ -79,6 +79,11 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
   const bindPoseRef = useRef(null);       // { invBindMats, localMats, worldMats }
   const origPositionsRef = useRef([]);    // original mesh positions per group (for skinning reset)
   const bboxSizeRef = useRef(1);
+  // Reusable buffers to avoid GC pressure during posing
+  const posedWorldMatsRef = useRef(null); // reusable Matrix4 array
+  const skinnedBufRef = useRef(null);     // reusable Float32Array for skinned positions
+  const jointPosRef = useRef(null);       // reusable Vector3 array for joint positions
+  const groupVertMapsRef = useRef([]);    // pre-computed per-group vertex index maps
 
   const [isRotating, setIsRotating] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
