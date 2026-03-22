@@ -103,12 +103,35 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     if (!parsedMesh?.meshes?.length || !mountRef.current) return;
     const el = mountRef.current;
 
-    // Clean up previous
+    // Clean up previous — dispose all Three.js resources to prevent memory leaks
     if (rendererRef.current) {
       cancelAnimationFrame(animIdRef.current);
+      // Dispose all mesh geometries, materials, and textures
+      meshObjsRef.current.forEach(obj => {
+        obj.geometry?.dispose();
+        if (obj.material?.map) obj.material.map.dispose();
+        obj.material?.dispose();
+        obj.children.forEach(c => {
+          c.geometry?.dispose();
+          c.material?.dispose();
+        });
+      });
+      meshObjsRef.current = [];
+      if (skeletonObjRef.current) {
+        skeletonObjRef.current.traverse(child => {
+          child.geometry?.dispose();
+          child.material?.dispose();
+        });
+        skeletonObjRef.current = null;
+      }
       rendererRef.current.dispose();
       while (el.firstChild) el.removeChild(el.firstChild);
     }
+    // Clear reusable buffers
+    posedWorldMatsRef.current = null;
+    skinnedBufRef.current = null;
+    jointPosRef.current = null;
+    groupVertMapsRef.current = [];
 
     const w = el.clientWidth || 600;
     const h = el.clientHeight || 600;
