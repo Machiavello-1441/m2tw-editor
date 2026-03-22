@@ -246,7 +246,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       renderer.dispose();
       while (el.firstChild) el.removeChild(el.firstChild);
     };
-  }, [parsedMesh, skeletonData]);
+  }, [parsedMesh, skeletonData, groupComments]);
 
   // ── Skeleton visibility ─────────────────────────────────────────────────
   useEffect(() => {
