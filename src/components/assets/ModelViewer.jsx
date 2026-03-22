@@ -290,11 +290,11 @@ export default function ModelViewer({ parsedMesh, skeletonData, className = '' }
   }, []);
 
   return (
-    <div className={`flex ${className}`} style={{ minHeight: 400 }}>
+    <div className={`flex ${className}`}>
       {/* Preview container */}
-      <div className="flex-1 min-w-0 min-h-0"
+      <div className="flex-1 min-w-0 min-h-0 relative"
         style={{ background: 'repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 0 0 / 16px 16px' }}>
-        <div ref={mountRef} className="w-full h-full" />
+        <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />
       </div>
 
       {/* Sidebar */}
