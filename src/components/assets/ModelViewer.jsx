@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { loadTextureBuffer } from '@/lib/textureLoader';
 import ModelViewerSidebar from './ModelViewerSidebar';
+import PoseEditor from './PoseEditor';
+import { buildBindPoseMatrices, computePosedMatrices, skinVertices, getJointWorldPositions } from '@/lib/skeletonPoser';
 
 const LIGHTING_PRESETS = {
   default: { name: 'Default', ambient: 0.6, dirIntensity: 0.9, dirPos: [5, 10, 7] },
@@ -74,11 +76,16 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
   const isDraggingRef = useRef(false);
 
   const lightsRef = useRef({ ambient: null, dir: null, fill: null });
+  const bindPoseRef = useRef(null);       // { invBindMats, localMats, worldMats }
+  const origPositionsRef = useRef([]);    // original mesh positions per group (for skinning reset)
+  const bboxSizeRef = useRef(1);
 
   const [isRotating, setIsRotating] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [showWireframe, setShowWireframe] = useState(true);
   const [lightingPreset, setLightingPreset] = useState('default');
+  const [poseRotations, setPoseRotations] = useState({});  // { boneIdx: { rx, ry, rz } }
+  const [sidebarTab, setSidebarTab] = useState('view');    // 'view' | 'pose'
   const [meshInfos, setMeshInfos] = useState([]); // [{ name, visible, textureFile }]
   const [hasSkeleton, setHasSkeleton] = useState(false);
   const [superGroups, setSuperGroups] = useState([]);
@@ -173,50 +180,62 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     const center = new THREE.Vector3();
     bbox.getCenter(center);
     const bboxSize = bbox.getSize(new THREE.Vector3()).length();
+    bboxSizeRef.current = bboxSize;
     camera.position.set(center.x, center.y, center.z + bboxSize * 1.5);
     camera.lookAt(center);
 
-    // ── Skeleton visualisation ────────────────────────────────────────────
+    // ── Skeleton + skinning setup ─────────────────────────────────────────
     const hasJoints = skeletonData?.joints?.length > 0;
     setHasSkeleton(hasJoints);
 
+    // Store original positions for skinning
+    origPositionsRef.current = parsedMesh.meshes.map(m => new Float32Array(m.positions));
+
     if (hasJoints) {
+      const joints = skeletonData.joints;
+      
+      // Build bind pose matrices for skinning
+      const bindPose = buildBindPoseMatrices(joints);
+      bindPoseRef.current = bindPose;
+
+      // Build skeleton visualization
       const skelGroup = new THREE.Group();
       skelGroup.name = '__skeleton__';
       skelGroup.visible = false;
 
-      // Build joint world positions from bind pose
-      const joints = skeletonData.joints;
-      const worldPositions = [];
+      const worldPositions = getJointWorldPositions(bindPose.worldMats);
 
-      for (let i = 0; i < joints.length; i++) {
-        const j = joints[i];
-        const local = new THREE.Vector3(j.bindPos.x, j.bindPos.y, j.bindPos.z);
-        if (j.parentIdx >= 0 && worldPositions[j.parentIdx]) {
-          local.add(worldPositions[j.parentIdx]);
-        }
-        worldPositions.push(local);
-      }
-
-      // Draw bones as lines
+      // Draw bones as lines — store references for later update
+      const boneLines = [];
+      const jointDots = [];
       for (let i = 0; i < joints.length; i++) {
         if (joints[i].parentIdx >= 0) {
           const pts = [worldPositions[joints[i].parentIdx], worldPositions[i]];
           const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
           const lineMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 2 });
-          skelGroup.add(new THREE.Line(lineGeo, lineMat));
+          const line = new THREE.Line(lineGeo, lineMat);
+          line.userData = { boneIdx: i, parentIdx: joints[i].parentIdx };
+          skelGroup.add(line);
+          boneLines.push(line);
         }
-        // Joint dot
         const dotGeo = new THREE.SphereGeometry(bboxSize * 0.008, 6, 6);
         const dotMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
         const dot = new THREE.Mesh(dotGeo, dotMat);
         dot.position.copy(worldPositions[i]);
+        dot.userData = { boneIdx: i };
         skelGroup.add(dot);
+        jointDots.push(dot);
       }
 
+      skelGroup.userData = { boneLines, jointDots };
       mainGroup.add(skelGroup);
       skeletonObjRef.current = skelGroup;
+    } else {
+      bindPoseRef.current = null;
     }
+
+    // Reset pose when loading new model
+    setPoseRotations({});
 
     // ── Orbit controls ────────────────────────────────────────────────────
     let lastX = 0, lastY = 0;
@@ -270,6 +289,72 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
   useEffect(() => {
     if (skeletonObjRef.current) skeletonObjRef.current.visible = showSkeleton;
   }, [showSkeleton]);
+
+  // ── Apply pose (skin vertices + update skeleton vis) ───────────────────
+  useEffect(() => {
+    if (!skeletonData?.joints?.length || !bindPoseRef.current) return;
+    const joints = skeletonData.joints;
+    const { invBindMats } = bindPoseRef.current;
+    const posedWorldMats = computePosedMatrices(joints, poseRotations);
+
+    // Skin each mesh group's vertices
+    // We need the MS3D vertex data (with boneId) to do skinning.
+    // The ms3d vertices map globally across all groups.
+    if (skeletonData.vertices?.length > 0) {
+      const skinnedPositions = skinVertices(skeletonData.vertices, invBindMats, posedWorldMats);
+
+      // Distribute skinned positions back to per-group meshes
+      // MS3D groups reference global vertex indices
+      if (skeletonData.groups?.length > 0 && parsedMesh?.meshes?.length > 0) {
+        skeletonData.groups.forEach((grp, gIdx) => {
+          const meshObj = meshObjsRef.current[gIdx];
+          if (!meshObj) return;
+          const geo = meshObj.geometry;
+          const posAttr = geo.attributes.position;
+
+          // Build vertex index mapping: group vertices are a subset of global vertices
+          // We need to figure out which global vertices map to this group's local vertices
+          const vertSet = new Set();
+          for (const ti of grp.triIndices) {
+            const tri = skeletonData.triangles?.[ti];
+            if (tri) { tri.vi.forEach(vi => vertSet.add(vi)); }
+          }
+          const uniqueVerts = [...vertSet].sort((a, b) => a - b);
+
+          for (let ni = 0; ni < uniqueVerts.length && ni < posAttr.count; ni++) {
+            const gi = uniqueVerts[ni];
+            posAttr.setXYZ(ni, skinnedPositions[gi * 3], skinnedPositions[gi * 3 + 1], skinnedPositions[gi * 3 + 2]);
+          }
+          posAttr.needsUpdate = true;
+          geo.computeBoundingBox();
+          geo.computeBoundingSphere();
+        });
+      }
+    }
+
+    // Update skeleton visualization
+    if (skeletonObjRef.current) {
+      const worldPositions = getJointWorldPositions(posedWorldMats);
+      const { jointDots, boneLines } = skeletonObjRef.current.userData;
+
+      if (jointDots) {
+        jointDots.forEach(dot => {
+          const bi = dot.userData.boneIdx;
+          if (worldPositions[bi]) dot.position.copy(worldPositions[bi]);
+        });
+      }
+      if (boneLines) {
+        boneLines.forEach(line => {
+          const { boneIdx, parentIdx } = line.userData;
+          if (worldPositions[boneIdx] && worldPositions[parentIdx]) {
+            const pts = [worldPositions[parentIdx], worldPositions[boneIdx]];
+            line.geometry.dispose();
+            line.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+          }
+        });
+      }
+    }
+  }, [poseRotations, skeletonData, parsedMesh]);
 
   // ── Lighting preset ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -403,6 +488,10 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     document.body.removeChild(a);
   }, []);
 
+  const handleResetPose = useCallback(() => {
+    setPoseRotations({});
+  }, []);
+
   return (
     <div className={`flex ${className}`}>
       {/* Preview container */}
@@ -411,27 +500,56 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
         <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />
       </div>
 
-      {/* Sidebar */}
-      <ModelViewerSidebar
-        isRotating={isRotating}
-        onToggleRotation={() => setIsRotating(r => !r)}
-        showSkeleton={showSkeleton}
-        onToggleSkeleton={() => setShowSkeleton(s => !s)}
-        hasSkeleton={hasSkeleton}
-        showWireframe={showWireframe}
-        onToggleWireframe={() => setShowWireframe(w => !w)}
-        lightingPreset={lightingPreset}
-        onLightingChange={setLightingPreset}
-        lightingPresets={LIGHTING_PRESETS}
-        onFixNormals={handleFixNormals}
-        meshInfos={meshInfos}
-        superGroups={superGroups}
-        onToggleVisibility={handleToggleVisibility}
-        onToggleSuperGroup={handleToggleSuperGroup}
-        onTextureFile={handleTextureFile}
-        onRemoveTexture={handleRemoveTexture}
-        onScreenshot={handleScreenshot}
-      />
+      {/* Sidebar with tabs */}
+      <div className="w-52 border-l border-slate-700 bg-slate-900 flex flex-col shrink-0">
+        {/* Tab switcher */}
+        {hasSkeleton && (
+          <div className="flex border-b border-slate-700">
+            <button
+              onClick={() => setSidebarTab('view')}
+              className={`flex-1 text-[11px] py-1.5 text-center transition-colors ${
+                sidebarTab === 'view' ? 'bg-slate-800 text-blue-300 border-b-2 border-blue-500' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >View</button>
+            <button
+              onClick={() => setSidebarTab('pose')}
+              className={`flex-1 text-[11px] py-1.5 text-center transition-colors ${
+                sidebarTab === 'pose' ? 'bg-slate-800 text-yellow-300 border-b-2 border-yellow-500' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >Pose</button>
+          </div>
+        )}
+
+        {sidebarTab === 'view' ? (
+          <ModelViewerSidebar
+            isRotating={isRotating}
+            onToggleRotation={() => setIsRotating(r => !r)}
+            showSkeleton={showSkeleton}
+            onToggleSkeleton={() => setShowSkeleton(s => !s)}
+            hasSkeleton={hasSkeleton}
+            showWireframe={showWireframe}
+            onToggleWireframe={() => setShowWireframe(w => !w)}
+            lightingPreset={lightingPreset}
+            onLightingChange={setLightingPreset}
+            lightingPresets={LIGHTING_PRESETS}
+            onFixNormals={handleFixNormals}
+            meshInfos={meshInfos}
+            superGroups={superGroups}
+            onToggleVisibility={handleToggleVisibility}
+            onToggleSuperGroup={handleToggleSuperGroup}
+            onTextureFile={handleTextureFile}
+            onRemoveTexture={handleRemoveTexture}
+            onScreenshot={handleScreenshot}
+          />
+        ) : (
+          <PoseEditor
+            joints={skeletonData?.joints || []}
+            poseRotations={poseRotations}
+            onPoseChange={setPoseRotations}
+            onReset={handleResetPose}
+          />
+        )}
+      </div>
     </div>
   );
 }
