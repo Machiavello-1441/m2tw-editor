@@ -48,8 +48,8 @@ export default function ModelViewer({ parsedMesh, skeletonData, className = '' }
       while (el.firstChild) el.removeChild(el.firstChild);
     }
 
-    const w = el.clientWidth || 500;
-    const h = el.clientHeight || 500;
+    const w = el.clientWidth || 600;
+    const h = el.clientHeight || 600;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setSize(w, h);
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -290,11 +290,11 @@ export default function ModelViewer({ parsedMesh, skeletonData, className = '' }
   }, []);
 
   return (
-    <div className={`flex ${className}`}>
-      {/* Square preview container — fixed aspect ratio */}
-      <div className="flex items-center justify-center flex-1 min-w-0"
+    <div className={`flex ${className}`} style={{ minHeight: 400 }}>
+      {/* Preview container */}
+      <div className="flex-1 min-w-0 min-h-0"
         style={{ background: 'repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 0 0 / 16px 16px' }}>
-        <div ref={mountRef} style={{ width: 500, height: 500 }} />
+        <div ref={mountRef} className="w-full h-full" />
       </div>
 
       {/* Sidebar */}
