@@ -9,23 +9,23 @@ import { ModDataProvider } from './components/shared/ModDataContext';
 import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2, FileText, ScrollText, Gem } from 'lucide-react';
 
 const navItems = [
-  { name: 'Home', icon: Home, page: 'Home' },
-  { name: 'EDB Editor', icon: Castle, page: 'EDBEditor' },
-  { name: 'Traits Editor', icon: Shield, page: 'TraitsEditor' },
-  { name: 'Ancillaries', icon: Package, page: 'AncillariesEditor' },
-  { name: 'Unit Editor', icon: Swords, page: 'UnitEditor' },
-  { name: 'Campaign Map', icon: Map, page: 'CampaignMap' },
-  { name: 'Script Editor', icon: ScrollText, page: 'ScriptEditor' },
-  { name: 'Minor Files', icon: Gem, page: 'MinorFiles' },
-  { name: 'Factions', icon: Shield, page: 'FactionsEditor' },
-  { name: 'Sound Files', icon: Volume2, page: 'SoundEditor' },
-  { name: 'Strings Editor', icon: FileText, page: 'StringsBinEditor' },
-  { name: '3D Model Viewer', icon: Package, page: 'AssetsConverter' },
-  { name: 'Animations', icon: Swords, page: 'AnimationEditor' },
-  { name: 'GOAT Tools', icon: Swords, page: 'GoatTools' },
-  { name: 'Lua Scripts', icon: Code2, page: 'LuaScripts' },
-  { name: 'Export', icon: Download, page: 'Export' },
-];
+{ name: 'Home', icon: Home, page: 'Home' },
+{ name: 'EDB Editor', icon: Castle, page: 'EDBEditor' },
+{ name: 'Traits Editor', icon: Shield, page: 'TraitsEditor' },
+{ name: 'Ancillaries', icon: Package, page: 'AncillariesEditor' },
+{ name: 'Unit Editor', icon: Swords, page: 'UnitEditor' },
+{ name: 'Campaign Map', icon: Map, page: 'CampaignMap' },
+{ name: 'Script Editor', icon: ScrollText, page: 'ScriptEditor' },
+{ name: 'Minor Files', icon: Gem, page: 'MinorFiles' },
+{ name: 'Factions', icon: Shield, page: 'FactionsEditor' },
+{ name: 'Sound Files', icon: Volume2, page: 'SoundEditor' },
+{ name: 'Strings Editor', icon: FileText, page: 'StringsBinEditor' },
+{ name: '3D Model Viewer', icon: Package, page: 'AssetsConverter' },
+{ name: 'Animations', icon: Swords, page: 'AnimationEditor' },
+{ name: 'GOAT Tools', icon: Swords, page: 'GoatTools' },
+{ name: 'Lua Scripts', icon: Code2, page: 'LuaScripts' },
+{ name: 'Export', icon: Download, page: 'Export' }];
+
 
 export default function Layout({ children, currentPageName }) {
   return (
@@ -48,28 +48,28 @@ export default function Layout({ children, currentPageName }) {
               </div>
             </div>
             <div className="flex-1 p-2 space-y-1">
-              {navItems.map(item => {
-                const isActive = currentPageName === item.page;
-                return (
-                  <Link
-                    key={item.page}
-                    to={createPageUrl(item.page)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
-                      ${isActive
-                        ? 'bg-primary/15 text-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                      }`}
-                  >
+              {navItems.map((item) => {
+                      const isActive = currentPageName === item.page;
+                      return (
+                        <Link
+                          key={item.page}
+                          to={createPageUrl(item.page)}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
+                      ${isActive ?
+                          'bg-primary/15 text-primary' :
+                          'text-muted-foreground hover:text-foreground hover:bg-accent'}`
+                          }>
+                          
                     <item.icon className="w-4 h-4 shrink-0" />
                     <span className="hidden lg:block">{item.name}</span>
-                  </Link>
-                );
-              })}
+                  </Link>);
+
+                    })}
             </div>
             <div className="p-3 border-t border-border">
-              <p className="text-[10px] text-muted-foreground text-center hidden lg:block">
-                Based on Ultimate Docudemons 2.0
-              </p>
+              <p className="text-[10px] text-muted-foreground text-center hidden lg:block">Based on Ultimate Docudemons 5.5
+
+                    </p>
             </div>
           </nav>
 
@@ -81,6 +81,6 @@ export default function Layout({ children, currentPageName }) {
     </AncillariesProvider>
     </TraitsProvider>
     </EDBProvider>
-    </RefDataProvider>
-  );
+    </RefDataProvider>);
+
 }
