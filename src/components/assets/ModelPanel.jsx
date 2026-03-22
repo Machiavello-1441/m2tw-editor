@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
-import Mesh3DPreview from './Mesh3DPreview';
+import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
+import ModelViewer from './ModelViewer';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Info, ArrowLeftRight, Box, AlertTriangle, X } from 'lucide-react';
 
@@ -24,9 +25,13 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     const ext = file.name.split('.').pop().toLowerCase();
     let result;
 
+    let ms3dFull = null;
     if (ext === 'ms3d') {
       result = parseMs3d(buf);
       result.sourceFormat = 'ms3d';
+      // Also parse with full ms3d codec to get skeleton + group comments
+      const full = parseMs3dFull(buf);
+      if (full && !full.error) ms3dFull = full;
     } else if (ext === 'mesh') {
       result = parseMeshFile(buf);
       result.sourceFormat = 'mesh';
@@ -48,7 +53,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
 
     setFiles(prev => {
       const next = prev.filter(f => f.name !== file.name);
-      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf }];
+      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf, ms3dFull }];
     });
     setSelected(0);
   };
