@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d as parseMs3dSimple, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
+import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
 import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
 import Mesh3DPreview from './Mesh3DPreview';
 import { Button } from '@/components/ui/button';
@@ -25,9 +25,15 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     const ext = file.name.split('.').pop().toLowerCase();
     let result;
 
+    let skeletonData = null;
     if (ext === 'ms3d') {
       result = parseMs3d(buf);
       result.sourceFormat = 'ms3d';
+      // Also parse full ms3d for skeleton/joints data
+      const full = parseMs3dFull(buf);
+      if (full && !full.error && full.joints?.length > 0) {
+        skeletonData = full;
+      }
     } else if (ext === 'mesh') {
       result = parseMeshFile(buf);
       result.sourceFormat = 'mesh';
@@ -49,7 +55,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
 
     setFiles(prev => {
       const next = prev.filter(f => f.name !== file.name);
-      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf }];
+      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf, skeletonData }];
     });
     setSelected(0);
   };
