@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
+import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d as parseMs3dSimple, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
 import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
 import Mesh3DPreview from './Mesh3DPreview';
 import { Button } from '@/components/ui/button';
@@ -24,15 +24,61 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     const buf = await file.arrayBuffer();
     const ext = file.name.split('.').pop().toLowerCase();
     let result;
+    let joints = null;
 
-    let skeletonData = null;
     if (ext === 'ms3d') {
-      result = parseMs3d(buf);
-      result.sourceFormat = 'ms3d';
-      // Also parse full ms3d for skeleton/joints data
+      // Use full parser for groups/joints/materials, simple parser for mesh geometry
       const full = parseMs3dFull(buf);
+      result = parseMs3dSimple(buf);
+      result.sourceFormat = 'ms3d';
+      // If full parser got groups, split meshes by group with proper names
+      if (full && !full.error && full.groups?.length > 0 && result.meshes?.length > 0) {
+        const srcMesh = result.meshes[0]; // simple parser returns one combined mesh
+        const groupMeshes = [];
+        for (const g of full.groups) {
+          // Build per-group mesh from triangle indices
+          const usedVerts = new Set();
+          for (const ti of g.triIndices) {
+            const tri = full.triangles[ti];
+            if (tri) { usedVerts.add(tri.vi[0]); usedVerts.add(tri.vi[1]); usedVerts.add(tri.vi[2]); }
+          }
+          const vertMap = {};
+          const verts = [];
+          for (const vi of usedVerts) { vertMap[vi] = verts.length; verts.push(vi); }
+          const nv = verts.length;
+          const positions = new Float32Array(nv * 3);
+          const normals = new Float32Array(nv * 3);
+          const uvs = new Float32Array(nv * 2);
+          for (let i = 0; i < nv; i++) {
+            const vi = verts[i];
+            positions[i*3] = srcMesh.positions[vi*3];
+            positions[i*3+1] = srcMesh.positions[vi*3+1];
+            positions[i*3+2] = srcMesh.positions[vi*3+2];
+            normals[i*3] = srcMesh.normals[vi*3];
+            normals[i*3+1] = srcMesh.normals[vi*3+1];
+            normals[i*3+2] = srcMesh.normals[vi*3+2];
+            uvs[i*2] = srcMesh.uvs[vi*2];
+            uvs[i*2+1] = srcMesh.uvs[vi*2+1];
+          }
+          const faces = [];
+          for (const ti of g.triIndices) {
+            const tri = full.triangles[ti];
+            if (tri) {
+              faces.push(vertMap[tri.vi[0]], vertMap[tri.vi[1]], vertMap[tri.vi[2]]);
+            }
+          }
+          const indices = new Uint32Array(faces);
+          groupMeshes.push({
+            name: g.name || `Group ${groupMeshes.length}`,
+            positions, normals, uvs, indices,
+            numVertices: nv,
+            numFaces: indices.length / 3,
+          });
+        }
+        if (groupMeshes.length > 0) result.meshes = groupMeshes;
+      }
       if (full && !full.error && full.joints?.length > 0) {
-        skeletonData = full;
+        joints = full.joints;
       }
     } else if (ext === 'mesh') {
       result = parseMeshFile(buf);
@@ -45,7 +91,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     }
 
     if (!result.meshes || result.meshes.length === 0) {
-      const errMsg = result.errors?.join('\n') || 'Unknown parse error';
+      const errMsg = result.errors?.join('\n') || result.error || 'Unknown parse error';
       alert(`Could not parse "${file.name}":\n\n${errMsg}`);
       return;
     }
@@ -55,7 +101,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
 
     setFiles(prev => {
       const next = prev.filter(f => f.name !== file.name);
-      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf, skeletonData }];
+      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf, joints }];
     });
     setSelected(0);
   };
@@ -116,9 +162,9 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
 
       {current && (
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
-          {/* 3D Preview — enhanced viewer with sidebar */}
-          <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900" style={{ minHeight: 500 }}>
-            <Mesh3DPreview parsedMesh={current.parsed} skeletonData={current.skeletonData} className="w-full h-full" />
+          {/* 3D Preview — larger square area */}
+          <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900" style={{ minHeight: 500, aspectRatio: '1 / 1' }}>
+            <Mesh3DPreview parsedMesh={current.parsed} joints={current.joints} className="w-full h-full" />
           </div>
 
           {/* Info + actions */}
