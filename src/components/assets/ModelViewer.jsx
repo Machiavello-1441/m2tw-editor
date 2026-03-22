@@ -321,63 +321,63 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     if (!skeletonData?.joints?.length || !bindPoseRef.current) return;
     const joints = skeletonData.joints;
     const { invBindMats } = bindPoseRef.current;
-    const posedWorldMats = computePosedMatrices(joints, poseRotations);
 
-    // Skin each mesh group's vertices
-    // We need the MS3D vertex data (with boneId) to do skinning.
-    // The ms3d vertices map globally across all groups.
+    // Reuse pre-allocated buffers to avoid GC pressure
+    const posedWorldMats = computePosedMatrices(joints, poseRotations, posedWorldMatsRef.current);
+
+    // Skin each mesh group's vertices using reusable buffer
     if (skeletonData.vertices?.length > 0) {
-      const skinnedPositions = skinVertices(skeletonData.vertices, invBindMats, posedWorldMats);
+      const skinnedPositions = skinVertices(skeletonData.vertices, invBindMats, posedWorldMats, skinnedBufRef.current);
 
-      // Distribute skinned positions back to per-group meshes
-      // MS3D groups reference global vertex indices
-      if (skeletonData.groups?.length > 0 && parsedMesh?.meshes?.length > 0) {
-        skeletonData.groups.forEach((grp, gIdx) => {
+      // Distribute skinned positions back to per-group meshes using pre-computed vertex maps
+      const vertMaps = groupVertMapsRef.current;
+      if (vertMaps.length > 0 && parsedMesh?.meshes?.length > 0) {
+        for (let gIdx = 0; gIdx < vertMaps.length; gIdx++) {
           const meshObj = meshObjsRef.current[gIdx];
-          if (!meshObj) return;
-          const geo = meshObj.geometry;
-          const posAttr = geo.attributes.position;
-
-          // Build vertex index mapping: group vertices are a subset of global vertices
-          // We need to figure out which global vertices map to this group's local vertices
-          const vertSet = new Set();
-          for (const ti of grp.triIndices) {
-            const tri = skeletonData.triangles?.[ti];
-            if (tri) { tri.vi.forEach(vi => vertSet.add(vi)); }
-          }
-          const uniqueVerts = [...vertSet].sort((a, b) => a - b);
+          if (!meshObj) continue;
+          const posAttr = meshObj.geometry.attributes.position;
+          const uniqueVerts = vertMaps[gIdx];
 
           for (let ni = 0; ni < uniqueVerts.length && ni < posAttr.count; ni++) {
             const gi = uniqueVerts[ni];
             posAttr.setXYZ(ni, skinnedPositions[gi * 3], skinnedPositions[gi * 3 + 1], skinnedPositions[gi * 3 + 2]);
           }
           posAttr.needsUpdate = true;
-          geo.computeBoundingBox();
-          geo.computeBoundingSphere();
-        });
+        }
       }
     }
 
     // Update skeleton visualization
     if (skeletonObjRef.current) {
-      const worldPositions = getJointWorldPositions(posedWorldMats);
+      const worldPositions = getJointWorldPositions(posedWorldMats, jointPosRef.current);
       const { jointDots, boneLines } = skeletonObjRef.current.userData;
 
       if (jointDots) {
-        jointDots.forEach(dot => {
+        for (let i = 0; i < jointDots.length; i++) {
+          const dot = jointDots[i];
           const bi = dot.userData.boneIdx;
           if (worldPositions[bi]) dot.position.copy(worldPositions[bi]);
-        });
+        }
       }
       if (boneLines) {
-        boneLines.forEach(line => {
+        for (let i = 0; i < boneLines.length; i++) {
+          const line = boneLines[i];
           const { boneIdx, parentIdx } = line.userData;
-          if (worldPositions[boneIdx] && worldPositions[parentIdx]) {
-            const pts = [worldPositions[parentIdx], worldPositions[boneIdx]];
-            line.geometry.dispose();
-            line.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+          const p0 = worldPositions[parentIdx];
+          const p1 = worldPositions[boneIdx];
+          if (p0 && p1) {
+            // Update existing geometry in-place instead of dispose/recreate
+            const posArr = line.geometry.attributes.position;
+            if (posArr && posArr.count >= 2) {
+              posArr.setXYZ(0, p0.x, p0.y, p0.z);
+              posArr.setXYZ(1, p1.x, p1.y, p1.z);
+              posArr.needsUpdate = true;
+            } else {
+              line.geometry.dispose();
+              line.geometry = new THREE.BufferGeometry().setFromPoints([p0, p1]);
+            }
           }
-        });
+        }
       }
     }
   }, [poseRotations, skeletonData, parsedMesh]);
