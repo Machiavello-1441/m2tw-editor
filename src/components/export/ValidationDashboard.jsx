@@ -133,7 +133,7 @@ export default function ValidationDashboard({ edbData }) {
 
       {/* Body */}
       {!allClear && (
-        <div className="p-4 space-y-5 max-h-[420px] overflow-y-auto">
+        <div className="p-4 space-y-5 max-h-[800px] overflow-y-auto">
           {CATEGORY_ORDER.filter(cat => byCategory[cat]).map(cat => (
             <CategorySection key={cat} category={cat} issues={byCategory[cat]} />
           ))}
