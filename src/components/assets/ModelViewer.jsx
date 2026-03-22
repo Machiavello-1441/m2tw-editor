@@ -48,9 +48,10 @@ export default function ModelViewer({ parsedMesh, skeletonData, className = '' }
       while (el.firstChild) el.removeChild(el.firstChild);
     }
 
-    const size = Math.min(el.clientWidth, el.clientHeight) || 600;
+    const w = el.clientWidth || 600;
+    const h = el.clientHeight || 600;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    renderer.setSize(size, size);
+    renderer.setSize(w, h);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
@@ -59,7 +60,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, className = '' }
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 10000);
+    const camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 10000);
     cameraRef.current = camera;
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
@@ -186,9 +187,10 @@ export default function ModelViewer({ parsedMesh, skeletonData, className = '' }
 
     // Handle resize
     const ro = new ResizeObserver(() => {
-      const s = Math.min(el.clientWidth, el.clientHeight) || 600;
-      renderer.setSize(s, s);
-      camera.aspect = 1;
+      const rw = el.clientWidth || 600;
+      const rh = el.clientHeight || 600;
+      renderer.setSize(rw, rh);
+      camera.aspect = rw / rh;
       camera.updateProjectionMatrix();
     });
     ro.observe(el);
