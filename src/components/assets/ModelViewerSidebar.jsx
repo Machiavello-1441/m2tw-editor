@@ -195,12 +195,12 @@ function MeshGroupRow({ info, index, flag = -1, onToggleVisibility, onTextureFil
         </button>
       </div>
 
-      <div className="flex items-center gap-1 overflow-hidden">
+      <div className="flex items-center gap-1">
         {info.textureFile ? (
           <>
-            <div className="flex-1 flex items-center gap-1 bg-slate-700 rounded px-1.5 py-0.5 min-w-0 overflow-hidden">
+            <div className="flex items-center gap-1 bg-slate-700 rounded px-1.5 py-0.5 overflow-hidden" style={{ maxWidth: 'calc(100% - 24px)' }}>
               <ImageIcon className="w-2.5 h-2.5 text-green-400 shrink-0" />
-              <span className="truncate text-green-300 text-[10px] block max-w-full">{info.textureFile}</span>
+              <span className="text-green-300 text-[10px] whitespace-nowrap overflow-hidden text-ellipsis" title={info.textureFile}>{info.textureFile}</span>
             </div>
             <button onClick={() => onRemoveTexture(index)}
               className="text-slate-500 hover:text-red-400 p-0.5 shrink-0">
