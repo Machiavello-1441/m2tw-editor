@@ -405,34 +405,30 @@ export function parseMs3d(buffer) {
   if (!sig.startsWith('MS3D000000')) return { meshes: [], errors: ['Not a valid MS3D file'] };
   pos += 14; // header + version
 
+  // ── Vertices ──
   const nV = view.getUint16(pos, true); pos += 2;
-  const vertices = [];
+  const allPos = new Float32Array(nV * 3);
+  const allNormals = new Float32Array(nV * 3);
+  const allUvs = new Float32Array(nV * 2);
+
   for (let i = 0; i < nV; i++) {
-    pos++;                                         // flags
-    const x = view.getFloat32(pos, true); pos += 4;
-    const y = view.getFloat32(pos, true); pos += 4;
-    const z = view.getFloat32(pos, true); pos += 4;
-    pos += 2;                                      // boneId + refCount
-    vertices.push([x, y, z]);
+    pos++; // flags
+    allPos[i*3]   = view.getFloat32(pos, true); pos += 4;
+    allPos[i*3+1] = view.getFloat32(pos, true); pos += 4;
+    allPos[i*3+2] = view.getFloat32(pos, true); pos += 4;
+    pos += 2; // boneId + refCount
   }
 
+  // ── Triangles ──
   const nT = view.getUint16(pos, true); pos += 2;
-  const positions = new Float32Array(nV * 3);
-  const normals   = new Float32Array(nV * 3);
-  const uvs       = new Float32Array(nV * 2);
-  const indices   = new Uint32Array(nT * 3);
-
-  for (let v = 0; v < nV; v++) {
-    positions[v*3] = vertices[v][0]; positions[v*3+1] = vertices[v][1]; positions[v*3+2] = vertices[v][2];
-  }
+  const triVerts = new Uint16Array(nT * 3);
 
   for (let t = 0; t < nT; t++) {
     pos += 2; // flags
     const i0 = view.getUint16(pos, true); pos += 2;
     const i1 = view.getUint16(pos, true); pos += 2;
     const i2 = view.getUint16(pos, true); pos += 2;
-    indices[t*3] = i0; indices[t*3+1] = i1; indices[t*3+2] = i2;
-    // normals: [n0x,n1x,n2x] [n0y,n1y,n2y] [n0z,n1z,n2z]
+    triVerts[t*3] = i0; triVerts[t*3+1] = i1; triVerts[t*3+2] = i2;
     const nx = [view.getFloat32(pos,true),view.getFloat32(pos+4,true),view.getFloat32(pos+8,true)]; pos += 12;
     const ny = [view.getFloat32(pos,true),view.getFloat32(pos+4,true),view.getFloat32(pos+8,true)]; pos += 12;
     const nz = [view.getFloat32(pos,true),view.getFloat32(pos+4,true),view.getFloat32(pos+8,true)]; pos += 12;
@@ -441,13 +437,74 @@ export function parseMs3d(buffer) {
     pos += 2; // smoothingGroup + groupIndex
     for (let k = 0; k < 3; k++) {
       const vi = [i0,i1,i2][k];
-      normals[vi*3] = nx[k]; normals[vi*3+1] = ny[k]; normals[vi*3+2] = nz[k];
-      uvs[vi*2] = s[k]; uvs[vi*2+1] = tv[k];
+      allNormals[vi*3] = nx[k]; allNormals[vi*3+1] = ny[k]; allNormals[vi*3+2] = nz[k];
+      allUvs[vi*2] = s[k]; allUvs[vi*2+1] = tv[k];
     }
   }
 
+  // ── Groups ──
+  let nG = 0;
+  const groups = [];
+  try {
+    nG = view.getUint16(pos, true); pos += 2;
+    for (let g = 0; g < nG; g++) {
+      pos++; // flags
+      let name = '';
+      for (let c = 0; c < 32; c++) { const ch = u8[pos + c]; if (ch === 0) break; name += String.fromCharCode(ch); }
+      pos += 32;
+      const nTri = view.getUint16(pos, true); pos += 2;
+      const triIndices = [];
+      for (let t = 0; t < nTri; t++) { triIndices.push(view.getUint16(pos, true)); pos += 2; }
+      pos++; // materialIndex
+      groups.push({ name: name || `group_${g}`, triIndices });
+    }
+  } catch { /* groups section may be absent or truncated */ }
+
+  // If we have groups, split into per-group meshes
+  if (groups.length > 1) {
+    const meshes = [];
+    for (const grp of groups) {
+      // Collect unique vertex indices used by this group's triangles
+      const vertSet = new Set();
+      for (const ti of grp.triIndices) {
+        vertSet.add(triVerts[ti*3]); vertSet.add(triVerts[ti*3+1]); vertSet.add(triVerts[ti*3+2]);
+      }
+      const oldToNew = {};
+      const uniqueVerts = [...vertSet].sort((a,b) => a - b);
+      uniqueVerts.forEach((vi, ni) => { oldToNew[vi] = ni; });
+
+      const numVertices = uniqueVerts.length;
+      const numFaces = grp.triIndices.length;
+      const gPositions = new Float32Array(numVertices * 3);
+      const gNormals = new Float32Array(numVertices * 3);
+      const gUvs = new Float32Array(numVertices * 2);
+      const gIndices = new Uint32Array(numFaces * 3);
+
+      for (let ni = 0; ni < numVertices; ni++) {
+        const oi = uniqueVerts[ni];
+        gPositions[ni*3] = allPos[oi*3]; gPositions[ni*3+1] = allPos[oi*3+1]; gPositions[ni*3+2] = allPos[oi*3+2];
+        gNormals[ni*3] = allNormals[oi*3]; gNormals[ni*3+1] = allNormals[oi*3+1]; gNormals[ni*3+2] = allNormals[oi*3+2];
+        gUvs[ni*2] = allUvs[oi*2]; gUvs[ni*2+1] = allUvs[oi*2+1];
+      }
+
+      for (let f = 0; f < numFaces; f++) {
+        const ti = grp.triIndices[f];
+        gIndices[f*3]   = oldToNew[triVerts[ti*3]];
+        gIndices[f*3+1] = oldToNew[triVerts[ti*3+1]];
+        gIndices[f*3+2] = oldToNew[triVerts[ti*3+2]];
+      }
+
+      meshes.push({ name: grp.name, positions: gPositions, normals: gNormals, uvs: gUvs, indices: gIndices, numVertices, numFaces });
+    }
+    return { meshes, errors: [] };
+  }
+
+  // Single group or no groups — return as one mesh
+  const indices = new Uint32Array(nT * 3);
+  for (let i = 0; i < nT * 3; i++) indices[i] = triVerts[i];
+
   return {
-    meshes: [{ name: 'ms3d_mesh', positions, normals, uvs, indices, numVertices: nV, numFaces: nT }],
+    meshes: [{ name: groups[0]?.name || 'ms3d_mesh', positions: allPos, normals: allNormals, uvs: allUvs, indices, numVertices: nV, numFaces: nT }],
     errors: []
   };
 }
