@@ -218,10 +218,10 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
         )}
       </div>
 
-      {/* 3D Preview — takes remaining space */}
+      {/* 3D Preview — square */}
       {current && (
-        <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900 min-h-0">
-          <Mesh3DPreview parsedMesh={current.parsed} joints={current.joints} className="w-full h-full" />
+        <div className="rounded-xl border border-slate-700 overflow-hidden bg-slate-900">
+          <Mesh3DPreview parsedMesh={current.parsed} joints={current.joints} />
         </div>
       )}
     </div>
