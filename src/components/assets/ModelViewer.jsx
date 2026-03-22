@@ -16,43 +16,8 @@ import ModelViewerSidebar from './ModelViewerSidebar';
  *   parsedMesh  — from casCodec  { meshes: [{ name, positions, normals, uvs, indices, numVertices, numFaces }] }
  *   skeletonData — optional, from ms3dCodec { vertices, groups, joints }
  */
-/**
- * Build super-group hierarchy from MS3D group comments or by name prefix.
- * Group comment format: lines like "SuperGroupName\nMeshName\n0or1"
- * where 0 = random (optional in-game), 1 = always visible.
- * Returns: [{ superGroup, meshIndices: [idx], collapsed: false }]
- */
-function buildSuperGroups(meshNames, groupComments) {
-  const superGroupMap = new Map(); // superGroupName -> [{ meshIndex, flag }]
-
-  if (groupComments?.length) {
-    for (const gc of groupComments) {
-      const lines = gc.text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      // Typically: line 0 = super-group name, line 1 = mesh name, line 2 = 0 or 1
-      const superName = lines[0] || 'Ungrouped';
-      const flag = lines.length >= 3 ? parseInt(lines[lines.length - 1]) : -1;
-      if (!superGroupMap.has(superName)) superGroupMap.set(superName, []);
-      superGroupMap.get(superName).push({ meshIndex: gc.groupIndex, flag: isNaN(flag) ? -1 : flag });
-    }
-  } else {
-    // Fallback: derive super-group from mesh name prefix (before last _ + digits)
-    meshNames.forEach((name, idx) => {
-      const match = name.match(/^(.+?)(?:_\d+)?$/);
-      const superName = match ? match[1] : name;
-      if (!superGroupMap.has(superName)) superGroupMap.set(superName, []);
-      superGroupMap.get(superName).push({ meshIndex: idx, flag: -1 });
-    });
-  }
-
-  // Build ordered array
-  const result = [];
-  for (const [superName, entries] of superGroupMap) {
-    result.push({ superGroup: superName, entries });
-  }
-  return result;
-}
-
-export default function ModelViewer({ parsedMesh, skeletonData, groupComments, className = '' }) {
+export default function ModelViewer({ parsedMesh, skeletonData, className = '' }) {
+  // skeletonData can be { joints, groupComments } from ms3dExtra
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -140,7 +105,22 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       wf.name = meshName + '_wire';
       obj.add(wf);
 
-      infos.push({ name: meshName, visible: true, textureFile: null });
+      // Extract super-group from group comments or from name prefix
+      let superGroup = null;
+      let alwaysVisible = null;
+      const groupComments = skeletonData?.groupComments || [];
+      const comment = groupComments.find(c => c.groupIndex === index);
+      if (comment?.text) {
+        const lines = comment.text.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+        if (lines.length >= 1) superGroup = lines[0];
+        if (lines.length >= 3) alwaysVisible = lines[2] === '1';
+      }
+      // Fallback: derive super-group from mesh name (strip trailing _NN)
+      if (!superGroup) {
+        superGroup = meshName.replace(/_\d+$/, '');
+      }
+
+      infos.push({ name: meshName, visible: true, textureFile: null, superGroup, alwaysVisible });
     });
 
     meshObjsRef.current = meshObjects;
@@ -341,9 +321,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
         onToggleSkeleton={() => setShowSkeleton(s => !s)}
         hasSkeleton={hasSkeleton}
         meshInfos={meshInfos}
-        superGroups={superGroups}
         onToggleVisibility={handleToggleVisibility}
-        onToggleSuperGroup={handleToggleSuperGroup}
         onTextureFile={handleTextureFile}
         onRemoveTexture={handleRemoveTexture}
         onScreenshot={handleScreenshot}
