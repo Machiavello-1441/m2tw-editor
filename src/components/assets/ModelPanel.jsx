@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
+import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d as parseMs3dSimple, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
 import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
 import Mesh3DPreview from './Mesh3DPreview';
 import { Button } from '@/components/ui/button';
