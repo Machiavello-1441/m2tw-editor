@@ -77,15 +77,28 @@ export default function PoseEditor({ joints, poseRotations, onPoseChange, onRese
     );
   }
 
-  // Build hierarchy for display
-  const rootJoints = joints.map((j, i) => ({ ...j, index: i })).filter(j => j.parentIdx < 0);
+  // Build hierarchy for display — pre-compute children map once (avoids O(n²) per render)
+  const { rootJoints, childrenMap } = React.useMemo(() => {
+    const indexedJoints = joints.map((j, i) => ({ ...j, index: i }));
+    const cMap = {};
+    const roots = [];
+    for (const j of indexedJoints) {
+      if (j.parentIdx < 0) {
+        roots.push(j);
+      } else {
+        if (!cMap[j.parentIdx]) cMap[j.parentIdx] = [];
+        cMap[j.parentIdx].push(j);
+      }
+    }
+    return { rootJoints: roots, childrenMap: cMap };
+  }, [joints]);
   
   const renderBone = (joint, depth = 0) => {
     const idx = joint.index;
     const isExpanded = expanded[idx];
     const rot = poseRotations[idx] || { rx: 0, ry: 0, rz: 0 };
     const hasOverride = poseRotations[idx] !== undefined;
-    const children = joints.map((j, i) => ({ ...j, index: i })).filter(j => j.parentIdx === idx);
+    const children = childrenMap[idx] || [];
 
     return (
       <div key={idx}>
