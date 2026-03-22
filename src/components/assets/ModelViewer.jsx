@@ -110,6 +110,8 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       meshObjsRef.current.forEach(obj => {
         obj.geometry?.dispose();
         if (obj.material?.map) obj.material.map.dispose();
+        if (obj.material?.normalMap) obj.material.normalMap.dispose();
+        if (obj.material?.specularMap) obj.material.specularMap.dispose();
         obj.material?.dispose();
         obj.children.forEach(c => {
           c.geometry?.dispose();
@@ -194,7 +196,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       wf.name = meshName + '_wire';
       obj.add(wf);
 
-      infos.push({ name: meshName, visible: true, textureFile: null });
+      infos.push({ name: meshName, visible: true, textureFile: null, normalMapFile: null, specularMapFile: null });
     });
 
     meshObjsRef.current = meshObjects;
@@ -333,6 +335,8 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       meshObjsRef.current.forEach(obj => {
         obj.geometry?.dispose();
         if (obj.material?.map) obj.material.map.dispose();
+        if (obj.material?.normalMap) obj.material.normalMap.dispose();
+        if (obj.material?.specularMap) obj.material.specularMap.dispose();
         obj.material?.dispose();
         obj.children.forEach(c => { c.geometry?.dispose(); c.material?.dispose(); });
       });
@@ -526,6 +530,92 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     });
   }, []);
 
+  // ── Normal map assignment ───────────────────────────────────────────────
+  const handleNormalMapFile = useCallback(async (index, file) => {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const buf = await file.arrayBuffer();
+    const result = loadTextureBuffer(buf, ext);
+    if (!result?.imageData) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = result.width;
+    canvas.height = result.height;
+    canvas.getContext('2d').putImageData(result.imageData, 0, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.flipY = false;
+    tex.needsUpdate = true;
+
+    const obj = meshObjsRef.current[index];
+    if (obj) {
+      if (obj.material.normalMap) obj.material.normalMap.dispose();
+      obj.material.normalMap = tex;
+      obj.material.needsUpdate = true;
+    }
+    setMeshInfos(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], normalMapFile: file.name };
+      return next;
+    });
+  }, []);
+
+  const handleRemoveNormalMap = useCallback((index) => {
+    const obj = meshObjsRef.current[index];
+    if (obj) {
+      if (obj.material.normalMap) { obj.material.normalMap.dispose(); obj.material.normalMap = null; }
+      obj.material.needsUpdate = true;
+    }
+    setMeshInfos(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], normalMapFile: null };
+      return next;
+    });
+  }, []);
+
+  // ── Specular map assignment ─────────────────────────────────────────────
+  const handleSpecularMapFile = useCallback(async (index, file) => {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const buf = await file.arrayBuffer();
+    const result = loadTextureBuffer(buf, ext);
+    if (!result?.imageData) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = result.width;
+    canvas.height = result.height;
+    canvas.getContext('2d').putImageData(result.imageData, 0, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.flipY = false;
+    tex.needsUpdate = true;
+
+    const obj = meshObjsRef.current[index];
+    if (obj) {
+      if (obj.material.specularMap) obj.material.specularMap.dispose();
+      obj.material.specularMap = tex;
+      obj.material.specular = new THREE.Color(0x444444);
+      obj.material.needsUpdate = true;
+    }
+    setMeshInfos(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], specularMapFile: file.name };
+      return next;
+    });
+  }, []);
+
+  const handleRemoveSpecularMap = useCallback((index) => {
+    const obj = meshObjsRef.current[index];
+    if (obj) {
+      if (obj.material.specularMap) { obj.material.specularMap.dispose(); obj.material.specularMap = null; }
+      obj.material.specular = new THREE.Color(0x111111);
+      obj.material.needsUpdate = true;
+    }
+    setMeshInfos(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], specularMapFile: null };
+      return next;
+    });
+  }, []);
+
   // ── Fix normals ──────────────────────────────────────────────────────────
   const handleFixNormals = useCallback(() => {
     meshObjsRef.current.forEach(obj => {
@@ -604,6 +694,10 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
             onToggleSuperGroup={handleToggleSuperGroup}
             onTextureFile={handleTextureFile}
             onRemoveTexture={handleRemoveTexture}
+            onNormalMapFile={handleNormalMapFile}
+            onRemoveNormalMap={handleRemoveNormalMap}
+            onSpecularMapFile={handleSpecularMapFile}
+            onRemoveSpecularMap={handleRemoveSpecularMap}
             onScreenshot={handleScreenshot}
           />
         ) : (
