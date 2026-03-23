@@ -195,7 +195,7 @@ function TextureSlot({ label, fileName, onFile, onRemove, accept = ".texture,.tg
         <div className="flex items-center gap-0.5" style={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }}>
           <div className="flex items-center gap-0.5 bg-slate-700 rounded px-1 py-0.5" style={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }}>
             <ImageIcon className="w-2.5 h-2.5 text-green-400" style={{ flexShrink: 0 }} />
-            <span className="text-green-300 text-[9px] block" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fileName}>{fileName}</span>
+            <span className="text-green-300 text-[9px] block" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '90%' }} title={fileName}>{fileName}</span>
           </div>
           <button onClick={onRemove} className="text-slate-500 hover:text-red-400" style={{ flexShrink: 0, padding: 2 }}>
             <X className="w-2.5 h-2.5" />
