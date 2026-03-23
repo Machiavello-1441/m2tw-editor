@@ -189,18 +189,18 @@ export default function ModelViewerSidebar({
 function TextureSlot({ label, fileName, onFile, onRemove, accept = ".texture,.tga,.dds" }) {
   const inputRef = useRef(null);
   return (
-    <div className="flex items-center gap-1 h-5">
-      <span className="text-[9px] text-slate-500 w-7 shrink-0">{label}</span>
+    <div className="flex items-center gap-1 h-5 overflow-hidden" style={{ maxWidth: '100%' }}>
+      <span className="text-[9px] text-slate-500 shrink-0" style={{ width: 22 }}>{label}</span>
       {fileName ? (
-        <>
+        <div className="flex items-center gap-0.5 min-w-0 flex-1">
           <div className="flex items-center gap-0.5 bg-slate-700 rounded px-1 py-0.5 min-w-0 flex-1 overflow-hidden">
             <ImageIcon className="w-2.5 h-2.5 text-green-400 shrink-0" />
-            <span className="text-green-300 text-[9px] whitespace-nowrap overflow-hidden text-ellipsis" title={fileName}>{fileName}</span>
+            <span className="text-green-300 text-[9px] truncate block" title={fileName}>{fileName}</span>
           </div>
-          <button onClick={onRemove} className="text-slate-500 hover:text-red-400 p-0.5 shrink-0">
+          <button onClick={onRemove} className="text-slate-500 hover:text-red-400 shrink-0" style={{ padding: 2 }}>
             <X className="w-2.5 h-2.5" />
           </button>
-        </>
+        </div>
       ) : (
         <>
           <input ref={inputRef} type="file" className="hidden" accept={accept}
@@ -220,10 +220,10 @@ function MeshGroupRow({ info, index, flag = -1, onToggleVisibility, onTextureFil
   const flagLabel = flag === 1 ? 'always' : flag === 0 ? 'random' : null;
 
   return (
-    <div className="bg-slate-800 rounded p-1.5 space-y-0.5">
+    <div className="bg-slate-800 rounded p-1.5 space-y-0.5 overflow-hidden">
       {/* Header row — always same height */}
-      <div className="flex items-center justify-between gap-1 h-5">
-        <span className="text-slate-200 font-medium truncate flex-1 text-[10px]" title={info.name}>{info.name}</span>
+      <div className="flex items-center gap-1 h-5 overflow-hidden">
+        <span className="text-slate-200 font-medium truncate min-w-0 flex-1 text-[10px]" title={info.name}>{info.name}</span>
         {flagLabel && (
           <span className={`text-[9px] px-1 py-0.5 rounded shrink-0 ${flag === 1 ? 'bg-green-900/40 text-green-400' : 'bg-yellow-900/40 text-yellow-400'}`}>
             {flagLabel}
