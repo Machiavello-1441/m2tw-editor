@@ -127,8 +127,13 @@ export default function EDBEditor() {
       <div className="h-10 border-b border-border flex items-center px-3 gap-3 shrink-0 bg-card/50">
         <input ref={tgaFolderRef} type="file" className="hidden"
         webkitdirectory="" directory="" multiple onChange={handleTgaFolder} />
+        <input ref={edbFileRef} type="file" className="hidden" accept=".txt" onChange={handleEdbFile} />
         <Castle className="w-4 h-4 text-muted-foreground shrink-0" />
-        <span className="text-xs font-medium text-foreground truncate max-w-[200px]">{fileName || 'EDB Editor'}</span>
+        <button
+          onClick={() => edbFileRef.current?.click()}
+          className="text-xs font-medium text-foreground truncate max-w-[200px] hover:text-primary transition-colors cursor-pointer"
+          title="Click to load a new EDB file"
+        >{fileName || 'EDB Editor'}</button>
         <span className="text-[10px] text-muted-foreground hidden sm:block">
           {edbData.buildings.length} buildings
         </span>
