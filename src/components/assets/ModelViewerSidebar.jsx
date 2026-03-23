@@ -189,15 +189,15 @@ export default function ModelViewerSidebar({
 function TextureSlot({ label, fileName, onFile, onRemove, accept = ".texture,.tga,.dds" }) {
   const inputRef = useRef(null);
   return (
-    <div className="flex items-center gap-1 h-5" style={{ overflow: 'hidden', maxWidth: '90%' }}>
+    <div className="flex items-center gap-1 h-5" style={{ overflow: 'hidden', maxWidth: '80%' }}>
       <span className="text-[9px] text-slate-500" style={{ flexShrink: 0, width: 18 }}>{label}</span>
       {fileName ? (
-        <div className="flex items-center gap-0.5" style={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }}>
+        <div className="flex items-center gap-0.5" style={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden', maxWidth: '80%' }}>
           <div className="flex items-center gap-0.5 bg-slate-700 rounded px-1 py-0.5" style={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }}>
-            <ImageIcon className="w-2.5 h-2.5 text-green-400" style={{ flexShrink: 0 }} />
-            <span className="text-green-300 text-[9px] block" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '90%' }} title={fileName}>{fileName}</span>
+            <ImageIcon className="w-2.5 h-2.5 text-green-400" style={{ flexShrink: 0, width: 18 }} />
+            <span className="text-green-300 text-[9px] block" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }} title={fileName}>{fileName}</span>
           </div>
-          <button onClick={onRemove} className="text-slate-500 hover:text-red-400" style={{ flexShrink: 0, padding: 2 }}>
+          <button onClick={onRemove} className="text-slate-500 hover:text-red-400" style={{ flexShrink: 0, padding: 2, width: 18 }}>
             <X className="w-2.5 h-2.5" />
           </button>
         </div>
