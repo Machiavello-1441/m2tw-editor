@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Upload, Download, Plus, Trash2, Search, X, FileText, ChevronUp, ChevronDown, Save } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function loadFilesFromStore() {
   const store = getStringsBinStore();
@@ -240,7 +241,7 @@ export default function StringsBinEditor() {
               <Badge variant="outline" className="text-[10px] shrink-0 border-slate-600 text-slate-300">{filteredEntries.length}</Badge>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <ScrollArea className="flex-1">
               {filteredEntries.map((entry) => (
                 <div
                   key={entry.originalIndex}
@@ -264,7 +265,7 @@ export default function StringsBinEditor() {
                   </div>
                 </div>
               ))}
-            </div>
+            </ScrollArea>
 
             <div className="p-2 border-t border-slate-700">
               <Button size="sm" variant="outline" className="w-full gap-1.5 h-8 border-slate-600 text-slate-200 hover:bg-slate-700"
