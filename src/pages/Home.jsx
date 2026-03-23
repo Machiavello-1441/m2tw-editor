@@ -734,7 +734,7 @@ export default function Home() {
               <FileStatus label="Factions" hint="descr_sm_factions.txt" status={fileStatus.fac} />
               <FileStatus label="Resources" hint="descr_sm_resources.txt" status={fileStatus.res} />
               <FileStatus label="Units" hint="export_descr_unit.txt" status={fileStatus.unit} />
-              <FileStatus label="Events" hint="descr_events.txt" status={fileStatus.ev} />
+              {/* Events loaded in Step 2 (campaign descr_event.txt) — not shown here */}
               <FileStatus label="Traits" hint="export_descr_character_traits.txt" status={fileStatus.traits} />
 
               <FileStatus label="Ancillaries" hint="export_descr_ancillaries.txt" status={fileStatus.anc} />

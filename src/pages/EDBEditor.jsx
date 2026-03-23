@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Upload } from 'lucide-react';
 import { useEDB } from '../components/edb/EDBContext';
 import BuildingTree from '../components/edb/BuildingTree';
 import LevelEditor from '../components/edb/LevelEditor';
@@ -7,7 +8,7 @@ import CodePreview from '../components/edb/CodePreview';
 import HiddenResourceEditor from '../components/edb/HiddenResourceEditor';
 import RefFileLoader from '../components/edb/RefFileLoader';
 import { Button } from '@/components/ui/button';
-import { Castle, Code2, Image, ShieldAlert, Save } from 'lucide-react';
+import { Castle, Code2, ShieldAlert, Save } from 'lucide-react';
 import AutoSavePanel from '../components/edb/AutoSavePanel';
 
 function decodeTgaToDataUrl(buffer) {
@@ -92,12 +93,29 @@ export default function EDBEditor() {
     loadBuildingTgaImages(parsed);
   };
 
+  const edbFileRef = useRef();
+
+  const handleEdbFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const text = await file.text();
+    loadEDB(text, file.name);
+  };
+
   if (!edbData) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <div className="text-center space-y-3">
+        <div className="text-center space-y-4">
           <Castle className="w-10 h-10 text-muted-foreground mx-auto" />
-          <p className="text-sm text-muted-foreground">No EDB loaded. Go to Home to load your mod files.</p>
+          <p className="text-sm text-muted-foreground">No EDB loaded.</p>
+          <label className="cursor-pointer">
+            <input ref={edbFileRef} type="file" className="hidden" accept=".txt" onChange={handleEdbFile} />
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-border bg-card text-sm text-foreground hover:bg-accent cursor-pointer">
+              <Castle className="w-4 h-4" /> Open export_descr_buildings.txt
+            </span>
+          </label>
+          <p className="text-xs text-muted-foreground">Or go to Home to load your full mod data folder.</p>
         </div>
       </div>);
 

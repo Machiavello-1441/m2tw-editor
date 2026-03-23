@@ -240,7 +240,7 @@ export default function StringsBinEditor() {
               <Badge variant="outline" className="text-[10px] shrink-0 border-slate-600 text-slate-300">{filteredEntries.length}</Badge>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto" id="strings-entry-list">
               {filteredEntries.map((entry) => (
                 <div
                   key={entry.originalIndex}
