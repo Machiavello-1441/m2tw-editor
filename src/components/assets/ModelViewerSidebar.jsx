@@ -190,7 +190,7 @@ function TextureSlot({ label, fileName, onFile, onRemove, accept = ".texture,.tg
   const inputRef = useRef(null);
   return (
     <div className="flex items-center gap-1 h-5" style={{ overflow: 'hidden', maxWidth: '90%' }}>
-      <span className="text-[9px] text-slate-500" style={{ flexShrink: 0, width: 19 }}>{label}</span>
+      <span className="text-[9px] text-slate-500" style={{ flexShrink: 0, width: 18 }}>{label}</span>
       {fileName ? (
         <div className="flex items-center gap-0.5" style={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }}>
           <div className="flex items-center gap-0.5 bg-slate-700 rounded px-1 py-0.5" style={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }}>
