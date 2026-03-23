@@ -137,8 +137,7 @@ function FileStatus({ label, hint, status }) {
 }
 
 export default function Home() {
-  const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages, loadEventsFile: _loadEventsFile } = useEDB();
-  // loadEventsFile already destructured from useRefData below
+  const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
 
   const [fileStatus, setFileStatus] = useState(() => {
@@ -875,8 +874,8 @@ export default function Home() {
             Step 2 — Load Campaign Map <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Base map files are auto-detected from <code className="text-[10px] font-mono bg-accent px-1 rounded">data\world\maps\base\</code> when loading the data folder.
-            Then optionally load a campaign folder (<code className="text-[10px] font-mono bg-accent px-1 rounded">imperial_campaign</code> or a custom campaign) to override the base maps.
+            Browse to <code className="text-[10px] font-mono bg-accent px-1 rounded">data\world\maps\campaign\imperial_campaign\</code> to load all campaign files (strat, mercenaries, rebel factions, events, TGAs, strings.bin).
+            Base map TGAs are auto-loaded from Step 1.
           </p>
         </div>
         <div className="p-4 space-y-3">
@@ -904,12 +903,12 @@ export default function Home() {
             className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
               <span>
                 <FolderOpen className="w-4 h-4" />
-                Browse to <code className="text-xs font-mono">…\maps\campaign\[name]\</code> folder
+                Browse to <code className="text-xs font-mono">…\imperial_campaign\</code> folder
               </span>
             </Button>
           </label>
           <p className="text-[10px] text-muted-foreground">
-            Must contain <code className="font-mono bg-accent px-1 rounded">descr_event.txt</code>. Loads descr_strat, campaign_script, descr_mercenaries, descr_win_conditions. Campaign TGAs override base map files.
+            Loads descr_strat, campaign_script, descr_mercenaries, descr_win_conditions, descr_rebel_factions, events, and any <code className="font-mono bg-accent px-1 rounded">.strings.bin</code> files (incl. settlement names from <code className="font-mono bg-accent px-1 rounded">data\text\</code> if included). Also also loads the EDB if found.
           </p>
 
           {(fileStatus.base_map === 'ok' || fileStatus.campaign_folder === 'ok') &&

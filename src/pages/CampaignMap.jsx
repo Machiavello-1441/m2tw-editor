@@ -213,6 +213,16 @@ export default function CampaignMap() {
         }
       }
     } catch {}
+    // Auto-restore mercenaries from localStorage if not in sessionStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_mercenaries_raw')) {
+        const mercRaw = localStorage.getItem('m2tw_campaign_mercenaries');
+        if (mercRaw) {
+          sessionStorage.setItem('m2tw_mercenaries_raw', mercRaw);
+          setMercenaryPools(parseDescrMercenaries(mercRaw));
+        }
+      }
+    } catch {}
 
     const handler = (e) => {
       if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
