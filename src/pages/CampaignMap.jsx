@@ -14,6 +14,7 @@ import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat, serializeDescrRegions } from '../components/map/stratParser';
 import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
 import { parseStringsBin } from '../components/strings/stringsBinCodec';
+import { getStringsBinStore } from '../lib/stringsBinStore';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
@@ -226,7 +227,6 @@ export default function CampaignMap() {
     // Auto-restore settlement names from strings bin store if not already loaded
     try {
       if (!sessionStorage.getItem('m2tw_names_raw')) {
-        const { getStringsBinStore } = await import('../lib/stringsBinStore');
         const store = getStringsBinStore();
         // Look for the imperial_campaign_regions_and_settlement_names file
         for (const [fname, binData] of Object.entries(store)) {
