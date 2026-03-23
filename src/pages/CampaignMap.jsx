@@ -223,6 +223,22 @@ export default function CampaignMap() {
         }
       }
     } catch {}
+    // Auto-restore settlement names from strings bin store if not already loaded
+    try {
+      if (!sessionStorage.getItem('m2tw_names_raw')) {
+        const { getStringsBinStore } = await import('../lib/stringsBinStore');
+        const store = getStringsBinStore();
+        // Look for the imperial_campaign_regions_and_settlement_names file
+        for (const [fname, binData] of Object.entries(store)) {
+          if (fname.toLowerCase().includes('regions_and_settlement_names')) {
+            const namesMap = {};
+            for (const { key, value } of binData.entries) if (key) namesMap[key] = value;
+            setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
+            break;
+          }
+        }
+      }
+    } catch {}
 
     const handler = (e) => {
       if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
