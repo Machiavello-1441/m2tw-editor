@@ -137,7 +137,8 @@ function FileStatus({ label, hint, status }) {
 }
 
 export default function Home() {
-  const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
+  const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages, loadEventsFile: _loadEventsFile } = useEDB();
+  // loadEventsFile already destructured from useRefData below
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
 
   const [fileStatus, setFileStatus] = useState(() => {
@@ -584,23 +585,21 @@ export default function Home() {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     if (files.length === 0) return;
+
+    setFileStatus((prev) => ({ ...prev, campaign_folder: 'loading' }));
+    setCampaignError('');
+
     // Accept both descr_event.txt (singular, in campaign folder) and descr_events.txt (plural)
     const eventFile = files.find((f) => {
       const n = f.name.toLowerCase();
       return n === 'descr_event.txt' || n === 'descr_events.txt';
     });
-    if (!eventFile) {
-      setFileStatus((prev) => ({ ...prev, campaign_folder: 'error' }));
-      setCampaignError('No descr_event.txt found — make sure you selected a campaign folder.');
-      return;
+    // Load event counters from the campaign descr_event.txt (if present)
+    if (eventFile) {
+      const evText = await readText(eventFile);
+      const evs = parseEventsFromCampaign(evText);
+      if (evs.length > 0) loadEventsFile(evText);
     }
-    // Load event counters from the campaign descr_event.txt
-    const evText = await readText(eventFile);
-    const evs = parseEventsFromCampaign(evText);
-    if (evs.length > 0) {
-      loadEventsFile(evText); // reuse existing loader which saves to localStorage
-    }
-    setCampaignError('');
 
     // Campaign-specific text files stored in localStorage for campaign map editor
     const CAMPAIGN_STORE = {
@@ -609,12 +608,64 @@ export default function Home() {
       'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
       'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
     };
+
+    // Also store rebel factions + EDB from this folder if present
+    const CAMPAIGN_EXTRA_STORE = {
+      'descr_rebel_factions.txt': 'm2tw_rebel_factions_file',
+      'export_descr_buildings.txt': 'm2tw_edb_file',
+    };
+
+    const stringsBinFiles = {};
+
     for (const file of files) {
-      const key = CAMPAIGN_STORE[file.name.toLowerCase()];
-      if (key) {
-        const txt = await readText(file);
-        try { localStorage.setItem(key, txt); } catch {}
+      const name = file.name.toLowerCase();
+      const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
+
+      // .strings.bin files (e.g. imperial_campaign_regions_and_settlement_names.txt.strings.bin from data\text\)
+      if (name.endsWith('.strings.bin') || name.endsWith('.bin')) {
+        const buf = await file.arrayBuffer();
+        const { parseStringsBin } = await import('@/components/strings/stringsBinCodec');
+        const parsed = parseStringsBin(buf);
+        if (parsed) {
+          stringsBinFiles[file.name] = { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 };
+        }
+        continue;
       }
+
+      const csKey = CAMPAIGN_STORE[name];
+      if (csKey) {
+        const txt = await readText(file);
+        try { localStorage.setItem(csKey, txt); } catch {}
+        // Also store mercenaries in sessionStorage for immediate use
+        if (name === 'descr_mercenaries.txt') {
+          try { sessionStorage.setItem('m2tw_mercenaries_raw', txt); } catch {}
+        }
+      }
+
+      const extraKey = CAMPAIGN_EXTRA_STORE[name];
+      if (extraKey) {
+        const txt = await readText(file);
+        try { localStorage.setItem(extraKey, txt); } catch {}
+        if (name === 'descr_rebel_factions.txt') {
+          try { sessionStorage.setItem('m2tw_rebel_factions_raw', txt); } catch {}
+          setFileStatus((prev) => ({ ...prev, rebel_fac: 'ok' }));
+        }
+        if (name === 'export_descr_buildings.txt') {
+          loadEDB(txt, file.name);
+          setFileStatus((prev) => ({ ...prev, edb: 'ok' }));
+        }
+      }
+    }
+
+    // Flush .strings.bin files into shared store
+    if (Object.keys(stringsBinFiles).length > 0) {
+      const { getStringsBinStore, setStringsBinStore } = await import('@/lib/stringsBinStore');
+      const existing = getStringsBinStore();
+      const merged = { ...existing, ...stringsBinFiles };
+      setStringsBinStore(merged);
+      window.dispatchEvent(new CustomEvent('strings-bin-updated', { detail: { bulk: true } }));
+      setStringsBinCount(Object.keys(merged).length);
+      setFileStatus((prev) => ({ ...prev, strings_bin: 'ok' }));
     }
 
     const relevant = files.filter((f) => {
@@ -624,14 +675,14 @@ export default function Home() {
     // Merge with existing base map files so campaign overrides base
     const existing = window._m2tw_map_files || [];
     const existingNames = new Set(relevant.map((f) => f.name.toLowerCase()));
-    const merged = existing.filter((f) => !existingNames.has(f.name.toLowerCase())).concat(relevant);
-    window._m2tw_map_files = merged;
+    const mergedFiles = existing.filter((f) => !existingNames.has(f.name.toLowerCase())).concat(relevant);
+    window._m2tw_map_files = mergedFiles;
     window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: relevant, source: 'campaign' } }));
-    setMapFileCount(merged.length);
+    setMapFileCount(mergedFiles.length);
     // Detect campaign name from path
     const samplePath = files[0]?.webkitRelativePath || '';
     const parts = samplePath.split('/');
-    const folderName = parts.length >= 2 ? parts[parts.length - 2] : 'custom';
+    const folderName = parts.length >= 2 ? parts[parts.length - 2] : 'imperial_campaign';
     setCampaignName(folderName);
     setFileStatus((prev) => ({ ...prev, campaign_folder: 'ok' }));
   };
