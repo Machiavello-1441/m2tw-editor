@@ -41,10 +41,7 @@ export function EDBProvider({ children }) {
         const parsed = parseTextFile(txtRaw);
         setTextData(prev => ({ ...prev, ...parsed }));
       }
-      const imgRaw = localStorage.getItem(EDB_IMG_LS_KEY);
-      if (imgRaw) {
-        setImageData(JSON.parse(imgRaw));
-      }
+      // Note: image data URLs are NOT restored from localStorage (too large, quota killer)
     } catch {}
   }, []);
 
@@ -221,11 +218,7 @@ export function EDBProvider({ children }) {
         structured[parsed.key] = { url: f.url, culture: parsed.culture, type: parsed.type, levelName: parsed.levelName };
       }
     }
-    setImageData(prev => {
-      const next = replace ? structured : { ...prev, ...structured };
-      try { localStorage.setItem(EDB_IMG_LS_KEY, JSON.stringify(next)); } catch {}
-      return next;
-    });
+    setImageData(prev => replace ? structured : { ...prev, ...structured });
   }, []);
 
   const restoreSnapshot = useCallback((snap) => {
@@ -247,7 +240,10 @@ export function EDBProvider({ children }) {
         localStorage.setItem('m2tw_edb_file', serializeEDB(edbData));
         localStorage.setItem('m2tw_edb_file_name', fileName);
         if (textData && Object.keys(textData).length > 0) {
-          localStorage.setItem('m2tw_edb_txt_file', serializeTextFile(textData));
+          const txtSerialized = serializeTextFile(textData);
+          if (txtSerialized.length < 500_000) { // skip if > 500KB to avoid quota
+            localStorage.setItem('m2tw_edb_txt_file', txtSerialized);
+          }
         }
       } catch {}
     }
