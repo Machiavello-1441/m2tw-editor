@@ -496,8 +496,43 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   repBlock('unlockable', stratData.unlockable);
   repBlock('nonplayable', stratData.nonplayable);
 
-  // Append newly added forts (items not present in original stratData)
+  // Append newly added settlements (items not present in original stratData)
   const origIds = new Set((stratData.items || []).map(i => i.id));
+  const newSettlements = overlayItems.filter(i => !origIds.has(i.id) && i.category === 'settlement');
+  if (newSettlements.length > 0) {
+    for (const s of newSettlements) {
+      const factionName = s.faction || 'slave';
+      // Find the faction block: look for "faction <name>" line and insert settlement before the end
+      const factionLineIdx = lines.findIndex(l => {
+        const cl = l.replace(/;.*$/, '').trim();
+        return cl === `faction ${factionName}` || cl.startsWith(`faction ${factionName},`) || cl.startsWith(`faction ${factionName} `);
+      });
+      const block = generateSettlementBlock(s, '\t');
+      if (factionLineIdx >= 0) {
+        // Find the end of this faction block: next faction/region/faction_standings line
+        let insertIdx = lines.length;
+        for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
+          const fl = lines[fi].replace(/;.*$/, '').trim();
+          if (!fl) continue;
+          if (
+            /^faction\s+\w/i.test(fl) ||
+            /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
+            /^region\s+\S/i.test(fl) ||
+            /^script\s*$/i.test(fl)
+          ) {
+            insertIdx = fi;
+            break;
+          }
+        }
+        lines.splice(insertIdx, 0, '', ...block);
+      } else {
+        // No faction block found — append at end under a slave faction stub
+        lines.push('', `faction ${factionName}`, '{', '}', '', ...block);
+      }
+    }
+  }
+
+  // Append newly added forts (items not present in original stratData)
   const newForts = overlayItems.filter(i => !origIds.has(i.id) && i.category === 'fortification' && i.type === 'fort');
   if (newForts.length > 0) {
     for (const fort of newForts) {
