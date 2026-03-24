@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, X, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { extractHiddenResourcesFromEDB } from './additionalParsers';
 
-export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList }) {
+export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList }) {
   const [draft, setDraft] = useState({
     regionName: '',
     settlementName: '',
@@ -17,6 +17,7 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
     population: 400,
     yearFounded: 0,
     rebelFaction: '',
+    resources: [],
     hiddenResources: [],
     val1: 0,
     val2: 0,
@@ -24,7 +25,7 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
     mercenaryPool: '',
     religions: {},
   });
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);
 
   const factionList = factionColors ? Object.keys(factionColors).sort() : [];
   const edbHiddenRes = useMemo(() => hiddenResourceList || extractHiddenResourcesFromEDB(edbData), [hiddenResourceList, edbData]);
@@ -130,6 +131,34 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
             onChange={e => setDraft(d => ({ ...d, yearFounded: parseInt(e.target.value) || 0 }))}
             className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
         </div>
+      </div>
+
+      {/* Natural Resources */}
+      <div>
+        <span className="text-[9px] text-slate-500">Natural Resources (descr_sm_resources)</span>
+        {draft.resources.length > 0 && (
+          <div className="flex flex-wrap gap-0.5 mb-1">
+            {draft.resources.map(r => (
+              <span key={r} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-800/60 rounded text-[9px] text-emerald-300 font-mono">
+                {r}
+                <button onClick={() => setDraft(d => ({ ...d, resources: d.resources.filter(x => x !== r) }))}
+                  className="text-slate-600 hover:text-red-400"><X className="w-2 h-2" /></button>
+              </span>
+            ))}
+          </div>
+        )}
+        {naturalResList?.length > 0 ? (
+          <select value="" onChange={e => {
+            const val = e.target.value;
+            if (val && !draft.resources.includes(val))
+              setDraft(d => ({ ...d, resources: [...d.resources, val] }));
+          }} className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+            <option value="">— add resource —</option>
+            {naturalResList.filter(r => !draft.resources.includes(r)).map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        ) : (
+          <p className="text-[9px] text-slate-600 italic">Load descr_sm_resources.txt for list</p>
+        )}
       </div>
 
       {/* Triumph & Agriculture */}
