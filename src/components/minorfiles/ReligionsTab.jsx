@@ -136,15 +136,18 @@ export default function ReligionsTab() {
 
   return (
     <div className="space-y-3">
+      <input ref={txtInputRef} type="file" accept=".txt" className="hidden" onChange={handleLoadTxt} />
+      <input ref={binInputRef} type="file" accept=".bin,.strings.bin" className="hidden" onChange={handleLoadBin} />
+
       <div className="flex flex-wrap gap-2">
-        <label className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
+        <button onClick={() => txtInputRef.current?.click()}
+          className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
           <Upload className="w-3 h-3" /> Load descr_religions.txt
-          <input type="file" accept=".txt" className="hidden" onChange={handleLoadTxt} />
-        </label>
-        <label className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
+        </button>
+        <button onClick={() => binInputRef.current?.click()}
+          className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
           <Upload className="w-3 h-3" /> Load .strings.bin
-          <input type="file" accept=".bin,.strings.bin" className="hidden" onChange={handleLoadBin} />
-        </label>
+        </button>
         <button onClick={handleExportTxt} disabled={!religions.length}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 disabled:opacity-40 transition-colors">
           <Download className="w-3 h-3" /> Export .txt
