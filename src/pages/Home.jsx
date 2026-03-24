@@ -102,7 +102,6 @@ const DATA_FILE_MAP = {
   'export_descr_character_traits.txt': 'traits',
   'export_descr_ancillaries.txt': 'anc',
   'export_units.txt': 'expunits',
-  // Geomod-required files
   'descr_cultures.txt': 'cultures',
   'descr_names.txt': 'names',
   'descr_rebel_factions.txt': 'rebel_fac',
