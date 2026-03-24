@@ -88,6 +88,8 @@ export default function RebelFactionsTab() {
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [search, setSearch] = useState('');
+  const txtInputRef = useRef(null);
+  const binInputRef = useRef(null);
 
   const eduUnitNames = useMemo(() => getEduUnitNames(), []);
 
