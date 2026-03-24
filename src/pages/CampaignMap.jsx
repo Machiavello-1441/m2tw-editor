@@ -486,7 +486,7 @@ export default function CampaignMap() {
       factionCreator: draft.faction || '',
       rebelFaction: draft.rebelFaction || 'slave',
       r: draft.r, g: draft.g, b: draft.b,
-      resources: draft.hiddenResources || [],
+      resources: draft.resources || [],
       val1: draft.val1 || 0,
       val2: draft.val2 || 0,
       religions: draft.religions || {},
