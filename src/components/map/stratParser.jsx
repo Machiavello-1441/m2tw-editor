@@ -623,9 +623,16 @@ export function parseDescrRegions(text) {
 }
 
 // ─── Regions serializer ───────────────────────────────────────────────────────
-export function serializeDescrRegions(regions) {
+export function serializeDescrRegions(regions, allReligions) {
   return regions.map(reg => {
-    const relEntries = Object.entries(reg.religions || {}).map(([k, v]) => `${k} ${v}`).join(' ');
+    // Build religion entries: include all known religions, defaulting to 0
+    let relEntries;
+    const relObj = reg.religions || {};
+    if (allReligions?.length > 0) {
+      relEntries = allReligions.map(name => `${name} ${relObj[name] ?? 0}`).join(' ');
+    } else {
+      relEntries = Object.entries(relObj).map(([k, v]) => `${k} ${v}`).join(' ');
+    }
     const resourcesLine = (reg.resources || []).length > 0 ? (reg.resources || []).join(', ') : 'none';
     return [
       reg.regionName,
