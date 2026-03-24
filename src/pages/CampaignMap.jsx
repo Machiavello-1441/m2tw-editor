@@ -109,7 +109,7 @@ export default function CampaignMap() {
   const [selectedRegion, setSelectedRegion] = useState(null);
 
   const { buildings, edbData } = useEDB();
-  const hiddenResourceList = useMemo(() => extractHiddenResourcesFromEDB(buildings || []), [buildings]);
+  const hiddenResourceList = useMemo(() => extractHiddenResourcesFromEDB(edbData || {}), [edbData]);
   const buildingLevelList  = useMemo(() => extractBuildingLevelsFromEDB(buildings || []), [buildings]);
   const factionList        = useMemo(() => {
     const fromFactions = (stratData?.factions || []).map(f => f.name).filter(Boolean);
@@ -1040,6 +1040,7 @@ export default function CampaignMap() {
                   musicTypeList={musicTypeList}
                   mercenaryPoolList={mercenaryPoolList}
                   religionList={religionList}
+                  naturalResList={naturalResList}
                   onRelocatePixel={handleRelocatePixel}
                   mapH={mapH}
                   />
