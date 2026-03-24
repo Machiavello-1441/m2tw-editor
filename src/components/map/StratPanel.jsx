@@ -604,7 +604,7 @@ export default function StratPanel({
   cultureList, edbData, regionsLayer,
   onRecolorRegion, onAddNewRegion,
   layers, dirtyLayers, editedSettlements,
-  rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList,
+  rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList,
   onRelocatePixel, mapH,
 }) {
   const [addMode, setAddMode] = useState(null);
@@ -981,6 +981,7 @@ export default function StratPanel({
               musicTypeList={musicTypeList}
               mercenaryPoolList={mercenaryPoolList}
               religionList={religionList}
+              naturalResList={naturalResList}
               onCancel={() => setShowNewRegion(false)}
               onAdd={(draft) => {
                 if (onAddNewRegion) onAddNewRegion(draft);
