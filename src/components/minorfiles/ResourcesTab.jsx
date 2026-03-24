@@ -48,6 +48,9 @@ export default function ResourcesTab() {
   const [names, setNames] = useState({}); // display_name → display_name2 (strat.txt.strings.bin special format)
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const txtInputRef = useRef(null);
+  const binInputRef = useRef(null);
+  const stratTxtInputRef = useRef(null);
 
   // Auto-load from localStorage on mount
   useEffect(() => {

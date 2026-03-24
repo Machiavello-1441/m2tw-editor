@@ -45,6 +45,8 @@ export default function ReligionsTab() {
   const [names, setNames] = useState({}); // internal→display from strings.bin
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const txtInputRef = useRef(null);
+  const binInputRef = useRef(null);
 
   // Auto-load from localStorage on mount
   useEffect(() => {
