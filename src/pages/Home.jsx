@@ -237,7 +237,7 @@ export default function Home() {
       vnvs: 'm2tw_vnvs_file',
       anctxt: 'm2tw_anctxt_file',
       expunits: 'm2tw_export_units_file',
-      // Geomod files (stored for campaign map editor)
+      // files stored for campaign map editor
       cultures: 'm2tw_cultures_file',
       names: 'm2tw_names_file',
       rebel_fac: 'm2tw_rebel_factions_file',
