@@ -97,11 +97,24 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
           </select>
         ) : (
           <input value={draft.faction} onChange={e => setDraft(d => ({ ...d, faction: e.target.value }))}
-            placeholder="Faction name"
+            placeholder="Faction Owner"
             className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
         )}
       </div>
-
+      <div>
+        <span className="text-[9px] text-slate-500">Faction Creator</span>
+        {factionList.length > 0 ? (
+          <select value={draft.factionCreator} onChange={e => setDraft(d => ({ ...d, factionCreator: e.target.value }))}
+            className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+            <option value="">— select faction —</option>
+            {factionList.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+        ) : (
+          <input value={draft.factionCreator} onChange={e => setDraft(d => ({ ...d, factionCreator: e.target.value }))}
+            placeholder="Faction Creator"
+            className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+        )}
+      </div>
       {/* Rebel Faction */}
       <div>
         <span className="text-[9px] text-slate-500">Rebel Faction</span>
