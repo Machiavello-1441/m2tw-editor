@@ -20,6 +20,8 @@ export function EDBProvider({ children }) {
 
   // Auto-restore from localStorage on mount
   useEffect(() => {
+    // Clear stale image data that may have filled the quota in older sessions
+    try { localStorage.removeItem(EDB_IMG_LS_KEY); } catch {}
     try {
       const raw = localStorage.getItem(EDB_LS_KEY);
       const name = localStorage.getItem(EDB_LS_NAME_KEY);
