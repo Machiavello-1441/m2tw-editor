@@ -223,7 +223,6 @@ export default function Home() {
       unit: loadUnitsFile,
       txt: loadTextFile,
       txt_bin: (text) => {}, // handled below as binary
-      // Geomod files go straight to localStorage via storeKeys above
       cultures: null,
       names: null,
       rebel_fac: null,
