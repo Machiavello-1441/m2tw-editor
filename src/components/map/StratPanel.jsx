@@ -640,7 +640,7 @@ export default function StratPanel({
 
   const handleExportRegions = () => {
     if (!regionsData?.length) return;
-    const text = serializeDescrRegions(regionsData);
+    const text = serializeDescrRegions(regionsData, religionList);
     downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_regions.txt');
   };
 
@@ -680,7 +680,7 @@ export default function StratPanel({
     }
     // descr_regions.txt
     if (regionsData?.length) {
-      zip.file(`${basePath}/descr_regions.txt`, serializeDescrRegions(regionsData));
+      zip.file(`${basePath}/descr_regions.txt`, serializeDescrRegions(regionsData, religionList));
     }
     // campaign script file
     const scriptName = stratData?.scriptFile || 'campaign_script.txt';
