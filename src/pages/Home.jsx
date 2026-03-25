@@ -137,7 +137,7 @@ function FileStatus({ label, hint, status }) {
 
 export default function Home() {
   const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
-  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile } = useRefData();
+  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadSkeletonFile, loadMountFile } = useRefData();
 
   const [fileStatus, setFileStatus] = useState(() => {
     // Show 'ok' for files already cached in localStorage from a previous session
