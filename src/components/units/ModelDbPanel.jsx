@@ -57,7 +57,7 @@ function SkeletonSelect({ value, onChange, skeletonTypes }) {
 const MOUNT_OPTIONS = ['None', 'Horse', 'elephant', 'camel'];
 
 export default function ModelDbPanel({ soldierModel, modeldb, onUpdateEntry, onDownload }) {
-  const { factions: refFactions, skeletonTypes, mountTypes } = useRefData();
+  const { factions: refFactions, skeletonTypes, skeletonAnimations, mountTypes } = useRefData();
 
   // Case-insensitive, trimmed lookup
   const entry = useMemo(() => {
