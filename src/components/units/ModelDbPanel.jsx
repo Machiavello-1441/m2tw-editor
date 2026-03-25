@@ -40,19 +40,7 @@ function FactionSelect({ value, onChange, factions }) {
   );
 }
 
-function SkeletonSelect({ value, onChange, skeletonTypes }) {
-  if (!skeletonTypes.length) {
-    return <input value={value} onChange={e => onChange(e.target.value)} className={INP} />;
-  }
-  return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      className={INP}>
-      {value && !skeletonTypes.includes(value) && <option value={value}>{value}</option>}
-      <option value="">(none)</option>
-      {skeletonTypes.map(s => <option key={s} value={s}>{s}</option>)}
-    </select>
-  );
-}
+
 
 const MOUNT_OPTIONS = ['None', 'Horse', 'elephant', 'camel'];
 
