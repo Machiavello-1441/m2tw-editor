@@ -77,8 +77,9 @@ export function RefDataProvider({ children }) {
       }
       const skelRaw = localStorage.getItem(LS_KEYS.skeleton);
       if (skelRaw) {
-        const s = parseSkeletonFile(skelRaw);
-        if (s.length) setSkeletonTypes(s);
+        const { types, animations } = parseSkeletonFile(skelRaw);
+        if (types.length) setSkeletonTypes(types);
+        if (animations.length) setSkeletonAnimations(animations);
       }
       const mountRaw = localStorage.getItem(LS_KEYS.mount);
       if (mountRaw) {
