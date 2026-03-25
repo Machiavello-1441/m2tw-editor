@@ -223,6 +223,8 @@ export default function Home() {
       res: loadResourcesFile,
       ev: loadEventsFile,
       unit: loadUnitsFile,
+      skeleton: loadSkeletonFile,
+      mount: loadMountFile,
       txt: loadTextFile,
       txt_bin: (text) => {}, // handled below as binary
       cultures: null,
