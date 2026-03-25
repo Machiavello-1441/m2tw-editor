@@ -413,6 +413,34 @@ export default function UnitEditorPage() {
 
   return (
     <div className="h-screen flex flex-col">
+      {/* Memory notice modal */}
+      {showMemoryNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-card border border-border rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Large image set loaded</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  A large number of TGA images have been decoded and stored in memory as base64 PNG data URLs.
+                  This can significantly increase browser memory usage and may cause the page to slow down or
+                  reload unexpectedly on low-memory devices. Consider loading only the sub-folders you need
+                  (e.g. <code className="font-mono bg-accent px-1 rounded">data\ui\units</code> or{' '}
+                  <code className="font-mono bg-accent px-1 rounded">data\ui\unit_info</code> separately).
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowMemoryNotice(false)}
+                className="px-4 py-1.5 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Toolbar */}
       <div className="h-10 border-b border-border flex items-center px-3 gap-2 shrink-0 bg-card/50">
         <Swords className="w-4 h-4 text-primary shrink-0" />
