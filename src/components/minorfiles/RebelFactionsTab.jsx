@@ -79,7 +79,9 @@ export default function RebelFactionsTab() {
   const txtInputRef = useRef(null);
   const binInputRef = useRef(null);
 
-  const eduUnitNames = useMemo(() => getEduUnitNames(), []);
+  const { units: refUnits } = useRefData();
+  // Live unit type names from the loaded/modified EDU, always up-to-date
+  const eduUnitNames = useMemo(() => refUnits.map(u => u.type).filter(Boolean), [refUnits]);
 
   // Auto-load from localStorage on mount
   useEffect(() => {
