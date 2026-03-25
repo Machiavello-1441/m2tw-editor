@@ -58,10 +58,10 @@ const MOUNT_OPTIONS = ['None', 'Horse', 'elephant', 'camel'];
 export default function ModelDbPanel({ soldierModel, modeldb, onUpdateEntry, onDownload }) {
   const { factions: refFactions, skeletonTypes, mountTypes } = useRefData();
 
-  // Case-insensitive lookup
+  // Case-insensitive, trimmed lookup
   const entry = useMemo(() => {
     if (!modeldb || !soldierModel) return null;
-    const key = soldierModel.toLowerCase();
+    const key = soldierModel.trim().toLowerCase();
     return modeldb.byName?.[key] || null;
   }, [modeldb, soldierModel]);
 
