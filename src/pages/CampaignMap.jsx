@@ -549,7 +549,7 @@ export default function CampaignMap() {
         r.regionName === draft.regionName ? { ...r, portX, portY: mapH > 0 ? mapH - 1 - portY : portY } : r
       ));
     }
-  }, [mapH]);
+  }, [mapH, layers, overlayItems]);
 
   // ── Region paint wizard step handlers ─────────────────────────────────────
   const handleWizardFinishPaint = useCallback(() => {
