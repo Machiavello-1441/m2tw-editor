@@ -479,14 +479,37 @@ export default function CampaignMap() {
 
   // ── Finalize new region (must be defined before handlers that reference it) ─
   const finalizeNewRegion = useCallback((draft, cityX, cityY, portX, portY) => {
-    // 1. Add to regionsData
+    // Detect natural resources on the map for this region's color
+    const regLayer = layers['regions'];
+    const mapResources = [];
+    if (regLayer?.data) {
+      const { data, width, height } = regLayer;
+      const { r: dr, g: dg, b: db } = draft;
+      // Check each overlay resource item against the painted region color
+      setOverlayItems(currentItems => {
+        for (const oi of currentItems) {
+          if (oi.category !== 'resource' || oi.x == null || oi.y == null) continue;
+          const px = Math.round(oi.x);
+          const py = height - 1 - Math.round(oi.y);
+          if (px < 0 || px >= width || py < 0 || py >= height) continue;
+          const idx = (py * width + px) * 4;
+          if (data[idx] === dr && data[idx + 1] === dg && data[idx + 2] === db) {
+            if (oi.type && !mapResources.includes(oi.type)) mapResources.push(oi.type);
+          }
+        }
+        return currentItems; // no change, just reading
+      });
+    }
+
+    // 1. Add to regionsData — merge manual resources + map-detected resources
+    const allResources = [...new Set([...(draft.resources || []), ...mapResources])];
     const newRegion = {
       regionName: draft.regionName,
       settlementName: draft.settlementName,
-      factionCreator: draft.faction || '',
+      factionCreator: draft.factionCreator || draft.faction || '',
       rebelFaction: draft.rebelFaction || 'slave',
       r: draft.r, g: draft.g, b: draft.b,
-      resources: draft.resources || [],
+      resources: allResources,
       val1: draft.val1 || 0,
       val2: draft.val2 || 0,
       religions: draft.religions || {},
@@ -502,11 +525,13 @@ export default function CampaignMap() {
       category: 'settlement',
       region: draft.regionName,
       faction: draft.faction || 'slave',
-      factionCreator: draft.faction || 'slave',
+      factionCreator: draft.factionCreator || draft.faction || 'slave',
+      castle: draft.castle || false,
       level: draft.level || 'village',
       population: draft.population || 400,
       yearFounded: draft.yearFounded || 0,
-      buildings: [],
+      planSet: 'default_set',
+      buildings: draft.buildings || [],
       x: cityX, y: stratY,
     };
     setOverlayItems(prev => [...prev, newItem]);
