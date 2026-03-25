@@ -334,6 +334,55 @@ export default function UnitEditorPage() {
     try { localStorage.setItem(UNIT_IMAGES_KEY, JSON.stringify(updated)); } catch {}
   };
 
+  const handleStringsBinLoad = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const buf = await file.arrayBuffer();
+    const parsed = parseStringsBin(buf);
+    if (!parsed) return;
+    const map = {};
+    for (const entry of parsed.entries) map[entry.key] = entry.value;
+    // Rebuild descrMap from the binary strings
+    const newDescr = {};
+    for (const [key, val] of Object.entries(map)) {
+      if (key.endsWith('_descr_short')) {
+        const base = key.slice(0, -'_descr_short'.length);
+        newDescr[base] = { ...(newDescr[base] || {}), short: val };
+      } else if (key.endsWith('_descr')) {
+        const base = key.slice(0, -'_descr'.length);
+        newDescr[base] = { ...(newDescr[base] || {}), long: val };
+      } else {
+        newDescr[key] = { ...(newDescr[key] || {}), name: val };
+      }
+    }
+    // Merge over existing
+    setDescrMap(prev => {
+      const merged = { ...prev };
+      for (const [k, v] of Object.entries(newDescr)) {
+        merged[k] = { ...(merged[k] || {}), ...v };
+      }
+      try { localStorage.setItem(EXPORT_UNITS_KEY + '_edits', JSON.stringify(merged)); } catch {}
+      return merged;
+    });
+  };
+
+  const handleUnitUiFolderLoad = async (e) => {
+    const files = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.tga'));
+    e.target.value = '';
+    if (!files.length) return;
+    const images = {};
+    for (const file of files) {
+      const buf = await file.arrayBuffer();
+      const dataUrl = decodeTgaToDataUrl(buf);
+      if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
+    }
+    const updated = { ...(unitImages || {}), ...images };
+    window._m2tw_unit_images = updated;
+    setUnitImages(updated);
+    try { localStorage.setItem(UNIT_IMAGES_KEY, JSON.stringify(updated)); } catch {}
+  };
+
   const handleDownload = () => {
     const text = serializeEDU(units);
     const blob = new Blob([text], { type: 'text/plain' });
