@@ -11,7 +11,31 @@ const LS_KEYS = {
   resources: 'm2tw_resources_file',
   events: 'm2tw_events_file',
   units: 'm2tw_units_file',
+  skeleton: 'm2tw_skeleton_file',
+  mount: 'm2tw_mount_file',
 };
+
+// Parse descr_skeleton.txt → array of skeleton type name strings
+function parseSkeletonFile(text) {
+  const types = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/;.*$/, '').trim();
+    const m = line.match(/^type\s+(\S+)/i);
+    if (m) types.push(m[1]);
+  }
+  return [...new Set(types)];
+}
+
+// Parse descr_mount.txt → array of mount type name strings
+function parseMountFile(text) {
+  const types = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/;.*$/, '').trim();
+    const m = line.match(/^type\s+(\S+)/i);
+    if (m) types.push(m[1]);
+  }
+  return [...new Set(types)];
+}
 
 export function RefDataProvider({ children }) {
   const [factions, setFactions] = useState(DEFAULT_FACTIONS);
