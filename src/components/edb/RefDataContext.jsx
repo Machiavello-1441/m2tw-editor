@@ -48,6 +48,7 @@ export function RefDataProvider({ children }) {
   const [eventCounters, setEventCounters] = useState([]);
   const [units, setUnits] = useState([]); // [{type, dictionary}]
   const [skeletonTypes, setSkeletonTypes] = useState([]); // string[]
+  const [skeletonAnimations, setSkeletonAnimations] = useState([]); // string[]
   const [mountTypes, setMountTypes] = useState([]); // string[]
 
   // Auto-restore from localStorage on mount
