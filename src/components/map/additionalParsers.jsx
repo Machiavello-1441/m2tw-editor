@@ -3,11 +3,12 @@
  */
 
 // descr_rebel_factions.txt → array of faction name strings
+// Supports rebel_type (correct M2TW keyword), rebel_faction and faction (legacy)
 export function parseDescrRebelFactions(text) {
   const factions = [];
   for (const raw of text.split('\n')) {
     const line = raw.replace(/;.*$/, '').trim();
-    const m = line.match(/^rebel_faction\s+(\S+)/i) || line.match(/^faction\s+(\S+)/i);
+    const m = line.match(/^rebel_type\s+(\S+)/i) || line.match(/^rebel_faction\s+(\S+)/i) || line.match(/^faction\s+(\S+)/i);
     if (m) factions.push(m[1]);
   }
   return [...new Set(factions)];
