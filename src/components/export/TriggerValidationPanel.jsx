@@ -3,23 +3,67 @@ import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Zap, Info } from 
 import { parseTraitsFile } from '../traits/TraitsParser';
 import { parseAncillariesFile } from '../ancillaries/AncillariesParser';
 
-const VALID_WHEN_TO_TEST = [
-  'PostBattle', 'PreBattle', 'GovernorTurnStart', 'GovernorTurnEnd',
-  'CharacterTurnStart', 'CharacterTurnEnd', 'CharacterComesOfAge',
+// Sourced from WHEN_TO_TEST_OPTIONS in conditionDefs plus all game-confirmed values
+const VALID_WHEN_TO_TEST = new Set([
+  // Standard events
+  'PostBattle', 'PreBattle', 'PostBattleAfterResults', 'GovernorTurnStart', 'GovernorTurnEnd',
+  'CharacterTurnStart', 'CharacterTurnEnd', 'OnCharacterTurnStart', 'OnCharacterTurnEnd',
+  'OnGeneral', 'OnCharacterComesOfAge', 'OnCharacterMarriage', 'OnCharacterDeath',
+  'OnCharacterBecomesFactionLeader', 'OnCharacterLooted', 'OnCharacterEndsTurnInSettlement',
+  'OnEnteringCity', 'OnLeavingCity',
   'OnCharacterMarries', 'OnCharacterBecomesGeneral', 'OnCharacterBecomesAdmiral',
   'OnCharacterBecomesGovernor', 'OnCharacterBecomesAssassin', 'OnCharacterBecomesSpy',
   'OnCharacterBecomesDiplomat', 'OnCharacterBecomesHeretic', 'OnCharacterBecomesWitch',
   'OnCharacterBecomesInquisitor', 'OnCharacterBecomesPriest', 'OnCharacterBecomesMerchant',
-  'OnCharacterComesOfAge', 'OnCharacterDies', 'ScriptedEvent', 'DoesSomething',
-  'OfferedForAdoption', 'OfferedForMarriage', 'BattleGeneralRouted', 'GeneralAssaultsGeneral',
-  'PreBattleWithdrawal', 'LeaderDestroyedFaction', 'CharacterDamagedByDisaster', 'BrotherAdopted',
-  'CharacterMarries', 'CharacterMarriesPrincess', 'CharacterBecomesAFather', 'SpyMission',
-  'LeaderOrderedSpyingMisssion', 'AssassinationMission', 'LeaderOrderedAssassination',
-  'SufferAssassinationAttempt', 'SabotageMission', 'LeaderOrderedSabotage',
-  'CharacterTurnEndInSettlement', 'GovernorCityRiots', 'GovernorUnitTrained',
-  'SackSettlement', 'HireMercenaries', 'LeaderOrderedSpyingMission', 'GovernorBuildingCompleted',
+  'OnCharacterComesOfAge', 'OnCharacterDies',
+  'OnMakingAlliance', 'OnBreakingAlliance', 'OnCaptureSettlement', 'OnConstructBuilding',
+  'OnHereticBurned', 'OnHereticConverted',
+  'OnSmallestArmyWinsBattle', 'OnSiegeSuccessful', 'OnSiegeFailed',
+  'OnSuccessfulMission', 'OnFailedMission',
+  'OnAssassinationSuccess', 'OnAssassinationFailure',
+  'OnSpySuccess', 'OnSpyFailure',
+  'OnBribeSuccess', 'OnBribeFailure',
+  'OnDiplomacySuccess', 'OnDiplomacyFailure',
+  'OnTradeSuccess', 'OnTradeFailure',
+  'InquisitionSuccess', 'InquisitionFailure',
+  'OnCrusade', 'OnJihad', 'OnCrusadeEnd', 'OnJihadEnd',
+  // Mission / agent events
+  'LeaderOrderedSpyingMission', 'LeaderOrderedSpyingMisssion', // typo variant in vanilla files
+  'BriberyMission', 'LeaderOrderedBribery', 'AcceptBribe', 'RefuseBribe',
+  'Insurrection', 'DiplomacyMission', 'LeaderOrderedDiplomacy', 'LeaderOrderedDiplomacyMission',
+  'AcquisitionMission', 'SufferAcquisitionAttempt',
+  'CharacterNearHeretic',
+  'ExecutesAnAssassinOnAMission', 'ExecutesASpyOnAMission',
+  'DenouncementMission', 'SufferDenouncementAttempt',
+  'LeaderMissionSuccess',
+  'AssassinationMission', 'LeaderOrderedAssassination', 'SufferAssassinationAttempt',
+  'SabotageMission', 'LeaderOrderedSabotage',
+  // Governor / Settlement events
+  'GovernorBuildingDestroyed', 'GovernorBuildingCompleted',
+  'GovernorUnitTrained', 'GovernorAgentCreated',
+  'GovernorCityRiots', 'GovernorCityRebels',
   'GovernorThrowGames',
-];
+  'CharacterTurnEndInSettlement',
+  'OccupySettlement', 'SackSettlement', 'ExterminatePopulation',
+  'HireMercenaries',
+  'AgentCreated',
+  // Character / General events
+  'ScriptedEvent', 'DoesSomething',
+  'OfferedForAdoption', 'OfferedForMarriage',
+  'LesserGeneralOfferedForAdoption',
+  'BecomesFactionLeader', 'BecomesFactionHeir', 'CeasedFactionHeir',
+  'FatherDiesNatural',
+  'BattleGeneralRouted', 'GeneralAssaultsGeneral', 'PreBattleWithdrawal',
+  'LeaderDestroyedFaction', 'CharacterDamagedByDisaster', 'BrotherAdopted',
+  'CharacterMarries', 'CharacterMarriesPrincess', 'CharacterBecomesAFather',
+  'CardinalPromoted', 'PriestBecomesHeretic',
+  'GeneralDevastatesTile',
+  'GeneralPrisonersRansomedCaptor', 'GeneralPrisonersRansomedCaptive',
+  'GeneralJoinCrusade', 'GeneralArrivesCrusadeTargetRegion',
+  'GeneralAssaultsResidence', 'GeneralTakesCrusadeTarget', 'GeneralAbandonCrusade',
+  'GeneralCaptureSettlement',
+  'Always',
+]);
 
 const VALID_CONDITION_PREFIXES = [
   'Condition', 'and', 'or',
