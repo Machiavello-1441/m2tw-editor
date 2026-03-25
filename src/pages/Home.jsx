@@ -724,7 +724,7 @@ export default function Home() {
         <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto mb-4">
           <Swords className="w-7 h-7 text-primary" />
         </div>
-        <h1 className="text-2xl font-bold text-foreground">M2TW Mod Editor</h1>
+        <h1 className="text-2xl font-bold text-foreground">Mylae’s M2TW Mod Editor</h1>
         <p className="text-sm text-muted-foreground">This editor allows you to read, edit and export the Medieval 2 Total War files.
 To do this, it is necessary to unpack the files in the main Medieval 2 Total War\data directory. 
 You may load all the editable files from the home or in the separate editors. 
