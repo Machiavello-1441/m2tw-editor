@@ -108,10 +108,24 @@ export function RefDataProvider({ children }) {
     try { localStorage.setItem(LS_KEYS.units, text); } catch {}
   }, []);
 
+  const loadSkeletonFile = useCallback((text) => {
+    const s = parseSkeletonFile(text);
+    if (s.length) setSkeletonTypes(s);
+    try { localStorage.setItem(LS_KEYS.skeleton, text); } catch {}
+  }, []);
+
+  const loadMountFile = useCallback((text) => {
+    const mt = parseMountFile(text);
+    if (mt.length) setMountTypes(mt);
+    try { localStorage.setItem(LS_KEYS.mount, text); } catch {}
+  }, []);
+
   return (
     <RefDataContext.Provider value={{
       factions, cultures, mapResources, eventCounters, units,
-      loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile
+      skeletonTypes, mountTypes,
+      loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile,
+      loadSkeletonFile, loadMountFile,
     }}>
       {children}
     </RefDataContext.Provider>
