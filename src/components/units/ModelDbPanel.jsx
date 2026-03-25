@@ -359,14 +359,16 @@ export default function ModelDbPanel({ soldierModel, modeldb, onUpdateEntry, onD
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground w-14 shrink-0">pri skel</span>
                     <div className="flex-1">
-                      <SkeletonSelect value={mt.primarySkeleton} skeletonTypes={skeletonTypes}
+                      <SearchableCombobox value={mt.primarySkeleton} options={skeletonTypes}
+                        placeholder="skeleton type…"
                         onChange={v => setMountField(mi, 'primarySkeleton', v)} />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground w-14 shrink-0">sec skel</span>
                     <div className="flex-1">
-                      <SkeletonSelect value={mt.secondarySkeleton || ''} skeletonTypes={skeletonTypes}
+                      <SearchableCombobox value={mt.secondarySkeleton || ''} options={skeletonTypes}
+                        placeholder="skeleton type…"
                         onChange={v => setMountField(mi, 'secondarySkeleton', v)} />
                     </div>
                   </div>
