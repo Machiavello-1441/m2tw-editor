@@ -480,25 +480,22 @@ export default function CampaignMap() {
   // ── Finalize new region (must be defined before handlers that reference it) ─
   const finalizeNewRegion = useCallback((draft, cityX, cityY, portX, portY) => {
     // Detect natural resources on the map for this region's color
+    // overlayItems is captured in the closure at call time
     const regLayer = layers['regions'];
     const mapResources = [];
     if (regLayer?.data) {
       const { data, width, height } = regLayer;
       const { r: dr, g: dg, b: db } = draft;
-      // Check each overlay resource item against the painted region color
-      setOverlayItems(currentItems => {
-        for (const oi of currentItems) {
-          if (oi.category !== 'resource' || oi.x == null || oi.y == null) continue;
-          const px = Math.round(oi.x);
-          const py = height - 1 - Math.round(oi.y);
-          if (px < 0 || px >= width || py < 0 || py >= height) continue;
-          const idx = (py * width + px) * 4;
-          if (data[idx] === dr && data[idx + 1] === dg && data[idx + 2] === db) {
-            if (oi.type && !mapResources.includes(oi.type)) mapResources.push(oi.type);
-          }
+      for (const oi of overlayItems) {
+        if (oi.category !== 'resource' || oi.x == null || oi.y == null) continue;
+        const px = Math.round(oi.x);
+        const py = height - 1 - Math.round(oi.y);
+        if (px < 0 || px >= width || py < 0 || py >= height) continue;
+        const idx = (py * width + px) * 4;
+        if (data[idx] === dr && data[idx + 1] === dg && data[idx + 2] === db) {
+          if (oi.type && !mapResources.includes(oi.type)) mapResources.push(oi.type);
         }
-        return currentItems; // no change, just reading
-      });
+      }
     }
 
     // 1. Add to regionsData — merge manual resources + map-detected resources
