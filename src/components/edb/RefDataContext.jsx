@@ -130,7 +130,7 @@ export function RefDataProvider({ children }) {
   return (
     <RefDataContext.Provider value={{
       factions, cultures, mapResources, eventCounters, units,
-      skeletonTypes, mountTypes,
+      skeletonTypes, skeletonAnimations, mountTypes,
       loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile,
       loadSkeletonFile, loadMountFile,
     }}>
