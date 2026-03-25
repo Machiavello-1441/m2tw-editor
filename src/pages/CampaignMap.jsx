@@ -517,8 +517,11 @@ export default function CampaignMap() {
 
     // 2. Add settlement overlay item with the placed city position
     const stratY = mapH > 0 ? mapH - 1 - cityY : cityY;
+    // Use a negative ID to mark this as a NEW item (not in original strat file).
+    // The serializer checks origIds from stratData.items; negative IDs won't collide.
+    const newItemId = -(Date.now());
     const newItem = {
-      id: Date.now(),
+      id: newItemId,
       category: 'settlement',
       region: draft.regionName,
       faction: draft.faction || 'slave',
@@ -532,7 +535,9 @@ export default function CampaignMap() {
       x: cityX, y: stratY,
     };
     setOverlayItems(prev => [...prev, newItem]);
-    setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
+    // Do NOT add to stratData.items — the serializer detects new settlements as
+    // those whose id is NOT in stratData.items. Keep stratData.items as-is (original only).
+    setOverlayDirty(true);
     setOverlayDirty(true);
 
     // 3. Update settlement names
