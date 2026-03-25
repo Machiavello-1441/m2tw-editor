@@ -151,6 +151,8 @@ export default function UnitEditorPage() {
   const [modeldb, setModeldb] = useState(() => modeldbStore.get());
   const fileRef = useRef();
   const modeldbRef = useRef();
+  const stringsBinRef = useRef();
+  const unitUiFolderRef = useRef();
 
   // Auto-load from EDU file and export_units.txt if Home page cached them
   useEffect(() => {
