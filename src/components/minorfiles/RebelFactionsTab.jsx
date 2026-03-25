@@ -127,6 +127,7 @@ export default function RebelFactionsTab() {
     const parsed = parseRebelFactionsFull(text);
     setFactions(parsed);
     try {
+      // m2tw_rebel_factions_file is the key CampaignMap reads on auto-restore
       localStorage.setItem('m2tw_rebel_factions_file', text);
       sessionStorage.setItem('m2tw_rebel_factions_raw', text);
     } catch {}
