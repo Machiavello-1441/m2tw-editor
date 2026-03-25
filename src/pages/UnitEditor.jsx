@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Swords, Upload, Download, Plus, FileText, CheckCircle2, Copy, Database } from 'lucide-react';
+import { Swords, Upload, Download, Plus, FileText, CheckCircle2, Copy, Database, Image, FileCode } from 'lucide-react';
 import UnitList from '../components/units/UnitList';
 import UnitEditorPanel from '../components/units/UnitEditor';
 import { parseEDU, serializeEDU, serializeUnit, createDefaultUnit } from '../components/units/EDUParser';
 import { parseModeldb, serializeModeldb } from '../lib/modeldbCodec';
 import { modeldbStore } from '../lib/modeldbStore';
+import { parseStringsBin } from '@/components/strings/stringsBinCodec';
+import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
 
 const STORAGE_KEY = 'm2tw_edu_units';
 const EDU_FILE_KEY = 'm2tw_units_file';
