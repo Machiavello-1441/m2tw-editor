@@ -15,15 +15,19 @@ const LS_KEYS = {
   mount: 'm2tw_mount_file',
 };
 
-// Parse descr_skeleton.txt → array of skeleton type name strings
+// Parse descr_skeleton.txt → { types: string[], animations: string[] }
 function parseSkeletonFile(text) {
   const types = [];
+  const animations = [];
   for (const raw of text.split('\n')) {
     const line = raw.replace(/;.*$/, '').trim();
-    const m = line.match(/^type\s+(\S+)/i);
-    if (m) types.push(m[1]);
+    const typeM = line.match(/^type\s+(\S+)/i);
+    if (typeM) { types.push(typeM[1]); continue; }
+    // Animation entries: "anim <name> ..." or "animation <name> ..."
+    const animM = line.match(/^anim(?:ation)?\s+(\S+)/i);
+    if (animM) animations.push(animM[1]);
   }
-  return [...new Set(types)];
+  return { types: [...new Set(types)], animations: [...new Set(animations)] };
 }
 
 // Parse descr_mount.txt → array of mount type name strings
