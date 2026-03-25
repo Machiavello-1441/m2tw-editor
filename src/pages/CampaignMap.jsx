@@ -543,7 +543,6 @@ export default function CampaignMap() {
     // Do NOT add to stratData.items — the serializer detects new settlements as
     // those whose id is NOT in stratData.items. Keep stratData.items as-is (original only).
     setOverlayDirty(true);
-    setOverlayDirty(true);
 
     // 3. Update settlement names
     if (draft.regionDisplayName || draft.settlementDisplayName) {
