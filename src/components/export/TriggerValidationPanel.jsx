@@ -80,11 +80,11 @@ function validateTrigger(trigger, traitNames, ancNames, mode) {
   // 2. WhenToTest must be valid
   if (!trigger.whenToTest || trigger.whenToTest.trim() === '') {
     issues.push({ severity: 'error', msg: 'Missing WhenToTest value.', fix: 'Set a valid WhenToTest event (e.g. PostBattle, CharacterTurnStart).' });
-  } else if (!VALID_WHEN_TO_TEST.includes(trigger.whenToTest.trim())) {
+  } else if (!VALID_WHEN_TO_TEST.has(trigger.whenToTest.trim())) {
     issues.push({
       severity: 'warning',
       msg: `Unknown WhenToTest: "${trigger.whenToTest}".`,
-      fix: `Valid values include: ${VALID_WHEN_TO_TEST.slice(0, 5).join(', ')}…`,
+      fix: `Valid values include: BriberyMission, LeaderOrderedBribery, GovernorCityRebels, GeneralJoinCrusade, FatherDiesNatural…`,
     });
   }
 
