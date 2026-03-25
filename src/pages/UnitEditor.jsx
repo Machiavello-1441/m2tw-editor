@@ -452,7 +452,7 @@ export default function UnitEditorPage() {
             <Image className="w-3 h-3" />
             Load UI images
           </button>
-          <input ref={unitUiFolderRef} type="file" accept=".tga" className="hidden" multiple onChange={handleUnitUiFolderLoad} />
+          <input ref={unitUiFolderRef} type="file" accept=".tga" className="hidden" multiple webkitdirectory="" onChange={handleUnitUiFolderLoad} />
           {active && (
             <button
               onClick={handleCopyUnit}
