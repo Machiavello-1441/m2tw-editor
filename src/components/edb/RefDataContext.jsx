@@ -43,6 +43,8 @@ export function RefDataProvider({ children }) {
   const [mapResources, setMapResources] = useState([]);
   const [eventCounters, setEventCounters] = useState([]);
   const [units, setUnits] = useState([]); // [{type, dictionary}]
+  const [skeletonTypes, setSkeletonTypes] = useState([]); // string[]
+  const [mountTypes, setMountTypes] = useState([]); // string[]
 
   // Auto-restore from localStorage on mount
   useEffect(() => {
@@ -67,6 +69,16 @@ export function RefDataProvider({ children }) {
       if (unitRaw) {
         const u = parseUnitsFile(unitRaw);
         if (u.length) setUnits(u);
+      }
+      const skelRaw = localStorage.getItem(LS_KEYS.skeleton);
+      if (skelRaw) {
+        const s = parseSkeletonFile(skelRaw);
+        if (s.length) setSkeletonTypes(s);
+      }
+      const mountRaw = localStorage.getItem(LS_KEYS.mount);
+      if (mountRaw) {
+        const mt = parseMountFile(mountRaw);
+        if (mt.length) setMountTypes(mt);
       }
     } catch {}
   }, []);
