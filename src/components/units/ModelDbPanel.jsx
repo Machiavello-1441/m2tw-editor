@@ -3,6 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, AlertCircle, Plus, Trash2, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { useRefData } from '../edb/RefDataContext';
+import SearchableCombobox from '../shared/SearchableCombobox';
 
 const INP = 'w-full h-6 px-1.5 text-[11px] font-mono bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary';
 
