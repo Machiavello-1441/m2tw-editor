@@ -108,9 +108,9 @@ export default function CampaignMap() {
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
 
-  const { buildings, edbData } = useEDB();
+  const { edbData } = useEDB();
   const hiddenResourceList = useMemo(() => extractHiddenResourcesFromEDB(edbData || {}), [edbData]);
-  const buildingLevelList  = useMemo(() => extractBuildingLevelsFromEDB(buildings || []), [buildings]);
+  const buildingLevelList  = useMemo(() => extractBuildingLevelsFromEDB(edbData || {}), [edbData]);
   const factionList        = useMemo(() => {
     const fromFactions = (stratData?.factions || []).map(f => f.name).filter(Boolean);
     const fromPlayable = [...(stratData?.playable || []), ...(stratData?.unlockable || []), ...(stratData?.nonplayable || [])];
