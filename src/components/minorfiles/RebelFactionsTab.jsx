@@ -83,7 +83,7 @@ function getEduUnitNames() {
   } catch { return []; }
 }
 
-const CATEGORIES = ['gladiator_revolt', 'brigands', 'peasant_revolt'];
+const CATEGORIES = ['gladiator_revolt', 'brigands', 'pirates', 'peasant_revolt'];
 
 export default function RebelFactionsTab() {
   const [factions, setFactions] = useState([]);
