@@ -425,6 +425,24 @@ export default function UnitEditorPage() {
             {modeldb ? `ModelDB (${modeldb.entries.length})` : 'Load ModelDB'}
           </button>
           <input ref={modeldbRef} type="file" accept=".modeldb,.txt" className="hidden" onChange={handleModeldbLoad} />
+          <button
+            onClick={() => stringsBinRef.current?.click()}
+            className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            title="Load export_units.txt.strings.bin"
+          >
+            <FileCode className="w-3 h-3" />
+            Load .strings.bin
+          </button>
+          <input ref={stringsBinRef} type="file" accept=".bin,.strings.bin" className="hidden" onChange={handleStringsBinLoad} />
+          <button
+            onClick={() => unitUiFolderRef.current?.click()}
+            className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            title="Load data\ui\units\ and data\ui\unit_info\ folders"
+          >
+            <Image className="w-3 h-3" />
+            Load UI images
+          </button>
+          <input ref={unitUiFolderRef} type="file" accept=".tga" className="hidden" multiple onChange={handleUnitUiFolderLoad} />
           {active && (
             <button
               onClick={handleCopyUnit}
