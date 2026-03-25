@@ -5,20 +5,23 @@ import { getStringsBinStore } from '@/lib/stringsBinStore';
 import RebelFactionRow from './RebelFactionRow';
 
 // ─── Parser ──────────────────────────────────────────────────────────────────
-// Format:
-//   rebel_faction  <name>
-//     category       <gladiator_revolt|brigands|peasant_revolt>
-//     chance         <int>
-//     description    <internal_key>
-//     unit           <UnitType>,  <min_exp>, <max_count>
-//     unit           ...
+// Format (M2TW descr_rebel_factions.txt):
+//   rebel_type     <name>
+//     category     <gladiator_revolt|brigands|pirates|peasant_revolt>
+//     chance       <int>
+//     description  <internal_key>
+//     unit         <UnitType>,  <min_exp>, <max_count>
+//     unit         ...
+// Lines starting with ; are comments and must be ignored.
 function parseRebelFactionsFull(text) {
   const factions = [];
   let current = null;
   for (const raw of text.split('\n')) {
+    // Strip inline comments (semicolon and everything after)
     const line = raw.replace(/;.*$/, '').trim();
     if (!line) continue;
-    const m = line.match(/^rebel_faction\s+(\S+)/i) || line.match(/^faction\s+(\S+)/i);
+    // Support rebel_type (correct keyword), rebel_faction and faction (legacy/alternate)
+    const m = line.match(/^rebel_type\s+(\S+)/i) || line.match(/^rebel_faction\s+(\S+)/i) || line.match(/^faction\s+(\S+)/i);
     if (m) {
       if (current) factions.push(current);
       current = { name: m[1], category: '', chance: 50, description: '', units: [] };
