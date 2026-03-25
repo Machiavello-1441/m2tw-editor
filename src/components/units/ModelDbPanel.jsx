@@ -381,8 +381,10 @@ export default function ModelDbPanel({ soldierModel, modeldb, onUpdateEntry, onD
                     </div>
                     {(mt.primaryWeapons || []).map((w, wi) => (
                       <div key={wi} className="flex items-center gap-1 mb-0.5">
-                        <input value={w} onChange={e => setWeapon(mi, 'primaryWeapons', wi, e.target.value)}
-                          className={`${INP} flex-1`} placeholder="e.g. MTW2_HR_Lance" />
+                        <SearchableCombobox value={w} options={skeletonAnimations}
+                          placeholder="animation name…"
+                          onChange={v => setWeapon(mi, 'primaryWeapons', wi, v)}
+                          className="flex-1" />
                         <button onClick={() => removeWeapon(mi, 'primaryWeapons', wi)}
                           className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
                       </div>
