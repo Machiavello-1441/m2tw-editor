@@ -367,6 +367,8 @@ export default function UnitEditorPage() {
     });
   };
 
+  const [showMemoryNotice, setShowMemoryNotice] = useState(false);
+
   const handleUnitUiFolderLoad = async (e) => {
     const files = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.tga'));
     e.target.value = '';
@@ -374,13 +376,21 @@ export default function UnitEditorPage() {
     const images = {};
     for (const file of files) {
       const buf = await file.arrayBuffer();
+      // Store under full relative path (lowercased) AND bare filename for flexible lookup
       const dataUrl = decodeTgaToDataUrl(buf);
-      if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
+      if (dataUrl) {
+        const bareName = file.name.replace(/\.tga$/i, '').toLowerCase();
+        // webkitRelativePath gives e.g. "units/english/unit_spearmen.tga"
+        const relPath = (file.webkitRelativePath || file.name).replace(/\.tga$/i, '').toLowerCase();
+        images[bareName] = dataUrl;
+        if (relPath !== bareName) images[relPath] = dataUrl;
+      }
     }
     const updated = { ...(unitImages || {}), ...images };
     window._m2tw_unit_images = updated;
     setUnitImages(updated);
     try { localStorage.setItem(UNIT_IMAGES_KEY, JSON.stringify(updated)); } catch {}
+    if (files.length > 50) setShowMemoryNotice(true);
   };
 
   const handleDownload = () => {
