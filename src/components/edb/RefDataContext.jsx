@@ -115,8 +115,9 @@ export function RefDataProvider({ children }) {
   }, []);
 
   const loadSkeletonFile = useCallback((text) => {
-    const s = parseSkeletonFile(text);
-    if (s.length) setSkeletonTypes(s);
+    const { types, animations } = parseSkeletonFile(text);
+    if (types.length) setSkeletonTypes(types);
+    if (animations.length) setSkeletonAnimations(animations);
     try { localStorage.setItem(LS_KEYS.skeleton, text); } catch {}
   }, []);
 
