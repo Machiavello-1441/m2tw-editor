@@ -92,17 +92,18 @@ export function parseModeldb(text) {
   function parseEntry() {
     const name = r.readStr();
 
-    // Scale — float (1.0 for infantry, ~1.12 for horses)
+    // Scale — float (1.12 for horses) or int 1 for infantry.
+    // A float like "1.12" won't parse as integer cleanly; int "1" will.
+    // We detect by checking if the token contains a decimal point.
     const scaleRaw = r.peek();
     let scale = 1;
-    if (scaleRaw !== undefined && !isNaN(parseFloat(scaleRaw)) && isNaN(parseInt(scaleRaw, 10))) {
-      scale = r.readFloat();
-    } else if (scaleRaw !== undefined) {
-      // Could be int 1 (scale=1) followed by pads
-      const v = parseInt(scaleRaw, 10);
-      if (v === 1 || v === 0) {
-        r.readInt(); // consume it
-        scale = v;
+    if (scaleRaw !== undefined) {
+      if (scaleRaw.includes('.')) {
+        scale = r.readFloat();
+      } else {
+        // Integer scale (typically 1)
+        r.readInt();
+        scale = 1;
       }
     }
 
