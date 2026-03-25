@@ -68,22 +68,6 @@ function downloadBlob(blob, name) {
   URL.revokeObjectURL(url);
 }
 
-// ─── Get unit names from EDU (localStorage) ──────────────────────────────────
-function getEduUnitNames() {
-  try {
-    const raw = localStorage.getItem('m2tw_units_file');
-    if (!raw) return [];
-    const names = [];
-    for (const line of raw.split('\n')) {
-      const m = line.trim().match(/^type\s+(.+)/);
-      if (m && !line.trim().startsWith('voice_type')) {
-        names.push(m[1].split(';')[0].trim());
-      }
-    }
-    return names;
-  } catch { return []; }
-}
-
 const CATEGORIES = ['gladiator_revolt', 'brigands', 'pirates', 'peasant_revolt'];
 
 export default function RebelFactionsTab() {
