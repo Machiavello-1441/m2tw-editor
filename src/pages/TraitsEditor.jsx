@@ -20,7 +20,7 @@ function TraitsEditorInner() {
             <h2 className="text-lg font-semibold">Traits Editor</h2>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
               Load <code className="text-xs bg-muted px-1 rounded">export_descr_character_traits.txt</code> to start editing character traits.
-              Optionally also load <code className="text-xs bg-muted px-1 rounded">export_VnVs.txt</code> to see trait display names and descriptions.
+              Load <code className="text-xs bg-muted px-1 rounded">export_VnVs.txt</code> to see trait display names and descriptions.
             </p>
           </div>
           <div className="text-xs text-muted-foreground bg-muted/50 rounded p-3 text-left max-w-sm">
