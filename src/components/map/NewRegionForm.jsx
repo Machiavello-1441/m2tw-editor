@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, X, Check, Search } from 'lucide-react';
-import { extractHiddenResourcesFromEDB } from './additionalParsers';
+import { extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from './additionalParsers';
+
+const SETTLEMENT_LEVELS = ['village', 'town', 'large_town', 'city', 'large_city', 'huge_city'];
 
 // ─── Searchable dropdown ──────────────────────────────────────────────────────
 function SearchableSelect({ value, onChange, options, placeholder, emptyMsg }) {
