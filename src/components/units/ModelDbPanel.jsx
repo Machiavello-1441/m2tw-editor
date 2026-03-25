@@ -112,6 +112,8 @@ export default function ModelDbPanel({ soldierModel, modeldb, onUpdateEntry, onD
   }
 
   if (!entry) {
+    const allKeys = Object.keys(modeldb.byName || {});
+    const sample = allKeys.slice(0, 8).join(', ');
     return (
       <div className="p-8 text-center space-y-3">
         <AlertCircle className="w-8 h-8 text-amber-500 mx-auto opacity-60" />
@@ -119,10 +121,15 @@ export default function ModelDbPanel({ soldierModel, modeldb, onUpdateEntry, onD
           No entry found for <code className="bg-accent px-1 rounded font-mono text-xs">{soldierModel}</code>
         </p>
         <p className="text-xs text-muted-foreground">
-          ModelDB lookup is case-insensitive. {Object.keys(modeldb.byName).length} entries loaded.
+          {allKeys.length} entries loaded. Lookup key: <code className="font-mono">{soldierModel.trim().toLowerCase()}</code>
         </p>
+        {sample && (
+          <p className="text-xs text-muted-foreground break-all">
+            First entries: <span className="font-mono">{sample}{allKeys.length > 8 ? '…' : ''}</span>
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">
-          Check that the <em>soldier_model</em> name (Identity tab) matches an entry in battle_models.modeldb.
+          Check the <em>soldier</em> line in the Identity tab matches an entry in battle_models.modeldb.
         </p>
       </div>
     );
