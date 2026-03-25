@@ -48,7 +48,7 @@ function parseRebelFactionsFull(text) {
 // ─── Serializer ──────────────────────────────────────────────────────────────
 function serializeRebelFactions(factions) {
   return factions.map(f => {
-    const lines = [`rebel_faction\t\t\t${f.name}`];
+    const lines = [`rebel_type\t\t\t\t${f.name}`];
     if (f.category) lines.push(`\tcategory\t\t\t${f.category}`);
     lines.push(`\tchance\t\t\t\t${f.chance ?? 50}`);
     if (f.description) lines.push(`\tdescription\t\t\t${f.description}`);
