@@ -112,19 +112,24 @@ export function extractHiddenResourcesFromEDB(edbData) {
 }
 
 // Extract all building level names from EDB data (for upgrades list)
-export function extractBuildingLevelsFromEDB(edbData) {
-  if (!edbData?.buildings) return [];
+// Accepts either a parsed edbData object { buildings: [...] } or a raw buildings array
+export function extractBuildingLevelsFromEDB(edbDataOrArray) {
+  const buildingsArr = Array.isArray(edbDataOrArray)
+    ? edbDataOrArray
+    : edbDataOrArray?.buildings;
+  if (!Array.isArray(buildingsArr)) return [];
   const levels = [];
   const walk = (building) => {
     if (Array.isArray(building.levels)) {
       for (const lvl of building.levels) {
         if (lvl.name) levels.push({ name: lvl.name, building: building.name || '' });
         if (Array.isArray(lvl.upgrades)) lvl.upgrades.forEach(u => {
-          if (u.name) levels.push({ name: u.name, building: building.name || '' });
+          const name = typeof u === 'string' ? u : u?.name;
+          if (name) levels.push({ name, building: building.name || '' });
         });
       }
     }
   };
-  if (Array.isArray(edbData.buildings)) edbData.buildings.forEach(walk);
+  buildingsArr.forEach(walk);
   return levels;
 }
