@@ -42,8 +42,8 @@ export default function Layout({ children, currentPageName }) {
                   <Castle className="w-4 h-4 text-primary" />
                 </div>
                 <div className="hidden lg:block">
-                  <h1 className="text-sm font-bold text-foreground leading-none">M2TW</h1>
-                  <p className="text-[10px] text-muted-foreground">Mod Editor</p>
+                  <h1 className="text-sm font-bold text-foreground leading-none">Mylae’s</h1>
+                  <p className="text-muted-foreground text-lg">M2TW Mod Editor</p>
                 </div>
               </div>
             </div>
