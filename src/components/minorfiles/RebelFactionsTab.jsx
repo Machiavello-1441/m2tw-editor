@@ -3,6 +3,7 @@ import { Upload, Download, Plus, X, AlertCircle, ChevronDown, ChevronRight, Sear
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import RebelFactionRow from './RebelFactionRow';
+import { useRefData } from '../edb/RefDataContext';
 
 // ─── Parser ──────────────────────────────────────────────────────────────────
 // Format (M2TW descr_rebel_factions.txt):
