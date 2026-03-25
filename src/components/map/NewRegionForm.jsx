@@ -300,6 +300,23 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
         )}
       </div>
 
+      {/* Castle + Level */}
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+          <input type="checkbox" checked={draft.castle}
+            onChange={e => setDraft(d => ({ ...d, castle: e.target.checked }))}
+            className="w-3 h-3 accent-amber-500" />
+          <span className="text-[10px] text-slate-300 font-semibold">Castle settlement</span>
+        </label>
+      </div>
+      <div>
+        <span className="text-[9px] text-slate-500">Settlement Level</span>
+        <select value={draft.level} onChange={e => setDraft(d => ({ ...d, level: e.target.value }))}
+          className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+          {SETTLEMENT_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+      </div>
+
       <div className="grid grid-cols-2 gap-1.5">
         <div>
           <span className="text-[9px] text-slate-500">Population</span>
@@ -313,6 +330,44 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
             onChange={e => setDraft(d => ({ ...d, yearFounded: parseInt(e.target.value) || 0 }))}
             className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
         </div>
+      </div>
+
+      {/* Buildings */}
+      <div>
+        <span className="text-[9px] text-slate-500">Buildings (from EDB)</span>
+        {draft.buildings.length > 0 && (
+          <div className="flex flex-wrap gap-0.5 mb-1">
+            {draft.buildings.map(b => (
+              <span key={b} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-800/60 rounded text-[9px] text-slate-300 font-mono">
+                {b}
+                <button type="button" onClick={() => setDraft(d => ({ ...d, buildings: d.buildings.filter(x => x !== b) }))}
+                  className="text-slate-600 hover:text-red-400"><X className="w-2 h-2" /></button>
+              </span>
+            ))}
+          </div>
+        )}
+        {buildingTrees.length > 0 ? (
+          <div className="grid grid-cols-2 gap-1">
+            <select value={selectedTree} onChange={e => setSelectedTree(e.target.value)}
+              className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+              <option value="">— tree —</option>
+              {buildingTrees.map(([tree]) => <option key={tree} value={tree}>{tree}</option>)}
+            </select>
+            <select value="" onChange={e => {
+              const val = e.target.value;
+              if (val && !draft.buildings.includes(val)) {
+                setDraft(d => ({ ...d, buildings: [...d.buildings, val] }));
+                setSelectedTree('');
+              }
+            }} disabled={!selectedTree}
+              className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 disabled:opacity-40">
+              <option value="">— level —</option>
+              {treeLevels.map(lv => <option key={lv} value={lv}>{lv}</option>)}
+            </select>
+          </div>
+        ) : (
+          <p className="text-[9px] text-slate-600 italic">Load EDB to add buildings</p>
+        )}
       </div>
 
       {/* Natural Resources */}
