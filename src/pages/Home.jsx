@@ -71,8 +71,8 @@ function parseDescrAerialGroundTypes(text) {
   for (const raw of lines) {
     const line = raw.trim();
     if (!line || line.startsWith(';')) continue;
-    if (line === '{') { inBlock = true; continue; }
-    if (line === '}') { inBlock = false; continue; }
+    if (line === '{') {inBlock = true;continue;}
+    if (line === '}') {inBlock = false;continue;}
     if (inBlock) {
       const parts = line.split(/\s+/).filter(Boolean);
       if (parts.length >= 2) {
@@ -106,7 +106,7 @@ const DATA_FILE_MAP = {
   'descr_names.txt': 'names',
   'descr_rebel_factions.txt': 'rebel_fac',
   'descr_religions.txt': 'religions',
-  'battle_models.modeldb': 'modeldb',
+  'battle_models.modeldb': 'modeldb'
 };
 
 
@@ -164,7 +164,7 @@ export default function Home() {
       names: ls('m2tw_names_file') ? 'ok' : 'idle',
       rebel_fac: ls('m2tw_rebel_factions_file') ? 'ok' : 'idle',
       religions: ls('m2tw_religions_file') ? 'ok' : 'idle',
-      modeldb: 'idle',
+      modeldb: 'idle'
     };
   });
 
@@ -226,7 +226,7 @@ export default function Home() {
       cultures: null,
       names: null,
       rebel_fac: null,
-      religions: null,
+      religions: null
     };
 
     // Storage keys for files loaded by their own editors
@@ -241,7 +241,7 @@ export default function Home() {
       cultures: 'm2tw_cultures_file',
       names: 'm2tw_names_file',
       rebel_fac: 'm2tw_rebel_factions_file',
-      religions: 'm2tw_religions_file',
+      religions: 'm2tw_religions_file'
     };
 
     // Filename storage keys (for context auto-load)
@@ -250,7 +250,7 @@ export default function Home() {
       anc: 'm2tw_anc_file_name',
       vnvs: 'm2tw_vnvs_file_name',
       anctxt: 'm2tw_anctxt_file_name',
-      expunits: 'm2tw_export_units_file_name',
+      expunits: 'm2tw_export_units_file_name'
     };
 
     // Separate TGA files for auto image loading
@@ -315,12 +315,12 @@ export default function Home() {
           'descr_strat.txt': 'm2tw_campaign_strat',
           'campaign_script.txt': 'm2tw_campaign_script',
           'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
-          'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
+          'descr_win_conditions.txt': 'm2tw_campaign_win_conditions'
         };
         const csKey = CAMPAIGN_STORE_MAP[name];
         if (csKey) {
           const csTxt = await readText(file);
-          try { localStorage.setItem(csKey, csTxt); } catch {}
+          try {localStorage.setItem(csKey, csTxt);} catch {}
         }
         continue;
       }
@@ -341,11 +341,11 @@ export default function Home() {
         const parsed = parseStringsBin(buf);
         if (parsed) {
           // Convert entries to plain text format {key}value\n
-          const textContent = parsed.entries.map(e => `{${e.key}}${e.value}`).join('\n');
+          const textContent = parsed.entries.map((e) => `{${e.key}}${e.value}`).join('\n');
           loadTextFile(textContent);
           // Store original binary for export
-          try { localStorage.setItem('m2tw_edb_txt_bin_magic1', String(parsed.magic1)); } catch {}
-          try { localStorage.setItem('m2tw_edb_txt_bin_magic2', String(parsed.magic2)); } catch {}
+          try {localStorage.setItem('m2tw_edb_txt_bin_magic1', String(parsed.magic1));} catch {}
+          try {localStorage.setItem('m2tw_edb_txt_bin_magic2', String(parsed.magic2));} catch {}
           setFileStatus((prev) => ({ ...prev, txt_bin: 'ok', txt: 'ok' }));
         }
         continue;
@@ -391,7 +391,7 @@ export default function Home() {
         loaderMap[key]?.(text);
         // Store factions in sessionStorage for campaign map editor
         if (key === 'fac') {
-          try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {}
+          try {sessionStorage.setItem('m2tw_factions_raw', text);} catch {}
         }
         // Store resources in sessionStorage + localStorage
         if (key === 'res') {
@@ -603,13 +603,13 @@ export default function Home() {
       'descr_strat.txt': 'm2tw_campaign_strat',
       'campaign_script.txt': 'm2tw_campaign_script',
       'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
-      'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
+      'descr_win_conditions.txt': 'm2tw_campaign_win_conditions'
     };
 
     // Also store rebel factions + EDB from this folder if present
     const CAMPAIGN_EXTRA_STORE = {
       'descr_rebel_factions.txt': 'm2tw_rebel_factions_file',
-      'export_descr_buildings.txt': 'm2tw_edb_file',
+      'export_descr_buildings.txt': 'm2tw_edb_file'
     };
 
     const stringsBinFiles = {};
@@ -632,19 +632,19 @@ export default function Home() {
       const csKey = CAMPAIGN_STORE[name];
       if (csKey) {
         const txt = await readText(file);
-        try { localStorage.setItem(csKey, txt); } catch {}
+        try {localStorage.setItem(csKey, txt);} catch {}
         // Also store mercenaries in sessionStorage for immediate use
         if (name === 'descr_mercenaries.txt') {
-          try { sessionStorage.setItem('m2tw_mercenaries_raw', txt); } catch {}
+          try {sessionStorage.setItem('m2tw_mercenaries_raw', txt);} catch {}
         }
       }
 
       const extraKey = CAMPAIGN_EXTRA_STORE[name];
       if (extraKey) {
         const txt = await readText(file);
-        try { localStorage.setItem(extraKey, txt); } catch {}
+        try {localStorage.setItem(extraKey, txt);} catch {}
         if (name === 'descr_rebel_factions.txt') {
-          try { sessionStorage.setItem('m2tw_rebel_factions_raw', txt); } catch {}
+          try {sessionStorage.setItem('m2tw_rebel_factions_raw', txt);} catch {}
           setFileStatus((prev) => ({ ...prev, rebel_fac: 'ok' }));
         }
         if (name === 'export_descr_buildings.txt') {
@@ -725,10 +725,10 @@ export default function Home() {
           <Swords className="w-7 h-7 text-primary" />
         </div>
         <h1 className="text-2xl font-bold text-foreground">M2TW Mod Editor</h1>
-        <p className="text-sm text-muted-foreground">Load your mod's files to begin editing. Use the Export page when done to download a complete [mod name]\data\ folder ready to drop into your M2TW mods directory.
-
-
-        </p>
+        <p className="text-sm text-muted-foreground">This editor allows you to read, edit and export the Medieval 2 Total War files.
+To do this, it is necessary to unpack the files in the main Medieval 2 Total War\data directory. 
+You may load all the editable files from the home or in the separate editors. 
+Use the Export page when done to download a complete [mod name]\data\ folder ready to drop into your M2TW mods directory.</p>
       </div>
 
       {/* Mod Name */}
@@ -756,9 +756,9 @@ export default function Home() {
             <Castle className="w-4 h-4 text-primary" />
             Step 1 — Load Mod Files &amp; Images
           </h2>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Browse your whole <code className="text-[10px] font-mono bg-accent px-1 rounded">data\</code> folder to load all game files, then
-            browse <code className="text-[10px] font-mono bg-accent px-1 rounded">data\ui\</code> to load UI images for the Ancillaries and Unit editors.
+          <p className="text-[11px] text-muted-foreground mt-1">This step browse your whole data\ folder to load all game files, then browse data\ui\ to load UI images.
+
+
           </p>
         </div>
         <div className="p-4 space-y-4">
