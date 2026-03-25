@@ -11,11 +11,11 @@ const CATEGORY_COLORS = {
 export default function RebelFactionRow({ faction, displayName, categories, eduUnitNames, onUpdate, onDisplayNameChange, onRemove }) {
   const [expanded, setExpanded] = useState(false);
 
-  const addUnit = (unitName) => {
+  const addUnit = (unitName, exp = 1, maxCount = 2) => {
     if (!unitName) return;
     const already = (faction.units || []).some(u => u.unitName === unitName);
     if (already) return;
-    onUpdate({ units: [...(faction.units || []), { unitName, minExp: 1, maxCount: 2 }] });
+    onUpdate({ units: [...(faction.units || []), { unitName, minExp: exp, maxCount }] });
   };
 
   const removeUnit = (idx) => {
