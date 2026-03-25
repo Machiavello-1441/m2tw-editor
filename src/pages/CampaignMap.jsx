@@ -498,8 +498,13 @@ export default function CampaignMap() {
       }
     }
 
-    // 1. Add to regionsData — merge manual resources + map-detected resources
-    const allResources = [...new Set([...(draft.resources || []), ...mapResources])];
+    // 1. Add to regionsData — merge manual resources + hidden resources + map-detected resources
+    // All of these go into the single `resources` line of descr_regions.txt
+    const allResources = [...new Set([
+      ...(draft.resources || []),
+      ...(draft.hiddenResources || []),
+      ...mapResources,
+    ])];
     const newRegion = {
       regionName: draft.regionName,
       settlementName: draft.settlementName,
