@@ -26,12 +26,12 @@ const VALID_WHEN_TO_TEST = new Set([
   'OnDiplomacySuccess', 'OnDiplomacyFailure',
   'OnTradeSuccess', 'OnTradeFailure',
   'InquisitionSuccess', 'InquisitionFailure',
-  'OnCrusade', 'OnJihad', 'OnCrusadeEnd', 'OnJihadEnd',
+  'OnCrusade', 'OnJihad', 'OnCrusadeEnd', 'OnJihadEnd', 'CharacterComesOfAge',
   // Mission / agent events
   'LeaderOrderedSpyingMission', 'LeaderOrderedSpyingMisssion', // typo variant in vanilla files
   'BriberyMission', 'LeaderOrderedBribery', 'AcceptBribe', 'RefuseBribe',
   'Insurrection', 'DiplomacyMission', 'LeaderOrderedDiplomacy', 'LeaderOrderedDiplomacyMission',
-  'AcquisitionMission', 'SufferAcquisitionAttempt',
+  'AcquisitionMission', 'SufferAcquisitionAttempt', 'SpyMission',
   'CharacterNearHeretic',
   'ExecutesAnAssassinOnAMission', 'ExecutesASpyOnAMission',
   'DenouncementMission', 'SufferDenouncementAttempt',
@@ -46,7 +46,7 @@ const VALID_WHEN_TO_TEST = new Set([
   'CharacterTurnEndInSettlement',
   'OccupySettlement', 'SackSettlement', 'ExterminatePopulation',
   'HireMercenaries',
-  'AgentCreated',
+  'AgentCreated', 'NewAdmiralCreated',
   // Character / General events
   'ScriptedEvent', 'DoesSomething',
   'OfferedForAdoption', 'OfferedForMarriage',
