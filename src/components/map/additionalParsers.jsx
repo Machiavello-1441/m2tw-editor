@@ -69,28 +69,45 @@ export function parseDescrSoundsMusicTypes(text) {
   return [...new Set(types)];
 }
 
-// Extract hidden_resource names from EDB data (walks building trees)
+// Extract hidden_resource names from EDB data
+// Primary source: edbData.hiddenResources (the "hidden_resources ..." top line in the EDB)
+// Secondary source: walk capabilities for hinterland_hidden_resource entries
 export function extractHiddenResourcesFromEDB(edbData) {
-  if (!edbData?.buildings) return [];
+  if (!edbData) return [];
   const resources = new Set();
+
+  // Primary: the top-level hidden_resources list parsed from the EDB header
+  if (Array.isArray(edbData.hiddenResources)) {
+    for (const r of edbData.hiddenResources) if (r) resources.add(r);
+  }
+
+  // Secondary: walk capability blocks for hinterland_hidden_resource entries
+  const walkCap = (cap) => {
+    if (!cap || typeof cap !== 'object') return;
+    // Stored as { type:'bonus', identifier:'hinterland_hidden_resource', value: N }
+    if (cap.identifier === 'hinterland_hidden_resource' && cap.value !== undefined) {
+      // value is a number here (the bonus amount), not a name — skip
+      return;
+    }
+    // Some parsers store as { type:'hinterland_hidden_resource', value: 'name' }
+    if (cap.type === 'hinterland_hidden_resource' && cap.value) resources.add(cap.value);
+    if (cap.name === 'hinterland_hidden_resource' && cap.arg) resources.add(cap.arg);
+    // Raw string format
+    if (typeof cap === 'string') {
+      const m = cap.match(/hinterland_hidden_resource\s+(\S+)/i);
+      if (m) resources.add(m[1]);
+    }
+  };
+
   const walk = (obj) => {
     if (!obj || typeof obj !== 'object') return;
-    if (Array.isArray(obj.capabilities)) {
-      for (const cap of obj.capabilities) {
-        if (typeof cap === 'string') {
-          const m = cap.match(/hinterland_hidden_resource\s+(\S+)/i);
-          if (m) resources.add(m[1]);
-        } else if (cap?.type === 'hinterland_hidden_resource' && cap.value) {
-          resources.add(cap.value);
-        } else if (cap?.name === 'hinterland_hidden_resource' && cap.arg) {
-          resources.add(cap.arg);
-        }
-      }
-    }
+    if (Array.isArray(obj.capabilities)) obj.capabilities.forEach(walkCap);
+    if (Array.isArray(obj.factionCapability)) obj.factionCapability.forEach(walkCap);
     if (Array.isArray(obj.levels)) obj.levels.forEach(walk);
     if (Array.isArray(obj.buildings)) obj.buildings.forEach(walk);
   };
-  walk(edbData);
+  if (Array.isArray(edbData.buildings)) edbData.buildings.forEach(walk);
+
   return [...resources].sort();
 }
 
