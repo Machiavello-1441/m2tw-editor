@@ -146,21 +146,41 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
     b: Math.floor(Math.random() * 200) + 30,
     faction: '',
     factionCreator: '',
+    castle: false,
     level: 'village',
     population: 400,
     yearFounded: 0,
     rebelFaction: '',
     resources: [],
     hiddenResources: [],
+    buildings: [],
     val1: 0,
     val2: 0,
     musicType: '',
     mercenaryPool: '',
     religions: {},
   });
+  const [selectedTree, setSelectedTree] = useState('');
 
   const factionList = factionColors ? Object.keys(factionColors).sort() : [];
   const edbHiddenRes = useMemo(() => hiddenResourceList?.length ? hiddenResourceList : extractHiddenResourcesFromEDB(edbData), [hiddenResourceList, edbData]);
+
+  // Building trees from EDB
+  const buildingLevels = useMemo(() => extractBuildingLevelsFromEDB(edbData), [edbData]);
+  const buildingTrees = useMemo(() => {
+    const map = {};
+    for (const bl of buildingLevels) {
+      const tree = bl.building || '(unknown)';
+      if (!map[tree]) map[tree] = [];
+      map[tree].push(bl.name);
+    }
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [buildingLevels]);
+  const treeLevels = useMemo(() => {
+    if (!selectedTree) return [];
+    const entry = buildingTrees.find(([t]) => t === selectedTree);
+    return entry ? entry[1] : [];
+  }, [buildingTrees, selectedTree]);
 
   // Religion sum validation
   const religionSum = useMemo(() => {
