@@ -1,7 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { Section } from './UnitStatRow';
 import { Upload, X, Download } from 'lucide-react';
 import { decodeTgaToDataUrl } from '../shared/tgaDecoder';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function findImage(unitImages, key) {
   if (!unitImages) return null;
@@ -18,8 +20,7 @@ function encodeTGA(canvas, tw, th) {
   const off = document.createElement('canvas');
   off.width = tw; off.height = th;
   off.getContext('2d').drawImage(canvas, 0, 0, tw, th);
-  const imgData = off.getContext('2d').getImageData(0, 0, tw, th);
-  const px = imgData.data;
+  const px = off.getContext('2d').getImageData(0, 0, tw, th).data;
   const header = new Uint8Array(18);
   header[2] = 2;
   header[12] = tw & 0xff; header[13] = (tw >> 8) & 0xff;
@@ -52,7 +53,37 @@ function downloadTGA(dataUrl, filename, tw, th) {
 // CARD: 48×56 px   INFO: 260×350 px  (approximate M2TW sizes)
 const SLOT_SIZES = { card: [48, 56], info: [260, 350] };
 
-function UnitImageSlot({ label, imageKey, img, onUpload, onDelete, targetSize, style }) {
+/**
+ * Detect faction/culture sub-folders available for a given unit dictionary.
+ * M2TW stores faction cards like: units/<faction>/#unit_name.tga
+ * and info images like: unit_info/<faction>/unit_name_info.tga
+ * We scan all keys in unitImages for any that contain the dictLower substring
+ * and extract path segments that indicate sub-variants.
+ */
+function detectVariants(unitImages, dictLower) {
+  if (!unitImages) return [];
+  const variants = new Set();
+  for (const key of Object.keys(unitImages)) {
+    const kl = key.toLowerCase();
+    // Match patterns like: .../something/unit_name or unit_name_info
+    const bare = dictLower.replace(/^#/, '');
+    if (!kl.includes(bare)) continue;
+    // Extract subfolder: split by /
+    const parts = kl.split('/');
+    if (parts.length >= 2) {
+      // The segment just before the filename is likely a faction/culture folder
+      const folder = parts[parts.length - 2];
+      if (folder && folder !== 'units' && folder !== 'unit_info') {
+        variants.add(folder);
+      }
+    }
+  }
+  return Array.from(variants).sort();
+}
+
+// ── UnitImageSlot ────────────────────────────────────────────────────────────
+
+function UnitImageSlot({ label, imageKey, img, onUpload, onDelete, targetSize }) {
   const fileRef = useRef();
   const [preview, setPreview] = useState(null);
   const [tw, th] = targetSize;
@@ -81,7 +112,7 @@ function UnitImageSlot({ label, imageKey, img, onUpload, onDelete, targetSize, s
   };
 
   return (
-    <div className="flex flex-col items-center gap-1 group shrink-0" style={style}>
+    <div className="flex flex-col items-center gap-1 group shrink-0">
       <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wide">{label}</span>
       {preview ? (
         <div className="flex flex-col items-center gap-1">
@@ -109,7 +140,6 @@ function UnitImageSlot({ label, imageKey, img, onUpload, onDelete, targetSize, s
           <button
             className="absolute bottom-0 right-0 bg-black/60 rounded-tl text-[8px] text-white px-1 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={() => fileRef.current?.click()} title="Replace">↑</button>
-          {/* Download current */}
           <button
             className="absolute bottom-0 left-0 bg-black/60 rounded-tr text-[8px] text-white px-1 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={() => downloadTGA(img, `${imageKey.replace(/^#/, '')}.tga`, tw, th)} title="Export .tga">↓</button>
@@ -128,7 +158,47 @@ function UnitImageSlot({ label, imageKey, img, onUpload, onDelete, targetSize, s
   );
 }
 
+// ── ImagesPanel — images for a given variant (or default) ────────────────────
+
+function ImagesPanel({ dictLower, variant, unitImages, onImageUpload, onImageDelete }) {
+  // Build keys depending on variant
+  // Default: #dictLower (card), dictLower_info (info)
+  // Faction/culture variant: units/<variant>/#dictLower (card), unit_info/<variant>/dictLower_info (info)
+  const cardKey = variant ? `units/${variant}/#${dictLower}` : `#${dictLower}`;
+  const infoKey = variant ? `unit_info/${variant}/${dictLower}_info` : `${dictLower}_info`;
+
+  const cardImg = findImage(unitImages, cardKey) || findImage(unitImages, `#${dictLower}`);
+  const infoImg = findImage(unitImages, infoKey) || findImage(unitImages, `${dictLower}_info`);
+
+  return (
+    <div className="flex items-end justify-center gap-8 py-4 border border-border rounded-lg bg-card/40">
+      <UnitImageSlot
+        label="Unit Card"
+        imageKey={cardKey}
+        img={cardImg}
+        onUpload={onImageUpload}
+        onDelete={onImageDelete}
+        targetSize={SLOT_SIZES.card}
+      />
+      <UnitImageSlot
+        label="Unit Info"
+        imageKey={infoKey}
+        img={infoImg}
+        onUpload={onImageUpload}
+        onDelete={onImageDelete}
+        targetSize={SLOT_SIZES.info}
+      />
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function UnitDescriptionTab({ dictionary, descr, onDescrChange, unitImages, onImageUpload, onImageDelete }) {
+  const [imageTab, setImageTab] = useState('default');
+  // Sub-tab for descriptions (future: per-culture if needed)
+  // For now description editing stays single; images are per-variant.
+
   const name  = descr?.name  ?? '';
   const long  = descr?.long  ?? '';
   const short = descr?.short ?? '';
@@ -136,34 +206,49 @@ export default function UnitDescriptionTab({ dictionary, descr, onDescrChange, u
   const set = (key, val) => onDescrChange({ ...(descr || {}), [key]: val });
 
   const dictLower = (dictionary || '').toLowerCase();
-  const cardKey = `#${dictLower}`;
-  const infoKey = `${dictLower}_info`;
-  const cardImg = findImage(unitImages, cardKey);
-  const infoImg = findImage(unitImages, infoKey);
+
+  // Detect what faction/culture image variants are available in the loaded images
+  const variants = useMemo(() => detectVariants(unitImages, dictLower), [unitImages, dictLower]);
+
+  const allImageTabs = ['default', ...variants];
 
   return (
     <div className="p-4 space-y-4">
 
-      {/* ── Images row (centered, before names) ── */}
-      <div className="flex items-end justify-center gap-8 py-3 border border-border rounded-lg bg-card/40">
-        <UnitImageSlot
-          label="Unit Card"
-          imageKey={cardKey}
-          img={cardImg}
-          onUpload={onImageUpload}
-          onDelete={onImageDelete}
-          targetSize={SLOT_SIZES.card}
-        />
-        <UnitImageSlot
-          label="Unit Info"
-          imageKey={infoKey}
-          img={infoImg}
-          onUpload={onImageUpload}
-          onDelete={onImageDelete}
-          targetSize={SLOT_SIZES.info}
+      {/* ── Images section with sub-tabs ── */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide mr-1">Images:</span>
+          {allImageTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setImageTab(tab)}
+              className={`px-2 py-0.5 text-[10px] rounded border transition-colors capitalize ${
+                imageTab === tab
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:bg-accent'
+              }`}
+            >
+              {tab === 'default' ? 'Default' : tab}
+            </button>
+          ))}
+          {variants.length === 0 && (
+            <span className="text-[9px] text-muted-foreground italic ml-1">
+              (load UI images folder to see faction/culture variants)
+            </span>
+          )}
+        </div>
+
+        <ImagesPanel
+          dictLower={dictLower}
+          variant={imageTab === 'default' ? null : imageTab}
+          unitImages={unitImages}
+          onImageUpload={onImageUpload}
+          onImageDelete={onImageDelete}
         />
       </div>
 
+      {/* ── Name & Descriptions ── */}
       <Section title="Name & Descriptions">
         <p className="text-[10px] text-muted-foreground mb-2">
           Editing <code className="font-mono bg-accent px-1 rounded">{`{${dictionary}}`}</code> entries in{' '}
