@@ -1,8 +1,7 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Map, Layers, CheckSquare, Globe, FolderOpen, Box } from 'lucide-react';
+import { Map, CheckSquare, Globe, FolderOpen, Box } from 'lucide-react';
 import Map3DPreview from '../components/map/Map3DPreview';
 import MapCanvas, { floodFillRGB } from '../components/map/MapCanvas';
-import MapLayerPanel from '../components/map/MapLayerPanel';
 import MapPaintToolbar from '../components/map/MapPaintToolbar';
 import MapValidationPanel from '../components/map/MapValidationPanel';
 import StratOverlay from '../components/map/StratOverlay';
@@ -49,7 +48,7 @@ export default function CampaignMap() {
   const [dirtyLayers, setDirtyLayers] = useState(new Set());
   const [overlayDirty, setOverlayDirty] = useState(false);
   const [paintState, setPaintState] = useState(INITIAL_PAINT);
-  const [activeTab, setActiveTab] = useState('layers');
+  const [activeTab, setActiveTab] = useState('strat');
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [showPixelGrid, setShowPixelGrid] = useState(false);
   const [regionsMode, setRegionsMode] = useState('fill');
@@ -841,7 +840,6 @@ export default function CampaignMap() {
   };
 
   const tabs = [
-    { id: 'layers',     label: 'Layers',   Icon: Layers },
     { id: 'strat',      label: 'Strat',    Icon: Globe },
     { id: 'validation', label: 'Validate', Icon: CheckSquare },
     { id: '3d',         label: '3D',       Icon: Box },
@@ -988,17 +986,6 @@ export default function CampaignMap() {
 
           {/* Tab content */}
           <div className="flex-1 overflow-hidden">
-            {activeTab === 'layers' && (
-              <div className="h-full overflow-y-auto p-2">
-                <MapLayerPanel
-                  layers={layers}
-                  onToggleVisible={(id) => setLayers(prev => ({ ...prev, [id]: { ...prev[id], visible: !(prev[id]?.visible ?? LAYER_DEFS.find(d => d.id === id)?.defaultVisible) } }))}
-                  onOpacityChange={(id, v) => setLayers(prev => ({ ...prev, [id]: { ...prev[id], opacity: v } }))}
-                  onFileLoad={loadLayerFile}
-                  dirtyLayers={dirtyLayers}
-                />
-              </div>
-            )}
             {activeTab === 'strat' && (
               <div className="h-full overflow-hidden">
                 <StratPanel
@@ -1073,8 +1060,9 @@ export default function CampaignMap() {
                   religionList={religionList}
                   naturalResList={naturalResList}
                   onRelocatePixel={handleRelocatePixel}
-                  mapH={mapH}
-                  />
+                    mapH={mapH}
+                    onLoadTgaLayer={loadLayerFile}
+                    />
               </div>
             )}
 

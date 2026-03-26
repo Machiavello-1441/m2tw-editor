@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, ArrowRight, FolderDown, MapPin, Anchor } from 'lucide-react';
 import { getItemIcon, getItemLabel } from './StratOverlay';
-import { serializeDescrStrat, serializeDescrRegions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
+import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, parseWinConditions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { exportTGA, downloadBlob } from './tgaExporter';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { encodeStringsBin } from '../strings/stringsBinCodec';
@@ -9,6 +9,8 @@ import JSZip from 'jszip';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
 import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';
+import FactionsCampaignTab from './FactionsCampaignTab';
+import CharactersTab from './CharactersTab';
 
 const CATEGORIES = [
   { id: 'settlement',    label: 'Settlements',   emoji: '🏛️' },
@@ -17,7 +19,7 @@ const CATEGORIES = [
   { id: 'fortification', label: 'Fortifications',emoji: '🏰' },
 ];
 
-const CHARACTER_TYPES = ['general','admiral','spy','merchant','diplomat','priest','assassin','princess','heretic','witch','inquisitor','named character'];
+// CHARACTER_TYPES moved to CharactersTab
 const RESOURCE_TYPES  = ['coal','fish','amber','furs','gold','silver','iron','timber','wine','wool','grain','silk','dyes','tin','marble','ivory','sugar','spices','tobacco','chocolate','cotton','sulfur','slaves'];
 const FORT_TYPES      = ['me_fort_a','me_fort_b','stone_fort_a','stone_fort_b','stone_fort_c','stone_fort_d'];
 const BOOL_FLAGS      = ['marian_reforms_disabled','marian_reforms_activated','rebelling_characters_active','gladiator_uprising_disabled','night_battles_enabled','show_date_as_turns'];
@@ -606,20 +608,27 @@ export default function StratPanel({
   layers, dirtyLayers, editedSettlements,
   rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList,
   onRelocatePixel, mapH,
+  onLoadTgaLayer,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
-  const [newFaction, setNewFaction] = useState('');
   const [newFortType, setNewFortType] = useState('me_fort_a');
   const [newFortCulture, setNewFortCulture] = useState('');
   const [newFortComment, setNewFortComment] = useState('');
   const [tab, setTab] = useState('overview');
   const [search, setSearch] = useState('');
   const [showNewRegion, setShowNewRegion] = useState(false);
+  const [winConditions, setWinConditions] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_win_conditions_raw');
+      return raw ? parseWinConditions(raw) : null;
+    } catch { return null; }
+  });
 
   // Auto-switch to settlements tab when a settlement is selected
   useEffect(() => {
     if (selectedItem?.category === 'settlement') setTab('settlements');
+    if (selectedItem?.category === 'character') setTab('characters');
   }, [selectedItem?.id]);
 
   const loadFile = async (e, type) => {
@@ -651,10 +660,15 @@ export default function StratPanel({
   };
 
   const handleExportFactions = () => {
-    // Re-export from sessionStorage raw text
     const raw = sessionStorage.getItem('m2tw_factions_raw');
     if (!raw) return;
     downloadBlob(new Blob([raw], { type: 'text/plain' }), 'descr_sm_factions.txt');
+  };
+
+  const handleExportWinConditions = () => {
+    if (!winConditions) return;
+    const text = serializeWinConditions(winConditions);
+    downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_win_conditions.txt');
   };
 
   const handleExportTGA = (layerId) => {
@@ -755,13 +769,15 @@ export default function StratPanel({
     return [...new Set([...from, ...fromLists])].sort();
   }, [stratData]);
 
+  const regionNames = useMemo(() => (regionsData || []).map(r => r.regionName).filter(Boolean), [regionsData]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Sub-tabs */}
-      <div className="flex border-b border-slate-800 shrink-0">
-        {[['overview','Overview'],['settlements','Settlements']].map(([id,label]) => (
+      <div className="flex border-b border-slate-800 shrink-0 flex-wrap">
+        {[['overview','Overview'],['settlements','Settlements'],['factions','Factions'],['characters','Characters']].map(([id,label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex-1 py-1.5 text-[10px] font-semibold border-b-2 transition-colors ${tab === id ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+            className={`flex-1 py-1.5 text-[9px] font-semibold border-b-2 transition-colors ${tab === id ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
             {label}
           </button>
         ))}
@@ -797,7 +813,7 @@ export default function StratPanel({
               </div>
             ))}
 
-            {/* TGA layers — load in MapLayerPanel, download inline */}
+            {/* TGA layers — load + download inline */}
             {LAYER_DEFS.map(def => {
               const loaded = !!layers?.[def.id]?.data;
               const dirty = dirtyLayers?.has(def.id);
@@ -808,6 +824,15 @@ export default function StratPanel({
                     {def.filename || `${def.id}.tga`}
                     {dirty && <span className="ml-1 text-[8px] text-amber-400">●</span>}
                   </span>
+                  {onLoadTgaLayer && (
+                    <label className="cursor-pointer text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100 flex items-center gap-0.5 transition-colors">
+                      <Upload className="w-2.5 h-2.5" />{loaded ? 'Replace' : 'Load'}
+                      <input type="file" accept=".tga" className="hidden" onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) { onLoadTgaLayer(def.id, file); e.target.value = ''; }
+                      }} />
+                    </label>
+                  )}
                   <button onClick={() => handleExportTGA(def.id)} disabled={!loaded}
                     className={`text-[10px] px-1.5 py-0.5 rounded border flex items-center gap-0.5 transition-colors ${
                       loaded ? 'bg-blue-600/20 hover:bg-blue-600/40 border-blue-500/30 text-blue-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'
@@ -852,16 +877,17 @@ export default function StratPanel({
             })}
           </div>
 
-          {/* Add item */}
+          {/* Add item (resources + fortifications only; characters moved to Characters tab) */}
           <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Add to Map (click to place)</p>
             <div className="flex gap-1 flex-wrap">
-              {CATEGORIES.filter(c => c.id !== 'settlement').map(cat => (
+              {CATEGORIES.filter(c => c.id !== 'settlement' && c.id !== 'character').map(cat => (
                 <button key={cat.id} onClick={() => setAddMode(addMode?.category === cat.id ? null : { category: cat.id })}
                   className={`px-2 py-1 rounded text-[10px] border transition-colors ${addMode?.category === cat.id ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'border-slate-600/40 text-slate-400 hover:text-slate-200'}`}>
                   {cat.emoji} {cat.label}
                 </button>
               ))}
+              <span className="text-[9px] text-slate-600 self-center italic">Characters → Characters tab</span>
             </div>
             {addMode && (
               <div className="space-y-1.5 border-t border-slate-700/40 pt-1.5">
@@ -871,18 +897,6 @@ export default function StratPanel({
                     <option value="">— pick resource —</option>
                     {RESOURCE_TYPES.map(t => <option key={t}>{t}</option>)}
                   </select>
-                )}
-                {addMode.category === 'character' && (
-                  <>
-                    <select value={newType} onChange={e => setNewType(e.target.value)}
-                      className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                      <option value="">— pick type —</option>
-                      {CHARACTER_TYPES.map(t => <option key={t}>{t}</option>)}
-                    </select>
-                    <input value={newFaction} onChange={e => setNewFaction(e.target.value)}
-                      placeholder="Faction name"
-                      className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                  </>
                 )}
                 {addMode.category === 'fortification' && (
                   <div className="space-y-1">
@@ -918,17 +932,14 @@ export default function StratPanel({
                 <button
                   onClick={() => {
                     if (!newType && addMode.category === 'resource') return;
-                    if (!newType && addMode.category === 'character') return;
                     onAddItem({
                       ...addMode,
                       type: newType || 'fort',
-                      charType: newType,
-                      faction: newFaction,
                       fortType: newFortType,
                       culture: newFortCulture,
                       comment: newFortComment,
                     });
-                    setAddMode(null); setNewType(''); setNewFaction(''); setNewFortType('me_fort_a'); setNewFortCulture(''); setNewFortComment('');
+                    setAddMode(null); setNewType(''); setNewFortType('me_fort_a'); setNewFortCulture(''); setNewFortComment('');
                   }}
                   className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 text-slate-900 font-semibold transition-colors">
                   <Plus className="w-3 h-3" /> Click on map to place
@@ -956,6 +967,35 @@ export default function StratPanel({
             </div>
           )}
         </>}
+
+        {/* ── Factions tab ── */}
+        {tab === 'factions' && (
+          <FactionsCampaignTab
+            stratData={stratData}
+            factionColors={factionColors}
+            onStratDataChange={onStratDataChange}
+            winConditions={winConditions}
+            onWinConditionsChange={(wc) => {
+              setWinConditions(wc);
+              try { sessionStorage.setItem('m2tw_win_conditions_raw', serializeWinConditions(wc)); } catch {}
+            }}
+            regionNames={regionNames}
+          />
+        )}
+
+        {/* ── Characters tab ── */}
+        {tab === 'characters' && (
+          <CharactersTab
+            stratData={stratData}
+            onStratDataChange={(updatedStratData) => {
+              onStratDataChange(updatedStratData);
+            }}
+            onSelectItem={(item) => {
+              onSelectItem(item);
+              onAddItem && typeof onAddItem === 'function' && item.x == null && onAddItem({ ...item, _pendingPlace: true });
+            }}
+          />
+        )}
 
         {/* ── Settlements tab ── */}
         {tab === 'settlements' && <>

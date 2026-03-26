@@ -204,19 +204,30 @@ export function parseDescrStrat(text) {
     }
 
     // Faction block
-    if ((m = line.match(/^faction\s+(\w+)(?:\s*,\s*(\w+)\s+(\w+))?/))) {
+    if ((m = line.match(/^faction\s+(\w+)(?:\s*,\s*(\w+)\s+(\w+))?(?:\s*,\s*(\w+))?/))) {
       const faction = {
         name: m[1],
         economicAI: m[2] || '',
         militaryAI: m[3] || '',
+        shadowing: m[4] === 'shadowing' ? '' : (m[4] === 'shadowed_by' ? undefined : undefined), // resolved below
         aiLabel: '',
         treasury: 0,
         kingsPurse: 0,
+        deadUntilResurrected: false,
+        deadUntilEmerged: false,
+        reEmergent: false,
+        undiscovered: false,
         settlements: [],
         characters: [],
         characterRecords: [],
         relatives: [],
       };
+      // Parse shadowing/shadowed_by from the raw line
+      const shadowM = line.match(/,\s*(shadowing|shadowed_by)\s+(\w+)/);
+      if (shadowM) {
+        if (shadowM[1] === 'shadowing') faction.shadowing = shadowM[2];
+        if (shadowM[1] === 'shadowed_by') faction.shadowedBy = shadowM[2];
+      }
       i++;
 
       while (i < lines.length) {
@@ -238,6 +249,10 @@ export function parseDescrStrat(text) {
         if ((fm = fl.match(/^ai_label\s+(\S+)/)))       { faction.aiLabel     = fm[1]; i++; continue; }
         if ((fm = fl.match(/^denari_kings_purse\s+(\d+)/))) { faction.kingsPurse = parseInt(fm[1]); i++; continue; }
         if ((fm = fl.match(/^denari\s+(\d+)/)))          { faction.treasury    = parseInt(fm[1]); i++; continue; }
+        if (/^dead_until_resurrected$/i.test(fl))  { faction.deadUntilResurrected = true; i++; continue; }
+        if (/^dead_until_emerged$/i.test(fl))      { faction.deadUntilEmerged = true; i++; continue; }
+        if (/^re_emergent$/i.test(fl))             { faction.reEmergent = true; i++; continue; }
+        if (/^undiscovered$/i.test(fl))            { faction.undiscovered = true; i++; continue; }
 
         // Settlement block
         if (/^settlement(\s+castle)?$/i.test(fl)) {
@@ -496,6 +511,130 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   repBlock('unlockable', stratData.unlockable);
   repBlock('nonplayable', stratData.nonplayable);
 
+  // ── Patch faction blocks (ai_label, denari, treasury, dead flags) ──────────
+  if (stratData.factions?.length) {
+    for (const faction of stratData.factions) {
+      // Find the faction line in the file
+      const factionLineIdx = lines.findIndex(l => {
+        const cl = l.replace(/;.*$/, '').trim();
+        return cl === `faction ${faction.name}` ||
+          cl.startsWith(`faction ${faction.name},`) ||
+          cl.startsWith(`faction ${faction.name} `);
+      });
+      if (factionLineIdx < 0) continue;
+
+      // Find end of this faction block
+      let factionEnd = lines.length;
+      for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
+        const fl = lines[fi].replace(/;.*$/, '').trim();
+        if (!fl) continue;
+        if (
+          /^faction\s+\w/i.test(fl) ||
+          /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
+          /^region\s+\S/i.test(fl) ||
+          /^script\s*$/i.test(fl)
+        ) { factionEnd = fi; break; }
+      }
+
+      // Rewrite faction header line with correct economicAI/militaryAI
+      const headerParts = [`faction\t${faction.name}`];
+      if (faction.economicAI && faction.militaryAI) headerParts[0] += `, ${faction.economicAI} ${faction.militaryAI}`;
+      if (faction.shadowing) headerParts[0] += `, shadowing ${faction.shadowing}`;
+      if (faction.shadowedBy) headerParts[0] += `, shadowed_by ${faction.shadowedBy}`;
+      lines[factionLineIdx] = headerParts[0];
+
+      // Patch or add ai_label
+      const aiIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*ai_label\b/i.test(l.replace(/;.*$/, '')));
+      const aiLine = `\tai_label\t${faction.aiLabel || 'default'}`;
+      if (aiIdx >= 0) lines[aiIdx] = aiLine;
+      else lines.splice(factionLineIdx + 1, 0, aiLine);
+
+      // Refind factionEnd after potential splice
+      factionEnd = lines.length;
+      for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
+        const fl = lines[fi].replace(/;.*$/, '').trim();
+        if (!fl) continue;
+        if (
+          /^faction\s+\w/i.test(fl) ||
+          /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
+          /^region\s+\S/i.test(fl) ||
+          /^script\s*$/i.test(fl)
+        ) { factionEnd = fi; break; }
+      }
+
+      // Remove/add dead flags
+      const deadFlags = ['dead_until_resurrected','dead_until_emerged','re_emergent','undiscovered'];
+      for (const flag of deadFlags) {
+        const idx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && l.replace(/;.*$/, '').trim() === flag);
+        if (idx >= 0) lines.splice(idx, 1);
+      }
+      // Refind factionEnd
+      factionEnd = lines.length;
+      for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
+        const fl = lines[fi].replace(/;.*$/, '').trim();
+        if (!fl) continue;
+        if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
+      }
+      // Insert new dead flags after ai_label line
+      const insertFlagAfter = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*ai_label\b/i.test(l.replace(/;.*$/, '')));
+      const flagsToInsert = [];
+      if (faction.deadUntilResurrected) flagsToInsert.push('\tdead_until_resurrected');
+      if (faction.deadUntilEmerged) flagsToInsert.push('\tdead_until_emerged');
+      if (faction.reEmergent) flagsToInsert.push('\tre_emergent');
+      if (faction.undiscovered) flagsToInsert.push('\tundiscovered');
+      if (flagsToInsert.length && insertFlagAfter >= 0) {
+        lines.splice(insertFlagAfter + 1, 0, ...flagsToInsert);
+      }
+
+      // Refind factionEnd
+      factionEnd = lines.length;
+      for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
+        const fl = lines[fi].replace(/;.*$/, '').trim();
+        if (!fl) continue;
+        if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
+      }
+
+      // Patch denari
+      const denariIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*denari\b(?!_kings)/i.test(l.replace(/;.*$/, '')));
+      const denariLine = `\tdenari\t${faction.treasury || 0}`;
+      if (denariIdx >= 0) lines[denariIdx] = denariLine;
+
+      // Patch denari_kings_purse
+      const kpIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*denari_kings_purse\b/i.test(l.replace(/;.*$/, '')));
+      const kpLine = `\tdenari_kings_purse\t${faction.kingsPurse || 0}`;
+      if (kpIdx >= 0) lines[kpIdx] = kpLine;
+    }
+  }
+
+  // ── Patch diplomacy (faction_standings + faction_relationships) ────────────
+  if (stratData.factionStandings?.length) {
+    // Find the diplomacy section start
+    const firstStandingsIdx = lines.findIndex(l => /^\s*faction_standings\b/i.test(l.replace(/;.*$/, '')));
+    if (firstStandingsIdx >= 0) {
+      // Find the end of standings block
+      let endStandingsIdx = firstStandingsIdx;
+      for (let fi = firstStandingsIdx; fi < lines.length; fi++) {
+        const fl = lines[fi].replace(/;.*$/, '').trim();
+        if (!fl || /^(faction_standings|faction_relationships|action_relationships)\b/i.test(fl)) {
+          endStandingsIdx = fi;
+        } else if (fl && !/^(faction_standings|faction_relationships|action_relationships)\b/i.test(fl)) {
+          break;
+        }
+      }
+      // Replace the whole diplomacy block
+      const newDiploLines = [];
+      for (const s of stratData.factionStandings) {
+        for (const t of s.targets) {
+          newDiploLines.push(`faction_standings\t${s.faction},\t\t${s.value}\t${t}`);
+        }
+      }
+      for (const r of (stratData.factionRelationships || [])) {
+        newDiploLines.push(`faction_relationships\t${r.faction}, ${r.relation}\t${r.targets.join(', ')}`);
+      }
+      lines.splice(firstStandingsIdx, endStandingsIdx - firstStandingsIdx + 1, ...newDiploLines);
+    }
+  }
+
   // Append newly added settlements (items not present in original stratData)
   const origIds = new Set((stratData.items || []).map(i => i.id));
   const newSettlements = overlayItems.filter(i => !origIds.has(i.id) && i.category === 'settlement');
@@ -690,6 +829,66 @@ export function parseSettlementNames(text) {
   let m;
   while ((m = regex.exec(text)) !== null) names[m[1].trim()] = m[2].trim();
   return names;
+}
+
+// ─── descr_win_conditions.txt ─────────────────────────────────────────────────
+// Format: faction_name\n  hold_regions ...\n  take_regions N\n  outlive ...\n  short_campaign ...
+export function parseWinConditions(text) {
+  const factions = {};
+  const lines = text.split('\n');
+  let current = null;
+  let inShort = false;
+
+  for (const raw of lines) {
+    const line = raw.replace(/;.*$/, '').trim();
+    if (!line) continue;
+
+    let m;
+    // New faction entry: a line with a single word that is a faction name
+    if (/^\w+$/.test(line) && !['hold_regions','take_regions','outlive','short_campaign'].includes(line)) {
+      current = line;
+      inShort = false;
+      factions[current] = {
+        holdRegions: [], takeRegions: 0, outlive: [],
+        short: { holdRegions: [], takeRegions: 0, outlive: [] }
+      };
+      continue;
+    }
+    if (!current) continue;
+
+    if (line === 'short_campaign') { inShort = true; continue; }
+
+    if ((m = line.match(/^hold_regions\s*(.*)/))) {
+      const regs = m[1].trim().split(/\s+/).filter(Boolean);
+      if (inShort) factions[current].short.holdRegions = regs;
+      else factions[current].holdRegions = regs;
+    } else if ((m = line.match(/^take_regions\s+(\d+)/))) {
+      if (inShort) factions[current].short.takeRegions = parseInt(m[1]);
+      else factions[current].takeRegions = parseInt(m[1]);
+    } else if ((m = line.match(/^outlive\s*(.*)/))) {
+      const facs = m[1].trim().split(/\s+/).filter(Boolean);
+      if (inShort) factions[current].short.outlive = facs;
+      else factions[current].outlive = facs;
+    }
+  }
+  return factions;
+}
+
+export function serializeWinConditions(winConditions) {
+  const lines = [];
+  for (const [faction, cond] of Object.entries(winConditions)) {
+    lines.push(faction);
+    lines.push(`hold_regions ${cond.holdRegions.join(' ')}`);
+    lines.push(`take_regions ${cond.takeRegions}`);
+    if (cond.outlive.length) lines.push(`outlive ${cond.outlive.join(' ')}`);
+    else lines.push('outlive');
+    lines.push('short_campaign hold_regions ' + (cond.short.holdRegions.join(' ')));
+    lines.push(`take_regions ${cond.short.takeRegions}`);
+    if (cond.short.outlive.length) lines.push(`outlive ${cond.short.outlive.join(' ')}`);
+    else lines.push('outlive');
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 // ─── descr_sm_factions.txt ───────────────────────────────────────────────────
