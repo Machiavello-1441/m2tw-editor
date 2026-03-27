@@ -641,22 +641,24 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   if (newSettlements.length > 0) {
     for (const s of newSettlements) {
       const factionName = s.faction || 'slave';
-      // Find the faction block: look for "faction <name>" line and insert settlement before the end
+      // Find the faction block — handle both space and tab separators
       const factionLineIdx = lines.findIndex(l => {
         const cl = l.replace(/;.*$/, '').trim();
-        return cl === `faction ${factionName}` || cl.startsWith(`faction ${factionName},`) || cl.startsWith(`faction ${factionName} `);
+        // "faction <name>" or "faction <name>, ..." or "faction <name> ..."
+        return /^faction[\s\t]+/.test(cl) && cl.replace(/^faction[\s\t]+/, '').split(/[\s\t,]/)[0] === factionName;
       });
       const block = generateSettlementBlock(s, '\t');
       if (factionLineIdx >= 0) {
         // Find the end of this faction block: next faction/region/faction_standings line
+        // We want to insert INSIDE the faction block, just before its terminating keyword
         let insertIdx = lines.length;
         for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
           const fl = lines[fi].replace(/;.*$/, '').trim();
           if (!fl) continue;
           if (
-            /^faction\s+\w/i.test(fl) ||
+            /^faction[\s\t]+\w/i.test(fl) ||
             /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
-            /^region\s+\S/i.test(fl) ||
+            /^region[\s\t]+\S/i.test(fl) ||
             /^script\s*$/i.test(fl)
           ) {
             insertIdx = fi;
@@ -666,7 +668,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
         lines.splice(insertIdx, 0, '', ...block);
       } else {
         // No faction block found — append at end under a slave faction stub
-        lines.push('', `faction ${factionName}`, '{', '}', '', ...block);
+        lines.push('', `faction\t${factionName}`, ...block);
       }
     }
   }

@@ -287,8 +287,11 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   };
 
   const addBuilding = (bldName) => {
-    if (!bldName || draft.buildings.includes(bldName)) return;
-    setDraft(d => ({ ...d, buildings: [...d.buildings, bldName] }));
+    if (!bldName) return;
+    // Store as "treeName levelName" so the serializer outputs "type tree level"
+    const fullName = selectedTree ? `${selectedTree} ${bldName}` : bldName;
+    if (draft.buildings.includes(fullName)) return;
+    setDraft(d => ({ ...d, buildings: [...d.buildings, fullName] }));
     setSelectedTree('');
   };
 

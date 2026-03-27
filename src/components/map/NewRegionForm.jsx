@@ -355,8 +355,12 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
             </select>
             <select value="" onChange={e => {
               const val = e.target.value;
-              if (val && !draft.buildings.includes(val)) {
-                setDraft(d => ({ ...d, buildings: [...d.buildings, val] }));
+              if (val) {
+                // Store as "treeName levelName" so serializer outputs "type tree level"
+                const fullName = selectedTree ? `${selectedTree} ${val}` : val;
+                if (!draft.buildings.includes(fullName)) {
+                  setDraft(d => ({ ...d, buildings: [...d.buildings, fullName] }));
+                }
                 setSelectedTree('');
               }
             }} disabled={!selectedTree}
