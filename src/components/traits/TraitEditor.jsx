@@ -258,19 +258,10 @@ export default function TraitEditor() {
       <div className="p-4 space-y-5">
 
         {/* Header fields */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div>
             <Label className="text-[10px] text-muted-foreground">Trait Name (ID)</Label>
             <Input value={trait.name} onChange={e => update('name', e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <Label className="text-[10px] text-muted-foreground">Display Name <span className="text-amber-400">(VnVs text)</span></Label>
-            <Input
-              value={getText(trait.name)}
-              onChange={e => updateTextEntry(trait.name, e.target.value)}
-              className={inputCls + ' text-amber-400'}
-              placeholder="Enter in-game display name…"
-            />
           </div>
         </div>
 
