@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTraits } from './TraitsContext';
 import { useModData } from '../shared/ModDataContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, ChevronDown, ChevronRight, Wand2 } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Wand2, ArrowUpDown, Search, X } from 'lucide-react';
 import EffectAttributeSelect from '../shared/EffectAttributeSelect';
 import TriggerEditor from '../shared/TriggerEditor';
 import ValidationPanel from '../shared/ValidationPanel';
@@ -18,7 +18,6 @@ const inputCls = 'h-8 text-xs font-mono mt-1 text-white bg-background';
 const inputSmCls = 'h-7 text-xs mt-0.5 text-white bg-background';
 const textareaCls = 'w-full mt-1 text-xs bg-background border border-border rounded px-2 py-1.5 text-white resize-y focus:outline-none focus:ring-1 focus:ring-primary';
 
-// \n\n is the M2TW strings.bin line break — render as actual <br>
 function PreviewText({ text }) {
   if (!text) return null;
   const parts = text.split('\\n\\n');
@@ -31,10 +30,86 @@ function PreviewText({ text }) {
   );
 }
 
+// ── Searchable multi-select for anti-traits ────────────────────────────────────
+function AntiTraitSelect({ selected, allTraitNames, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const available = useMemo(() => {
+    const q = query.toLowerCase();
+    return allTraitNames.filter(n => !selected.includes(n) && (!q || n.toLowerCase().includes(q)));
+  }, [allTraitNames, selected, query]);
+
+  const add = (name) => { onChange([...selected, name]); setQuery(''); };
+  const remove = (name) => onChange(selected.filter(n => n !== name));
+
+  return (
+    <div ref={ref} className="relative mt-1">
+      <div className="flex flex-wrap gap-1 mb-1 min-h-[28px] rounded border border-border bg-background px-2 py-1">
+        {selected.map(n => (
+          <span key={n} className="flex items-center gap-0.5 px-1.5 py-0.5 bg-primary/20 border border-primary/40 rounded text-[10px] text-primary font-mono">
+            {n}
+            <button type="button" onClick={() => remove(n)} className="text-primary/60 hover:text-red-400 ml-0.5">
+              <X className="w-2.5 h-2.5" />
+            </button>
+          </span>
+        ))}
+        <button
+          type="button"
+          onClick={() => { setOpen(v => !v); setQuery(''); }}
+          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-1"
+        >
+          <Search className="w-3 h-3" /> {selected.length === 0 ? 'Search and add anti-traits…' : 'Add more…'}
+        </button>
+      </div>
+      {open && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-popover border border-border rounded shadow-xl">
+          <input
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search traits…"
+            className="w-full h-7 px-2 text-xs bg-background border-b border-border text-white placeholder-muted-foreground outline-none"
+          />
+          <div className="max-h-48 overflow-y-auto">
+            {available.length === 0 && (
+              <div className="px-2 py-2 text-[10px] text-muted-foreground italic">No matching traits</div>
+            )}
+            {available.map(name => (
+              <div
+                key={name}
+                onMouseDown={() => { add(name); setOpen(false); }}
+                className="px-2 py-1 text-[11px] font-mono cursor-pointer hover:bg-accent text-white"
+              >
+                {name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TraitEditor() {
   const { traitsData, selectedTrait, updateTrait, getText, updateTextEntry, renameTextKey, updateTrigger, addTrigger, deleteTrigger } = useTraits();
   const { traitAttributeNames } = useModData();
   const [expandedLevel, setExpandedLevel] = useState(0);
+
+  const trait = (traitsData && selectedTrait !== null) ? traitsData.traits[selectedTrait] : null;
+
+  // All trait names for anti-trait dropdown (hooks must be before any early return)
+  const allTraitNames = useMemo(
+    () => (traitsData?.traits || []).map(t => t.name).filter(n => n !== trait?.name),
+    [traitsData?.traits, trait?.name]
+  );
 
   if (selectedTrait === null || !traitsData) {
     return (
@@ -44,15 +119,12 @@ export default function TraitEditor() {
     );
   }
 
-  const trait = traitsData.traits[selectedTrait];
   if (!trait) return null;
 
   const update = (field, value) => {
     if (field === 'name') {
-      // Rename all text keys that use the old trait name as prefix
       const oldName = trait.name;
       const newName = value;
-      // Rename level text keys
       const renamedLevels = trait.levels.map((l) => {
         const renamedLevel = { ...l };
         if (l.description && l.description.startsWith(oldName)) {
@@ -79,6 +151,35 @@ export default function TraitEditor() {
       return;
     }
     updateTrait(selectedTrait, { ...trait, [field]: value });
+  };
+
+  // Anti-traits: set this trait's anti-traits AND reciprocally update the other traits
+  const handleAntiTraitsChange = (newAntiTraits) => {
+    const oldAntiTraits = trait.antiTraits;
+    const added = newAntiTraits.filter(n => !oldAntiTraits.includes(n));
+    const removed = oldAntiTraits.filter(n => !newAntiTraits.includes(n));
+
+    // Build updated traits array with reciprocal changes
+    const updatedTraits = traitsData.traits.map((t, i) => {
+      if (i === selectedTrait) return { ...t, antiTraits: newAntiTraits };
+      if (added.includes(t.name)) {
+        // Add this trait as anti-trait of the newly added one (if not already there)
+        if (!t.antiTraits.includes(trait.name)) {
+          return { ...t, antiTraits: [...t.antiTraits, trait.name] };
+        }
+      }
+      if (removed.includes(t.name)) {
+        // Remove this trait from the anti-traits of the removed one
+        return { ...t, antiTraits: t.antiTraits.filter(n => n !== trait.name) };
+      }
+      return t;
+    });
+
+    updateTrait(selectedTrait, { ...trait, antiTraits: newAntiTraits });
+    // Apply reciprocal updates to other traits
+    updatedTraits.forEach((t, i) => {
+      if (i !== selectedTrait) updateTrait(i, t);
+    });
   };
 
   const toggleCharacter = (char) => {
@@ -140,7 +241,13 @@ export default function TraitEditor() {
     update('levels', levels);
   };
 
-  // All triggers that affect this trait
+  // Auto-sort levels by threshold
+  const autoSortLevels = () => {
+    const sorted = [...trait.levels].sort((a, b) => a.threshold - b.threshold);
+    update('levels', sorted);
+    setExpandedLevel(null);
+  };
+
   const allTriggers = traitsData.triggers || [];
   const relatedTriggerIndices = allTriggers
     .map((t, i) => ({ t, i }))
@@ -165,14 +272,16 @@ export default function TraitEditor() {
               placeholder="Enter in-game display name…"
             />
           </div>
-          <div>
-            <Label className="text-[10px] text-muted-foreground">Anti-Traits (comma separated)</Label>
-            <Input
-              value={trait.antiTraits.join(', ')}
-              onChange={e => update('antiTraits', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-              className={inputCls} placeholder="e.g. BadCommander"
-            />
-          </div>
+        </div>
+
+        {/* Anti-traits: searchable multi-select with reciprocal update */}
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Anti-Traits</Label>
+          <AntiTraitSelect
+            selected={trait.antiTraits}
+            allTraitNames={allTraitNames}
+            onChange={handleAntiTraitsChange}
+          />
         </div>
 
         {/* Characters */}
@@ -227,9 +336,14 @@ export default function TraitEditor() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Levels ({trait.levels.length})</Label>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] text-white" onClick={addLevel}>
-              <Plus className="w-3 h-3 mr-1" /> Add Level
-            </Button>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] text-white" onClick={autoSortLevels} title="Sort levels by threshold value">
+                <ArrowUpDown className="w-3 h-3 mr-1" /> Auto-sort
+              </Button>
+              <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] text-white" onClick={addLevel}>
+                <Plus className="w-3 h-3 mr-1" /> Add Level
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -238,12 +352,15 @@ export default function TraitEditor() {
               const descText = getText(level.description);
               const effectsDescText = getText(level.effectsDescription);
               const epithText = getText(level.epithet);
+              const levelDisplayName = getText(level.name);
               return (
                 <div key={li} className="rounded border border-border bg-card/50 overflow-visible">
                   <div className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/50"
                     onClick={() => setExpandedLevel(isExpanded ? null : li)}>
                     {isExpanded ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
-                    <span className="text-xs font-mono font-medium flex-1 truncate text-white">{level.name}</span>
+                    <span className="text-xs font-mono font-medium flex-1 truncate text-white">
+                      {levelDisplayName ? <span className="text-amber-400">{levelDisplayName}</span> : level.name}
+                    </span>
                     <Badge variant="outline" className="text-[10px] h-4 px-1.5">T:{level.threshold}</Badge>
                     <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{level.effects.length} fx</Badge>
                     <button onClick={e => { e.stopPropagation(); deleteLevel(li); }}
@@ -260,11 +377,21 @@ export default function TraitEditor() {
                           <Input value={level.name} onChange={e => updateLevel(li, 'name', e.target.value)} className={inputSmCls + ' font-mono'} />
                         </div>
                         <div>
+                          <Label className="text-[10px] text-muted-foreground">Display Level Name <span className="text-amber-400">(VnVs)</span></Label>
+                          <Input
+                            value={levelDisplayName}
+                            onChange={e => updateTextEntry(level.name, e.target.value)}
+                            className={inputSmCls + ' text-amber-400'}
+                            placeholder="In-game level name…"
+                          />
+                        </div>
+                        <div>
                           <Label className="text-[10px] text-muted-foreground">Threshold</Label>
                           <Input type="number" value={level.threshold}
                             onChange={e => updateLevel(li, 'threshold', parseInt(e.target.value) || 0)}
                             className={inputSmCls} />
                         </div>
+                        <div />
                         <div>
                           <Label className="text-[10px] text-muted-foreground">Gain Message key</Label>
                           <Input value={level.gainMessage} onChange={e => updateLevel(li, 'gainMessage', e.target.value)} className={inputSmCls + ' font-mono'} placeholder="optional" />
@@ -318,23 +445,45 @@ export default function TraitEditor() {
                             disabled={!level.effectsDescription}
                           />
                         </div>
+
+                        {/* Epithet: key is read-only (shown as label), only display text is editable */}
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <Label className="text-[10px] text-muted-foreground">Epithet key (ID)</Label>
+                            <Label className="text-[10px] text-muted-foreground">Epithet <span className="text-[9px] text-muted-foreground/60">(optional)</span></Label>
+                            {!level.epithet ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const key = `${trait.name}_Level${li + 1}_epithet_desc`;
+                                  updateLevel(li, 'epithet', key);
+                                }}
+                                className="text-[9px] text-primary hover:underline"
+                              >
+                                + Set epithet
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => updateLevel(li, 'epithet', '')}
+                                className="text-[9px] text-destructive hover:underline"
+                              >
+                                Remove
+                              </button>
+                            )}
                           </div>
-                          <Input
-                            value={level.epithet}
-                            onChange={e => updateLevel(li, 'epithet', e.target.value)}
-                            className={inputSmCls + ' font-mono mb-1'}
-                            placeholder={`${trait.name}_Level${li + 1}_epithet_desc`}
-                          />
-                          <Input
-                            value={epithText}
-                            onChange={e => level.epithet && updateTextEntry(level.epithet, e.target.value)}
-                            className={inputSmCls}
-                            placeholder={level.epithet ? 'Enter epithet display text…' : 'Set epithet key above first'}
-                            disabled={!level.epithet}
-                          />
+                          {level.epithet ? (
+                            <>
+                              <div className="text-[9px] text-muted-foreground/50 font-mono mb-1 px-1">{level.epithet}</div>
+                              <Input
+                                value={epithText}
+                                onChange={e => updateTextEntry(level.epithet, e.target.value)}
+                                className={inputSmCls}
+                                placeholder="Enter epithet display text…"
+                              />
+                            </>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground/40 italic">No epithet set</p>
+                          )}
                         </div>
                       </div>
 
