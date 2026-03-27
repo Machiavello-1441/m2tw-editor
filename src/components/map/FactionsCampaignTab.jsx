@@ -136,8 +136,8 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
       {expanded && (
         <div className="border-t border-slate-700/40 px-2 py-2 space-y-2">
 
-          {/* AI Labels */}
-          <div className="grid grid-cols-3 gap-1.5">
+          {/* AI Labels — one per line */}
+          <div className="space-y-1.5">
             <div>
               <div className="text-[9px] text-slate-500 mb-0.5 flex items-center">
                 AI Label <InfoTooltip text="Defines the faction's diplomatic and religious behavior. 'catholic' joins crusades and interacts with the Pope. 'papal_faction' is for the Papacy only." />
@@ -194,18 +194,29 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
               <InfoTooltip text="dead_until_resurrected: faction is dead at start, emerges via script. dead_until_emerged: emerges from rebellion. re_emergent: can respawn after defeat. undiscovered: hidden until discovered via event." />
             </div>
             <div className="grid grid-cols-2 gap-1">
-              {[
-                ['deadUntilResurrected', 'dead_until_resurrected'],
-                ['deadUntilEmerged', 'dead_until_emerged'],
-                ['reEmergent', 're_emergent'],
-                ['undiscovered', 'undiscovered'],
-              ].map(([key, label]) => (
-                <label key={key} className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" checked={!!f[key]} onChange={e => set(key, e.target.checked)}
-                    className="w-3 h-3 accent-amber-500" />
-                  <span className="text-[10px] text-slate-400 font-mono">{label}</span>
-                </label>
-              ))}
+              {/* dead_until_resurrected and dead_until_emerged are mutually exclusive */}
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={!!f.deadUntilResurrected}
+                  onChange={e => { set('deadUntilResurrected', e.target.checked); if (e.target.checked) set('deadUntilEmerged', false); }}
+                  className="w-3 h-3 accent-amber-500" />
+                <span className="text-[10px] text-slate-400 font-mono">dead_until_resurrected</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={!!f.deadUntilEmerged}
+                  onChange={e => { set('deadUntilEmerged', e.target.checked); if (e.target.checked) set('deadUntilResurrected', false); }}
+                  className="w-3 h-3 accent-amber-500" />
+                <span className="text-[10px] text-slate-400 font-mono">dead_until_emerged</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={!!f.reEmergent} onChange={e => set('reEmergent', e.target.checked)}
+                  className="w-3 h-3 accent-amber-500" />
+                <span className="text-[10px] text-slate-400 font-mono">re_emergent</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={!!f.undiscovered} onChange={e => set('undiscovered', e.target.checked)}
+                  className="w-3 h-3 accent-amber-500" />
+                <span className="text-[10px] text-slate-400 font-mono">undiscovered</span>
+              </label>
             </div>
           </div>
 
@@ -375,105 +386,105 @@ function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames
     <div className="space-y-2">
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter factions…"
         className="w-full h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
-      <div className="space-y-2 max-h-64 overflow-y-auto">
+      <div className="space-y-2">
         {factions.filter(f => !search || f.includes(search)).map(faction => {
           const cond = winConditions[faction];
           return (
-            <div key={faction} className="rounded border border-slate-700/40 bg-slate-900/20 px-2 py-1.5 space-y-1.5">
+            <div key={faction} className="rounded border border-slate-700/40 bg-slate-900/20 px-2 py-1.5 space-y-2">
               <p className="text-[10px] font-mono font-semibold text-amber-400">{faction}</p>
-              <div className="grid grid-cols-2 gap-2">
-                {/* Long campaign */}
-                <div className="space-y-1">
-                  <p className="text-[9px] text-slate-500 uppercase font-semibold">Long Campaign</p>
-                  <div>
-                    <span className="text-[9px] text-slate-500">take_regions</span>
-                    <input type="number" value={cond.takeRegions || 0} onChange={e => setCondField(faction, 'takeRegions', parseInt(e.target.value)||0)}
-                      className="h-5 w-full px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+
+              {/* Long campaign */}
+              <div className="space-y-1">
+                <p className="text-[9px] text-slate-500 uppercase font-semibold border-b border-slate-700/40 pb-0.5">Long Campaign</p>
+                <div>
+                  <span className="text-[9px] text-slate-500">take_regions</span>
+                  <input type="number" value={cond.takeRegions || 0} onChange={e => setCondField(faction, 'takeRegions', parseInt(e.target.value)||0)}
+                    className="h-5 w-full px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">hold_regions</span>
+                  <div className="flex flex-wrap gap-0.5 mb-0.5">
+                    {(cond.holdRegions || []).map(r => (
+                      <span key={r} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-green-400 font-mono">
+                        {r}<button onClick={() => removeHoldRegion(faction, r, false)} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
+                      </span>
+                    ))}
                   </div>
-                  <div>
-                    <span className="text-[9px] text-slate-500">hold_regions</span>
-                    <div className="flex flex-wrap gap-0.5 mb-0.5">
-                      {(cond.holdRegions || []).map(r => (
-                        <span key={r} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-green-400 font-mono">
-                          {r}<button onClick={() => removeHoldRegion(faction, r, false)} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex gap-1">
-                      <select
-                        value={addRegionVal[`${faction}_long`] || ''}
-                        onChange={e => setAddRegionVal(v => ({...v, [`${faction}_long`]: e.target.value}))}
-                        className="flex-1 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                        <option value="">— add region —</option>
-                        {(regionNames || []).filter(r => !(cond.holdRegions || []).includes(r)).map(r => <option key={r}>{r}</option>)}
-                      </select>
-                      <button onClick={() => { addHoldRegion(faction, addRegionVal[`${faction}_long`], false); setAddRegionVal(v => ({...v, [`${faction}_long`]: ''})); }}
-                        className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-slate-500">outlive</span>
-                    <div className="flex flex-wrap gap-0.5">
-                      {(cond.outlive || []).map(f => (
-                        <span key={f} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-red-400 font-mono">
-                          {f}<button onClick={() => setCondField(faction, 'outlive', (cond.outlive || []).filter(x => x !== f))} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
-                        </span>
-                      ))}
-                    </div>
-                    <select value="" onChange={e => { if (e.target.value) setCondField(faction, 'outlive', [...(cond.outlive||[]), e.target.value]); }}
-                      className="w-full h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 mt-0.5">
-                      <option value="">— outlive faction —</option>
-                      {allFactionNames.filter(f => !(cond.outlive||[]).includes(f)).map(f => <option key={f}>{f}</option>)}
+                  <div className="flex gap-1">
+                    <select
+                      value={addRegionVal[`${faction}_long`] || ''}
+                      onChange={e => setAddRegionVal(v => ({...v, [`${faction}_long`]: e.target.value}))}
+                      className="flex-1 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                      <option value="">— add region —</option>
+                      {(regionNames || []).filter(r => !(cond.holdRegions || []).includes(r)).map(r => <option key={r}>{r}</option>)}
                     </select>
+                    <button onClick={() => { addHoldRegion(faction, addRegionVal[`${faction}_long`], false); setAddRegionVal(v => ({...v, [`${faction}_long`]: ''})); }}
+                      className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
                   </div>
                 </div>
-
-                {/* Short campaign */}
-                <div className="space-y-1">
-                  <p className="text-[9px] text-slate-500 uppercase font-semibold">Short Campaign</p>
-                  <div>
-                    <span className="text-[9px] text-slate-500">take_regions</span>
-                    <input type="number" value={cond.short?.takeRegions || 0} onChange={e => setShortField(faction, 'takeRegions', parseInt(e.target.value)||0)}
-                      className="h-5 w-full px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                <div>
+                  <span className="text-[9px] text-slate-500">outlive</span>
+                  <div className="flex flex-wrap gap-0.5">
+                    {(cond.outlive || []).map(f => (
+                      <span key={f} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-red-400 font-mono">
+                        {f}<button onClick={() => setCondField(faction, 'outlive', (cond.outlive || []).filter(x => x !== f))} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
+                      </span>
+                    ))}
                   </div>
-                  <div>
-                    <span className="text-[9px] text-slate-500">hold_regions</span>
-                    <div className="flex flex-wrap gap-0.5 mb-0.5">
-                      {(cond.short?.holdRegions || []).map(r => (
-                        <span key={r} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-green-400 font-mono">
-                          {r}<button onClick={() => removeHoldRegion(faction, r, true)} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex gap-1">
-                      <select
-                        value={addRegionVal[`${faction}_short`] || ''}
-                        onChange={e => setAddRegionVal(v => ({...v, [`${faction}_short`]: e.target.value}))}
-                        className="flex-1 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                        <option value="">— add region —</option>
-                        {(regionNames || []).filter(r => !(cond.short?.holdRegions || []).includes(r)).map(r => <option key={r}>{r}</option>)}
-                      </select>
-                      <button onClick={() => { addHoldRegion(faction, addRegionVal[`${faction}_short`], true); setAddRegionVal(v => ({...v, [`${faction}_short`]: ''})); }}
-                        className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-slate-500">outlive</span>
-                    <div className="flex flex-wrap gap-0.5">
-                      {(cond.short?.outlive || []).map(f => (
-                        <span key={f} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-red-400 font-mono">
-                          {f}<button onClick={() => setShortField(faction, 'outlive', (cond.short?.outlive||[]).filter(x => x !== f))} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
-                        </span>
-                      ))}
-                    </div>
-                    <select value="" onChange={e => { if (e.target.value) setShortField(faction, 'outlive', [...(cond.short?.outlive||[]), e.target.value]); }}
-                      className="w-full h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 mt-0.5">
-                      <option value="">— outlive faction —</option>
-                      {allFactionNames.filter(f => !(cond.short?.outlive||[]).includes(f)).map(f => <option key={f}>{f}</option>)}
-                    </select>
-                  </div>
+                  <select value="" onChange={e => { if (e.target.value) setCondField(faction, 'outlive', [...(cond.outlive||[]), e.target.value]); }}
+                    className="w-full h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 mt-0.5">
+                    <option value="">— outlive faction —</option>
+                    {allFactionNames.filter(f => !(cond.outlive||[]).includes(f)).map(f => <option key={f}>{f}</option>)}
+                  </select>
                 </div>
               </div>
+
+              {/* Short campaign */}
+              <div className="space-y-1">
+                <p className="text-[9px] text-slate-500 uppercase font-semibold border-b border-slate-700/40 pb-0.5">Short Campaign</p>
+                <div>
+                  <span className="text-[9px] text-slate-500">take_regions</span>
+                  <input type="number" value={cond.short?.takeRegions || 0} onChange={e => setShortField(faction, 'takeRegions', parseInt(e.target.value)||0)}
+                    className="h-5 w-full px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">hold_regions</span>
+                  <div className="flex flex-wrap gap-0.5 mb-0.5">
+                    {(cond.short?.holdRegions || []).map(r => (
+                      <span key={r} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-green-400 font-mono">
+                        {r}<button onClick={() => removeHoldRegion(faction, r, true)} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    <select
+                      value={addRegionVal[`${faction}_short`] || ''}
+                      onChange={e => setAddRegionVal(v => ({...v, [`${faction}_short`]: e.target.value}))}
+                      className="flex-1 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                      <option value="">— add region —</option>
+                      {(regionNames || []).filter(r => !(cond.short?.holdRegions || []).includes(r)).map(r => <option key={r}>{r}</option>)}
+                    </select>
+                    <button onClick={() => { addHoldRegion(faction, addRegionVal[`${faction}_short`], true); setAddRegionVal(v => ({...v, [`${faction}_short`]: ''})); }}
+                      className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">outlive</span>
+                  <div className="flex flex-wrap gap-0.5">
+                    {(cond.short?.outlive || []).map(f => (
+                      <span key={f} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-red-400 font-mono">
+                        {f}<button onClick={() => setShortField(faction, 'outlive', (cond.short?.outlive||[]).filter(x => x !== f))} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
+                      </span>
+                    ))}
+                  </div>
+                  <select value="" onChange={e => { if (e.target.value) setShortField(faction, 'outlive', [...(cond.short?.outlive||[]), e.target.value]); }}
+                    className="w-full h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 mt-0.5">
+                    <option value="">— outlive faction —</option>
+                    {allFactionNames.filter(f => !(cond.short?.outlive||[]).includes(f)).map(f => <option key={f}>{f}</option>)}
+                  </select>
+                </div>
+              </div>
+
             </div>
           );
         })}
@@ -553,11 +564,11 @@ export default function FactionsCampaignTab({
           </div>
         )}
         {subTab === 'victory' && (
-          <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-2">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Win Conditions</p>
               <label className="cursor-pointer text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">
-                Load descr_win_conditions.txt
+                Load file
                 <input type="file" accept=".txt" className="hidden" onChange={async e => {
                   const file = e.target.files?.[0]; if (!file) return;
                   const text = await file.text();

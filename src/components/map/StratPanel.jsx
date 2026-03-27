@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, ArrowRight, FolderDown, MapPin, Anchor } from 'lucide-react';
+import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor } from 'lucide-react';
 import { getItemIcon, getItemLabel } from './StratOverlay';
 import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, parseWinConditions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { exportTGA, downloadBlob } from './tgaExporter';
@@ -813,32 +813,55 @@ export default function StratPanel({
               </div>
             ))}
 
-            {/* TGA layers — load + download inline */}
+            {/* TGA layers — load + download + eye + opacity slider */}
             {LAYER_DEFS.map(def => {
-              const loaded = !!layers?.[def.id]?.data;
+              const layerState = layers?.[def.id] || {};
+              const loaded = !!layerState.data;
               const dirty = dirtyLayers?.has(def.id);
+              const visible = layerState.visible ?? def.defaultVisible ?? true;
+              const opacity = layerState.opacity ?? def.defaultOpacity ?? 1;
               return (
-                <div key={def.id} className="flex items-center gap-1.5">
-                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
-                  <span className="text-[10px] font-mono flex-1 truncate text-slate-400">
-                    {def.filename || `${def.id}.tga`}
-                    {dirty && <span className="ml-1 text-[8px] text-amber-400">●</span>}
-                  </span>
-                  {onLoadTgaLayer && (
-                    <label className="cursor-pointer text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100 flex items-center gap-0.5 transition-colors">
-                      <Upload className="w-2.5 h-2.5" />{loaded ? 'Replace' : 'Load'}
-                      <input type="file" accept=".tga" className="hidden" onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) { onLoadTgaLayer(def.id, file); e.target.value = ''; }
-                      }} />
-                    </label>
+                <div key={def.id} className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => loaded && onLoadTgaLayer && onLoadTgaLayer(def.id, null, { toggleVisible: true })}
+                      className={`shrink-0 ${loaded ? 'text-slate-400 hover:text-slate-200' : 'text-slate-700 cursor-default'}`}
+                      title={visible ? 'Hide layer' : 'Show layer'}
+                    >
+                      {(visible && loaded) ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                    </button>
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
+                    <span className="text-[10px] font-mono flex-1 truncate text-slate-400">
+                      {def.filename || `${def.id}.tga`}
+                      {dirty && <span className="ml-1 text-[8px] text-amber-400">●</span>}
+                    </span>
+                    {onLoadTgaLayer && (
+                      <label className="cursor-pointer text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100 flex items-center gap-0.5 transition-colors">
+                        <Upload className="w-2.5 h-2.5" />{loaded ? 'Replace' : 'Load'}
+                        <input type="file" accept=".tga" className="hidden" onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) { onLoadTgaLayer(def.id, file); e.target.value = ''; }
+                        }} />
+                      </label>
+                    )}
+                    <button onClick={() => handleExportTGA(def.id)} disabled={!loaded}
+                      className={`text-[10px] px-1.5 py-0.5 rounded border flex items-center gap-0.5 transition-colors ${
+                        loaded ? 'bg-blue-600/20 hover:bg-blue-600/40 border-blue-500/30 text-blue-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'
+                      }`}>
+                      <Download className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                  {loaded && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <span className="text-[9px] text-slate-600 w-7 shrink-0">{Math.round(opacity * 100)}%</span>
+                      <input
+                        type="range" min="0" max="1" step="0.01"
+                        value={opacity}
+                        onChange={e => onLoadTgaLayer && onLoadTgaLayer(def.id, null, { setOpacity: parseFloat(e.target.value) })}
+                        className="flex-1 h-1.5 accent-amber-500"
+                      />
+                    </div>
                   )}
-                  <button onClick={() => handleExportTGA(def.id)} disabled={!loaded}
-                    className={`text-[10px] px-1.5 py-0.5 rounded border flex items-center gap-0.5 transition-colors ${
-                      loaded ? 'bg-blue-600/20 hover:bg-blue-600/40 border-blue-500/30 text-blue-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'
-                    }`}>
-                    <Download className="w-2.5 h-2.5" />
-                  </button>
                 </div>
               );
             })}
