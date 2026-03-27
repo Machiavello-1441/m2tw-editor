@@ -247,7 +247,19 @@ export default function CampaignMap() {
   }, []); // eslint-disable-line
 
   // ── Layer loading ──────────────────────────────────────────────────────────
-  const loadLayerFile = useCallback(async (layerId, file) => {
+  const loadLayerFile = useCallback(async (layerId, file, options) => {
+    // Handle visibility toggle
+    if (options?.toggleVisible) {
+      setLayers(prev => ({ ...prev, [layerId]: { ...prev[layerId], visible: !(prev[layerId]?.visible ?? true) } }));
+      return;
+    }
+    // Handle opacity change
+    if (options?.setOpacity !== undefined) {
+      setLayers(prev => ({ ...prev, [layerId]: { ...prev[layerId], opacity: options.setOpacity } }));
+      return;
+    }
+    // Normal file load
+    if (!file) return;
     const buf = await file.arrayBuffer();
     const result = await loadTGA(buf);
     if (!result) return;
