@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
 import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
-import { parseStratCasFile, isFullFormatStratCas } from '@/lib/stratCasCodec';
 import ModelViewer from './ModelViewer';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Info, ArrowLeftRight, Box, AlertTriangle, X } from 'lucide-react';
@@ -37,19 +36,8 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
       result = parseMeshFile(buf);
       result.sourceFormat = 'mesh';
     } else if (ext === 'cas') {
-      // Try full-format strat .cas first (has 42-byte header with version float)
-      if (isFullFormatStratCas(buf)) {
-        result = parseStratCasFile(buf);
-        result.sourceFormat = 'cas';
-        if (!result.meshes?.length) {
-          // Fallback to simple format if full-format parse failed
-          const simple = parseCasFile(buf);
-          if (simple.meshes?.length) { result = simple; result.sourceFormat = 'cas'; }
-        }
-      } else {
-        result = parseCasFile(buf);
-        result.sourceFormat = 'cas';
-      }
+      result = parseCasFile(buf);
+      result.sourceFormat = 'cas';
     } else {
       return;
     }
@@ -203,36 +191,33 @@ const MODEL_TABS = [
     label: '.cas — Strat Models',
     desc: 'data/world/maps/…',
     accept: '.cas,.ms3d',
-    hint: 'Strat-map unit .cas (full-format with header) · city & resource models · Drag to rotate, scroll to zoom',
+    hint: 'Strat-map unit, city & resource models · Drag to rotate, scroll to zoom',
     fromMs3d: (meshes) => encodeCasFile(meshes),
   },
 ];
 
-export default function ModelPanel({ forcedTab }) {
-  const [tab, setTab] = useState(forcedTab || 'mesh');
-  const activeTab = forcedTab || tab;
-  const t = MODEL_TABS.find(x => x.id === activeTab);
+export default function ModelPanel() {
+  const [tab, setTab] = useState('mesh');
+  const t = MODEL_TABS.find(x => x.id === tab);
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* Sub-tabs — only shown when not forced from parent */}
-      {!forcedTab && (
-        <div className="flex gap-2">
-          {MODEL_TABS.map(mt => (
-            <button
-              key={mt.id}
-              onClick={() => setTab(mt.id)}
-              className={`flex flex-col px-4 py-2 rounded-lg border text-left transition-all ${activeTab === mt.id ? 'bg-blue-900/40 border-blue-600 text-blue-300' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-            >
-              <span className="text-xs font-semibold">{mt.label}</span>
-              <span className="text-[10px] opacity-60">{mt.desc}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Sub-tabs */}
+      <div className="flex gap-2">
+        {MODEL_TABS.map(mt => (
+          <button
+            key={mt.id}
+            onClick={() => setTab(mt.id)}
+            className={`flex flex-col px-4 py-2 rounded-lg border text-left transition-all ${tab === mt.id ? 'bg-blue-900/40 border-blue-600 text-blue-300' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+          >
+            <span className="text-xs font-semibold">{mt.label}</span>
+            <span className="text-[10px] opacity-60">{mt.desc}</span>
+          </button>
+        ))}
+      </div>
 
       <ModelSubPanel
-        key={activeTab}
+        key={tab}
         accept={t.accept}
         label={`Drop ${t.accept.split(',').join(' / ')} files here`}
         hint={t.hint}

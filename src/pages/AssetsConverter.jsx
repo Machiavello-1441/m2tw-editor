@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import TexturePanel from '@/components/assets/TexturePanel';
 import ModelPanel from '@/components/assets/ModelPanel';
-import { ImageIcon, Box, Sword, Download } from 'lucide-react';
+import { ImageIcon, Box } from 'lucide-react';
 
 const TABS = [
-  { id: 'texture', label: 'Textures',      icon: ImageIcon, desc: '.texture ↔ .dds' },
-  { id: 'mesh',    label: '.mesh Models',   icon: Sword,     desc: 'battle unit models' },
-  { id: 'cas',     label: '.cas Models',    icon: Box,       desc: 'strat map models' },
+  { id: 'texture', label: 'Textures', icon: ImageIcon, desc: '.texture ↔ .dds' },
+  { id: 'model', label: 'Models', icon: Box, desc: '.cas / .mesh ↔ .ms3d' },
 ];
 
 export default function AssetsConverter() {
@@ -24,17 +23,8 @@ export default function AssetsConverter() {
             <h1 className="text-sm font-bold text-white">M2TW Asset Converter</h1>
             <p className="text-[11px] text-slate-400">Preview and convert game textures &amp; models</p>
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            {tab === 'cas' && (
-              <a
-                href="/stratmapconverter.py"
-                download="stratmapconverter.py"
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-700 border border-slate-600 text-[11px] text-slate-300 hover:bg-slate-600 hover:text-white transition-colors"
-              >
-                <Download className="w-3 h-3" /> stratmapconverter.py
-              </a>
-            )}
-            <span className="text-[10px] text-slate-600 hidden lg:block">M2TW Modeler's Toolbox v0.6β</span>
+          <div className="ml-auto text-[10px] text-slate-600 hidden lg:block">
+            Based on M2TW Modeler's Toolbox v0.6β
           </div>
         </div>
 
@@ -61,8 +51,7 @@ export default function AssetsConverter() {
       {/* Content */}
       <div className="flex-1 p-6 overflow-auto">
         {tab === 'texture' && <TexturePanel />}
-        {tab === 'mesh'    && <ModelPanel forcedTab="mesh" />}
-        {tab === 'cas'     && <ModelPanel forcedTab="cas" />}
+        {tab === 'model' && <ModelPanel />}
       </div>
     </div>
   );
