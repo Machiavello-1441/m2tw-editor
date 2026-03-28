@@ -92,8 +92,9 @@ function readHeader(r) {
 // ── Hierarchy tree ────────────────────────────────────────────────────────────
 
 function readHierarchyTree(r, version_float) {
-  const OLD = [3.02, 2.23, 3.0, 2.22, 2.19];
-  const nbones = OLD.includes(version_float) ? r.byte() : r.ushort();
+  // All versions read nbones as a uint (4 bytes); each hierarchy entry is also uint (4 bytes)
+  const nbones = r.uint();
+  if (nbones === 0 || nbones > 512) throw new Error(`Invalid nbones ${nbones}`);
   const hierarchy = [];
   for (let i = 0; i < nbones; i++) hierarchy.push(r.uint());
   return hierarchy;
@@ -103,7 +104,7 @@ function readHierarchyTree(r, version_float) {
 
 function readTimeTicks(r) {
   const nframes = r.uint();
-  if (nframes > 800) throw new Error(`Bad nframes ${nframes}`);
+  if (nframes > 10000) throw new Error(`Unreasonably large nframes ${nframes} — file may be corrupt or misdetected`);
   const ticks = [];
   for (let i = 0; i < nframes; i++) ticks.push(r.float());
   return ticks;
@@ -120,6 +121,7 @@ function readBoneSection(r, nbones, version_float) {
 
   for (let ii = 0; ii < nbones; ii++) {
     const nch      = r.uint();
+    if (nch === 0 || nch > 256) throw new Error(`Invalid bone name length ${nch} at bone ${ii}`);
     const bonename = r.readString(nch - 1);
     r.byte(); // null terminator
 
@@ -331,9 +333,11 @@ export function parseStratCasFile(buffer) {
     errors.push(`Unusual version float: ${float_version}`);
   }
 
-  // Read filesize sans header/footer (8 bytes) — we use it for validation but don't enforce
+  // These 2 uints appear in some versions but not all — skip them tentatively.
+  // We'll detect if the hierarchy read looks sane; if nbones fails we don't need to backtrack
+  // because the Python script always reads them for ALL known versions.
   r.uint(); // filesizesans
-  r.uint(); // int_zero
+  r.uint(); // int_zero (padding)
 
   // Determine file type from filename hint if available (fallback to signaturebyte)
   // We use signaturebyte only — 99 = 'c' = resource/symbol
