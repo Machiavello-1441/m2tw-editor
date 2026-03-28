@@ -323,22 +323,28 @@ export default function ScriptingPanel({ stratData }) {
       </div>
 
       {showTemplates && (
-        <ScriptTemplateSidebar
-          onInsert={insertSnippet}
-          onClose={() => setShowTemplates(false)}
-        />
+        <div onClick={e => e.stopPropagation()}>
+          <ScriptTemplateSidebar
+            onInsert={insertSnippet}
+            onClose={() => setShowTemplates(false)}
+          />
+        </div>
       )}
       {showReference && (
-        <ScriptReferenceSidebar
-          onInsert={insertSnippet}
-          onClose={() => setShowReference(false)}
-        />
+        <div onClick={e => e.stopPropagation()}>
+          <ScriptReferenceSidebar
+            onInsert={insertSnippet}
+            onClose={() => setShowReference(false)}
+          />
+        </div>
       )}
       {showAI && (
-        <ScriptAIAssistant
-          onInsert={insertSnippet}
-          onClose={() => setShowAI(false)}
-        />
+        <div onClick={e => e.stopPropagation()}>
+          <ScriptAIAssistant
+            onInsert={insertSnippet}
+            onClose={() => setShowAI(false)}
+          />
+        </div>
       )}
     </div>
   );
