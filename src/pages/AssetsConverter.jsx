@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import TexturePanel from '@/components/assets/TexturePanel';
 import ModelPanel from '@/components/assets/ModelPanel';
-import { ImageIcon, Box } from 'lucide-react';
+import { ImageIcon, Box, Sword } from 'lucide-react';
 
 const TABS = [
-  { id: 'texture', label: 'Textures', icon: ImageIcon, desc: '.texture ↔ .dds' },
-  { id: 'model', label: 'Models', icon: Box, desc: '.cas / .mesh ↔ .ms3d' },
+  { id: 'texture', label: 'Textures',      icon: ImageIcon, desc: '.texture ↔ .dds' },
+  { id: 'mesh',    label: '.mesh Models',   icon: Sword,     desc: 'battle unit models' },
+  { id: 'cas',     label: '.cas Models',    icon: Box,       desc: 'strat map models' },
 ];
 
 export default function AssetsConverter() {
@@ -51,7 +52,8 @@ export default function AssetsConverter() {
       {/* Content */}
       <div className="flex-1 p-6 overflow-auto">
         {tab === 'texture' && <TexturePanel />}
-        {tab === 'model' && <ModelPanel />}
+        {tab === 'mesh'    && <ModelPanel forcedTab="mesh" />}
+        {tab === 'cas'     && <ModelPanel forcedTab="cas" />}
       </div>
     </div>
   );

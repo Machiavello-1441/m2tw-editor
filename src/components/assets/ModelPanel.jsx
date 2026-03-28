@@ -208,28 +208,31 @@ const MODEL_TABS = [
   },
 ];
 
-export default function ModelPanel() {
-  const [tab, setTab] = useState('mesh');
-  const t = MODEL_TABS.find(x => x.id === tab);
+export default function ModelPanel({ forcedTab }) {
+  const [tab, setTab] = useState(forcedTab || 'mesh');
+  const activeTab = forcedTab || tab;
+  const t = MODEL_TABS.find(x => x.id === activeTab);
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* Sub-tabs */}
-      <div className="flex gap-2">
-        {MODEL_TABS.map(mt => (
-          <button
-            key={mt.id}
-            onClick={() => setTab(mt.id)}
-            className={`flex flex-col px-4 py-2 rounded-lg border text-left transition-all ${tab === mt.id ? 'bg-blue-900/40 border-blue-600 text-blue-300' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-          >
-            <span className="text-xs font-semibold">{mt.label}</span>
-            <span className="text-[10px] opacity-60">{mt.desc}</span>
-          </button>
-        ))}
-      </div>
+      {/* Sub-tabs — only shown when not forced from parent */}
+      {!forcedTab && (
+        <div className="flex gap-2">
+          {MODEL_TABS.map(mt => (
+            <button
+              key={mt.id}
+              onClick={() => setTab(mt.id)}
+              className={`flex flex-col px-4 py-2 rounded-lg border text-left transition-all ${activeTab === mt.id ? 'bg-blue-900/40 border-blue-600 text-blue-300' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+            >
+              <span className="text-xs font-semibold">{mt.label}</span>
+              <span className="text-[10px] opacity-60">{mt.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <ModelSubPanel
-        key={tab}
+        key={activeTab}
         accept={t.accept}
         label={`Drop ${t.accept.split(',').join(' / ')} files here`}
         hint={t.hint}
