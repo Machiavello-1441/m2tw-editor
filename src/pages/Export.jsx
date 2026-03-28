@@ -7,7 +7,7 @@ import { parseDescrStrat, serializeDescrStrat } from '../components/map/stratPar
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2, Globe2, Layers } from 'lucide-react';
+import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2, Globe2, Layers, Wrench } from 'lucide-react';
 import JSZip from 'jszip';
 import ValidationDashboard from '../components/export/ValidationDashboard';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
@@ -369,6 +369,41 @@ export default function Export() {
               Zip downloaded! Drop the <code className="font-mono bg-accent px-1 rounded">{modName}/</code> folder into your M2TW <code className="font-mono bg-accent px-1 rounded">mods/</code> directory.
             </div>
           )}
+
+          {/* Python Tools Download */}
+          <Card>
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-primary" /> Python Modding Tools
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-2">
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Download the Python 3 strat model converter. Place both files in the same folder and run <code className="font-mono bg-accent px-1 rounded text-[10px]">python stratmodelconverter.py</code>.
+              </p>
+              <div className="space-y-2">
+                {[
+                  { file: 'stratmodelconverter_lib.py',   label: 'stratmodelconverter_lib.py',   desc: 'Library (required)' },
+                  { file: 'stratmodelconverter.py',        label: 'stratmodelconverter.py',        desc: 'Main script (run this)' },
+                  { file: 'stratmodelconverter_py3_part1.py', label: 'stratmodelconverter_py3_part1.py', desc: 'Standalone part 1' },
+                  { file: 'stratmodelconverter_py3_part2.py', label: 'stratmodelconverter_py3_part2.py', desc: 'Standalone part 2' },
+                ].map(({ file, label, desc }) => (
+                  <a
+                    key={file}
+                    href={`/${file}`}
+                    download={file}
+                    className="flex items-center gap-3 p-2.5 rounded-lg bg-accent/30 hover:bg-accent/60 transition-colors cursor-pointer no-underline"
+                  >
+                    <Download className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono font-medium text-foreground">{label}</p>
+                      <p className="text-[10px] text-muted-foreground">{desc}</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && (
             <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
