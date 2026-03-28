@@ -1,7 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { FileText, Upload, Download, CheckCircle, AlertTriangle, XCircle, ChevronRight, ChevronDown, BookOpen } from 'lucide-react';
+import { FileText, Upload, Download, CheckCircle, AlertTriangle, XCircle, ChevronRight, ChevronDown, BookOpen, BookMarked, Sparkles } from 'lucide-react';
 import { AUTOCOMPLETE_BY_PREFIX } from './scriptAutocomplete';
 import ScriptTemplateSidebar from './ScriptTemplateSidebar';
+import ScriptReferenceSidebar from './ScriptReferenceSidebar';
+import ScriptAIAssistant from './ScriptAIAssistant';
 
 /* ── tiny validator ──────────────────────────────────────────────────────── */
 function validateScript(text, stratData) {
@@ -40,6 +42,14 @@ export default function ScriptingPanel({ stratData }) {
   const [showValid, setShowValid]   = useState(false);
 
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showReference, setShowReference] = useState(false);
+  const [showAI, setShowAI] = useState(false);
+
+  const openSidebar = (name) => {
+    setShowTemplates(name === 'templates');
+    setShowReference(name === 'reference');
+    setShowAI(name === 'ai');
+  };
 
   // autocomplete
   const [acItems, setAcItems]     = useState([]);
@@ -179,9 +189,20 @@ export default function ScriptingPanel({ stratData }) {
           <button onClick={exportFile} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 disabled:opacity-40">
             <Download className="w-3 h-3" /> Export
           </button>
-          <button onClick={() => setShowTemplates(v => !v)} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 ml-auto">
-            <BookOpen className="w-3 h-3 text-violet-400" /> Templates
-          </button>
+          <div className="flex gap-1 ml-auto">
+            <button onClick={() => openSidebar(showTemplates ? null : 'templates')}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border transition-colors ${showTemplates ? 'bg-violet-700/30 border-violet-500/40 text-violet-300' : 'bg-slate-800 border-slate-600/40 text-slate-300 hover:bg-slate-700'}`}>
+              <BookOpen className="w-3 h-3" /> Templates
+            </button>
+            <button onClick={() => openSidebar(showReference ? null : 'reference')}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border transition-colors ${showReference ? 'bg-emerald-700/30 border-emerald-500/40 text-emerald-300' : 'bg-slate-800 border-slate-600/40 text-slate-300 hover:bg-slate-700'}`}>
+              <BookMarked className="w-3 h-3" /> Reference
+            </button>
+            <button onClick={() => openSidebar(showAI ? null : 'ai')}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border transition-colors ${showAI ? 'bg-violet-700/30 border-violet-500/40 text-violet-300' : 'bg-slate-800 border-slate-600/40 text-slate-300 hover:bg-slate-700'}`}>
+              <Sparkles className="w-3 h-3" /> AI
+            </button>
+          </div>
           <button onClick={doValidate} disabled={!text} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-violet-700/30 border border-violet-500/40 text-violet-300 hover:bg-violet-700/50 disabled:opacity-40">
             <CheckCircle className="w-3 h-3" /> Validate
           </button>
@@ -305,6 +326,18 @@ export default function ScriptingPanel({ stratData }) {
         <ScriptTemplateSidebar
           onInsert={insertSnippet}
           onClose={() => setShowTemplates(false)}
+        />
+      )}
+      {showReference && (
+        <ScriptReferenceSidebar
+          onInsert={insertSnippet}
+          onClose={() => setShowReference(false)}
+        />
+      )}
+      {showAI && (
+        <ScriptAIAssistant
+          onInsert={insertSnippet}
+          onClose={() => setShowAI(false)}
         />
       )}
     </div>
