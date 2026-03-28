@@ -3,7 +3,7 @@ import { Info, AlertTriangle } from 'lucide-react';
 
 export default function CasFileInfo({ parsed }) {
   if (!parsed) return null;
-  const { header, nBones, nFrames, bones } = parsed;
+  const { header, nBones, nFrames, bones = [] } = parsed;
   const activeBones = bones.filter(b => b.nQuat > 0);
   return (
     <div className="bg-slate-900 rounded-xl border border-slate-700 p-4 space-y-3">
