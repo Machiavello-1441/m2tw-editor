@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
 import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
+import { parseStratCasFile, isFullFormatStratCas } from '@/lib/stratCasCodec';
 import ModelViewer from './ModelViewer';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Info, ArrowLeftRight, Box, AlertTriangle, X } from 'lucide-react';
@@ -36,8 +37,19 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
       result = parseMeshFile(buf);
       result.sourceFormat = 'mesh';
     } else if (ext === 'cas') {
-      result = parseCasFile(buf);
-      result.sourceFormat = 'cas';
+      // Try full-format strat .cas first (has 42-byte header with version float)
+      if (isFullFormatStratCas(buf)) {
+        result = parseStratCasFile(buf);
+        result.sourceFormat = 'cas';
+        if (!result.meshes?.length) {
+          // Fallback to simple format if full-format parse failed
+          const simple = parseCasFile(buf);
+          if (simple.meshes?.length) { result = simple; result.sourceFormat = 'cas'; }
+        }
+      } else {
+        result = parseCasFile(buf);
+        result.sourceFormat = 'cas';
+      }
     } else {
       return;
     }
@@ -191,7 +203,7 @@ const MODEL_TABS = [
     label: '.cas — Strat Models',
     desc: 'data/world/maps/…',
     accept: '.cas,.ms3d',
-    hint: 'Strat-map unit, city & resource models · Drag to rotate, scroll to zoom',
+    hint: 'Strat-map unit .cas (full-format with header) · city & resource models · Drag to rotate, scroll to zoom',
     fromMs3d: (meshes) => encodeCasFile(meshes),
   },
 ];
