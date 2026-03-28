@@ -177,12 +177,23 @@ function readNavyChunkHeader(r) {
 }
 
 function readRegularChunkHeader(r) {
-  r.uint(); r.uint(); r.uint(); r.uint(); r.ushort(); r.uint(); r.uint();
+  // Python: chunklength, 1, 2, numchars then name string, then uint+byte, uint+byte, 7 floats,
+  // ushort, int, ushort, uint, uint, uint, uint, then nummeshes
+  const chunklength = r.uint(); // already peeked, now consume
+  r.uint(); // 1
+  r.uint(); // 2
+  const numchars = r.uint();
+  r.readString(numchars - 1); r.byte(); // name + null
+  r.uint(); r.byte(); // uint + byte
+  r.uint(); r.byte(); // uint + byte
+  for (let i = 0; i < 9; i++) r.float(); // 9 floats
+  r.ushort(); r.int(); r.ushort(); r.uint(); r.uint(); r.uint(); r.uint();
   return r.uint(); // nummeshes
 }
 
 function readAttribNodeChunkHeader(r) {
-  r.uint(); r.uint(); r.uint(); // sizes
+  r.uint(); // chunklength (already peeked)
+  r.uint(); r.uint(); // 1, 2
   const nch = r.uint();
   r.readString(nch - 1); r.byte();
   r.uint(); r.byte();
@@ -190,6 +201,44 @@ function readAttribNodeChunkHeader(r) {
   for (let i = 0; i < 9; i++) r.float();
   r.ushort(); r.int(); r.ushort(); r.uint(); r.uint(); r.uint(); r.uint();
   return r.uint(); // nummeshes
+}
+
+// ── Read one mesh block (shared by first and subsequent meshes) ───────────────
+
+function readOneMesh(r, FLAGRESOURCE, FLAGNAVY, isFirst) {
+  const nch      = r.uint();
+  const meshname = r.readString(nch - 1); r.byte();
+
+  // comment block
+  r.uint(); r.byte(); // uint + null
+  if (FLAGRESOURCE || FLAGNAVY) { r.uint(); r.byte(); r.uint(); }
+  for (let i = 0; i < 7; i++) r.float(); // 7 floats
+
+  const numverts   = r.ushort();
+  const numfaces   = r.ushort();
+  const flagTVerts  = r.byte();
+  const flagVColors = r.byte();
+
+  const boneIds = new Array(numverts);
+  if (FLAGRESOURCE || FLAGNAVY) {
+    boneIds.fill(-1);
+  } else {
+    for (let i = 0; i < numverts; i++) boneIds[i] = r.int();
+  }
+
+  const verts   = r.readFloats(3 * numverts);
+  const normals = r.readFloats(3 * numverts);
+  const faces   = new Uint16Array(3 * numfaces);
+  for (let i = 0; i < 3 * numfaces; i++) faces[i] = r.ushort();
+
+  r.uint(); // texId
+  const tverts = flagTVerts === 1 ? r.readFloats(2 * numverts) : null;
+  if (flagVColors === 1) {
+    for (let i = 0; i < 4 * numverts; i++) r.sbyte();
+  }
+  r.uint(); // terminating 0
+
+  return { meshname, numverts, numfaces, boneIds, verts, normals, faces, tverts, hasTverts: flagTVerts === 1 };
 }
 
 // ── Mesh middle section (returns raw mesh arrays) ─────────────────────────────
@@ -203,49 +252,20 @@ function readMeshMiddle(r, FLAGRESOURCE, FLAGNAVY) {
   } else if (FLAGRESOURCE) {
     nummeshes = readResourceChunkHeader(r);
   } else {
-    const savedPos = r.pos;
-    const chunklength = r.uint();
-    r.pos = savedPos;
-    if (chunklength === 104) {
-      nummeshes = readAttribNodeChunkHeader(r);
-    } else {
-      nummeshes = readRegularChunkHeader(r);
-    }
+    // Peek at the numchars field to distinguish attrib-node vs regular chunk
+    // Regular: chunklength, 1, 2, numchars — attrib node has same layout but different tail
+    // We'll just always use readRegularChunkHeader which now matches Python exactly.
+    nummeshes = readRegularChunkHeader(r);
   }
 
   // ── Read first mesh ──
-  const nch1     = r.uint();
-  const meshname1 = r.readString(nch1 - 1); r.byte();
+  const mesh0 = readOneMesh(r, FLAGRESOURCE, FLAGNAVY, true);
+  const { numverts: numverts1, numfaces: numfaces1, boneIds: boneIds1,
+          verts: verts1, normals: normals1, faces: faces1, tverts: tverts1,
+          hasTverts: hasTverts1, meshname: meshname1 } = mesh0;
 
-  // comment block
-  r.uint(); r.byte(); // first comment uint + null byte
-  if (FLAGRESOURCE || FLAGNAVY) { r.uint(); r.byte(); r.uint(); }
-  for (let i = 0; i < 7; i++) r.float(); // 7 floats
-
-  const numverts1   = r.ushort();
-  const numfaces1   = r.ushort();
-  const flagTVerts1  = r.byte();
-  const flagVColors1 = r.byte();
-
-  // bone IDs
-  const boneIds1 = new Int32Array(numverts1);
-  if (FLAGRESOURCE || FLAGNAVY) {
-    boneIds1.fill(-1);
-  } else {
-    for (let i = 0; i < numverts1; i++) boneIds1[i] = r.int();
-  }
-
-  const verts1   = r.readFloats(3 * numverts1);
-  const normals1 = r.readFloats(3 * numverts1);
-  const faces1   = new Uint16Array(3 * numfaces1);
-  for (let i = 0; i < 3 * numfaces1; i++) faces1[i] = r.ushort();
-
-  const texId1 = r.uint();
-  const tverts1  = flagTVerts1  === 1 ? r.readFloats(2 * numverts1) : null;
-  if (flagVColors1 === 1) {
-    for (let i = 0; i < 4 * numverts1; i++) r.sbyte(); // skip vcolors
-  }
-  r.uint(); // terminating 0
+  const numverts1N = numverts1;
+  const numfaces1N = numfaces1;
 
   // Accumulate across all meshes
   let allBoneIds = Array.from(boneIds1);
@@ -253,46 +273,17 @@ function readMeshMiddle(r, FLAGRESOURCE, FLAGNAVY) {
   let allNormals = Array.from(normals1);
   let allFaces   = Array.from(faces1);
   let allTverts  = tverts1 ? Array.from(tverts1) : [];
-  let hasTverts  = flagTVerts1 === 1;
+  let hasTverts  = hasTverts1;
 
   for (let imesh = 1; imesh < nummeshes; imesh++) {
-    const nch2      = r.uint();
-    const _meshname2 = r.readString(nch2 - 1); r.byte();
-
-    r.uint(); r.byte(); // comment uint + null
-    for (let i = 0; i < 7; i++) r.float();
-
-    const numverts2   = r.ushort();
-    const numfaces2   = r.ushort();
-    const flagTVerts2  = r.byte();
-    const flagVColors2 = r.byte();
-
-    const boneIds2 = new Uint32Array(numverts2);
-    for (let i = 0; i < numverts2; i++) boneIds2[i] = r.uint();
-    const verts2   = r.readFloats(3 * numverts2);
-    const normals2 = r.readFloats(3 * numverts2);
-
-    const faces2 = new Uint16Array(3 * numfaces2);
-    for (let i = 0; i < 3 * numfaces2; i++) faces2[i] = r.ushort();
-
-    r.uint(); // texId2
-    const tverts2 = flagTVerts2 === 1 ? r.readFloats(2 * numverts2) : null;
-    if (flagVColors2 === 1) {
-      for (let i = 0; i < 4 * numverts2; i++) r.sbyte();
-    }
-    r.uint(); // terminating 0
-
+    const m = readOneMesh(r, FLAGRESOURCE, FLAGNAVY, false);
     const nvcur = allVerts.length / 3;
-    // Offset faces and append
-    for (let i = 0; i < 3 * numfaces2; i++) allFaces.push(faces2[i] + nvcur);
-    // Append verts
-    for (let i = 0; i < numverts2; i++) {
-      allBoneIds.push(boneIds2[i]);
-      allVerts.push(verts2[3*i], verts2[3*i+1], verts2[3*i+2]);
-      allNormals.push(normals2[3*i], normals2[3*i+1], normals2[3*i+2]);
-      if (hasTverts && tverts2) {
-        allTverts.push(tverts2[2*i], tverts2[2*i+1]);
-      }
+    for (let i = 0; i < 3 * m.numfaces; i++) allFaces.push(m.faces[i] + nvcur);
+    for (let i = 0; i < m.numverts; i++) {
+      allBoneIds.push(m.boneIds[i]);
+      allVerts.push(m.verts[3*i], m.verts[3*i+1], m.verts[3*i+2]);
+      allNormals.push(m.normals[3*i], m.normals[3*i+1], m.normals[3*i+2]);
+      if (hasTverts && m.tverts) allTverts.push(m.tverts[2*i], m.tverts[2*i+1]);
     }
   }
 
