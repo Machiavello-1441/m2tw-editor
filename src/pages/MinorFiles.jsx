@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Shield, Sparkles, Gem } from 'lucide-react';
+import { FileText, Shield, Sparkles, Gem, Users } from 'lucide-react';
 import RebelFactionsTab from '../components/minorfiles/RebelFactionsTab';
 import ReligionsTab from '../components/minorfiles/ReligionsTab';
 import ResourcesTab from '../components/minorfiles/ResourcesTab';
+import CharacterNamesTab from '../components/minorfiles/CharacterNamesTab';
 
 const TABS = [
   { id: 'rebels', label: 'Rebel Factions', Icon: Shield, description: 'descr_rebel_factions.txt + rebel_faction_descr.txt.strings.bin' },
   { id: 'religions', label: 'Religions', Icon: Sparkles, description: 'descr_religions.txt + lookup + .strings.bin' },
   { id: 'resources', label: 'Resources', Icon: Gem, description: 'descr_sm_resources.txt + strat.txt.strings.bin' },
+  { id: 'names', label: 'Character Names', Icon: Users, description: 'descr_names.txt + names.txt.bin' },
 ];
 
 export default function MinorFiles() {
@@ -19,7 +21,7 @@ export default function MinorFiles() {
       <div className="h-10 border-b border-border flex items-center px-4 gap-3 shrink-0 bg-card/50">
         <FileText className="w-4 h-4 text-muted-foreground" />
         <span className="text-xs font-medium text-foreground">Minor Files Editor</span>
-        <span className="text-[10px] text-muted-foreground font-mono hidden lg:block">— Rebel factions, Religions, Resources</span>
+        <span className="text-[10px] text-muted-foreground font-mono hidden lg:block">— Rebel factions, Religions, Resources, Character Names</span>
       </div>
 
       {/* Tab bar */}
@@ -49,6 +51,7 @@ export default function MinorFiles() {
           {activeTab === 'rebels' && <RebelFactionsTab />}
           {activeTab === 'religions' && <ReligionsTab />}
           {activeTab === 'resources' && <ResourcesTab />}
+          {activeTab === 'names' && <CharacterNamesTab />}
         </div>
       </ScrollArea>
     </div>
