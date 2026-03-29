@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, Download, Plus, X, Search, AlertCircle, Users } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
@@ -111,14 +111,13 @@ export default function CharacterNamesTab() {
   const [activeSection, setActiveSection] = useState('characters');
   const [search, setSearch] = useState('');
 
-  const descrRef = useRef(null);
-  const binRef = useRef(null);
+
 
   const applyDescrNames = (raw) => {
     const parsed = parseDescrNames(raw);
     setDescrNames(parsed);
     const factions = Object.keys(parsed);
-    if (factions.length) setSelectedFaction(f => f || factions[0]);
+    if (factions.length) setSelectedFaction(factions[0]);
   };
 
   const applyNamesBin = (buf) => {
@@ -284,20 +283,16 @@ export default function CharacterNamesTab() {
 
   return (
     <div className="space-y-3">
-      {/* Hidden inputs */}
-      <input ref={descrRef} type="file" accept=".txt" className="hidden" onChange={handleLoadDescr} />
-      <input ref={binRef} type="file" accept=".bin" className="hidden" onChange={handleLoadBin} />
-
       {/* Toolbar */}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => descrRef.current?.click()}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
+        <label className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
           <Upload className="w-3 h-3" /> Load descr_names.txt
-        </button>
-        <button onClick={() => binRef.current?.click()}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
+          <input type="file" accept=".txt" className="hidden" onChange={handleLoadDescr} />
+        </label>
+        <label className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
           <Upload className="w-3 h-3" /> Load names.txt.bin
-        </button>
+          <input type="file" accept=".bin" className="hidden" onChange={handleLoadBin} />
+        </label>
         <button onClick={handleExportDescr} disabled={noneLoaded}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 disabled:opacity-40 transition-colors">
           <Download className="w-3 h-3" /> Export descr_names.txt
