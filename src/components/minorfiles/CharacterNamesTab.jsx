@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Upload, Download, Plus, X, Search, AlertCircle, Users } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
 
 // ─── descr_names.txt parser ───────────────────────────────────────────────────
 // Format:
@@ -57,11 +58,6 @@ function serializeDescrNames(factions) {
   }).join('\n\n');
 }
 
-// ─── names.txt.bin parser (same format as other .strings.bin) ─────────────────
-// Each entry: {InternalName}Display Name
-function parseNamesBin(buf) {
-  return parseStringsBin(buf);
-}
 
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob);
@@ -118,17 +114,56 @@ export default function CharacterNamesTab() {
   const descrRef = useRef(null);
   const binRef = useRef(null);
 
-  // Auto-restore from localStorage
-  useEffect(() => {
+  const applyDescrNames = (raw) => {
+    const parsed = parseDescrNames(raw);
+    setDescrNames(parsed);
+    const factions = Object.keys(parsed);
+    if (factions.length) setSelectedFaction(f => f || factions[0]);
+  };
+
+  const applyNamesBin = (buf) => {
+    const decoded = parseStringsBin(buf);
+    if (decoded?.entries) {
+      const map = {};
+      for (const { key, value } of decoded.entries) if (key) map[key] = value;
+      setDisplayNames(map);
+      setBinMeta({ magic1: decoded.magic1 ?? 2, magic2: decoded.magic2 ?? 2048 });
+      try {
+        localStorage.setItem('m2tw_names_bin_entries', JSON.stringify(map));
+        localStorage.setItem('m2tw_names_bin_meta', JSON.stringify({ magic1: decoded.magic1 ?? 2, magic2: decoded.magic2 ?? 2048 }));
+      } catch {}
+    }
+  };
+
+  const applyNamesBinEntries = (entries, meta) => {
+    const map = {};
+    for (const { key, value } of entries) if (key) map[key] = value;
+    setDisplayNames(map);
+    if (meta) setBinMeta(meta);
     try {
-      const raw = localStorage.getItem('m2tw_descr_names_file');
-      if (raw) {
-        const parsed = parseDescrNames(raw);
-        setDescrNames(parsed);
-        const factions = Object.keys(parsed);
-        if (factions.length) setSelectedFaction(factions[0]);
+      localStorage.setItem('m2tw_names_bin_entries', JSON.stringify(map));
+      localStorage.setItem('m2tw_names_bin_meta', JSON.stringify(meta));
+    } catch {}
+  };
+
+  // Auto-restore from localStorage / stringsBinStore on mount
+  useEffect(() => {
+    // descr_names.txt — Home stores it as 'm2tw_names_file'
+    try {
+      const raw = localStorage.getItem('m2tw_names_file');
+      if (raw) applyDescrNames(raw);
+    } catch {}
+
+    // names.txt.strings.bin — loaded by Home into the shared stringsBinStore
+    try {
+      const store = getStringsBinStore();
+      const entry = Object.entries(store).find(([k]) => k.toLowerCase().includes('names'));
+      if (entry?.[1]) {
+        applyNamesBinEntries(entry[1].entries, { magic1: entry[1].magic1 ?? 2, magic2: entry[1].magic2 ?? 2048 });
       }
     } catch {}
+
+    // Fallback: cached bin entries from a direct manual load
     try {
       const raw = localStorage.getItem('m2tw_names_bin_entries');
       if (raw) {
@@ -137,6 +172,26 @@ export default function CharacterNamesTab() {
         if (meta) setBinMeta(JSON.parse(meta));
       }
     } catch {}
+
+    // Listen for Home re-loading the data folder
+    const onNamesLoaded = (e) => {
+      if (e.detail?.raw) applyDescrNames(e.detail.raw);
+    };
+    const onStringsBinUpdated = () => {
+      try {
+        const store = getStringsBinStore();
+        const entry = Object.entries(store).find(([k]) => k.toLowerCase().includes('names'));
+        if (entry?.[1]) {
+          applyNamesBinEntries(entry[1].entries, { magic1: entry[1].magic1 ?? 2, magic2: entry[1].magic2 ?? 2048 });
+        }
+      } catch {}
+    };
+    window.addEventListener('load-character-names', onNamesLoaded);
+    window.addEventListener('strings-bin-updated', onStringsBinUpdated);
+    return () => {
+      window.removeEventListener('load-character-names', onNamesLoaded);
+      window.removeEventListener('strings-bin-updated', onStringsBinUpdated);
+    };
   }, []);
 
   const factionList = useMemo(() => Object.keys(descrNames), [descrNames]);
@@ -159,30 +214,15 @@ export default function CharacterNamesTab() {
   const handleLoadDescr = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
-    const parsed = parseDescrNames(text);
-    setDescrNames(parsed);
-    const factions = Object.keys(parsed);
-    if (factions.length) setSelectedFaction(factions[0]);
-    try {
-      localStorage.setItem('m2tw_descr_names_file', text);
-    } catch {}
+    applyDescrNames(text);
+    try { localStorage.setItem('m2tw_names_file', text); } catch {}
     e.target.value = '';
   };
 
   const handleLoadBin = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const buf = await file.arrayBuffer();
-    const decoded = parseNamesBin(buf);
-    if (decoded?.entries) {
-      const map = {};
-      for (const { key, value } of decoded.entries) if (key) map[key] = value;
-      setDisplayNames(map);
-      setBinMeta({ magic1: decoded.magic1 ?? 2, magic2: decoded.magic2 ?? 2048 });
-      try {
-        localStorage.setItem('m2tw_names_bin_entries', JSON.stringify(map));
-        localStorage.setItem('m2tw_names_bin_meta', JSON.stringify({ magic1: decoded.magic1 ?? 2, magic2: decoded.magic2 ?? 2048 }));
-      } catch {}
-    }
+    applyNamesBin(buf);
     e.target.value = '';
   };
 

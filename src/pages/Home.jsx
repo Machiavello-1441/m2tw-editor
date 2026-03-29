@@ -372,6 +372,7 @@ export default function Home() {
           if (key === 'religions') sessionStorage.setItem('m2tw_religions_raw', text);
           if (key === 'rebel_fac') sessionStorage.setItem('m2tw_rebel_factions_raw', text);
           if (key === 'cultures') sessionStorage.setItem('m2tw_cultures_raw', text);
+          if (key === 'names') window.dispatchEvent(new CustomEvent('load-character-names', { detail: { raw: text } }));
           if (key === 'expunits') {
             window.dispatchEvent(new CustomEvent('load-export-units'));
           }
