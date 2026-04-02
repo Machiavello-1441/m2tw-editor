@@ -38,9 +38,9 @@ function BuildingNode({ building }) {
 
   return (
     <div className="mb-0.5">
-      <div
-        className={`flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer group text-sm transition-colors
-          ${isSelected ? 'bg-primary/15 text-primary' : 'hover:bg-accent text-foreground'}`}>
+      <div className="bg-primary/15 text-primary pr-2 pl-2 text-sm rounded-md flex items-center gap-1 cursor-pointer group transition-colors">
+
+        
 
         <button onClick={() => setExpanded(!expanded)} className="p-0.5 hover:bg-accent rounded">
           {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
