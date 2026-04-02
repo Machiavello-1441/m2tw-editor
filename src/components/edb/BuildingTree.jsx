@@ -95,9 +95,9 @@ function BuildingNode({ building }) {
                     {"Level " + levelNum + ": close to M2TWEOP max!"}
                   </div>
               }
-                <div
-                className={"flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer group text-xs transition-colors " + levelCls}
-                onClick={() => {setSelectedBuilding(building.name);setSelectedLevel(level.name);}}>
+                <div className="text-muted-foreground ml-1 pt-1 pr-2 pb-1 pl-2 text-xs rounded-md flex items-center gap-1.5 cursor-pointer group transition-colors hover:bg-accent hover:text-foreground"
+
+              onClick={() => {setSelectedBuilding(building.name);setSelectedLevel(level.name);}}>
 
                   <Layers className="w-3 h-3 shrink-0" />
                   <span className="flex-1 truncate">{level.name}</span>
