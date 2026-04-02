@@ -38,9 +38,9 @@ function BuildingNode({ building }) {
 
   return (
     <div className="mb-0.5">
-      <div className="bg-primary/15 text-primary pr-2 text-sm rounded-md flex items-center gap-1 cursor-pointer group transition-colors">
-
-        
+      <div
+        className={`flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer group text-sm transition-colors
+          ${isSelected ? 'bg-primary/15 text-primary' : 'hover:bg-accent text-foreground'}`}>
 
         <button onClick={() => setExpanded(!expanded)} className="p-0.5 hover:bg-accent rounded">
           {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -49,12 +49,12 @@ function BuildingNode({ building }) {
         <span onClick={handleSelect} className="flex-1 truncate font-medium text-xs">
           {building.name}
         </span>
-        <span className="text-muted-foreground">
+        <span className="text-[10px] text-muted-foreground">
           {building.levels.length}L
         </span>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <button className="pr-2 pl-2 rounded hover:bg-destructive/20 transition-opacity" title="Delete building tree">
+            <button className="p-0.5 hover:bg-destructive/20 rounded transition-opacity" title="Delete building tree">
               <Trash2 className="w-3 h-3 text-destructive" />
             </button>
           </AlertDialogTrigger>
@@ -74,7 +74,7 @@ function BuildingNode({ building }) {
       </div>
 
       {expanded &&
-      <div className="mr-6 ml-4 border-l border-border/50">
+      <div className="ml-4 pl-2 border-l border-border/50">
           {building.levels.map((level, li) => {
           const isLevelSelected = selectedBuilding === building.name && selectedLevel === level.name;
           const levelNum = li + 1;
@@ -166,13 +166,13 @@ export default function BuildingTree() {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-1 pt-3 pr-3 pb-3 pl-4 border-b border-border space-y-2">
+    <div className="h-full flex flex-nowrap flex-col">
+      <div className="p-3 border-b border-border space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="text-xs font-bold text-foreground uppercase tracking-wider flex-1">Buildings</h2>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="bg-slate-500 text-primary px-2 text-sm font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border shadow-sm hover:text-accent-foreground h-6 gap-1 border-primary/30 hover:bg-primary/10">
+              <Button size="sm" variant="outline" className="bg-slate-500 text-primary px-2 text-sm font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink border shadow-sm hover:text-accent-foreground h-6 gap-1 border-primary/30 hover:bg-primary/10">
                 <Plus className="w-3 h-3" /> Add
               </Button>
             </DialogTrigger>
@@ -180,7 +180,7 @@ export default function BuildingTree() {
               <DialogHeader>
                 <DialogTitle>New Building Tree</DialogTitle>
               </DialogHeader>
-              <div className="space-y-3 py-1">
+              <div className="space-y-1 py-1">
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Prefix</label>
                   <Select value={newPrefix} onValueChange={setNewPrefix}>
@@ -233,7 +233,7 @@ export default function BuildingTree() {
         </div>
       </div>
       <ScrollArea className="flex-1">
-        <div className="ml-1 pt-2 pb-2 pl-1">
+        <div className="p-2">
           {filtered.map((building) =>
           <BuildingNode key={building.name} building={building} />
           )}
