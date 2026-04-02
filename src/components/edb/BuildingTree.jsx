@@ -74,7 +74,7 @@ function BuildingNode({ building }) {
       </div>
 
       {expanded &&
-      <div className="ml-4 pl-2 border-l border-border/50">
+      <div className="ml-3 border-l border-border/50">
           {building.levels.map((level, li) => {
           const isLevelSelected = selectedBuilding === building.name && selectedLevel === level.name;
           const levelNum = li + 1;
