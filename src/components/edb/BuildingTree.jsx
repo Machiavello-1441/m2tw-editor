@@ -38,7 +38,7 @@ function BuildingNode({ building }) {
 
   return (
     <div className="mb-0.5">
-      <div className="bg-primary/15 text-primary pr-2 pl-2 text-sm rounded-md flex items-center gap-1 cursor-pointer group transition-colors">
+      <div className="bg-primary/15 text-primary pr-2 text-sm rounded-md flex items-center gap-1 cursor-pointer group transition-colors">
 
         
 
