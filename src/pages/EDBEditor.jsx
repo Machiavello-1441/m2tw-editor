@@ -134,8 +134,8 @@ export default function EDBEditor() {
           className="text-xs font-medium text-foreground truncate max-w-[200px] hover:text-primary transition-colors cursor-pointer"
           title="Click to load a new EDB file"
         >{fileName || 'EDB Editor'}</button>
-        <span className="text-[10px] text-muted-foreground hidden sm:block">
-          {edbData.buildings.length} buildings
+        <span className="text-[12px] text-muted-foreground hidden sm:block">
+          {edbData.buildings.length} building trees
         </span>
         <div className="flex-1 min-w-0 overflow-hidden">
           <RefFileLoader />
