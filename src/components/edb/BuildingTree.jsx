@@ -233,7 +233,7 @@ export default function BuildingTree() {
         </div>
       </div>
       <ScrollArea className="flex-1">
-        <div className="pt-2 pr-2 pb-2">
+        <div className="pt-2 pb-2">
           {filtered.map((building) =>
           <BuildingNode key={building.name} building={building} />
           )}
