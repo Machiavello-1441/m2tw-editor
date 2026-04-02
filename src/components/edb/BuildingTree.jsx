@@ -49,7 +49,7 @@ function BuildingNode({ building }) {
         <span onClick={handleSelect} className="flex-1 truncate font-medium text-xs">
           {building.name}
         </span>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-muted-foreground py-1">
           {building.levels.length}L
         </span>
         <AlertDialog>
