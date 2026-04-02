@@ -185,7 +185,7 @@ export default function EDBEditor() {
       {/* Main layout */}
       <div className="flex-1 flex min-h-0">
         {/* Left sidebar: building tree */}
-        <div className="w-56 xl:w-64 border-r border-border bg-card/30 flex flex-col shrink-0 min-h-0">
+        <div className="bg-card/30 mx-auto w-56 xl:w-64 border-r border-border flex flex-col shrink-0 min-h-0">
           <div className="flex-1 min-h-0 overflow-hidden">
             <BuildingTree />
           </div>
