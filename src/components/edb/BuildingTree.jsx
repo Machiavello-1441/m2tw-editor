@@ -167,7 +167,7 @@ export default function BuildingTree() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-1 py-3 border-b border-border space-y-2">
+      <div className="pt-3 pr-5 pb-3 pl-3 border-b border-border space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="text-xs font-bold text-foreground uppercase tracking-wider flex-1">Buildings</h2>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
