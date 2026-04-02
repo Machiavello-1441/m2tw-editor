@@ -167,7 +167,7 @@ export default function BuildingTree() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="pt-3 pr-3 pb-3 pl-3 border-b border-border space-y-2">
+      <div className="p-3 border-b border-border space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="text-xs font-bold text-foreground uppercase tracking-wider flex-1">Buildings</h2>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -180,7 +180,7 @@ export default function BuildingTree() {
               <DialogHeader>
                 <DialogTitle>New Building Tree</DialogTitle>
               </DialogHeader>
-              <div className="space-y-3 py-1">
+              <div className="space-y-1 py-1">
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Prefix</label>
                   <Select value={newPrefix} onValueChange={setNewPrefix}>
@@ -233,7 +233,7 @@ export default function BuildingTree() {
         </div>
       </div>
       <ScrollArea className="flex-1">
-        <div className="mt-1 mb-1 pt-1 pb-1">
+        <div className="p-2">
           {filtered.map((building) =>
           <BuildingNode key={building.name} building={building} />
           )}
