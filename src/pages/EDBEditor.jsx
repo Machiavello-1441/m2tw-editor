@@ -132,8 +132,8 @@ export default function EDBEditor() {
         <button
           onClick={() => edbFileRef.current?.click()}
           className="text-xs font-medium text-foreground truncate max-w-[200px] hover:text-primary transition-colors cursor-pointer"
-          title="Click to load a new EDB file"
-        >{fileName || 'EDB Editor'}</button>
+          title="Click to load a new EDB file">
+          {fileName || 'EDB Editor'}</button>
         <span className="text-[10px] text-muted-foreground hidden sm:block">
           {edbData.buildings.length} buildings
         </span>
@@ -156,8 +156,8 @@ export default function EDBEditor() {
           variant="ghost"
           className={`px-3 text-xs font-medium rounded-md inline-flex items-center h-7 gap-1 shrink-0 ${isDirty ? 'text-yellow-400 hover:text-yellow-300' : 'text-muted-foreground'}`}
           title="Save EDB to browser cache"
-          onClick={() => saveNow()}
-        >
+          onClick={() => saveNow()}>
+          
           <Save className="w-3 h-3" />
           <span className="hidden lg:block">{isDirty ? 'Save*' : 'Saved'}</span>
         </Button>
@@ -192,7 +192,7 @@ export default function EDBEditor() {
         </div>
 
         {/* Center: level editor */}
-        <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
+        <div className="mx-3 flex-1 min-w-0 min-h-0 overflow-hidden">
           <LevelEditor />
         </div>
 
