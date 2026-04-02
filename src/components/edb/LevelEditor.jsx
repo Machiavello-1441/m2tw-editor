@@ -10,8 +10,8 @@ import { Settings, Shield, Swords, Trash2 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
-  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from
+'@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 
 import { SETTLEMENT_TYPES, SETTLEMENT_LEVELS, MATERIALS } from './EDBParser';
@@ -27,20 +27,20 @@ export default function LevelEditor() {
 
   if (!edbData || !selectedBuilding) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+      <div className="text-muted-foreground mx-3 text-sm flex items-center justify-center h-full">
         Select a building or level to edit
-      </div>
-    );
+      </div>);
+
   }
 
-  const building = edbData.buildings.find(b => b.name === selectedBuilding);
+  const building = edbData.buildings.find((b) => b.name === selectedBuilding);
   if (!building) return null;
 
   if (!selectedLevel) {
     return <BuildingOverview building={building} edbData={edbData} />;
   }
 
-  const levelIndex = building.levels.findIndex(l => l.name === selectedLevel);
+  const levelIndex = building.levels.findIndex((l) => l.name === selectedLevel);
   const level = building.levels[levelIndex];
   if (!level) return null;
 
@@ -48,7 +48,7 @@ export default function LevelEditor() {
 
   // Local state for level name to avoid losing focus on each keystroke
   const [localName, setLocalName] = useState(level.name);
-  useEffect(() => { setLocalName(level.name); }, [level.name]);
+  useEffect(() => {setLocalName(level.name);}, [level.name]);
 
   return (
     <ScrollArea className="h-full">
@@ -66,8 +66,8 @@ export default function LevelEditor() {
           <Badge variant="outline" className="ml-auto text-[10px]">
             #{levelIndex + 1}
           </Badge>
-          {building.levels.length > 1 && (
-            <AlertDialog>
+          {building.levels.length > 1 &&
+          <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="destructive" className="h-7 px-2 text-xs gap-1">
                   <Trash2 className="w-3 h-3" /> Delete Level
@@ -80,11 +80,11 @@ export default function LevelEditor() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => { deleteLevel(building.name, level.name); setSelectedLevel(null); }}>Delete</AlertDialogAction>
+                  <AlertDialogAction onClick={() => {deleteLevel(building.name, level.name);setSelectedLevel(null);}}>Delete</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          )}
+          }
         </div>
 
         <Card>
@@ -96,81 +96,81 @@ export default function LevelEditor() {
               <div>
                 <Label className="text-[10px] text-muted-foreground">Level Name</Label>
                 <Input className="h-7 text-xs mt-1" value={localName}
-                  onChange={e => setLocalName(e.target.value)}
-                  onBlur={() => {
-                    if (localName !== level.name) {
-                      updateLevel(selectedBuilding, selectedLevel, prev => ({ ...prev, name: localName }));
-                      setSelectedLevel(localName);
-                    }
-                  }}
-                />
+                onChange={(e) => setLocalName(e.target.value)}
+                onBlur={() => {
+                  if (localName !== level.name) {
+                    updateLevel(selectedBuilding, selectedLevel, (prev) => ({ ...prev, name: localName }));
+                    setSelectedLevel(localName);
+                  }
+                }} />
+                
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Settlement Type</Label>
-                <Select value={level.settlementType} onValueChange={v => update('settlementType', v)}>
+                <Select value={level.settlementType} onValueChange={(v) => update('settlementType', v)}>
                   <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {SETTLEMENT_TYPES.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
+                    {SETTLEMENT_TYPES.map((t) => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Material</Label>
-                <Select value={level.material} onValueChange={v => update('material', v)}>
+                <Select value={level.material} onValueChange={(v) => update('material', v)}>
                   <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {MATERIALS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
+                    {MATERIALS.map((m) => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Settlement Min</Label>
-                <Select value={level.settlementMin} onValueChange={v => update('settlementMin', v)}>
+                <Select value={level.settlementMin} onValueChange={(v) => update('settlementMin', v)}>
                   <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {SETTLEMENT_LEVELS.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
+                    {SETTLEMENT_LEVELS.map((s) => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Construction Time</Label>
                 <Input className="h-7 text-xs mt-1" type="number" value={level.construction}
-                  onChange={e => update('construction', parseInt(e.target.value) || 0)}
-                />
+                onChange={(e) => update('construction', parseInt(e.target.value) || 0)} />
+                
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Cost</Label>
                 <Input className="h-7 text-xs mt-1" type="number" step="100" value={level.cost}
-                  onChange={e => update('cost', parseInt(e.target.value) || 0)}
-                />
+                onChange={(e) => update('cost', parseInt(e.target.value) || 0)} />
+                
               </div>
-              {building.convertTo && (
-                <div className="col-span-2">
+              {building.convertTo &&
+              <div className="col-span-2">
                   <Label className="text-[10px] text-muted-foreground">
                     Convert To Index
                     <span className="ml-1 text-muted-foreground/60">(auto-set from level position, editable)</span>
                   </Label>
                   <Input
-                    className="h-7 text-xs mt-1"
-                    type="number"
-                    min="0"
-                    value={level.convertTo !== null && level.convertTo !== undefined ? level.convertTo : levelIndex}
-                    onChange={e => update('convertTo', e.target.value)}
-                  />
+                  className="h-7 text-xs mt-1"
+                  type="number"
+                  min="0"
+                  value={level.convertTo !== null && level.convertTo !== undefined ? level.convertTo : levelIndex}
+                  onChange={(e) => update('convertTo', e.target.value)} />
+                
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     Building converts to <span className="text-primary font-mono">{building.convertTo}</span>. Auto-index: {levelIndex}
                   </p>
                 </div>
-              )}
+              }
             </div>
 
             <UpgradesEditor
               upgrades={level.upgrades || []}
-              onChange={v => update('upgrades', v)}
+              onChange={(v) => update('upgrades', v)}
               allLevels={building.levels}
               currentLevelName={selectedLevel}
-              edbData={edbData}
-            />
+              edbData={edbData} />
+            
           </CardContent>
         </Card>
 
@@ -184,9 +184,9 @@ export default function LevelEditor() {
           <CardContent className="p-3 pt-0">
             <RequirementBuilder
               requirements={level.requirements || []}
-              onChange={reqs => update('requirements', reqs)}
-              edbData={edbData}
-            />
+              onChange={(reqs) => update('requirements', reqs)}
+              edbData={edbData} />
+            
           </CardContent>
         </Card>
 
@@ -200,23 +200,23 @@ export default function LevelEditor() {
           <CardContent className="p-3 pt-0">
             <CapabilityEditor
               capabilities={level.capabilities}
-              onChange={caps => update('capabilities', caps)}
-              edbData={edbData}
-            />
+              onChange={(caps) => update('capabilities', caps)}
+              edbData={edbData} />
+            
           </CardContent>
         </Card>
 
         <LevelCultureEditor levelName={level.name} />
       </div>
-    </ScrollArea>
-  );
+    </ScrollArea>);
+
 }
 
 function BuildingOverview({ building, edbData }) {
   const { updateBuilding, deleteBuilding, setSelectedBuilding } = useEDB();
-  const buildingOptions = edbData.buildings
-    .filter(b => b.name !== building.name)
-    .map(b => ({ value: b.name, label: b.name }));
+  const buildingOptions = edbData.buildings.
+  filter((b) => b.name !== building.name).
+  map((b) => ({ value: b.name, label: b.name }));
 
   return (
     <ScrollArea className="h-full">
@@ -244,7 +244,7 @@ function BuildingOverview({ building, edbData }) {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { deleteBuilding(building.name); setSelectedBuilding(null); }}>Delete</AlertDialogAction>
+                <AlertDialogAction onClick={() => {deleteBuilding(building.name);setSelectedBuilding(null);}}>Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -260,21 +260,21 @@ function BuildingOverview({ building, edbData }) {
               <div className="mt-1">
                 <SearchableSelect
                   value={building.convertTo || '__none__'}
-                  onValueChange={v => updateBuilding(building.name, { convertTo: v === '__none__' ? null : v })}
+                  onValueChange={(v) => updateBuilding(building.name, { convertTo: v === '__none__' ? null : v })}
                   options={buildingOptions}
                   placeholder="None"
-                  noneOption
-                />
+                  noneOption />
+                
               </div>
             </div>
             <div>
               <Label className="text-[10px] text-muted-foreground">Levels</Label>
               <div className="flex gap-1 mt-1 flex-wrap">
-                {building.levels.map((l, i) => (
-                  <Badge key={l.name} variant="outline" className="text-[10px]">
+                {building.levels.map((l, i) =>
+                <Badge key={l.name} variant="outline" className="text-[10px]">
                     {i + 1}. {l.name} ({l.settlementType})
                   </Badge>
-                ))}
+                )}
               </div>
             </div>
           </CardContent>
@@ -286,6 +286,6 @@ function BuildingOverview({ building, edbData }) {
           Select a level from the tree to edit its details
         </p>
       </div>
-    </ScrollArea>
-  );
+    </ScrollArea>);
+
 }
