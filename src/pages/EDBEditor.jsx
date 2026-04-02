@@ -185,7 +185,7 @@ export default function EDBEditor() {
       {/* Main layout */}
       <div className="flex-1 flex min-h-0">
         {/* Left sidebar: building tree */}
-        <div className="w-56 xl:w-56 border-r border-border bg-card/30 flex flex-col shrink-0 min-h-0">
+        <div className="w-56 xl:w-56 border-r border-border bg-card/30 flex flex-col shrink min-h-0">
           <div className="flex-1 min-h-0 overflow-auto">
             <BuildingTree />
           </div>
@@ -198,14 +198,14 @@ export default function EDBEditor() {
 
         {/* Right: validation panel */}
         {showValidation &&
-        <div className="w-70 xl:w-70 border-l border-border bg-card/20 shrink-0 min-h-0 overflow-auto">
+        <div className="w-70 xl:w-70 border-l border-border bg-card/20 shrink min-h-0 overflow-auto">
             <ValidationPanel />
           </div>
         }
 
         {/* Right: code preview (collapsible) */}
         {showCode &&
-        <div className="w-70 xl:w-70 border-l border-border bg-card/20 shrink-0 min-h-0">
+        <div className="w-70 xl:w-70 border-l border-border bg-card/20 shrink min-h-0">
             <CodePreview />
           </div>
         }
