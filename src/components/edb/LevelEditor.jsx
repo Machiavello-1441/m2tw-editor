@@ -27,7 +27,7 @@ export default function LevelEditor() {
 
   if (!edbData || !selectedBuilding) {
     return (
-      <div className="text-muted-foreground mx-1 pr-2 text-sm flex items-center justify-center h-full">
+      <div className="text-muted-foreground mr-1 ml-1 pr-2 text-sm flex items-center justify-center h-full">
         Select a building or level to edit
       </div>);
 
