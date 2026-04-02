@@ -192,7 +192,7 @@ export default function EDBEditor() {
         </div>
 
         {/* Center: level editor */}
-        <div className="mx-3 flex-1 min-w-0 min-h-0 overflow-hidden">
+        <div className="mx-1 flex-1 min-w-0 min-h-0 overflow-hidden">
           <LevelEditor />
         </div>
 
