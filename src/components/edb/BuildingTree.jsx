@@ -54,7 +54,7 @@ function BuildingNode({ building }) {
         </span>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <button className="mt-2 pr-2 pl-2 rounded hover:bg-destructive/20 transition-opacity" title="Delete building tree">
+            <button className="pr-2 pl-2 rounded hover:bg-destructive/20 transition-opacity" title="Delete building tree">
               <Trash2 className="w-3 h-3 text-destructive" />
             </button>
           </AlertDialogTrigger>
