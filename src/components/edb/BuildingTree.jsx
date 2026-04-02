@@ -95,7 +95,7 @@ function BuildingNode({ building }) {
                     {"Level " + levelNum + ": close to M2TWEOP max!"}
                   </div>
               }
-                <div className="text-muted-foreground ml-1 pt-1 pr-2 pb-1 pl-2 text-xs rounded-md flex items-center gap-1.5 cursor-pointer group transition-colors hover:bg-accent hover:text-foreground"
+                <div className="text-muted-foreground pt-1 pr-2 pb-1 pl-2 text-xs rounded-md flex items-center gap-1.5 cursor-pointer group transition-colors hover:bg-accent hover:text-foreground"
 
               onClick={() => {setSelectedBuilding(building.name);setSelectedLevel(level.name);}}>
 
