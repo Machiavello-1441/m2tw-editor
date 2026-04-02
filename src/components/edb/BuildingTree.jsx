@@ -166,7 +166,7 @@ export default function BuildingTree() {
   };
 
   return (
-    <div className="h-full flex flex-nowrap flex-col">
+    <div className="h-full w-full flex flex-nowrap flex-col">
       <div className="p-3 border-b border-border space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="text-xs font-bold text-foreground uppercase tracking-wider flex-1">Buildings</h2>
