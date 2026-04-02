@@ -132,10 +132,10 @@ export default function EDBEditor() {
         <button
           onClick={() => edbFileRef.current?.click()}
           className="text-xs font-medium text-foreground truncate max-w-[200px] hover:text-primary transition-colors cursor-pointer"
-          title="Click to load a new EDB file">
-          {fileName || 'EDB Editor'}</button>
-        <span className="text-[10px] text-muted-foreground hidden sm:block">
-          {edbData.buildings.length} buildings
+          title="Click to load a new EDB file"
+        >{fileName || 'EDB Editor'}</button>
+        <span className="text-[12px] text-muted-foreground hidden sm:block">
+          {edbData.buildings.length} building trees
         </span>
         <div className="flex-1 min-w-0 overflow-hidden">
           <RefFileLoader />
@@ -156,8 +156,8 @@ export default function EDBEditor() {
           variant="ghost"
           className={`px-3 text-xs font-medium rounded-md inline-flex items-center h-7 gap-1 shrink-0 ${isDirty ? 'text-yellow-400 hover:text-yellow-300' : 'text-muted-foreground'}`}
           title="Save EDB to browser cache"
-          onClick={() => saveNow()}>
-          
+          onClick={() => saveNow()}
+        >
           <Save className="w-3 h-3" />
           <span className="hidden lg:block">{isDirty ? 'Save*' : 'Saved'}</span>
         </Button>
@@ -185,27 +185,27 @@ export default function EDBEditor() {
       {/* Main layout */}
       <div className="flex-1 flex min-h-0">
         {/* Left sidebar: building tree */}
-        <div className="bg-card/30 mx-auto w-56 xl:w-64 border-r border-border flex flex-col shrink-0 min-h-0">
+        <div className="w-56 xl:w-56 border-r border-border bg-card/30 flex flex-col shrink-0 min-h-0">
           <div className="flex-1 min-h-0 overflow-auto">
             <BuildingTree />
           </div>
         </div>
 
         {/* Center: level editor */}
-        <div className="ml-4 pr-2 pl-2 flex-1 min-w-0 min-h-0 overflow-auto">
+        <div className="flex-1 min-w-0 min-h-0 overflow-auto">
           <LevelEditor />
         </div>
 
         {/* Right: validation panel */}
         {showValidation &&
-        <div className="w-80 xl:w-96 border-l border-border bg-card/20 shrink-0 min-h-0 overflow-auto">
+        <div className="w-70 xl:w-70 border-l border-border bg-card/20 shrink-0 min-h-0 overflow-auto">
             <ValidationPanel />
           </div>
         }
 
         {/* Right: code preview (collapsible) */}
         {showCode &&
-        <div className="w-80 xl:w-96 border-l border-border bg-card/20 shrink-0 min-h-0">
+        <div className="w-70 xl:w-70 border-l border-border bg-card/20 shrink-0 min-h-0">
             <CodePreview />
           </div>
         }
