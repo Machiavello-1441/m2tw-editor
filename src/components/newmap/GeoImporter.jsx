@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
-import { Upload, Globe, Mountain, Waves } from 'lucide-react';
+import { Upload, Globe, Mountain, Waves, ExternalLink } from 'lucide-react';
 import { PRESET_RESOLUTIONS, getLayerDimensions, LAYER_DEFS, hexToRgb } from '@/lib/mapLayerStore';
 import { normalizeGrayscale } from '@/lib/tgaEncoder';
 
 // Rasterise a GeoJSON feature collection onto a canvas ImageData
+// Uses Web Mercator projection to match Leaflet tile display
+function latToMercatorY(lat) {
+  const r = Math.PI / 180;
+  return Math.log(Math.tan(Math.PI / 4 + lat * r / 2));
+}
+
+const MERC_MAX = latToMercatorY(85.051129);
+const MERC_MIN = latToMercatorY(-85.051129);
+
 function rasterizeGeoJSON(geojson, width, height, color, lineWidth = 2) {
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d');
 
   const toPixel = (lng, lat) => {
+    const clampedLat = Math.max(-85.05, Math.min(85.05, lat));
     const x = ((lng + 180) / 360) * width;
-    const y = ((90 - lat) / 180) * height;
+    const mercY = latToMercatorY(clampedLat);
+    const y = ((MERC_MAX - mercY) / (MERC_MAX - MERC_MIN)) * height;
     return [x, y];
   };
 
@@ -196,9 +207,9 @@ export default function GeoImporter({ onLayerUpdate, layers, baseResolution }) {
 
   return (
     <div className="space-y-4">
-      {/* Online data sources */}
+      {/* Online data sources — auto-fetch */}
       <div>
-        <p className="text-[10px] text-slate-400 font-semibold mb-2 uppercase tracking-wider">Online Sources (Natural Earth)</p>
+        <p className="text-[10px] text-slate-400 font-semibold mb-2 uppercase tracking-wider">Auto-Fetch (Natural Earth)</p>
         <div className="space-y-1.5">
           <button onClick={fetchLandmass} disabled={fetching}
             className="w-full flex items-center gap-2 px-3 py-2 rounded text-[11px] bg-slate-700 border border-slate-600 text-slate-200 hover:bg-slate-600 disabled:opacity-50 transition-colors">
@@ -210,8 +221,36 @@ export default function GeoImporter({ onLayerUpdate, layers, baseResolution }) {
           </button>
           <button onClick={fetchRivers} disabled={fetching}
             className="w-full flex items-center gap-2 px-3 py-2 rounded text-[11px] bg-blue-800/50 border border-blue-600/40 text-blue-300 hover:bg-blue-700/50 disabled:opacity-50 transition-colors">
-            <Waves className="w-3.5 h-3.5 shrink-0" /> Fetch Rivers → Features
+            <Waves className="w-3.5 h-3.5 shrink-0" /> Fetch Rivers (Natural Earth)
           </button>
+        </div>
+      </div>
+
+      {/* External data source links */}
+      <div>
+        <p className="text-[10px] text-slate-400 font-semibold mb-2 uppercase tracking-wider">External Data Sources</p>
+        <div className="space-y-1">
+          <p className="text-[9px] text-slate-500 mb-1">Export screenshot/PNG from each, then import below:</p>
+          <a href="https://tangrams.github.io/heightmapper/" target="_blank" rel="noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-amber-300 hover:bg-slate-700 transition-colors">
+            <ExternalLink className="w-3 h-3 shrink-0" /> Tangram Heightmapper
+          </a>
+          <a href="https://openclimatemap.org/?lat=40.103286&lon=25.806885&zoom=6&variable=T_MAX&resolution=5m&difference=true&month=4&yearRange=1970-2000" target="_blank" rel="noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-amber-300 hover:bg-slate-700 transition-colors">
+            <ExternalLink className="w-3 h-3 shrink-0" /> OpenClimateMap (climate)
+          </a>
+          <a href="https://soilexplorer.net/" target="_blank" rel="noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-amber-300 hover:bg-slate-700 transition-colors">
+            <ExternalLink className="w-3 h-3 shrink-0" /> SoilExplorer (ground types)
+          </a>
+          <a href="https://isric.org/explore/soilgrids" target="_blank" rel="noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-amber-300 hover:bg-slate-700 transition-colors">
+            <ExternalLink className="w-3 h-3 shrink-0" /> SoilGrids / ISRIC (ground types)
+          </a>
+          <a href="https://www.arcgis.com/apps/mapviewer/index.html?webmap=8c5a7c9b333b487db8a4e41d1fee54d2" target="_blank" rel="noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-amber-300 hover:bg-slate-700 transition-colors">
+            <ExternalLink className="w-3 h-3 shrink-0" /> ArcGIS Rivers &amp; Oceans
+          </a>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Rectangle, useMapEvents, ImageOverlay } from 'react-leaflet';
+import { MapContainer, TileLayer, Rectangle, useMapEvents, ImageOverlay, useMap } from 'react-leaflet';
 import { hexToRgb } from '@/lib/mapLayerStore';
 import 'leaflet/dist/leaflet.css';
 
@@ -64,6 +64,21 @@ function floodFill(imageData, startX, startY, fillColor) {
     data[i]=fillColor[0]; data[i+1]=fillColor[1]; data[i+2]=fillColor[2]; data[i+3]=fillColor[3];
     stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
   }
+}
+
+// Disable map drag during selection mode
+function DragController({ selectionMode }) {
+  const map = useMap();
+  useEffect(() => {
+    if (selectionMode) {
+      map.dragging.disable();
+      map.scrollWheelZoom.disable();
+    } else {
+      map.dragging.enable();
+      map.scrollWheelZoom.enable();
+    }
+  }, [selectionMode, map]);
+  return null;
 }
 
 // Map event handler component
@@ -192,7 +207,7 @@ export default function MapCanvas({
     return canvas.toDataURL();
   };
 
-  const worldBounds = [[-85, -180], [85, 180]];
+  const worldBounds = [[-85.051129, -180], [85.051129, 180]];
 
   return (
     <MapContainer
@@ -230,6 +245,7 @@ export default function MapCanvas({
         />
       )}
 
+      <DragController selectionMode={selectionMode} />
       <MapEventHandler
         activeTool={activeTool}
         onMapClick={handleMapClick}
