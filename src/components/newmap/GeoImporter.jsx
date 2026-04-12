@@ -17,6 +17,7 @@ function rasterizeGeoJSON(geojson, width, height, color, lineWidth = 2) {
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
 
   const toPixel = (lng, lat) => {
     const clampedLat = Math.max(-85.05, Math.min(85.05, lat));
