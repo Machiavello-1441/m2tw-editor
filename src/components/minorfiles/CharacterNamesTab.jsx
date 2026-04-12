@@ -3,81 +3,43 @@ import { Upload, Download, Plus, X, Search, Users } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 
-// ─── descr_names.txt parser ───────────────────────────────────────────────────
-// Handles both brace-based (vanilla M2TW) and flat formats:
-//   faction england { characters { John\nWilliam } surnames { ... } females { ... } }
+// ─── descr_names.txt parser ─────────────────────────────────────────────────
+// Grammar:
+//   faction: [name]
+//   \tcharacters / surnames / women   (section headers)
+//   \t\t[name]                        (one per line)
 function parseDescrNames(text) {
   const factions = {};
-
-  // Normalize line endings and strip ; comments
-  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
-    .map(l => l.replace(/;.*$/, '').trimEnd());
-
   let currentFaction = null;
-  let currentSection = null; // 'faction_outer' | 'characters' | 'surnames' | 'females'
-  let depth = 0; // brace depth within current faction
+  let currentSection = null;
+
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
 
   for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) continue;
+    const noComment = raw.replace(/;.*$/, '');
+    const trimmed = noComment.trim();
+    if (!trimmed) continue;
 
-    // Count braces on this line
-    const opens = (line.match(/{/g) || []).length;
-    const closes = (line.match(/}/g) || []).length;
-
-    // Detect faction header (may appear before a { on same line)
-    const factionMatch = line.match(/^faction\s+(\S+)/i);
-    if (factionMatch && !currentFaction) {
+    // "faction: [name]"
+    const factionMatch = trimmed.match(/^faction:\s*(\S+)/i);
+    if (factionMatch) {
       currentFaction = factionMatch[1];
-      if (!factions[currentFaction]) {
-        factions[currentFaction] = { characters: [], surnames: [], females: [] };
-      }
-      currentSection = 'faction_outer';
-      depth += opens - closes;
+      factions[currentFaction] = { characters: [], surnames: [], females: [] };
+      currentSection = null;
       continue;
     }
 
-    if (!currentFaction) { continue; }
+    if (!currentFaction) continue;
 
-    // Section headers inside a faction block
-    const sectionKeyword = line.replace(/{.*/, '').trim().toLowerCase();
-    if (/^characters$/.test(sectionKeyword) || /^male$/.test(sectionKeyword)) {
-      currentSection = 'characters';
-      depth += opens - closes;
-      continue;
-    }
-    if (/^surnames$/.test(sectionKeyword)) {
-      currentSection = 'surnames';
-      depth += opens - closes;
-      continue;
-    }
-    if (/^females?$/.test(sectionKeyword)) {
-      currentSection = 'females';
-      depth += opens - closes;
-      continue;
-    }
+    if (/^characters$/i.test(trimmed)) { currentSection = 'characters'; continue; }
+    if (/^surnames$/i.test(trimmed))   { currentSection = 'surnames';   continue; }
+    if (/^women$/i.test(trimmed))      { currentSection = 'females';    continue; }
+    if (/^females?$/i.test(trimmed))   { currentSection = 'females';    continue; }
+    if (/^male$/i.test(trimmed))       { currentSection = 'characters'; continue; }
 
-    // Closing brace(s) — track depth and reset section/faction as needed
-    if (closes > 0 && opens === 0) {
-      depth -= closes;
-      if (depth <= 1) currentSection = 'faction_outer';
-      if (depth <= 0) {
-        currentFaction = null;
-        currentSection = null;
-        depth = 0;
-      }
-      continue;
+    if (currentSection && !/\s/.test(trimmed)) {
+      factions[currentFaction][currentSection].push(trimmed);
     }
-
-    // Plain name line (no braces, no spaces, inside a section)
-    if (['characters', 'surnames', 'females'].includes(currentSection)) {
-      const name = line.replace(/{|}/g, '').trim();
-      if (name && !/\s/.test(name)) {
-        factions[currentFaction][currentSection].push(name);
-      }
-    }
-
-    depth += opens - closes;
   }
   return factions;
 }
@@ -85,12 +47,12 @@ function parseDescrNames(text) {
 // ─── descr_names.txt serializer ───────────────────────────────────────────────
 function serializeDescrNames(factions) {
   return Object.entries(factions).map(([name, data]) => {
-    const lines = [`faction\t\t\t\t${name}`];
+    const lines = [`faction: ${name}`];
     lines.push('\tcharacters');
     for (const n of data.characters) lines.push(`\t\t${n}`);
     lines.push('\tsurnames');
     for (const n of data.surnames) lines.push(`\t\t${n}`);
-    lines.push('\tfemales');
+    lines.push('\twomen');
     for (const n of data.females) lines.push(`\t\t${n}`);
     return lines.join('\n');
   }).join('\n\n');
