@@ -4,49 +4,80 @@ import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 
 // ─── descr_names.txt parser ───────────────────────────────────────────────────
-// Handles: "faction <name>", then sections "characters", "surnames", "females"
-// Also handles files where sections may be indented with tabs or spaces.
+// Handles both brace-based (vanilla M2TW) and flat formats:
+//   faction england { characters { John\nWilliam } surnames { ... } females { ... } }
 function parseDescrNames(text) {
   const factions = {};
-  let currentFaction = null;
-  let currentSection = null;
 
-  // Normalize line endings
-  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  // Normalize line endings and strip ; comments
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+    .map(l => l.replace(/;.*$/, '').trimEnd());
+
+  let currentFaction = null;
+  let currentSection = null; // 'faction_outer' | 'characters' | 'surnames' | 'females'
+  let depth = 0; // brace depth within current faction
 
   for (const raw of lines) {
-    // Strip inline comments and surrounding whitespace
-    const line = raw.replace(/;.*$/, '').trim();
+    const line = raw.trim();
     if (!line) continue;
 
-    // "faction <name>" — case-insensitive, any whitespace
+    // Count braces on this line
+    const opens = (line.match(/{/g) || []).length;
+    const closes = (line.match(/}/g) || []).length;
+
+    // Detect faction header (may appear before a { on same line)
     const factionMatch = line.match(/^faction\s+(\S+)/i);
-    if (factionMatch) {
+    if (factionMatch && !currentFaction) {
       currentFaction = factionMatch[1];
       if (!factions[currentFaction]) {
         factions[currentFaction] = { characters: [], surnames: [], females: [] };
       }
-      currentSection = null;
+      currentSection = 'faction_outer';
+      depth += opens - closes;
       continue;
     }
 
-    if (!currentFaction) continue;
+    if (!currentFaction) { continue; }
 
-    // Section headers — match exactly (trimmed)
-    if (/^characters$/i.test(line)) { currentSection = 'characters'; continue; }
-    if (/^surnames$/i.test(line)) { currentSection = 'surnames'; continue; }
-    if (/^females$/i.test(line)) { currentSection = 'females'; continue; }
-    // Some mods use "male" instead of "characters"
-    if (/^male$/i.test(line)) { currentSection = 'characters'; continue; }
-    // Some mods use "female" instead of "females"
-    if (/^female$/i.test(line)) { currentSection = 'females'; continue; }
+    // Section headers inside a faction block
+    const sectionKeyword = line.replace(/{.*/, '').trim().toLowerCase();
+    if (/^characters$/.test(sectionKeyword) || /^male$/.test(sectionKeyword)) {
+      currentSection = 'characters';
+      depth += opens - closes;
+      continue;
+    }
+    if (/^surnames$/.test(sectionKeyword)) {
+      currentSection = 'surnames';
+      depth += opens - closes;
+      continue;
+    }
+    if (/^females?$/.test(sectionKeyword)) {
+      currentSection = 'females';
+      depth += opens - closes;
+      continue;
+    }
 
-    if (currentSection && factions[currentFaction]) {
-      // Only push if it looks like a name (not another keyword)
-      if (!/\s/.test(line)) {
-        factions[currentFaction][currentSection].push(line);
+    // Closing brace(s) — track depth and reset section/faction as needed
+    if (closes > 0 && opens === 0) {
+      depth -= closes;
+      if (depth <= 1) currentSection = 'faction_outer';
+      if (depth <= 0) {
+        currentFaction = null;
+        currentSection = null;
+        depth = 0;
+      }
+      continue;
+    }
+
+    // Plain name line (no braces, no spaces, inside a section)
+    if (['characters', 'surnames', 'females'].includes(currentSection)) {
+      const name = line.replace(/{|}/g, '').trim();
+      if (name && !/\s/.test(name)) {
+        factions[currentFaction][currentSection].push(name);
       }
     }
+
+    depth += opens - closes;
   }
   return factions;
 }
