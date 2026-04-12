@@ -30,7 +30,6 @@ export default function LevelEditor() {
       <div className="text-muted-foreground mx-auto pr-2 text-sm flex items-center justify-center h-full">
         Select a building or level to edit
       </div>);
-
   }
 
   const building = edbData.buildings.find((b) => b.name === selectedBuilding);
@@ -44,9 +43,22 @@ export default function LevelEditor() {
   const level = building.levels[levelIndex];
   if (!level) return null;
 
+  return <LevelEditorInner
+    building={building}
+    level={level}
+    levelIndex={levelIndex}
+    selectedBuilding={selectedBuilding}
+    selectedLevel={selectedLevel}
+    setSelectedLevel={setSelectedLevel}
+    updateLevel={updateLevel}
+    deleteLevel={deleteLevel}
+    edbData={edbData}
+  />;
+}
+
+function LevelEditorInner({ building, level, levelIndex, selectedBuilding, selectedLevel, setSelectedLevel, updateLevel, deleteLevel, edbData }) {
   const update = (field, value) => updateLevel(selectedBuilding, selectedLevel, { [field]: value });
 
-  // Local state for level name to avoid losing focus on each keystroke
   const [localName, setLocalName] = useState(level.name);
   useEffect(() => {setLocalName(level.name);}, [level.name]);
 

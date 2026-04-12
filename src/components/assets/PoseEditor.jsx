@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,23 +68,13 @@ export default function PoseEditor({ joints, poseRotations, onPoseChange, onRese
     setExpanded((prev) => ({ ...prev, [idx]: !prev[idx] }));
   };
 
-  if (!joints?.length) {
-    return (
-      <div className="p-3 text-slate-500 text-xs text-center">
-        No skeleton loaded. Import an .ms3d file with bones to use the pose editor.
-      </div>);
-
-  }
-
-  // Build flat ordered list with depth info (for display indentation of names only)
   const { flatList } = React.useMemo(() => {
+    if (!joints?.length) return { flatList: [] };
     const indexedJoints = joints.map((j, i) => ({ ...j, index: i }));
     const cMap = {};
     const roots = [];
     for (const j of indexedJoints) {
-      if (j.parentIdx < 0) {
-        roots.push(j);
-      } else {
+      if (j.parentIdx < 0) { roots.push(j); } else {
         if (!cMap[j.parentIdx]) cMap[j.parentIdx] = [];
         cMap[j.parentIdx].push(j);
       }
@@ -99,21 +89,17 @@ export default function PoseEditor({ joints, poseRotations, onPoseChange, onRese
     return { flatList: list };
   }, [joints]);
 
-  // Filter visible items: show all top-level items, and children only if their parent chain is expanded
   const visibleItems = React.useMemo(() => {
     const result = [];
-    const depthStack = []; // track expanded state at each depth
+    const depthStack = [];
     for (const item of flatList) {
-      // An item is visible if all its ancestors are expanded
-      // Check: for depth 0, always visible. For depth > 0, the item at depth-1 in the stack must be expanded
       if (item.depth === 0) {
         result.push(item);
         depthStack[0] = expanded[item.index];
       } else {
-        // visible if all depths above are expanded
         let visible = true;
         for (let d = 0; d < item.depth; d++) {
-          if (!depthStack[d]) {visible = false;break;}
+          if (!depthStack[d]) { visible = false; break; }
         }
         if (visible) {
           result.push(item);
@@ -123,6 +109,14 @@ export default function PoseEditor({ joints, poseRotations, onPoseChange, onRese
     }
     return result;
   }, [flatList, expanded]);
+
+  if (!joints?.length) {
+    return (
+      <div className="p-3 text-slate-500 text-xs text-center">
+        No skeleton loaded. Import an .ms3d file with bones to use the pose editor.
+      </div>);
+
+  }
 
   return (
     <div className="flex flex-col h-full text-[11px]">

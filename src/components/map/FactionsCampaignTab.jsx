@@ -357,6 +357,7 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
 // ── Win Conditions editor ─────────────────────────────────────────────────────
 function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames, allFactionNames }) {
   const [search, setSearch] = useState('');
+  const [addRegionVal, setAddRegionVal] = useState({});
   if (!winConditions) return <p className="text-[10px] text-slate-600 italic">Load descr_win_conditions.txt to edit</p>;
 
   const factions = Object.keys(winConditions);
@@ -379,8 +380,6 @@ function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames
     if (isShort) setShortField(faction, 'holdRegions', (cond.short?.holdRegions || []).filter(r => r !== reg));
     else setCondField(faction, 'holdRegions', (cond.holdRegions || []).filter(r => r !== reg));
   };
-
-  const [addRegionVal, setAddRegionVal] = useState({});
 
   return (
     <div className="space-y-2">
