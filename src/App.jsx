@@ -20,6 +20,7 @@ import ScriptEditor from './pages/ScriptEditor';
 import FactionsEditor from './pages/FactionsEditor';
 import CampaignSettings from './pages/CampaignSettings';
 import MinorFiles from './pages/MinorFiles';
+import NewMapEditor from './pages/NewMapEditor';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -89,6 +90,7 @@ const AuthenticatedApp = () => {
       <Route path="/FactionsEditor" element={<LayoutWrapper currentPageName="FactionsEditor"><FactionsEditor /></LayoutWrapper>} />
       <Route path="/CampaignSettings" element={<LayoutWrapper currentPageName="CampaignSettings"><CampaignSettings /></LayoutWrapper>} />
       <Route path="/MinorFiles" element={<LayoutWrapper currentPageName="MinorFiles"><MinorFiles /></LayoutWrapper>} />
+      <Route path="/NewMapEditor" element={<LayoutWrapper currentPageName="NewMapEditor"><NewMapEditor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
