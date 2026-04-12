@@ -121,7 +121,7 @@ export default function CharacterNamesTab() {
       return;
     }
     setDescrNames(parsed);
-    setSelectedFaction(prev => factions.includes(prev) ? prev : factions[0]);
+    setSelectedFaction(factions[0]);
   };
 
   const applyNamesBin = (buf) => {
@@ -217,6 +217,13 @@ export default function CharacterNamesTab() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target.result;
+      // Clear stale cache before applying fresh file
+      try {
+        localStorage.removeItem('m2tw_names_bin_entries');
+        localStorage.removeItem('m2tw_names_bin_meta');
+      } catch {}
+      setDisplayNames({});
+      setBinMeta(null);
       applyDescrNames(text);
       try { localStorage.setItem('m2tw_names_file', text); } catch {}
     };
@@ -255,6 +262,10 @@ export default function CharacterNamesTab() {
     const newKey = `new_name_${Date.now()}`;
     updateSection([...currentNames, newKey]);
     setDisplayNames(prev => ({ ...prev, [newKey]: '' }));
+  };
+
+  const sortNamesAZ = () => {
+    updateSection([...currentNames].sort((a, b) => a.localeCompare(b)));
   };
 
   const removeNameAt = (internalName) => {
@@ -387,20 +398,27 @@ export default function CharacterNamesTab() {
                 <span>Display Name (names.txt.bin)</span>
               </div>
 
-              {/* Search */}
-              {currentNames.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <Search className="w-3 h-3 text-slate-500" />
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search names…"
-                    className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600 focus:outline-none" />
-                  <span className="text-[9px] text-slate-600">{filteredNames.length}/{currentNames.length}</span>
-                  {search && (
-                    <button onClick={() => setSearch('')} className="text-slate-500 hover:text-slate-300">
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              )}
+              {/* Search + Add + Sort row */}
+              <div className="flex items-center gap-1.5">
+                <Search className="w-3 h-3 text-slate-500 shrink-0" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+                  className="w-32 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600 focus:outline-none" />
+                {search && (
+                  <button onClick={() => setSearch('')} className="text-slate-500 hover:text-slate-300 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+                <span className="text-[9px] text-slate-600 shrink-0">{filteredNames.length}/{currentNames.length}</span>
+                <div className="flex-1" />
+                <button onClick={sortNamesAZ} disabled={currentNames.length < 2}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] border border-slate-600/40 text-slate-400 hover:text-slate-200 hover:border-slate-400 disabled:opacity-30 transition-colors">
+                  A→Z
+                </button>
+                <button onClick={addName}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] border border-dashed border-slate-600/40 text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors">
+                  <Plus className="w-3 h-3" /> Add Name
+                </button>
+              </div>
 
               {/* Names list */}
               <div className="space-y-0.5">
@@ -415,11 +433,6 @@ export default function CharacterNamesTab() {
                   />
                 ))}
               </div>
-
-              <button onClick={addName}
-                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] border border-dashed border-slate-600/40 text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors">
-                <Plus className="w-3 h-3" /> Add Name
-              </button>
 
               {currentNames.length === 0 && (
                 <p className="text-[10px] text-slate-600 py-2">No names in this section yet.</p>
