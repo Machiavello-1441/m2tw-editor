@@ -87,6 +87,13 @@
   }
 }
 
+/* Nearest-neighbor (pixelated) rendering for M2TW map layer overlays */
+.leaflet-image-layer.pixelated-overlay {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
 /* Ensure inputs/selects/textareas show white text in dark mode */
 .dark input,
 .dark select,

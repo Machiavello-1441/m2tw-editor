@@ -119,15 +119,13 @@ function MapEventHandler({ activeTool, onMapClick, onMapMove, onCoordsChange, se
 export default function MapCanvas({
   layers, activeLayerId, activeTool, brushSize, color,
   onLayerUpdate, onCoordsChange, selectionMode, selection, onSelectionUpdate,
-  onMapRef, onPickColor
+  onPickColor, bboxBounds
 }) {
   const mapRef = useRef(null);
   const canvasRef = useRef(null);
   const isPainting = useRef(false);
 
-  useEffect(() => {
-    if (mapRef.current) onMapRef(mapRef.current);
-  }, [mapRef.current]);
+  useEffect(() => {}, []);  // no-op, map ref used internally
 
   const handleMapMove = (latlng, start) => {
     if (start) isPainting.current = true;
@@ -207,7 +205,10 @@ export default function MapCanvas({
     return canvas.toDataURL();
   };
 
-  const worldBounds = [[-85.051129, -180], [85.051129, 180]];
+  // If a confirmed bbox exists, overlay layers only within that bbox
+  const layerBounds = bboxBounds
+    ? [[bboxBounds.south, bboxBounds.west], [bboxBounds.north, bboxBounds.east]]
+    : [[-85.051129, -180], [85.051129, 180]];
 
   return (
     <MapContainer
@@ -223,18 +224,28 @@ export default function MapCanvas({
         opacity={0.5}
       />
 
-      {/* Render each visible layer as an image overlay */}
+      {/* Render each visible layer as an image overlay within the bbox */}
       {Object.entries(layers).map(([id, layer]) => {
         if (!layer?.imageData || layer.visible === false) return null;
         const url = getLayerDataURL(id);
         if (!url) return null;
         return (
-          <ImageOverlay key={id} url={url} bounds={worldBounds}
-            opacity={layer.opacity ?? 0.7} />
+          <ImageOverlay key={id} url={url} bounds={layerBounds}
+            opacity={layer.opacity ?? 0.7}
+            className="pixelated-overlay"
+          />
         );
       })}
 
-      {/* Selection rectangle */}
+      {/* Always show confirmed bbox if present */}
+      {bboxBounds && (
+        <Rectangle
+          bounds={[[bboxBounds.south, bboxBounds.west], [bboxBounds.north, bboxBounds.east]]}
+          pathOptions={{ color: '#f59e0b', weight: 2, fillOpacity: 0, dashArray: '6 3' }}
+        />
+      )}
+
+      {/* Selection rectangle while drawing */}
       {selectionMode && selection?.start && selection?.end && (
         <Rectangle
           bounds={[

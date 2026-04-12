@@ -1,21 +1,15 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { getLayerDimensions, LAYER_DEFS, PRESET_RESOLUTIONS } from '@/lib/mapLayerStore';
-import { Map, Download, FolderOpen, Settings, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { LAYER_DEFS, PRESET_RESOLUTIONS, getLayerDimensions } from '@/lib/mapLayerStore';
+import { Map, Download, Settings, Layers, ChevronDown, ChevronRight, Crop, RefreshCw } from 'lucide-react';
 import LayerSidebar from '../components/newmap/LayerSidebar';
 import ToolSettings from '../components/newmap/ToolSettings';
 import MapStatusBar from '../components/newmap/MapStatusBar';
-import GeoImporter from '../components/newmap/GeoImporter';
 import ExportPanel from '../components/newmap/ExportPanel';
 import SelectionPanel from '../components/newmap/SelectionPanel';
+import BBoxGenerator from '../components/newmap/BBoxGenerator';
 import MapCanvas from '../components/newmap/MapCanvas';
 
-
-const PANELS = [
-  { id: 'import', label: 'Import Data', icon: FolderOpen },
-  { id: 'selection', label: 'Map Selection', icon: Map },
-  { id: 'export', label: 'Export', icon: Download },
-  { id: 'settings', label: 'Settings', icon: Settings },
-];
+// Phases: 'explore' → draw bbox → 'selected' → generate → 'editing'
 
 export default function NewMapEditor() {
   const [layers, setLayers] = useState({});
@@ -25,11 +19,21 @@ export default function NewMapEditor() {
   const [color, setColor] = useState('#3a7ebf');
   const [coords, setCoords] = useState(null);
   const [selectionMode, setSelectionMode] = useState(false);
-  const [selection, setSelection] = useState(null);
-  const [openPanel, setOpenPanel] = useState('import');
+  const [selection, setSelection] = useState(null); // {start, end} latlng
+  const [bboxConfirmed, setBboxConfirmed] = useState(false);
   const [baseResolution, setBaseResolution] = useState(512);
   const [regionName, setRegionName] = useState('');
-  const mapRef = useRef(null);
+  const [openPanel, setOpenPanel] = useState('export');
+
+  // Derived bbox in south/west/north/east form
+  const bbox = bboxConfirmed && selection?.start && selection?.end ? {
+    south: Math.min(selection.start.lat, selection.end.lat),
+    north: Math.max(selection.start.lat, selection.end.lat),
+    west:  Math.min(selection.start.lng, selection.end.lng),
+    east:  Math.max(selection.start.lng, selection.end.lng),
+  } : null;
+
+  const phase = !bboxConfirmed ? 'explore' : (Object.keys(layers).length === 0 ? 'selected' : 'editing');
 
   const handleLayerUpdate = useCallback((layerId, data) => {
     setLayers(prev => ({ ...prev, [layerId]: { ...prev[layerId], ...data } }));
@@ -55,6 +59,7 @@ export default function NewMapEditor() {
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 0, 0, width, height);
       const imageData = ctx.getImageData(0, 0, width, height);
       handleLayerUpdate(layerId, { imageData, visible: true, opacity: 0.8, dirty: true });
@@ -64,7 +69,20 @@ export default function NewMapEditor() {
 
   const handleSelectionUpdate = ({ start, end, confirmed }) => {
     setSelection({ start, end });
-    if (confirmed) setSelectionMode(false);
+    if (confirmed) setBboxConfirmed(false); // still drawing
+  };
+
+  const handleConfirmBbox = () => {
+    if (selection?.start && selection?.end) {
+      setBboxConfirmed(true);
+    }
+  };
+
+  const handleResetBbox = () => {
+    setSelection(null);
+    setBboxConfirmed(false);
+    setSelectionMode(false);
+    setLayers({});
   };
 
   const togglePanel = (id) => setOpenPanel(prev => prev === id ? null : id);
@@ -76,7 +94,30 @@ export default function NewMapEditor() {
         <Map className="w-4 h-4 text-amber-400" />
         <h1 className="text-sm font-bold text-slate-100">New Map Editor</h1>
         <span className="text-slate-600 text-xs">— M2TW Campaign Map Creator</span>
+
+        {/* Phase indicator */}
+        <div className="flex items-center gap-1 ml-4">
+          {['explore', 'selected', 'editing'].map((p, i) => (
+            <React.Fragment key={p}>
+              <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                phase === p ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-500'
+              }`}>
+                {i + 1}. {p === 'explore' ? 'Explore' : p === 'selected' ? 'Select Area' : 'Edit Layers'}
+              </span>
+              {i < 2 && <span className="text-slate-600 text-[10px]">→</span>}
+            </React.Fragment>
+          ))}
+        </div>
+
         <div className="flex-1" />
+
+        {bbox && (
+          <button onClick={handleResetBbox}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-slate-800 border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-600 transition-colors">
+            <RefreshCw className="w-3 h-3" /> Reset
+          </button>
+        )}
+
         <div className="flex items-center gap-2 text-[11px]">
           <span className="text-slate-500">Resolution:</span>
           <select value={baseResolution} onChange={e => setBaseResolution(Number(e.target.value))}
@@ -90,22 +131,24 @@ export default function NewMapEditor() {
 
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Layer sidebar */}
-        <LayerSidebar
-          layers={layers}
-          activeLayerId={activeLayerId}
-          onSetActive={setActiveLayerId}
-          onToggleVisible={handleToggleVisible}
-          onOpacityChange={handleOpacityChange}
-          onImport={handleImportFile}
-        />
+        {/* Left: Layer sidebar — only in editing phase */}
+        {phase === 'editing' && (
+          <LayerSidebar
+            layers={layers}
+            activeLayerId={activeLayerId}
+            onSetActive={setActiveLayerId}
+            onToggleVisible={handleToggleVisible}
+            onOpacityChange={handleOpacityChange}
+            onImport={handleImportFile}
+          />
+        )}
 
-        {/* Center: Map */}
+        {/* Center: Map (always visible) */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <MapCanvas
             layers={layers}
             activeLayerId={activeLayerId}
-            activeTool={activeTool}
+            activeTool={phase === 'editing' ? activeTool : 'none'}
             brushSize={brushSize}
             color={color}
             onLayerUpdate={handleLayerUpdate}
@@ -113,8 +156,8 @@ export default function NewMapEditor() {
             selectionMode={selectionMode}
             selection={selection}
             onSelectionUpdate={handleSelectionUpdate}
-            onMapRef={ref => { mapRef.current = ref; }}
             onPickColor={setColor}
+            bboxBounds={bbox}
           />
           <MapStatusBar
             coords={coords}
@@ -124,69 +167,81 @@ export default function NewMapEditor() {
           />
         </div>
 
-        {/* Right: Tool settings + collapsible panels */}
-        <div className="flex flex-row h-full overflow-hidden">
-          <ToolSettings
-            activeTool={activeTool}
-            onSetTool={setActiveTool}
-            brushSize={brushSize}
-            onBrushSize={setBrushSize}
-            color={color}
-            onColor={setColor}
-            activeLayerId={activeLayerId}
-            regionName={regionName}
-            onRegionName={setRegionName}
-          />
+        {/* Right panel */}
+        <div className="w-72 bg-slate-900 border-l border-slate-700 flex flex-col overflow-y-auto shrink-0">
 
-          {/* Collapsible right panels */}
-          <div className="w-60 bg-slate-900 border-l border-slate-700 flex flex-col overflow-y-auto">
-            {PANELS.map(panel => (
-              <div key={panel.id} className="border-b border-slate-700">
-                <button
-                  onClick={() => togglePanel(panel.id)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-slate-300 hover:text-slate-100 hover:bg-slate-800 transition-colors">
-                  <panel.icon className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-                  <span className="flex-1 text-left font-semibold">{panel.label}</span>
-                  {openPanel === panel.id
-                    ? <ChevronDown className="w-3 h-3 text-slate-500" />
-                    : <ChevronRight className="w-3 h-3 text-slate-500" />}
-                </button>
-                {openPanel === panel.id && (
-                  <div className="px-3 pb-3 pt-1">
-                    {panel.id === 'import' && (
-                      <GeoImporter
-                        layers={layers}
-                        onLayerUpdate={handleLayerUpdate}
-                        baseResolution={baseResolution}
-                      />
-                    )}
-                    {panel.id === 'selection' && (
-                      <SelectionPanel
-                        selectionMode={selectionMode}
-                        onToggleSelection={() => setSelectionMode(m => !m)}
-                        selection={selection}
-                        onConfirmSelection={() => setSelectionMode(false)}
-                        onClearSelection={() => { setSelection(null); setSelectionMode(false); }}
-                      />
-                    )}
-                    {panel.id === 'export' && (
-                      <ExportPanel
-                        layers={layers}
-                        baseResolution={baseResolution}
-                      />
-                    )}
-                    {panel.id === 'settings' && (
-                      <div className="space-y-2 text-[11px] text-slate-400">
-                        <p>OSM tile reference layer and all painting tools are active.</p>
-                        <p>Use <span className="text-amber-400">Import Data</span> to fetch geographic data from Natural Earth.</p>
-                        <p>Use <span className="text-amber-400">Map Selection</span> to define the area to export.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          {/* Phase: Explore / Select */}
+          {phase !== 'editing' && (
+            <div className="p-3 space-y-3">
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                {phase === 'explore'
+                  ? 'Navigate the map to your target region. Then draw a bounding box to define the area you want to build a campaign map for.'
+                  : 'Area selected. Now choose your data sources and generate the map layers within the bounding box.'}
+              </p>
+
+              <SelectionPanel
+                selectionMode={selectionMode}
+                onToggleSelection={() => setSelectionMode(m => !m)}
+                selection={selection}
+                onConfirmSelection={handleConfirmBbox}
+                onClearSelection={() => { setSelection(null); setBboxConfirmed(false); setSelectionMode(false); }}
+                bboxConfirmed={bboxConfirmed}
+              />
+
+              {bboxConfirmed && bbox && (
+                <BBoxGenerator
+                  bbox={bbox}
+                  baseResolution={baseResolution}
+                  onLayerUpdate={handleLayerUpdate}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Phase: Editing — collapsible panels */}
+          {phase === 'editing' && (
+            <>
+              <ToolSettings
+                activeTool={activeTool}
+                onSetTool={setActiveTool}
+                brushSize={brushSize}
+                onBrushSize={setBrushSize}
+                color={color}
+                onColor={setColor}
+                activeLayerId={activeLayerId}
+                regionName={regionName}
+                onRegionName={setRegionName}
+              />
+              {[
+                { id: 'export', label: 'Export', icon: Download },
+                { id: 'settings', label: 'Settings', icon: Settings },
+              ].map(panel => (
+                <div key={panel.id} className="border-t border-slate-700">
+                  <button onClick={() => togglePanel(panel.id)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-slate-300 hover:text-slate-100 hover:bg-slate-800 transition-colors">
+                    <panel.icon className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                    <span className="flex-1 text-left font-semibold">{panel.label}</span>
+                    {openPanel === panel.id
+                      ? <ChevronDown className="w-3 h-3 text-slate-500" />
+                      : <ChevronRight className="w-3 h-3 text-slate-500" />}
+                  </button>
+                  {openPanel === panel.id && (
+                    <div className="px-3 pb-3 pt-1">
+                      {panel.id === 'export' && (
+                        <ExportPanel layers={layers} baseResolution={baseResolution} />
+                      )}
+                      {panel.id === 'settings' && (
+                        <div className="text-[11px] text-slate-400 space-y-1">
+                          <p>Layers are rendered with nearest-neighbor (pixelated) scaling as required by M2TW.</p>
+                          <p>Use the layer sidebar to toggle visibility and adjust opacity.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>
