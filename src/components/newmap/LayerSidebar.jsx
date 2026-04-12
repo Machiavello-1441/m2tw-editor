@@ -1,8 +1,8 @@
 import React from 'react';
 import { Eye, EyeOff, Upload } from 'lucide-react';
-import { LAYER_DEFS } from '@/lib/mapLayerStore';
+import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 
-export default function LayerSidebar({ layers, activeLayerId, onSetActive, onToggleVisible, onOpacityChange, onImport }) {
+export default function LayerSidebar({ layers, activeLayerId, onSetActive, onToggleVisible, onOpacityChange, onImport, mapWidth, mapHeight }) {
   return (
     <div className="w-56 shrink-0 bg-slate-900 border-r border-slate-700 flex flex-col h-full overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-700">
@@ -47,7 +47,12 @@ export default function LayerSidebar({ layers, activeLayerId, onSetActive, onTog
               </div>
               {layer.imageData && (
                 <div className="mt-1">
-                  <span className="text-[9px] text-green-500">✓ loaded ({layer.imageData.width}×{layer.imageData.height})</span>
+                  <span className="text-[9px] text-green-500">✓ {layer.imageData.width}×{layer.imageData.height}</span>
+                </div>
+              )}
+              {!layer.imageData && mapWidth && (
+                <div className="mt-1">
+                  {(() => { const d = getLayerDimensions(def, mapWidth, mapHeight); return <span className="text-[9px] text-slate-600">{d.width}×{d.height}px</span>; })()}
                 </div>
               )}
             </div>

@@ -43,18 +43,20 @@ function makeBboxCanvas(bbox, width, height) {
   return { canvas, ctx, toXY };
 }
 
-export default function BboxLayerGenerator({ bbox, baseResolution, onLayerUpdate, onDone }) {
+export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, onDone }) {
   const [status, setStatus] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [era, setEra] = useState('medieval');
+  // OHM date format: e.g. "1095-01-01" (use OHM's date= parameter)
+  const [ohmDate, setOhmDate] = useState('1095-01-01');
   const [generated, setGenerated] = useState({});
 
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
   const tangramUrl = `https://tangrams.github.io/heightmapper/#${((bbox.south + bbox.north) / 2).toFixed(2)},${((bbox.west + bbox.east) / 2).toFixed(2)},7`;
+  const ohmDateParam = ohmDate ? `[date:"${ohmDate}"]` : '';
 
   const generateRegions = async () => {
     setStatus('Fetching administrative boundaries from OpenHistoricalMap…');
-    const query = `[out:json][bbox:${bboxStr}][timeout:60];
+    const query = `[out:json]${ohmDateParam}[bbox:${bboxStr}][timeout:60];
 (
   way["boundary"="administrative"]["admin_level"~"^[2-6]$"];
   relation["boundary"="administrative"]["admin_level"~"^[2-6]$"];
@@ -62,7 +64,7 @@ export default function BboxLayerGenerator({ bbox, baseResolution, onLayerUpdate
 out geom qt;`;
 
     const def = LAYER_DEFS.find(d => d.id === 'map_regions');
-    const { width, height } = getLayerDimensions(def, baseResolution);
+    const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
     const { canvas, ctx, toXY } = makeBboxCanvas(bbox, width, height);
     const used = new Set(['#000000']);
 
@@ -116,17 +118,21 @@ out geom qt;`;
 
   const generateRivers = async () => {
     setStatus('Fetching rivers from OpenHistoricalMap…');
-    const query = `[out:json][bbox:${bboxStr}][timeout:60];
+    const query = `[out:json]${ohmDateParam}[bbox:${bboxStr}][timeout:60];
 (
   way["waterway"~"^(river|stream|canal)$"];
 );
 out geom qt;`;
 
     const def = LAYER_DEFS.find(d => d.id === 'map_features');
-    const { width, height } = getLayerDimensions(def, baseResolution);
+    const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
     const { canvas, ctx, toXY } = makeBboxCanvas(bbox, width, height);
     ctx.strokeStyle = '#1565c0';
     ctx.lineWidth = 2;
+
+    // Rivers in map_features.tga must be pure blue RGB(0,0,255) per M2TW spec
+    ctx.strokeStyle = '#0000ff';
+    ctx.lineWidth = 1;
 
     try {
       const data = await fetchOverpass(query, true);
@@ -172,7 +178,7 @@ out geom qt;`;
     const img = new Image();
     img.onload = () => {
       const def = LAYER_DEFS.find(d => d.id === layerId);
-      const { width, height } = getLayerDimensions(def, baseResolution);
+      const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       const ctx = canvas.getContext('2d');
@@ -217,23 +223,29 @@ out geom qt;`;
         <p>Lng: <span className="text-slate-200 font-mono">{bbox.west.toFixed(2)}° → {bbox.east.toFixed(2)}°</span></p>
       </div>
 
-      {/* Era */}
+      {/* OHM Date selector */}
       <div>
-        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Map Era</p>
-        <div className="flex gap-1">
-          {[['medieval', 'Medieval'], ['roman', 'Ancient Roman']].map(([v, l]) => (
-            <button key={v} onClick={() => setEra(v)}
-              className={`flex-1 px-2 py-1.5 rounded text-[10px] border transition-colors ${
-                era === v ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
+        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Historical Date (OHM)</p>
+        <p className="text-[9px] text-slate-500 mb-1.5">OpenHistoricalMap uses ISO dates. Leave blank for modern OSM data.</p>
+        <input
+          type="text"
+          value={ohmDate}
+          onChange={e => setOhmDate(e.target.value)}
+          placeholder="YYYY-MM-DD (e.g. 1095-01-01)"
+          className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[11px] text-slate-200 font-mono focus:outline-none focus:border-amber-500"
+        />
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {[['500-01-01','500 AD'],['800-01-01','800 AD'],['1095-01-01','1095 AD'],['1200-01-01','1200 AD'],['1350-01-01','1350 AD']].map(([v,l]) => (
+            <button key={v} onClick={() => setOhmDate(v)}
+              className={`px-2 py-0.5 rounded text-[9px] border transition-colors ${
+                ohmDate === v ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700'
               }`}>{l}</button>
           ))}
         </div>
-        {era === 'roman' && (
-          <a href="https://imperium.ahlfeldt.se/" target="_blank" rel="noreferrer"
-            className="mt-1.5 flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-slate-800 border border-amber-600/30 text-amber-300 hover:bg-slate-700">
-            <ExternalLink className="w-3 h-3" /> DARE – Digital Atlas of Roman Empire
-          </a>
-        )}
+        <a href="https://www.openhistoricalmap.org/" target="_blank" rel="noreferrer"
+          className="mt-1.5 flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-slate-800 border border-slate-600/50 text-amber-300 hover:bg-slate-700">
+          <ExternalLink className="w-3 h-3" /> OpenHistoricalMap ↗
+        </a>
       </div>
 
       {/* Auto-generate */}

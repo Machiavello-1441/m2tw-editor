@@ -4,7 +4,7 @@ import { LAYER_DEFS } from '@/lib/mapLayerStore';
 import { downloadTGA, validateRegionMap } from '@/lib/tgaEncoder';
 import JSZip from 'jszip';
 
-export default function ExportPanel({ layers, baseResolution }) {
+export default function ExportPanel({ layers, mapWidth, mapHeight }) {
   const [results, setResults] = useState([]);
   const [exporting, setExporting] = useState(false);
 

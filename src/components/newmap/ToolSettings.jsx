@@ -1,6 +1,6 @@
 import React from 'react';
 import { Paintbrush, Eraser, Pipette, Square, Minus } from 'lucide-react';
-import { CLIMATE_PALETTE, GROUND_TYPE_PALETTE, LAYER_DEFS } from '@/lib/mapLayerStore';
+import { CLIMATE_PALETTE, GROUND_TYPE_PALETTE, FEATURES_PALETTE, LAYER_DEFS } from '@/lib/mapLayerStore';
 
 const TOOLS = [
   { id: 'brush',  icon: Paintbrush, label: 'Brush' },
@@ -12,8 +12,10 @@ const TOOLS = [
 
 export default function ToolSettings({ activeTool, onSetTool, brushSize, onBrushSize, color, onColor, activeLayerId, regionName, onRegionName }) {
   const layerDef = LAYER_DEFS.find(d => d.id === activeLayerId);
-  const showPalette = activeLayerId === 'map_climates' || activeLayerId === 'map_ground_types';
-  const palette = activeLayerId === 'map_climates' ? CLIMATE_PALETTE : GROUND_TYPE_PALETTE;
+  const showPalette = activeLayerId === 'map_climates' || activeLayerId === 'map_ground_types' || activeLayerId === 'map_features';
+  const palette = activeLayerId === 'map_climates' ? CLIMATE_PALETTE
+    : activeLayerId === 'map_features' ? FEATURES_PALETTE
+    : GROUND_TYPE_PALETTE;
 
   return (
     <div className="w-52 shrink-0 bg-slate-900 border-l border-slate-700 flex flex-col h-full overflow-y-auto">
@@ -58,7 +60,9 @@ export default function ToolSettings({ activeTool, onSetTool, brushSize, onBrush
       {showPalette && (
         <div className="p-3 border-b border-slate-700 space-y-1">
           <label className="text-[10px] text-slate-400">
-            {activeLayerId === 'map_climates' ? 'Climate Zones' : 'Ground Types'}
+            {activeLayerId === 'map_climates' ? 'Climate Zones (M2TW canonical)'
+              : activeLayerId === 'map_features' ? 'Feature Colors (M2TW canonical)'
+              : 'Ground Types (M2TW canonical)'}
           </label>
           <div className="space-y-0.5 max-h-48 overflow-y-auto">
             {palette.map(p => (

@@ -1,10 +1,10 @@
 import React from 'react';
-import { LAYER_DEFS, PRESET_RESOLUTIONS, getLayerDimensions } from '@/lib/mapLayerStore';
+import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 
-export default function MapStatusBar({ coords, activeLayerId, layers, baseResolution }) {
+export default function MapStatusBar({ coords, activeLayerId, layers, mapWidth, mapHeight }) {
   const layerDef = LAYER_DEFS.find(d => d.id === activeLayerId);
   const layer = layers[activeLayerId];
-  const dims = layerDef ? getLayerDimensions(layerDef, baseResolution) : null;
+  const dims = layerDef ? getLayerDimensions(layerDef, mapWidth, mapHeight) : null;
   const loadedCount = Object.values(layers).filter(l => l?.imageData).length;
 
   return (
@@ -38,7 +38,7 @@ export default function MapStatusBar({ coords, activeLayerId, layers, baseResolu
       <div className="flex-1" />
       <span className="text-[10px] text-slate-500">{loadedCount}/{LAYER_DEFS.length} layers loaded</span>
       <span className="text-slate-700">|</span>
-      <span className="text-[10px] text-slate-500">Base: {baseResolution}×{baseResolution}</span>
+      <span className="text-[10px] text-slate-500">Regions: <span className="font-mono">{mapWidth}×{mapHeight}</span></span>
     </div>
   );
 }

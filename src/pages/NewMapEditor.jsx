@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { getLayerDimensions, LAYER_DEFS, PRESET_RESOLUTIONS } from '@/lib/mapLayerStore';
-import { Map, Download, Settings, ChevronDown, ChevronRight, Crop, Edit3, MousePointer } from 'lucide-react';
+import { getLayerDimensions, LAYER_DEFS } from '@/lib/mapLayerStore';
+import { Map, Download, Crop, Edit3, MousePointer, ChevronDown, ChevronRight } from 'lucide-react';
 import LayerSidebar from '../components/newmap/LayerSidebar';
 import ToolSettings from '../components/newmap/ToolSettings';
 import MapStatusBar from '../components/newmap/MapStatusBar';
@@ -9,12 +9,9 @@ import SelectionPanel from '../components/newmap/SelectionPanel';
 import MapCanvas from '../components/newmap/MapCanvas';
 import BboxLayerGenerator from '../components/newmap/BboxLayerGenerator';
 
-// Phase 1: Browse & select area
-// Phase 2: Generate / import layers for selected bbox
-// Phase 3: Edit layers manually + export
-
 const PHASES = [
   { id: 'browse', label: 'Select Area', icon: MousePointer },
+  { id: 'resolution', label: 'Set Resolution', icon: Map },
   { id: 'generate', label: 'Generate Layers', icon: Map },
   { id: 'edit', label: 'Edit & Export', icon: Edit3 },
 ];
@@ -25,12 +22,13 @@ export default function NewMapEditor() {
   const [activeLayerId, setActiveLayerId] = useState('map_regions');
   const [activeTool, setActiveTool] = useState('brush');
   const [brushSize, setBrushSize] = useState(8);
-  const [color, setColor] = useState('#3a7ebf');
+  const [color, setColor] = useState('#0000ff');
   const [coords, setCoords] = useState(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selection, setSelection] = useState(null);
   const [openPanel, setOpenPanel] = useState(null);
-  const [baseResolution, setBaseResolution] = useState(512);
+  const [mapWidth, setMapWidth] = useState(512);
+  const [mapHeight, setMapHeight] = useState(512);
   const [regionName, setRegionName] = useState('');
   const mapRef = useRef(null);
 
@@ -61,7 +59,7 @@ export default function NewMapEditor() {
     const img = new Image();
     img.onload = () => {
       const def = LAYER_DEFS.find(d => d.id === layerId);
-      const { width, height } = getLayerDimensions(def, baseResolution);
+      const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       const ctx = canvas.getContext('2d');
@@ -73,14 +71,17 @@ export default function NewMapEditor() {
     img.src = URL.createObjectURL(file);
   };
 
-  const handleSelectionUpdate = ({ start, end, confirmed }) => {
+  const handleSelectionUpdate = ({ start, end }) => {
     setSelection({ start, end });
-    if (confirmed) setSelectionMode(false);
   };
 
   const confirmSelection = () => {
     setSelectionMode(false);
-    if (bbox) setPhase('generate');
+    if (bbox) setPhase('resolution');
+  };
+
+  const confirmResolution = () => {
+    if (mapWidth > 0 && mapHeight > 0) setPhase('generate');
   };
 
   const togglePanel = (id) => setOpenPanel(prev => prev === id ? null : id);
@@ -95,45 +96,40 @@ export default function NewMapEditor() {
         <h1 className="text-sm font-bold text-slate-100">New Map Editor</h1>
         <span className="text-slate-600 text-xs">— M2TW Campaign Map Creator</span>
 
-        {/* Phase stepper */}
         <div className="flex items-center gap-1 ml-4">
           {PHASES.map((p, i) => (
             <React.Fragment key={p.id}>
               <button
-                onClick={() => { if (i <= phaseIndex || (p.id === 'generate' && bbox)) setPhase(p.id); }}
+                onClick={() => { if (i < phaseIndex) setPhase(p.id); }}
                 className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold transition-colors ${
                   phase === p.id
                     ? 'bg-amber-600 text-white'
                     : i < phaseIndex
-                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 cursor-pointer'
                       : 'text-slate-600 cursor-default'
                 }`}>
                 <p.icon className="w-3 h-3" />
                 {p.label}
               </button>
-              {i < PHASES.length - 1 && (
-                <span className="text-slate-700 text-xs">›</span>
-              )}
+              {i < PHASES.length - 1 && <span className="text-slate-700 text-xs">›</span>}
             </React.Fragment>
           ))}
         </div>
 
-        <div className="flex-1" />
-        <div className="flex items-center gap-2 text-[11px]">
-          <span className="text-slate-500">Resolution:</span>
-          <select value={baseResolution} onChange={e => setBaseResolution(Number(e.target.value))}
-            className="bg-slate-800 border border-slate-600 rounded px-2 py-0.5 text-slate-200 text-[11px] focus:outline-none">
-            {PRESET_RESOLUTIONS.map(r => (
-              <option key={r.base} value={r.base}>{r.label}</option>
-            ))}
-          </select>
-        </div>
+        {/* Show current dimensions in header once set */}
+        {phase !== 'browse' && phase !== 'resolution' && (
+          <div className="ml-2 flex items-center gap-1 text-[11px]">
+            <span className="text-slate-500">Regions:</span>
+            <span className="text-amber-400 font-mono">{mapWidth}×{mapHeight}</span>
+            <span className="text-slate-600 ml-1">/ ×2+1 maps:</span>
+            <span className="text-slate-400 font-mono">{mapWidth*2+1}×{mapHeight*2+1}</span>
+          </div>
+        )}
       </div>
 
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Phase 1 & 3: show layer sidebar only in edit */}
         {phase === 'edit' && (
           <LayerSidebar
             layers={layers}
@@ -142,10 +138,12 @@ export default function NewMapEditor() {
             onToggleVisible={handleToggleVisible}
             onOpacityChange={handleOpacityChange}
             onImport={handleImportFile}
+            mapWidth={mapWidth}
+            mapHeight={mapHeight}
           />
         )}
 
-        {/* Center: Map canvas — always visible */}
+        {/* Center: Map canvas always visible */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           <MapCanvas
             layers={layers}
@@ -158,17 +156,17 @@ export default function NewMapEditor() {
             selectionMode={selectionMode}
             selection={selection}
             onSelectionUpdate={handleSelectionUpdate}
-            onMapRef={ref => { mapRef.current = ref; }}
             onPickColor={setColor}
+            bboxBounds={bbox}
           />
           <MapStatusBar
             coords={coords}
             activeLayerId={activeLayerId}
             layers={layers}
-            baseResolution={baseResolution}
+            mapWidth={mapWidth}
+            mapHeight={mapHeight}
           />
 
-          {/* Phase 1 overlay instructions */}
           {phase === 'browse' && !selectionMode && !bbox && (
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-none">
               <div className="bg-slate-900/90 border border-amber-600/40 rounded-lg px-4 py-2 text-[12px] text-amber-300 text-center shadow-xl">
@@ -181,11 +179,10 @@ export default function NewMapEditor() {
         {/* Right panel */}
         <div className="w-64 bg-slate-900 border-l border-slate-700 flex flex-col overflow-y-auto">
 
-          {/* Phase 1: Selection */}
           {phase === 'browse' && (
             <div className="p-3 space-y-3">
               <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 1 — Select Map Area</p>
-              <p className="text-[11px] text-slate-400">Navigate to your desired region, then draw a bounding box to define the map extent.</p>
+              <p className="text-[11px] text-slate-400">Navigate to your target region, then draw a bounding box around it.</p>
               <SelectionPanel
                 selectionMode={selectionMode}
                 onToggleSelection={() => setSelectionMode(m => !m)}
@@ -196,23 +193,72 @@ export default function NewMapEditor() {
             </div>
           )}
 
-          {/* Phase 2: Generate */}
+          {phase === 'resolution' && (
+            <div className="p-3 space-y-4">
+              <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 2 — Set Map Resolution</p>
+              <p className="text-[11px] text-slate-400">
+                Enter the pixel size for <span className="text-amber-300 font-mono">map_regions.tga</span> and <span className="text-amber-300 font-mono">map_features.tga</span>. All other maps will be <span className="font-mono text-slate-300">2× + 1px</span> per axis.
+              </p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] text-slate-400 mb-1 block">Width (pixels)</label>
+                  <input
+                    type="number" min="64" max="4096" step="1"
+                    value={mapWidth}
+                    onChange={e => setMapWidth(Math.max(1, parseInt(e.target.value) || 512))}
+                    className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 mb-1 block">Height (pixels)</label>
+                  <input
+                    type="number" min="64" max="4096" step="1"
+                    value={mapHeight}
+                    onChange={e => setMapHeight(Math.max(1, parseInt(e.target.value) || 512))}
+                    className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="bg-slate-800 rounded p-2 text-[10px] text-slate-400 space-y-0.5">
+                  <p className="text-slate-300 font-semibold mb-1">Resulting dimensions</p>
+                  <p>map_regions / map_features: <span className="font-mono text-slate-200">{mapWidth}×{mapHeight}</span></p>
+                  <p>map_heights / climates / ground: <span className="font-mono text-slate-200">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
+                </div>
+
+                <div className="space-y-1 text-[10px] text-slate-500">
+                  <p className="font-semibold text-slate-400">Common presets:</p>
+                  {[[512,512,'Vanilla M2TW'],[256,256,'Compact'],[1024,1024,'Large'],[2048,2048,'M2EX']].map(([w,h,l]) => (
+                    <button key={l} onClick={() => { setMapWidth(w); setMapHeight(h); }}
+                      className="w-full text-left px-2 py-1 rounded bg-slate-800 border border-slate-700 hover:border-amber-500/40 hover:text-slate-300 transition-colors font-mono">
+                      {l} — {w}×{h}
+                    </button>
+                  ))}
+                </div>
+
+                <button onClick={confirmResolution}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[11px] bg-amber-600 border border-amber-500 text-white hover:bg-amber-500 transition-colors font-semibold">
+                  Confirm &amp; Generate Layers →
+                </button>
+              </div>
+            </div>
+          )}
+
           {phase === 'generate' && bbox && (
             <div className="p-3">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-2">Step 2 — Generate Layers</p>
+              <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-2">Step 3 — Generate Layers</p>
               <BboxLayerGenerator
                 bbox={bbox}
-                baseResolution={baseResolution}
+                mapWidth={mapWidth}
+                mapHeight={mapHeight}
                 onLayerUpdate={handleLayerUpdate}
                 onDone={() => setPhase('edit')}
               />
             </div>
           )}
 
-          {/* Phase 3: Edit tools */}
           {phase === 'edit' && (
             <>
-              {/* Export */}
               <div className="border-b border-slate-700">
                 <button onClick={() => togglePanel('export')}
                   className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-slate-300 hover:text-slate-100 hover:bg-slate-800 transition-colors">
@@ -222,29 +268,27 @@ export default function NewMapEditor() {
                 </button>
                 {openPanel === 'export' && (
                   <div className="px-3 pb-3 pt-1">
-                    <ExportPanel layers={layers} baseResolution={baseResolution} />
+                    <ExportPanel layers={layers} mapWidth={mapWidth} mapHeight={mapHeight} />
                   </div>
                 )}
               </div>
 
-              {/* Re-select area */}
               <div className="p-3 border-b border-slate-700">
-                <button onClick={() => { setPhase('browse'); setSelection(null); }}
+                <button onClick={() => { setPhase('browse'); setSelection(null); setLayers({}); }}
                   className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition-colors">
-                  <Crop className="w-3.5 h-3.5" /> Change Area / Re-generate
+                  <Crop className="w-3.5 h-3.5" /> Start Over / New Area
                 </button>
               </div>
 
-              {/* Settings */}
               <div className="p-3">
-                <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-2">Settings</p>
-                <p className="text-[10px] text-slate-500">Use tools on the left to paint layers. All layers use nearest-neighbor (bitmap) rendering for M2TW compatibility.</p>
+                <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1">Map Size</p>
+                <p className="text-[10px] text-slate-500">Regions: <span className="font-mono text-slate-400">{mapWidth}×{mapHeight}</span></p>
+                <p className="text-[10px] text-slate-500">×2 maps: <span className="font-mono text-slate-400">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
               </div>
             </>
           )}
         </div>
 
-        {/* Edit mode: tool settings on the far right */}
         {phase === 'edit' && (
           <ToolSettings
             activeTool={activeTool}
