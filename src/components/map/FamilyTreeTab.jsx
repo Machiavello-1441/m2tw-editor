@@ -1,11 +1,76 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Users, AlertTriangle, X, ChevronDown, ChevronRight } from 'lucide-react';
 
 const MIN_PARENT_CHILD_AGE_DIFF = 16;
 const MAX_CHILDREN = 4;
 
+// Build a flat list of all characters including character_record entries
+function buildAllChars(stratData) {
+  const chars = (stratData?.items || []).filter(i => i.category === 'character');
+  const charNames = new Set(chars.map(c => c.name?.toLowerCase()));
+
+  // Add character_record entries not already present as full characters
+  for (const faction of (stratData?.factions || [])) {
+    for (const rec of (faction.characterRecords || [])) {
+      if (!charNames.has(rec.name?.toLowerCase())) {
+        chars.push({
+          id: `rec_${faction.name}_${rec.name}`,
+          category: 'character',
+          name: rec.name,
+          sex: rec.sex || 'male',
+          age: rec.age || 30,
+          faction: faction.name,
+          charType: 'named character',
+          status: rec.status,
+          traits: [],
+          ancillaries: [],
+          army: [],
+        });
+        charNames.add(rec.name?.toLowerCase());
+      }
+    }
+  }
+  return chars;
+}
+
+// Parse relative lines from factions into family tree objects
+function buildInitialTrees(stratData, allChars) {
+  const treesByFaction = {};
+  const charByName = {};
+  for (const c of allChars) {
+    if (c.name) charByName[c.name.toLowerCase()] = c;
+  }
+
+  for (const faction of (stratData?.factions || [])) {
+    const trees = [];
+    for (const rel of (faction.relatives || [])) {
+      // rel is an array of names: [head/father, wife/mother, child1, child2, ...]
+      if (!rel || rel.length === 0) continue;
+      const father = rel[0] ? charByName[rel[0].toLowerCase()] || null : null;
+      const mother = rel[1] ? charByName[rel[1].toLowerCase()] || null : null;
+      const childNames = rel.slice(2);
+      const children = childNames.map(n => charByName[n?.toLowerCase()]).filter(Boolean);
+      trees.push({
+        id: Date.now() + Math.random(),
+        father,
+        mother,
+        children,
+        spouses: {},
+        nestedChildren: {},
+        fromFile: true,
+      });
+    }
+    if (trees.length > 0) {
+      treesByFaction[faction.name] = trees;
+    }
+  }
+  return treesByFaction;
+}
+
 function CharacterDragCard({ onDrop, slot, assigned, onClear, allChars }) {
   const [dragOver, setDragOver] = useState(false);
+  const isFather = slot === 'father';
+  const acceptedSex = isFather ? 'male' : 'female';
 
   const handleDragOver = (e) => { e.preventDefault(); setDragOver(true); };
   const handleDragLeave = () => setDragOver(false);
@@ -14,7 +79,9 @@ function CharacterDragCard({ onDrop, slot, assigned, onClear, allChars }) {
     setDragOver(false);
     const charId = e.dataTransfer.getData('charId');
     const found = allChars.find(c => String(c.id) === charId);
-    if (found) onDrop(slot, found);
+    if (!found) return;
+    if (found.sex !== acceptedSex) return; // enforce sex constraint
+    onDrop(slot, found);
   };
 
   return (
@@ -26,7 +93,9 @@ function CharacterDragCard({ onDrop, slot, assigned, onClear, allChars }) {
         dragOver ? 'border-amber-400 bg-amber-900/20' : 'border-slate-600/40 bg-slate-800/30'
       }`}
     >
-      <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">{slot === 'father' ? '👨 Father' : '👩 Mother'}</p>
+      <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">
+        {isFather ? '👨 Father (male)' : '👩 Mother (female)'}
+      </p>
       {assigned ? (
         <div className="text-center w-full">
           <p className="text-[11px] font-mono text-amber-300 truncate">{assigned.name}</p>
@@ -34,7 +103,7 @@ function CharacterDragCard({ onDrop, slot, assigned, onClear, allChars }) {
           <button onClick={() => onClear(slot)} className="mt-1 text-[9px] text-slate-600 hover:text-red-400"><X className="w-3 h-3 mx-auto" /></button>
         </div>
       ) : (
-        <p className="text-[9px] text-slate-600 italic">Drag a character here</p>
+        <p className="text-[9px] text-slate-600 italic">Drop {acceptedSex} here</p>
       )}
     </div>
   );
@@ -47,10 +116,11 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
   const myChildren = children?.[char.id] || [];
   const canAddChild = myChildren.length < MAX_CHILDREN;
   const ageLimit = (char.age || 0) - MIN_PARENT_CHILD_AGE_DIFF;
+  const opposSex = char.sex === 'male' ? 'female' : 'male';
 
   const eligibleSpouses = useMemo(() =>
-    allChars.filter(c => c.faction === faction && c.id !== char.id && c.sex !== char.sex && !Object.values(spouses || {}).find(s => s?.id === c.id)),
-    [allChars, char, faction, spouses]
+    allChars.filter(c => c.faction === faction && c.id !== char.id && c.sex === opposSex && !Object.values(spouses || {}).find(s => s?.id === c.id)),
+    [allChars, char, faction, spouses, opposSex]
   );
   const eligibleChildren = useMemo(() =>
     allChars.filter(c => c.faction === faction && (c.age || 0) <= ageLimit && c.id !== char.id && !myChildren.find(mc => mc.id === c.id) && !(spouse && c.id === spouse.id)),
@@ -88,7 +158,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
                 }}
                 className="h-5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-400 flex-1"
               >
-                <option value="">— assign spouse —</option>
+                <option value="">— assign spouse ({opposSex}) —</option>
                 {eligibleSpouses.map(c => <option key={c.id} value={c.id}>{c.name} (age {c.age})</option>)}
               </select>
             )}
@@ -188,7 +258,8 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
   const eligibleChildren = useMemo(() => {
     const fatherAge = father?.age || 0;
     const motherAge = mother?.age || 0;
-    const minAge = Math.min(fatherAge, motherAge) - MIN_PARENT_CHILD_AGE_DIFF;
+    const parentAge = (father && mother) ? Math.min(fatherAge, motherAge) : (fatherAge || motherAge);
+    const minAge = parentAge - MIN_PARENT_CHILD_AGE_DIFF;
     return allChars.filter(c =>
       c.faction === faction &&
       (c.age || 0) <= minAge &&
@@ -200,11 +271,14 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
   const canAddChild = (children || []).length < MAX_CHILDREN;
   const nestedChildrenMap = { ...(tree.nestedChildren || {}) };
 
+  const treeLabel = [father?.name, mother?.name].filter(Boolean).join(' × ') || 'Unnamed Tree';
+
   return (
     <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2 space-y-2">
       <div className="flex items-center gap-2">
         <Users className="w-3.5 h-3.5 text-amber-400" />
-        <span className="text-[10px] font-semibold text-amber-300 flex-1">Family Tree</span>
+        <span className="text-[10px] font-semibold text-amber-300 flex-1 truncate">{treeLabel}</span>
+        {tree.fromFile && <span className="text-[8px] text-slate-500 bg-slate-800 px-1 rounded">from file</span>}
         <button onClick={() => onDelete(treeId)} className="text-slate-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
       </div>
 
@@ -271,11 +345,9 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
 export default function FamilyTreeTab({ stratData }) {
   const [factionFilter, setFactionFilter] = useState('');
   const [trees, setTrees] = useState({});
+  const [initialized, setInitialized] = useState(false);
 
-  const allChars = useMemo(() =>
-    (stratData?.items || []).filter(i => i.category === 'character'),
-    [stratData?.items]
-  );
+  const allChars = useMemo(() => buildAllChars(stratData), [stratData]);
 
   const allFactions = useMemo(() => {
     const from = (stratData?.factions || []).map(f => f.name).filter(Boolean);
@@ -283,12 +355,24 @@ export default function FamilyTreeTab({ stratData }) {
     return [...new Set([...from, ...fromLists])].sort();
   }, [stratData]);
 
+  // Initialize trees from file on first load
+  useEffect(() => {
+    if (stratData?.raw && !initialized) {
+      const fromFile = buildInitialTrees(stratData, allChars);
+      setTrees(fromFile);
+      setInitialized(true);
+    }
+  }, [stratData?.raw, initialized]);
+
   const activeFaction = factionFilter || allFactions[0] || '';
 
   const factionChars = useMemo(() =>
     allChars.filter(c => c.faction === activeFaction),
     [allChars, activeFaction]
   );
+
+  const maleChars = useMemo(() => factionChars.filter(c => c.sex === 'male'), [factionChars]);
+  const femaleChars = useMemo(() => factionChars.filter(c => c.sex === 'female'), [factionChars]);
 
   const factionTrees = trees[activeFaction] || [];
 
@@ -315,6 +399,26 @@ export default function FamilyTreeTab({ stratData }) {
     return <div className="p-3 text-[10px] text-slate-600 text-center">Load descr_strat.txt to use family trees</div>;
   }
 
+  const DragList = ({ chars, label }) => (
+    <div className="flex-1 min-w-0">
+      <p className="text-[8px] text-slate-600 uppercase font-semibold mb-0.5">{label}</p>
+      <div className="flex flex-col gap-0.5 max-h-24 overflow-y-auto">
+        {chars.map(c => (
+          <div
+            key={c.id}
+            draggable
+            onDragStart={e => e.dataTransfer.setData('charId', String(c.id))}
+            className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-600/40 text-[9px] font-mono text-slate-300 cursor-grab hover:border-amber-500/50 hover:text-amber-300 transition-colors select-none truncate"
+            title={`${c.charType} · age ${c.age}`}
+          >
+            {c.name} <span className="text-slate-600">({c.age})</span>
+          </div>
+        ))}
+        {chars.length === 0 && <p className="text-[9px] text-slate-600 italic">None</p>}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-2 border-b border-slate-800 shrink-0 space-y-1.5">
@@ -325,25 +429,15 @@ export default function FamilyTreeTab({ stratData }) {
         >
           {allFactions.map(f => <option key={f}>{f}</option>)}
         </select>
-        <p className="text-[9px] text-slate-500">{factionChars.length} characters in this faction</p>
+        <p className="text-[9px] text-slate-500">{factionChars.length} characters ({maleChars.length}♂ {femaleChars.length}♀)</p>
       </div>
 
+      {/* Drag sidebar: two columns male/female */}
       <div className="shrink-0 border-b border-slate-800 p-2">
-        <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Drag characters into a tree</p>
-        <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
-          {factionChars.map(c => (
-            <div
-              key={c.id}
-              draggable
-              onDragStart={e => e.dataTransfer.setData('charId', String(c.id))}
-              className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-600/40 text-[9px] font-mono text-slate-300 cursor-grab hover:border-amber-500/50 hover:text-amber-300 transition-colors select-none"
-              title={`${c.charType} · age ${c.age}`}
-            >
-              {c.name}
-              <span className="text-slate-600 ml-1">({c.sex[0]},{c.age})</span>
-            </div>
-          ))}
-          {factionChars.length === 0 && <p className="text-[9px] text-slate-600 italic">No characters for this faction</p>}
+        <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Drag into Father/Mother slots</p>
+        <div className="flex gap-2">
+          <DragList chars={maleChars} label="♂ Males → Father" />
+          <DragList chars={femaleChars} label="♀ Females → Mother" />
         </div>
       </div>
 
@@ -356,7 +450,7 @@ export default function FamilyTreeTab({ stratData }) {
         </button>
 
         {factionTrees.length === 0 && (
-          <p className="text-[10px] text-slate-600 italic text-center py-4">No family trees yet for {activeFaction}</p>
+          <p className="text-[10px] text-slate-600 italic text-center py-4">No family trees for {activeFaction}</p>
         )}
 
         {factionTrees.map(tree => (
