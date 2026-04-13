@@ -450,7 +450,7 @@ export function computeSettlementPositions(settlements, regionsData, regionsLaye
 }
 
 // ─── Serializer ───────────────────────────────────────────────────────────────
-function generateSettlementBlock(s, indent = '\t') {
+function generateSettlementBlock(s, indent = '') {
   const ind2 = indent + '\t';
   const ind3 = indent + '\t\t';
   const lines = [
@@ -647,14 +647,20 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
         // "faction <name>" or "faction <name>, ..." or "faction <name> ..."
         return /^faction[\s\t]+/.test(cl) && cl.replace(/^faction[\s\t]+/, '').split(/[\s\t,]/)[0] === factionName;
       });
-      const block = generateSettlementBlock(s, '\t');
+      const block = generateSettlementBlock(s, '');
       if (factionLineIdx >= 0) {
-        // Find the end of this faction block: next faction/region/faction_standings line
-        // We want to insert INSIDE the faction block, just before its terminating keyword
+        // Find the end of this faction block using brace depth tracking to avoid
+        // false positives from 'region' keyword inside existing settlement blocks
         let insertIdx = lines.length;
+        let braceDepth = 0;
         for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
-          const fl = lines[fi].replace(/;.*$/, '').trim();
-          if (!fl) continue;
+          const raw = lines[fi];
+          const fl = raw.replace(/;.*$/, '').trim();
+          for (const ch of raw) {
+            if (ch === '{') braceDepth++;
+            else if (ch === '}') braceDepth--;
+          }
+          if (braceDepth > 0 || !fl) continue; // inside a nested block
           if (
             /^faction[\s\t]+\w/i.test(fl) ||
             /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||

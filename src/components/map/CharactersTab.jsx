@@ -128,6 +128,41 @@ function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
               }} className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
             </div>
           </div>
+
+          {/* Army */}
+          {(c.charType === 'general' || c.charType === 'named character' || c.charType === 'admiral') && (
+            <div>
+              <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Army Units</p>
+              <div className="space-y-0.5">
+                {(c.army || []).map((u, i) => (
+                  <div key={i} className="flex items-center gap-1">
+                    <input value={u.unit} onChange={e => {
+                      const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
+                      set('army', army);
+                    }} className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" placeholder="unit name" />
+                    <input type="number" title="exp" value={u.exp ?? 0} min={0} onChange={e => {
+                      const army = c.army.map((x, j) => j === i ? { ...x, exp: parseInt(e.target.value)||0 } : x);
+                      set('army', army);
+                    }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-300 font-mono text-center" />
+                    <input type="number" title="armour" value={u.armour ?? 0} min={0} onChange={e => {
+                      const army = c.army.map((x, j) => j === i ? { ...x, armour: parseInt(e.target.value)||0 } : x);
+                      set('army', army);
+                    }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-blue-300 font-mono text-center" />
+                    <input type="number" title="wpn" value={u.weaponLvl ?? 0} min={0} onChange={e => {
+                      const army = c.army.map((x, j) => j === i ? { ...x, weaponLvl: parseInt(e.target.value)||0 } : x);
+                      set('army', army);
+                    }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-red-300 font-mono text-center" />
+                    <button onClick={() => set('army', c.army.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 text-[9px] shrink-0">✕</button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[8px] text-slate-600 mb-0.5">exp | armour | wpn_lvl</p>
+              <button onClick={() => set('army', [...(c.army || []), { unit: '', exp: 0, armour: 0, weaponLvl: 0 }])}
+                className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
+                <Plus className="w-2.5 h-2.5" /> Add unit
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

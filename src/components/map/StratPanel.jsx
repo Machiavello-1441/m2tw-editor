@@ -166,7 +166,7 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
 }
 
 // ─── Settlement editor (inline) ──────────────────────────────────────────────
-function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer, onRelocatePixel, mapH }) {
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer, onRelocatePixel, mapH, rebelFactionList, musicTypeList, mercenaryPoolList, religionList, allFactions }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
@@ -251,6 +251,10 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       regionG: regionInfo?.g ?? 0,
       regionB: regionInfo?.b ?? 0,
       hiddenResources: [...regionHiddenResources],
+      rebelFaction: regionInfo?.rebelFaction || '',
+      musicType: regionInfo?.musicType || '',
+      mercenaryPool: regionInfo?.mercenaryPool || '',
+      religions: { ...(regionInfo?.religions || {}) },
     });
     setEditing(true);
     setExpanded(true);
@@ -281,6 +285,10 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
         g: draft.regionG,
         b: draft.regionB,
         resources: draft.hiddenResources || [],
+        rebelFaction: draft.rebelFaction,
+        musicType: draft.musicType,
+        mercenaryPool: draft.mercenaryPool,
+        religions: draft.religions,
       });
     }
     setEditing(false);
@@ -497,6 +505,93 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                     {treeLevels.map(lv => <option key={lv} value={lv}>{lv}</option>)}
                   </select>
                 </div>
+              </div>
+
+              {/* Owning Faction */}
+              <div>
+                <span className="text-[9px] text-slate-500">Owning Faction (descr_strat)</span>
+                <select value={draft.faction || ''} onChange={e => setDraft(d => ({...d, faction: e.target.value}))}
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                  <option value="">— select —</option>
+                  {(allFactions || factionList).map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+
+              {/* Rebel Faction */}
+              <div>
+                <span className="text-[9px] text-slate-500">Rebel Faction (descr_regions)</span>
+                {rebelFactionList?.length > 0 ? (
+                  <select value={draft.rebelFaction || ''} onChange={e => setDraft(d => ({...d, rebelFaction: e.target.value}))}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="">— select —</option>
+                    {rebelFactionList.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                ) : (
+                  <input value={draft.rebelFaction || ''} onChange={e => setDraft(d => ({...d, rebelFaction: e.target.value}))}
+                    placeholder="rebel faction…"
+                    className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                )}
+              </div>
+
+              {/* Music Type */}
+              <div>
+                <span className="text-[9px] text-slate-500">Music Type</span>
+                {musicTypeList?.length > 0 ? (
+                  <select value={draft.musicType || ''} onChange={e => setDraft(d => ({...d, musicType: e.target.value}))}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="">— none —</option>
+                    {musicTypeList.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                ) : (
+                  <input value={draft.musicType || ''} onChange={e => setDraft(d => ({...d, musicType: e.target.value}))}
+                    placeholder="music type…"
+                    className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                )}
+              </div>
+
+              {/* Mercenary Pool */}
+              <div>
+                <span className="text-[9px] text-slate-500">Mercenary Pool</span>
+                {mercenaryPoolList?.length > 0 ? (
+                  <select value={draft.mercenaryPool || ''} onChange={e => setDraft(d => ({...d, mercenaryPool: e.target.value}))}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="">— none —</option>
+                    {mercenaryPoolList.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                ) : (
+                  <input value={draft.mercenaryPool || ''} onChange={e => setDraft(d => ({...d, mercenaryPool: e.target.value}))}
+                    placeholder="mercenary pool…"
+                    className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                )}
+              </div>
+
+              {/* Religions */}
+              <div>
+                <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Religions (sum=100)</p>
+                {Object.entries(draft.religions || {}).map(([rel, val]) => (
+                  <div key={rel} className="flex items-center gap-1 mb-0.5">
+                    <span className="text-[10px] font-mono text-slate-300 flex-1 truncate">{rel}</span>
+                    <input type="number" min={0} max={100} value={val}
+                      onChange={e => setDraft(d => ({ ...d, religions: { ...d.religions, [rel]: parseInt(e.target.value)||0 } }))}
+                      className="w-14 h-5 px-1 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
+                    <button onClick={() => setDraft(d => { const r = {...d.religions}; delete r[rel]; return {...d, religions: r}; })}
+                      className="text-slate-600 hover:text-red-400"><X className="w-2.5 h-2.5" /></button>
+                  </div>
+                ))}
+                {(religionList||[]).filter(r => !(r in (draft.religions||{}))).length > 0 && (
+                  <select defaultValue="" onChange={e => {
+                    if (!e.target.value) return;
+                    setDraft(d => ({ ...d, religions: { ...(d.religions||{}), [e.target.value]: 0 } }));
+                    e.target.value = '';
+                  }} className="w-full h-5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-400">
+                    <option value="">+ Add religion…</option>
+                    {(religionList||[]).filter(r => !(r in (draft.religions||{}))).map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
+                {Object.keys(draft.religions||{}).length > 0 && (() => {
+                  const total = Object.values(draft.religions||{}).reduce((s,v) => s+(parseInt(v)||0), 0);
+                  return <p className={`text-[9px] font-mono mt-0.5 ${total===100?'text-green-400':'text-red-400'}`}>Total: {total}/100</p>;
+                })()}
               </div>
 
               <div className="flex gap-1.5 justify-end pt-0.5">
@@ -1088,6 +1183,11 @@ export default function StratPanel({
                       regionsLayer={regionsLayer}
                       onRelocatePixel={onRelocatePixel}
                       mapH={mapH}
+                      rebelFactionList={rebelFactionList}
+                      musicTypeList={musicTypeList}
+                      mercenaryPoolList={mercenaryPoolList}
+                      religionList={religionList}
+                      allFactions={allFactions}
                     />
                   ))}
                 </div>
