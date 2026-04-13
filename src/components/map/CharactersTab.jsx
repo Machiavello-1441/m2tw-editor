@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import FamilyTreeTab from './FamilyTreeTab';
 
 const CHARACTER_TYPES = ['general','admiral','spy','merchant','diplomat','priest','assassin','princess','heretic','witch','inquisitor','named character'];
-const DIRECTIONS = ['N','NE','E','SE','S','SW','W','NW'];
 
 function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
   const [expanded, setExpanded] = useState(false);
@@ -170,6 +170,7 @@ function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
 }
 
 export default function CharactersTab({ stratData, onStratDataChange, onSelectItem }) {
+  const [subTab, setSubTab] = useState('list');
   const [search, setSearch] = useState('');
   const [filterFaction, setFilterFaction] = useState('');
 
@@ -232,39 +233,59 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-2 space-y-1.5 shrink-0 border-b border-slate-800">
-        <div className="flex gap-1">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or type…"
-            className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
-          <select value={filterFaction} onChange={e => setFilterFaction(e.target.value)}
-            className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-            <option value="">All factions</option>
-            {allFactions.map(f => <option key={f}>{f}</option>)}
-          </select>
-        </div>
-        <button onClick={handleAdd}
-          className="w-full flex items-center justify-center gap-1 py-1 text-[10px] rounded border border-slate-600/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
-          <Plus className="w-3 h-3" /> Add Character
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        {filtered.length === 0 && (
-          <div className="text-[10px] text-slate-600 italic text-center py-4">
-            {allChars.length === 0 ? 'No characters in descr_strat.txt' : 'No characters match filters'}
-          </div>
-        )}
-        {filtered.map(char => (
-          <CharacterRow
-            key={char.id}
-            char={char}
-            allFactions={allFactions}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-            onSelect={onSelectItem}
-          />
+      {/* Sub-tabs: Characters list | Family Trees */}
+      <div className="flex border-b border-slate-800 shrink-0">
+        {[['list', 'Characters'], ['trees', 'Family Trees']].map(([id, label]) => (
+          <button key={id} onClick={() => setSubTab(id)}
+            className={`flex-1 py-1 text-[9px] font-semibold border-b-2 transition-colors ${subTab === id ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+            {label}
+          </button>
         ))}
       </div>
+
+      {subTab === 'trees' && (
+        <div className="flex-1 overflow-hidden">
+          <FamilyTreeTab stratData={stratData} />
+        </div>
+      )}
+
+      {subTab === 'list' && (
+        <>
+          <div className="p-2 space-y-1.5 shrink-0 border-b border-slate-800">
+            <div className="flex gap-1">
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or type…"
+                className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
+              <select value={filterFaction} onChange={e => setFilterFaction(e.target.value)}
+                className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                <option value="">All factions</option>
+                {allFactions.map(f => <option key={f}>{f}</option>)}
+              </select>
+            </div>
+            <button onClick={handleAdd}
+              className="w-full flex items-center justify-center gap-1 py-1 text-[10px] rounded border border-slate-600/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
+              <Plus className="w-3 h-3" /> Add Character
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+            {filtered.length === 0 && (
+              <div className="text-[10px] text-slate-600 italic text-center py-4">
+                {allChars.length === 0 ? 'No characters in descr_strat.txt' : 'No characters match filters'}
+              </div>
+            )}
+            {filtered.map(char => (
+              <CharacterRow
+                key={char.id}
+                char={char}
+                allFactions={allFactions}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+                onSelect={onSelectItem}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
