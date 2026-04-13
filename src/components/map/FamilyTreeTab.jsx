@@ -128,7 +128,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
   );
 
   return (
-    <div className={`ml-4 border-l border-slate-700/40 pl-2 ${depth > 0 ? 'mt-1' : ''}`}>
+    <div className={`ml-2 border-l border-slate-700/30 pl-1.5 ${depth > 0 ? 'mt-0.5' : ''}`}>
       <div className="flex items-center gap-1 mb-1">
         <button onClick={() => setExpanded(v => !v)} className="text-slate-600 hover:text-slate-400">
           {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -140,7 +140,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
       </div>
 
       {expanded && (
-        <div className="ml-2 space-y-1">
+        <div className="ml-1 space-y-0.5">
           <div className="flex items-center gap-1">
             <span className="text-[9px] text-slate-500 w-12 shrink-0">Spouse:</span>
             {spouse ? (

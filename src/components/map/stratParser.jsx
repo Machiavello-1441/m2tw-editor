@@ -94,8 +94,13 @@ function parseCharacterLine(line, lineIndex) {
   // character  William, named character, male, leader, age 40, x 109, y 147
   const m = line.match(/^character\s+(.+?),\s*(named character|general|admiral|spy|merchant|diplomat|priest|assassin|princess|heretic|witch|inquisitor)\s*,?\s*(male|female)?,?\s*(leader|heir)?,?\s*age\s+(\d+),\s*x\s+(\d+),\s*y\s+(\d+)/i);
   if (!m) return null;
+  const fullName = m[1].trim();
+  const spaceIdx = fullName.indexOf(' ');
+  const firstName = spaceIdx >= 0 ? fullName.slice(0, spaceIdx) : fullName;
+  const surname = spaceIdx >= 0 ? fullName.slice(spaceIdx + 1) : '';
   return {
-    name: m[1].trim(),
+    name: firstName,
+    surname,
     charType: m[2].toLowerCase().trim(),
     sex: (m[3] || 'male').toLowerCase(),
     role: (m[4] || '').toLowerCase(), // 'leader', 'heir', or ''
