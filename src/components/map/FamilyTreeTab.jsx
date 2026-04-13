@@ -4,7 +4,7 @@ import { Plus, Trash2, Users, AlertTriangle, X, ChevronDown, ChevronRight } from
 const MIN_PARENT_CHILD_AGE_DIFF = 16;
 const MAX_CHILDREN = 4;
 
-function CharacterDragCard({ char, onDrop, slot, assigned, onClear, allChars }) {
+function CharacterDragCard({ onDrop, slot, assigned, onClear, allChars }) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = (e) => { e.preventDefault(); setDragOver(true); };
@@ -12,9 +12,9 @@ function CharacterDragCard({ char, onDrop, slot, assigned, onClear, allChars }) 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
-    const id = e.dataTransfer.getData('charId');
-    const char = allChars.find(c => String(c.id) === id);
-    if (char) onDrop(slot, char);
+    const charId = e.dataTransfer.getData('charId');
+    const found = allChars.find(c => String(c.id) === charId);
+    if (found) onDrop(slot, found);
   };
 
   return (
@@ -49,7 +49,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
   const ageLimit = (char.age || 0) - MIN_PARENT_CHILD_AGE_DIFF;
 
   const eligibleSpouses = useMemo(() =>
-    allChars.filter(c => c.faction === faction && c.id !== char.id && c.sex !== char.sex && !Object.values(spouses||{}).find(s => s?.id === c.id)),
+    allChars.filter(c => c.faction === faction && c.id !== char.id && c.sex !== char.sex && !Object.values(spouses || {}).find(s => s?.id === c.id)),
     [allChars, char, faction, spouses]
   );
   const eligibleChildren = useMemo(() =>
@@ -71,7 +71,6 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
 
       {expanded && (
         <div className="ml-2 space-y-1">
-          {/* Spouse */}
           <div className="flex items-center gap-1">
             <span className="text-[9px] text-slate-500 w-12 shrink-0">Spouse:</span>
             {spouse ? (
@@ -95,14 +94,13 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
             )}
           </div>
 
-          {/* Children */}
           {myChildren.map(child => (
             <ChildNode
               key={child.id}
               char={child}
               depth={depth + 1}
               allChars={allChars}
-              onRemove={(id) => onRemoveChild(char.id, id)}
+              onRemove={(cid) => onRemoveChild(char.id, cid)}
               onAssignSpouse={onAssignSpouse}
               onAddChild={onAddChild}
               onRemoveChild={onRemoveChild}
@@ -130,10 +128,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
                 <button onClick={() => setShowAddChild(false)} className="text-slate-600 hover:text-red-400"><X className="w-3 h-3" /></button>
               </div>
             ) : (
-              <button
-                onClick={() => setShowAddChild(true)}
-                className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5"
-              >
+              <button onClick={() => setShowAddChild(true)} className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
                 <Plus className="w-2.5 h-2.5" /> Add child
               </button>
             )
@@ -150,9 +145,14 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
 }
 
 function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
-  const { father, mother, children, spouses, id } = tree;
+  const treeId = tree.id;
+  const father = tree.father;
+  const mother = tree.mother;
+  const children = tree.children;
+  const spouses = tree.spouses;
+  const [showAddChild, setShowAddChild] = useState(false);
 
-  const set = (patch) => onUpdate(id, { ...tree, ...patch });
+  const set = (patch) => onUpdate(treeId, { ...tree, ...patch });
 
   const handleDrop = (slot, char) => set({ [slot]: char });
   const handleClear = (slot) => set({ [slot]: null });
@@ -174,14 +174,6 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
   };
 
   const handleAddDescendantChild = (parentId, child) => {
-    const addChild = (nodes) => nodes.map(n => {
-      if (n.id === parentId) {
-        if ((tree.children || []).length >= MAX_CHILDREN) return n;
-        return n; // we track children in the tree.children map
-      }
-      return n;
-    });
-    // Store nested children in flat map keyed by parentId
     const existingChildren = (tree.nestedChildren || {})[parentId] || [];
     if (existingChildren.find(c => c.id === child.id)) return;
     if (existingChildren.length >= MAX_CHILDREN) return;
@@ -193,7 +185,6 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
     set({ nestedChildren: { ...(tree.nestedChildren || {}), [parentId]: existing.filter(c => c.id !== childId) } });
   };
 
-  // Flatten all chars for age checks
   const eligibleChildren = useMemo(() => {
     const fatherAge = father?.age || 0;
     const motherAge = mother?.age || 0;
@@ -207,9 +198,6 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
   }, [allChars, father, mother, children, faction]);
 
   const canAddChild = (children || []).length < MAX_CHILDREN;
-  const [showAddChild, setShowAddChild] = useState(false);
-
-  // Merge nested children into one lookup
   const nestedChildrenMap = { ...(tree.nestedChildren || {}) };
 
   return (
@@ -217,18 +205,16 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
       <div className="flex items-center gap-2">
         <Users className="w-3.5 h-3.5 text-amber-400" />
         <span className="text-[10px] font-semibold text-amber-300 flex-1">Family Tree</span>
-        <button onClick={() => onDelete(id)} className="text-slate-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+        <button onClick={() => onDelete(treeId)} className="text-slate-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
       </div>
 
-      {/* Parents row */}
       <div className="grid grid-cols-2 gap-2">
         <CharacterDragCard slot="father" assigned={father} allChars={allChars} onDrop={handleDrop} onClear={handleClear} />
         <CharacterDragCard slot="mother" assigned={mother} allChars={allChars} onDrop={handleDrop} onClear={handleClear} />
       </div>
 
-      {/* Children */}
       <div>
-        <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Children ({(children||[]).length}/{MAX_CHILDREN})</p>
+        <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Children ({(children || []).length}/{MAX_CHILDREN})</p>
         {(children || []).map(child => (
           <ChildNode
             key={child.id}
@@ -284,7 +270,7 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
 
 export default function FamilyTreeTab({ stratData }) {
   const [factionFilter, setFactionFilter] = useState('');
-  const [trees, setTrees] = useState({}); // { factionName: [tree, ...] }
+  const [trees, setTrees] = useState({});
 
   const allChars = useMemo(() =>
     (stratData?.items || []).filter(i => i.category === 'character'),
@@ -311,17 +297,17 @@ export default function FamilyTreeTab({ stratData }) {
     setTrees(prev => ({ ...prev, [activeFaction]: [...(prev[activeFaction] || []), newTree] }));
   };
 
-  const updateTree = (id, updated) => {
+  const updateTree = (tid, updated) => {
     setTrees(prev => ({
       ...prev,
-      [activeFaction]: (prev[activeFaction] || []).map(t => t.id === id ? updated : t),
+      [activeFaction]: (prev[activeFaction] || []).map(t => t.id === tid ? updated : t),
     }));
   };
 
-  const deleteTree = (id) => {
+  const deleteTree = (tid) => {
     setTrees(prev => ({
       ...prev,
-      [activeFaction]: (prev[activeFaction] || []).filter(t => t.id !== id),
+      [activeFaction]: (prev[activeFaction] || []).filter(t => t.id !== tid),
     }));
   };
 
@@ -331,7 +317,6 @@ export default function FamilyTreeTab({ stratData }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Faction selector */}
       <div className="p-2 border-b border-slate-800 shrink-0 space-y-1.5">
         <select
           value={activeFaction}
@@ -343,7 +328,6 @@ export default function FamilyTreeTab({ stratData }) {
         <p className="text-[9px] text-slate-500">{factionChars.length} characters in this faction</p>
       </div>
 
-      {/* Draggable character list */}
       <div className="shrink-0 border-b border-slate-800 p-2">
         <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Drag characters into a tree</p>
         <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
@@ -363,7 +347,6 @@ export default function FamilyTreeTab({ stratData }) {
         </div>
       </div>
 
-      {/* Trees */}
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         <button
           onClick={addTree}
