@@ -38,7 +38,11 @@ function buildInitialTrees(stratData, allChars) {
   const treesByFaction = {};
   const charByName = {};
   for (const c of allChars) {
+    // Index by first name alone
     if (c.name) charByName[c.name.toLowerCase()] = c;
+    // Index by full name (first + surname) — this is what relative lines contain
+    const fullName = [c.name, c.surname].filter(Boolean).join(' ');
+    if (fullName) charByName[fullName.toLowerCase()] = c;
   }
 
   for (const faction of (stratData?.factions || [])) {
