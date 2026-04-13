@@ -321,9 +321,13 @@ export function parseDescrStrat(text) {
         }
 
         // character_record
-        if ((fm = fl.match(/^character_record\s+(.+?),\s*(male|female)\s*,\s*age\s+(\d+)\s*,\s*(\w+)/i))) {
+        if ((fm = fl.match(/^character_record\s+(.+?),\s*(male|female)\s*,\s*age\s+(\d+)\s*,\s*(dead\s+\d+|never_a_leader|past_leader|leader|heir|\w+)/i))) {
+          const statusRaw = fm[4].trim();
+          const deadMatch = statusRaw.match(/^dead\s+(\d+)/i);
           faction.characterRecords.push({
-            name: fm[1].trim(), sex: fm[2], age: parseInt(fm[3]), status: fm[4],
+            name: fm[1].trim(), sex: fm[2], age: parseInt(fm[3]),
+            status: deadMatch ? 'dead' : statusRaw,
+            deadYears: deadMatch ? parseInt(deadMatch[1]) : 0,
           });
           i++; continue;
         }

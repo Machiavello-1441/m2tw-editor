@@ -401,17 +401,18 @@ export default function FamilyTreeTab({ stratData }) {
 
   const DragList = ({ chars, label }) => (
     <div className="flex-1 min-w-0">
-      <p className="text-[8px] text-slate-600 uppercase font-semibold mb-0.5">{label}</p>
-      <div className="flex flex-col gap-0.5 max-h-24 overflow-y-auto">
+      <p className="text-[8px] text-slate-600 uppercase font-semibold mb-1">{label}</p>
+      <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-0.5">
         {chars.map(c => (
           <div
             key={c.id}
             draggable
             onDragStart={e => e.dataTransfer.setData('charId', String(c.id))}
-            className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-600/40 text-[9px] font-mono text-slate-300 cursor-grab hover:border-amber-500/50 hover:text-amber-300 transition-colors select-none truncate"
+            className="px-2 py-1 bg-slate-800 rounded border border-slate-600/40 text-[10px] font-mono text-slate-300 cursor-grab hover:border-amber-500/50 hover:text-amber-300 transition-colors select-none"
             title={`${c.charType} · age ${c.age}`}
           >
-            {c.name} <span className="text-slate-600">({c.age})</span>
+            <div className="truncate">{c.name}</div>
+            <div className="text-[8px] text-slate-600">age {c.age} · {c.charType}</div>
           </div>
         ))}
         {chars.length === 0 && <p className="text-[9px] text-slate-600 italic">None</p>}

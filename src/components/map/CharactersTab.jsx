@@ -1,16 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Archive } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
 
 const CHARACTER_TYPES = ['general','admiral','spy','merchant','diplomat','priest','assassin','princess','heretic','witch','inquisitor','named character'];
+const NAMED_TYPES = new Set(['named character','general','admiral']); // types that can have leader/heir role
+const RECORD_ROLES = ['never_a_leader','past_leader','leader','heir'];
 
-function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
+function CharacterRow({ char, allFactions, allNames, onUpdate, onDelete, onSelect }) {
   const [expanded, setExpanded] = useState(false);
   const c = char;
-
   const set = (key, val) => onUpdate(c.id, { ...c, [key]: val });
-
-  const charLabel = `${c.name || '(unnamed)'} — ${c.charType || 'general'} (${c.faction || '?'})`;
+  const isNamedType = NAMED_TYPES.has(c.charType);
+  const fullName = [c.name, c.surname].filter(Boolean).join(' ');
 
   return (
     <div className="rounded border border-slate-700/40 bg-slate-900/20">
@@ -19,12 +20,13 @@ function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
         <span className="text-sm shrink-0">
           {c.charType === 'admiral' ? '⚓' : c.charType === 'spy' ? '🕵️' : c.charType === 'priest' ? '✝' : '⚔️'}
         </span>
-        <span className="text-[11px] font-mono flex-1 truncate text-slate-200">{charLabel}</span>
+        <span className="text-[11px] font-mono flex-1 truncate text-slate-200">
+          {fullName || '(unnamed)'} — <span className="text-slate-400">{c.charType}</span>
+          {c.role && <span className="ml-1 text-amber-400 text-[9px]">[{c.role}]</span>}
+        </span>
         <span className="text-[9px] text-slate-600 font-mono">{c.x != null ? `${c.x},${c.y}` : 'unplaced'}</span>
         <button onClick={e => { e.stopPropagation(); onSelect(char); }}
-          className="text-[9px] px-1 py-0.5 rounded bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 shrink-0">
-          Go
-        </button>
+          className="text-[9px] px-1 py-0.5 rounded bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 shrink-0">Go</button>
         <button onClick={e => { e.stopPropagation(); onDelete(c.id); }}
           className="p-0.5 text-slate-600 hover:text-red-400 transition-colors shrink-0">
           <Trash2 className="w-3 h-3" />
@@ -35,8 +37,17 @@ function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
         <div className="border-t border-slate-700/40 px-2 py-2 space-y-1.5">
           <div className="grid grid-cols-2 gap-1.5">
             <div>
-              <span className="text-[9px] text-slate-500">Name</span>
-              <input value={c.name || ''} onChange={e => set('name', e.target.value)}
+              <span className="text-[9px] text-slate-500">First Name</span>
+              <input list={`names-${c.id}`} value={c.name || ''} onChange={e => set('name', e.target.value)}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+              <datalist id={`names-${c.id}`}>
+                {allNames.map(n => <option key={n} value={n} />)}
+              </datalist>
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Surname / Epithet</span>
+              <input value={c.surname || ''} onChange={e => set('surname', e.target.value)}
+                placeholder="e.g. the Bastard"
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
             </div>
             <div>
@@ -63,21 +74,21 @@ function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
               </select>
             </div>
             <div>
-              <span className="text-[9px] text-slate-500">Role</span>
-              <select value={c.role || ''} onChange={e => set('role', e.target.value)}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                <option value="">—</option>
-                <option value="leader">leader</option>
-                <option value="heir">heir</option>
-              </select>
-            </div>
-            <div>
               <span className="text-[9px] text-slate-500">Age</span>
               <input type="number" value={c.age || 30} onChange={e => set('age', parseInt(e.target.value) || 30)}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
+            {isNamedType && (
+              <div>
+                <span className="text-[9px] text-slate-500">Role (named/family only)</span>
+                <select value={c.role || ''} onChange={e => set('role', e.target.value)}
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                  <option value="">— none —</option>
+                  <option value="leader">leader</option>
+                  <option value="heir">heir</option>
+                </select>
+              </div>
+            )}
             <div>
               <span className="text-[9px] text-slate-500">X (map)</span>
               <input type="number" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
@@ -89,6 +100,7 @@ function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
             </div>
           </div>
+
           {/* Traits */}
           <div>
             <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Traits</p>
@@ -110,6 +122,7 @@ function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
               <Plus className="w-2.5 h-2.5" /> Add trait
             </button>
           </div>
+
           {/* Ancillaries */}
           <div>
             <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Ancillaries</p>
@@ -169,6 +182,83 @@ function CharacterRow({ char, allFactions, onUpdate, onDelete, onSelect }) {
   );
 }
 
+function CharacterRecordRow({ rec, factionName, onUpdate }) {
+  const [expanded, setExpanded] = useState(false);
+  const isDead = rec.status === 'dead';
+  const set = (key, val) => onUpdate({ ...rec, [key]: val });
+
+  return (
+    <div className="rounded border border-slate-700/30 bg-slate-900/10">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(v => !v)}>
+        {expanded ? <ChevronDown className="w-3 h-3 text-slate-600" /> : <ChevronRight className="w-3 h-3 text-slate-600" />}
+        <Archive className="w-3 h-3 text-slate-600 shrink-0" />
+        <span className="text-[11px] font-mono flex-1 truncate text-slate-400">
+          {[rec.name, rec.surname].filter(Boolean).join(' ') || '(unnamed)'}
+          <span className="text-slate-600 ml-1">{rec.sex} · age {rec.age}</span>
+          {isDead && <span className="text-red-500/70 ml-1 text-[9px]">☠ {rec.deadYears}yr</span>}
+          {rec.status && !isDead && <span className="text-slate-500 ml-1 text-[9px]">[{rec.status}]</span>}
+        </span>
+        <span className="text-[8px] text-slate-600 bg-slate-800/50 px-1 rounded">{factionName}</span>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-slate-700/30 px-2 py-2 space-y-1.5">
+          <div className="grid grid-cols-2 gap-1.5">
+            <div>
+              <span className="text-[9px] text-slate-500">First Name</span>
+              <input value={rec.name || ''} onChange={e => set('name', e.target.value)}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Surname / Epithet</span>
+              <input value={rec.surname || ''} onChange={e => set('surname', e.target.value)}
+                placeholder="optional"
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Sex</span>
+              <select value={rec.sex || 'male'} onChange={e => set('sex', e.target.value)}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300">
+                <option value="male">male</option>
+                <option value="female">female</option>
+              </select>
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Age</span>
+              <input type="number" value={rec.age || 0} onChange={e => set('age', parseInt(e.target.value) || 0)}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Status</span>
+              <select value={isDead ? 'dead' : 'alive'} onChange={e => set('status', e.target.value === 'dead' ? 'dead' : rec.status === 'dead' ? 'never_a_leader' : rec.status)}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300">
+                <option value="alive">Alive</option>
+                <option value="dead">Dead</option>
+              </select>
+            </div>
+            {isDead && (
+              <div>
+                <span className="text-[9px] text-slate-500">Years Dead</span>
+                <input type="number" min={0} value={rec.deadYears || 0} onChange={e => set('deadYears', parseInt(e.target.value) || 0)}
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-red-300 font-mono" />
+              </div>
+            )}
+            {!isDead && (
+              <div>
+                <span className="text-[9px] text-slate-500">Role</span>
+                <select value={rec.status || 'never_a_leader'} onChange={e => set('status', e.target.value)}
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300">
+                  {RECORD_ROLES.map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CharactersTab({ stratData, onStratDataChange, onSelectItem }) {
   const [subTab, setSubTab] = useState('list');
   const [search, setSearch] = useState('');
@@ -185,6 +275,27 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
     [stratData?.items]
   );
 
+  // Collect unique first names for autocomplete datalist
+  const allNames = useMemo(() => {
+    const names = new Set();
+    for (const c of allChars) if (c.name) names.add(c.name);
+    for (const f of (stratData?.factions || [])) {
+      for (const r of (f.characterRecords || [])) if (r.name) names.add(r.name);
+    }
+    return [...names].sort();
+  }, [allChars, stratData]);
+
+  // Flat list of all character_records with faction info
+  const allRecords = useMemo(() => {
+    const recs = [];
+    for (const f of (stratData?.factions || [])) {
+      for (const r of (f.characterRecords || [])) {
+        recs.push({ ...r, _faction: f.name });
+      }
+    }
+    return recs;
+  }, [stratData]);
+
   const filtered = useMemo(() =>
     allChars.filter(c => {
       const matchSearch = !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.charType?.includes(search);
@@ -192,6 +303,15 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
       return matchSearch && matchFaction;
     }),
     [allChars, search, filterFaction]
+  );
+
+  const filteredRecords = useMemo(() =>
+    allRecords.filter(r => {
+      const matchSearch = !search || r.name?.toLowerCase().includes(search.toLowerCase());
+      const matchFaction = !filterFaction || r._faction === filterFaction;
+      return matchSearch && matchFaction;
+    }),
+    [allRecords, search, filterFaction]
   );
 
   const handleUpdate = (id, updatedChar) => {
@@ -206,22 +326,25 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
     onStratDataChange({ ...stratData, items });
   };
 
+  const handleRecordUpdate = (factionName, oldRec, updated) => {
+    if (!stratData) return;
+    const factions = (stratData.factions || []).map(f => {
+      if (f.name !== factionName) return f;
+      const characterRecords = (f.characterRecords || []).map(r =>
+        r.name === oldRec.name ? updated : r
+      );
+      return { ...f, characterRecords };
+    });
+    onStratDataChange({ ...stratData, factions });
+  };
+
   const handleAdd = () => {
     if (!stratData) return;
     const newChar = {
-      id: -(Date.now()),
-      category: 'character',
-      name: 'New Character',
-      charType: 'general',
-      sex: 'male',
-      role: '',
-      age: 30,
-      faction: allFactions[0] || '',
-      x: null,
-      y: null,
-      traits: [],
-      ancillaries: [],
-      army: [],
+      id: -(Date.now()), category: 'character', name: 'New Character', surname: '',
+      charType: 'general', sex: 'male', role: '', age: 30,
+      faction: allFactions[0] || '', x: null, y: null,
+      traits: [], ancillaries: [], army: [],
     };
     const items = [...(stratData.items || []), newChar];
     onStratDataChange({ ...stratData, items });
@@ -233,7 +356,6 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
 
   return (
     <div className="flex flex-col h-full">
-      {/* Sub-tabs: Characters list | Family Trees */}
       <div className="flex border-b border-slate-800 shrink-0">
         {[['list', 'Characters'], ['trees', 'Family Trees']].map(([id, label]) => (
           <button key={id} onClick={() => setSubTab(id)}
@@ -268,21 +390,43 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-            {filtered.length === 0 && (
-              <div className="text-[10px] text-slate-600 italic text-center py-4">
-                {allChars.length === 0 ? 'No characters in descr_strat.txt' : 'No characters match filters'}
-              </div>
-            )}
+            {/* Active characters */}
             {filtered.map(char => (
               <CharacterRow
                 key={char.id}
                 char={char}
                 allFactions={allFactions}
+                allNames={allNames}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 onSelect={onSelectItem}
               />
             ))}
+
+            {filtered.length === 0 && allChars.length === 0 && (
+              <div className="text-[10px] text-slate-600 italic text-center py-2">No characters in descr_strat.txt</div>
+            )}
+
+            {/* Character records section */}
+            {filteredRecords.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 py-1 mt-2">
+                  <div className="flex-1 h-px bg-slate-800" />
+                  <span className="text-[8px] text-slate-600 uppercase font-semibold flex items-center gap-1">
+                    <Archive className="w-2.5 h-2.5" /> Character Records ({filteredRecords.length})
+                  </span>
+                  <div className="flex-1 h-px bg-slate-800" />
+                </div>
+                {filteredRecords.map((rec, idx) => (
+                  <CharacterRecordRow
+                    key={`${rec._faction}_${rec.name}_${idx}`}
+                    rec={rec}
+                    factionName={rec._faction}
+                    onUpdate={(updated) => handleRecordUpdate(rec._faction, rec, updated)}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </>
       )}
