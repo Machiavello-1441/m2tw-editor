@@ -83,16 +83,25 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   const hasArmy = c.charType === 'general' || c.charType === 'named character' || c.charType === 'admiral';
   const isNamedChar = c.charType === 'named character';
 
-  const firstNames = useMemo(() => getNames(descrNames, c.faction, effectiveSex), [descrNames, c.faction, effectiveSex]);
-  const surnameNames = useMemo(() => getSurnames(descrNames, c.faction), [descrNames, c.faction]);
+  const isSlave = c.faction === 'slave';
+  const subFactionActive = isSlave && !!c.subFaction;
+  // If sub_faction is active, use sub_faction names; otherwise use faction names
+  const nameFaction = subFactionActive ? c.subFaction : c.faction;
+  const firstNames = useMemo(() => getNames(descrNames, nameFaction, effectiveSex), [descrNames, nameFaction, effectiveSex]);
+  const surnameNames = useMemo(() => getSurnames(descrNames, nameFaction), [descrNames, nameFaction]);
 
   const firstNameDisplay = getDisplayName(namesDisplayMap, c.name);
   const surnameDisplay = getDisplayName(namesDisplayMap, c.surname);
 
-  const factionEduUnits = useMemo(() =>
-    (eduUnits || []).filter(u => u.ownership && (u.ownership.includes(c.faction) || u.ownership.includes('all'))),
-    [eduUnits, c.faction]
-  );
+  // EDU units: if sub_faction active, merge slave + sub_faction units
+  const factionEduUnits = useMemo(() => {
+    if (!eduUnits?.length) return [];
+    const primary = (eduUnits).filter(u => u.ownership && (u.ownership.includes(c.faction) || u.ownership.includes('all')));
+    if (!subFactionActive) return primary;
+    const subUnits = (eduUnits).filter(u => u.ownership && u.ownership.includes(c.subFaction));
+    const seen = new Set(primary.map(u => u.type));
+    return [...primary, ...subUnits.filter(u => !seen.has(u.type))];
+  }, [eduUnits, c.faction, c.subFaction, subFactionActive]);
 
   // For named character: first army slot must be a general_unit; extra units only allowed after that
   const generalUnitInArmy = isNamedChar
@@ -155,11 +164,37 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
             {/* Faction */}
             <div>
               <span className="text-[9px] text-slate-500">Faction</span>
-              <select value={c.faction || ''} onChange={e => set('faction', e.target.value)}
+              <select value={c.faction || ''} onChange={e => {
+                const newFaction = e.target.value;
+                // Clear sub_faction if switching away from slave
+                onUpdate(c.id, { ...c, faction: newFaction, subFaction: newFaction === 'slave' ? (c.subFaction || '') : '' });
+              }}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                 <option value="">— select —</option>
                 {allFactions.map(f => <option key={f}>{f}</option>)}
               </select>
+            </div>
+
+            {/* Sub-Faction — always visible, only active for slave faction */}
+            <div className={!isSlave ? 'opacity-40 pointer-events-none' : ''}>
+              <span className={`text-[9px] ${isSlave ? 'text-amber-400' : 'text-slate-600'}`}>
+                Sub-Faction {isSlave ? '' : '(slave only)'}
+              </span>
+              <select
+                value={c.subFaction || ''}
+                onChange={e => set('subFaction', e.target.value)}
+                disabled={!isSlave}
+                className={`w-full h-6 px-1.5 text-[11px] rounded border font-mono ${
+                  isSlave
+                    ? 'bg-slate-800 border-amber-600/40 text-amber-200'
+                    : 'bg-slate-800/40 border-slate-700/20 text-slate-600'
+                }`}>
+                <option value="">— none —</option>
+                {(allStratFactions || allFactions).filter(f => f !== 'slave').map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+              {subFactionActive && (
+                <p className="text-[8px] text-amber-400/70 mt-0.5">Names & units from slave + {c.subFaction}</p>
+              )}
             </div>
 
             {/* First Name */}
@@ -403,18 +438,6 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
           {!isFamily && (
             <div className="border-t border-slate-700/30 pt-1.5 space-y-1">
               <p className="text-[9px] text-slate-500 uppercase font-semibold">Optional Fields</p>
-
-              {/* sub_faction (slave faction only) */}
-              {c.faction === 'slave' && (
-                <div>
-                  <span className="text-[9px] text-slate-500">Sub-Faction</span>
-                  <select value={c.subFaction || ''} onChange={e => set('subFaction', e.target.value)}
-                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-amber-600/40 rounded text-amber-200 font-mono">
-                    <option value="">— select sub_faction —</option>
-                    {(allStratFactions || allFactions).filter(f => f !== 'slave').map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-1">
                 {/* Portrait */}
