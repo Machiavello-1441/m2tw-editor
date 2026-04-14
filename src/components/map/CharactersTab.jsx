@@ -124,7 +124,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
 
   const fullName = [c.name, c.surname].filter(Boolean).join(' ');
 
-  const typeIcon = isFamily ? '👨‍👩‍👧' : c.charType === 'admiral' ? '⚓' : c.charType === 'spy' ? '🕵️' : c.charType === 'priest' ? '🛐' : c.charType === 'princess' ? '👑' : '⚔️';
+  const typeIcon = isFamily ? '👨‍👩‍👧' : c.charType === 'admiral' ? '⚓' : c.charType === 'spy' ? '🕵️' : c.charType === 'priest' ? '🛐' : c.charType === 'princess' ? '👑' : c.charType === 'merchant' ? '💰' : c.charType === 'assassin' ? '🗡️': '⚔️';
 
   return (
     <div className={`rounded border ${c._isNew ? 'border-amber-500/50 bg-amber-900/10' : 'border-slate-700/40 bg-slate-900/20'}`}>
