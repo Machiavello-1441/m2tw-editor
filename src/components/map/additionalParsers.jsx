@@ -58,31 +58,36 @@ export function parseDescrCultures(text) {
   return [...new Set(cultures)];
 }
 
-// descr_names.txt → { male: { factionName: [names] }, female: { factionName: [names] } }
-// Format: faction: <name>\n  characters\n    <name>\n  surnames\n    <name>\n  women\n    <name>
+// descr_names.txt → { male: { factionName: [names] }, female: { factionName: [names] }, _surnames: { factionName: [names] } }
+// M2TW format:
+//   faction <name>
+//     characters  (male first names)
+//       Name1
+//       Name2
+//     surnames
+//       Surname1
+//     women       (female first names)
+//       Name1
+//     end
 export function parseDescrNames(text) {
-  const result = { male: {}, female: {} };
+  const result = { male: {}, female: {}, _surnames: {} };
   let currentFaction = null;
   let currentSection = null; // 'male', 'female', 'surname'
   for (const raw of text.split('\n')) {
     const line = raw.replace(/;.*$/, '').trim();
     if (!line) continue;
-    // "faction: name" or "faction name"
+    // "faction <name>" — starts a new faction block
     const fm = line.match(/^faction:?\s+(\S+)/i);
-    if (fm) { currentFaction = fm[1]; currentSection = null; continue; }
+    if (fm) { currentFaction = fm[1].toLowerCase(); currentSection = null; continue; }
     if (!currentFaction) continue;
+    // Section headers
     if (/^characters$/i.test(line) || /^male$/i.test(line)) { currentSection = 'male'; continue; }
     if (/^women$/i.test(line) || /^females?$/i.test(line) || /^female$/i.test(line)) { currentSection = 'female'; continue; }
     if (/^surnames?$/i.test(line)) { currentSection = 'surname'; continue; }
-    if (/^end$/i.test(line)) { currentSection = null; continue; }
+    if (/^end$/i.test(line)) { currentFaction = null; currentSection = null; continue; }
+    // Name entries (single word, no spaces)
     if (currentSection && /^\S+$/.test(line)) {
-      // surnames go into both male and female pools
       if (currentSection === 'surname') {
-        if (!result.male[currentFaction]) result.male[currentFaction] = [];
-        if (!result.female[currentFaction]) result.female[currentFaction] = [];
-        // store surnames separately under a _surnames sub-key but also expose them
-        // We add to a special surnames array; callers can request surnames via getSurnames()
-        if (!result._surnames) result._surnames = {};
         if (!result._surnames[currentFaction]) result._surnames[currentFaction] = [];
         result._surnames[currentFaction].push(line);
       } else {

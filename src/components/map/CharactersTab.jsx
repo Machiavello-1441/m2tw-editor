@@ -24,13 +24,14 @@ function getSexForType(charType) {
 function getNames(descrNames, faction, sex) {
   if (!descrNames || !faction) return [];
   const sexKey = sex === 'female' ? 'female' : 'male';
-  return descrNames[sexKey]?.[faction] || [];
+  // Parser stores faction keys in lowercase
+  return descrNames[sexKey]?.[faction.toLowerCase()] || descrNames[sexKey]?.[faction] || [];
 }
 
 // Get available surnames from descrNames for a faction
 function getSurnames(descrNames, faction) {
   if (!descrNames || !faction) return [];
-  return descrNames._surnames?.[faction] || [];
+  return descrNames._surnames?.[faction.toLowerCase()] || descrNames._surnames?.[faction] || [];
 }
 
 // Get display name from namesDisplayMap (parsed from names.strings.bin)
@@ -572,6 +573,27 @@ function CharacterRecordRow({ rec, factionName, onUpdate }) {
   );
 }
 
+// Serialize familyTrees back into stratData.factions[].relatives format
+function serializeFamilyTreesToStratData(stratData, familyTrees) {
+  if (!stratData) return stratData;
+  const factions = (stratData.factions || []).map(faction => {
+    const trees = familyTrees[faction.name] || [];
+    if (trees.length === 0) return { ...faction, relatives: [] };
+    // Each tree produces one "relative" line: [father, mother, child1, child2, ...]
+    const relatives = trees.map(tree => {
+      const parts = [];
+      parts.push(tree.father ? [tree.father.name, tree.father.surname].filter(Boolean).join(' ') : '');
+      parts.push(tree.mother ? [tree.mother.name, tree.mother.surname].filter(Boolean).join(' ') : '');
+      for (const child of (tree.children || [])) {
+        parts.push([child.name, child.surname].filter(Boolean).join(' '));
+      }
+      return parts;
+    });
+    return { ...faction, relatives };
+  });
+  return { ...stratData, factions };
+}
+
 export default function CharactersTab({ stratData, onStratDataChange, onSelectItem, descrNames, namesDisplayMap, traitsList = [], ancillariesList = [], eduUnits = [], onPinCharacter }) {
   const [subTab, setSubTab] = useState('list');
   const [search, setSearch] = useState('');
@@ -682,7 +704,17 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
           <FamilyTreeTab
             stratData={stratData}
             trees={familyTrees}
-            onTreesChange={setFamilyTrees}
+            onTreesChange={(updater) => {
+              setFamilyTrees(prev => {
+                const next = typeof updater === 'function' ? updater(prev) : updater;
+                // Write family trees back into stratData.factions[].relatives so they get exported
+                if (onStratDataChange && stratData) {
+                  const updated = serializeFamilyTreesToStratData(stratData, next);
+                  onStratDataChange(updated);
+                }
+                return next;
+              });
+            }}
             initialized={treesInitialized}
             onInitialized={() => setTreesInitialized(true)}
           />

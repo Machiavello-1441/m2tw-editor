@@ -145,7 +145,7 @@ function serializeCharLine(char) {
   if (char.subFaction) line += `sub_faction ${char.subFaction}, `;
   line += `${fullName}, ${char.charType}, ${char.sex}`;
   if (char.role) line += `, ${char.role}`;
-  line += `, age ${char.age}, x ${char.x ?? 0}, y ${char.y ?? 0}`;
+  line += `, age ${char.age ?? 30}, x ${char.x ?? 0}, y ${char.y ?? 0}`;
   if (char.portrait)    line += `, portrait ${char.portrait}`;
   if (char.label)       line += `, label ${char.label}`;
   if (char.battleModel) line += `, battle_model ${char.battleModel}`;
@@ -647,6 +647,31 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       const kpIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*denari_kings_purse\b/i.test(l.replace(/;.*$/, '')));
       const kpLine = `\tdenari_kings_purse\t${faction.kingsPurse || 0}`;
       if (kpIdx >= 0) lines[kpIdx] = kpLine;
+
+      // Rewrite relative lines if faction.relatives is defined (from family tree editor)
+      if (faction.relatives !== undefined) {
+        // Refind factionEnd
+        factionEnd = lines.length;
+        for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
+          const fl = lines[fi].replace(/;.*$/, '').trim();
+          if (!fl) continue;
+          if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
+        }
+        // Remove all existing relative lines in this faction block
+        for (let fi = factionEnd - 1; fi > factionLineIdx; fi--) {
+          if (/^\s*relative\s+/i.test(lines[fi].replace(/;.*$/, ''))) {
+            lines.splice(fi, 1);
+            factionEnd--;
+          }
+        }
+        // Insert new relative lines before factionEnd
+        const relLines = (faction.relatives || [])
+          .filter(rel => rel && rel.some(n => n))
+          .map(rel => `\trelative\t${rel.join(',\t')}\tend`);
+        if (relLines.length > 0) {
+          lines.splice(factionEnd, 0, ...relLines);
+        }
+      }
     }
   }
 
@@ -679,9 +704,11 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // Append newly added settlements (items not present in original stratData)
-  const origIds = new Set((stratData.items || []).map(i => i.id));
-  const newSettlements = overlayItems.filter(i => !origIds.has(i.id) && i.category === 'settlement');
+  // origIds: IDs that existed in the ORIGINAL file (positive IDs from parsing).
+  // New items added by the user have negative IDs (id: -(Date.now())).
+  // We detect "new" items as those with negative IDs — they need to be appended.
+  const origIds = new Set((stratData.items || []).filter(i => i.id >= 0).map(i => i.id));
+  const newSettlements = overlayItems.filter(i => i.id < 0 && i.category === 'settlement');
   if (newSettlements.length > 0) {
     for (const s of newSettlements) {
       const factionName = s.faction || 'slave';
@@ -723,8 +750,52 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // Append newly added forts (items not present in original stratData)
-  const newForts = overlayItems.filter(i => !origIds.has(i.id) && i.category === 'fortification' && i.type === 'fort');
+  // Append newly added characters (negative ID = user-created, no _lineNum)
+  const newChars = overlayItems.filter(i => i.id < 0 && i.category === 'character');
+  if (newChars.length > 0) {
+    for (const char of newChars) {
+      if (!char.name || !char.faction) continue; // skip incomplete chars
+      const factionName = char.faction;
+      const factionLineIdx = lines.findIndex(l => {
+        const cl = l.replace(/;.*$/, '').trim();
+        return /^faction[\s\t]+/.test(cl) && cl.replace(/^faction[\s\t]+/, '').split(/[\s\t,]/)[0] === factionName;
+      });
+      const charLine = serializeCharLine(char);
+      const extraLines = [];
+      if (char.traits?.length) extraLines.push(`\t\ttraits\t${char.traits.map(t => `${t.name} ${t.level}`).join(' , ')}`);
+      if (char.ancillaries?.length) extraLines.push(`\t\tancillaries\t${char.ancillaries.join(', ')}`);
+      if (char.army?.length) {
+        extraLines.push('\t\tarmy');
+        for (const u of char.army) {
+          if (u.unit) extraLines.push(`\t\t\tunit\t${u.unit} exp ${u.exp ?? 0} armour ${u.armour ?? 0} weapon_lvl ${u.weaponLvl ?? 0}`);
+        }
+      }
+      if (factionLineIdx >= 0) {
+        // Insert before end of faction block (before next faction or diplomacy section)
+        let insertIdx = lines.length;
+        let braceDepth = 0;
+        for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
+          const raw = lines[fi];
+          const fl = raw.replace(/;.*$/, '').trim();
+          for (const ch of raw) { if (ch === '{') braceDepth++; else if (ch === '}') braceDepth--; }
+          if (braceDepth > 0 || !fl) continue;
+          if (
+            /^faction[\s\t]+\w/i.test(fl) ||
+            /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
+            /^region[\s\t]+\S/i.test(fl) ||
+            /^script\s*$/i.test(fl)
+          ) { insertIdx = fi; break; }
+        }
+        lines.splice(insertIdx, 0, charLine, ...extraLines);
+      } else {
+        // No faction block — append at end
+        lines.push('', `faction\t${factionName}`, charLine, ...extraLines);
+      }
+    }
+  }
+
+  // Append newly added forts (negative ID)
+  const newForts = overlayItems.filter(i => i.id < 0 && i.category === 'fortification' && i.type === 'fort');
   if (newForts.length > 0) {
     for (const fort of newForts) {
       let line = `\tfort\t${fort.x} ${fort.y}`;
@@ -735,8 +806,9 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // Patch modified characters/resources/forts
+  // Patch modified characters/resources/forts (only original items with positive IDs)
   for (const item of overlayItems) {
+    if (item.id < 0) continue; // new items handled above
     const orig = stratData.items?.find(o => o.id === item.id);
     if (!orig) continue;
 
