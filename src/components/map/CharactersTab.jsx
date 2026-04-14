@@ -80,15 +80,6 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   const hasArmy = c.charType === 'general' || c.charType === 'named character' || c.charType === 'admiral';
   const isNamedChar = c.charType === 'named character';
 
-  // For named character: first army slot must be a general_unit; extra units only allowed after that
-  const generalUnitInArmy = isNamedChar
-    ? (c.army || []).find(u => {
-        const eu = factionEduUnits.find(e => e.type === u.unit);
-        return eu?.attributes?.includes('general_unit') || eu?.attributes?.includes('general_unit_upgrade');
-      })
-    : null;
-  const namedCharNeedsGeneralUnit = isNamedChar && !generalUnitInArmy;
-
   const firstNames = useMemo(() => getNames(descrNames, c.faction, effectiveSex), [descrNames, c.faction, effectiveSex]);
   const surnameNames = useMemo(() => getSurnames(descrNames, c.faction), [descrNames, c.faction]);
 
@@ -99,6 +90,15 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
     (eduUnits || []).filter(u => u.ownership && (u.ownership.includes(c.faction) || u.ownership.includes('all'))),
     [eduUnits, c.faction]
   );
+
+  // For named character: first army slot must be a general_unit; extra units only allowed after that
+  const generalUnitInArmy = isNamedChar
+    ? (c.army || []).find(u => {
+        const eu = factionEduUnits.find(e => e.type === u.unit);
+        return eu?.attributes?.includes('general_unit') || eu?.attributes?.includes('general_unit_upgrade');
+      })
+    : null;
+  const namedCharNeedsGeneralUnit = isNamedChar && !generalUnitInArmy;
   const factionArmyUnits = useMemo(() => factionEduUnits.filter(u => u.category !== 'ship'), [factionEduUnits]);
   const factionShipUnits = useMemo(() => factionEduUnits.filter(u => u.category === 'ship'), [factionEduUnits]);
   const availableUnits = c.charType === 'admiral' ? factionShipUnits : factionArmyUnits;
