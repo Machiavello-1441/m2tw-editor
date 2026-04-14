@@ -11,6 +11,8 @@ const ALL_CHARACTER_TYPES = ['general', 'admiral', 'spy', 'merchant', 'diplomat'
 // Only named character can have leader/heir role (generals/admirals cannot)
 const CAN_HAVE_ROLE = new Set(['named character']);
 const RECORD_ROLES = ['never_a_leader', 'past_leader', 'past_heir', 'leader', 'heir'];
+const DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const HERO_ABILITIES = ['Byzantine_Politics', 'Light_of_the_Faith', 'Righteousness_of_Faith', 'Heart_of_the_Lion', 'Flower_of_Chivalry'];
 
 function getSexForType(charType) {
   if (FEMALE_ONLY_TYPES.has(charType)) return 'female';
@@ -68,7 +70,7 @@ function validateChar(char, eduUnits) {
   return { ok: true, reason: '' };
 }
 
-function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin }) {
+function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin, allStratFactions }) {
   const [expanded, setExpanded] = useState(false);
   const c = char;
   const set = (key, val) => onUpdate(c.id, { ...c, [key]: val });
@@ -396,6 +398,76 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
             </div>
           )}
 
+          {/* Optional fields: portrait, label, battle_model, hero_ability, direction */}
+          {!isFamily && (
+            <div className="border-t border-slate-700/30 pt-1.5 space-y-1">
+              <p className="text-[9px] text-slate-500 uppercase font-semibold">Optional Fields</p>
+
+              {/* sub_faction (slave faction only) */}
+              {c.faction === 'slave' && (
+                <div>
+                  <span className="text-[9px] text-slate-500">Sub-Faction</span>
+                  <select value={c.subFaction || ''} onChange={e => set('subFaction', e.target.value)}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-amber-600/40 rounded text-amber-200 font-mono">
+                    <option value="">— select sub_faction —</option>
+                    {(allStratFactions || allFactions).filter(f => f !== 'slave').map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-1">
+                {/* Portrait */}
+                <div>
+                  <span className="text-[9px] text-slate-500">Portrait</span>
+                  <input value={c.portrait || ''} onChange={e => set('portrait', e.target.value)}
+                    placeholder="portrait name"
+                    className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+
+                {/* Label */}
+                <div>
+                  <span className="text-[9px] text-slate-500">Label</span>
+                  <input value={c.label || ''} onChange={e => set('label', e.target.value)}
+                    placeholder="label name"
+                    className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+
+                {/* Battle Model */}
+                <div>
+                  <span className="text-[9px] text-slate-500">Battle Model</span>
+                  <input value={c.battleModel || ''} onChange={e => set('battleModel', e.target.value)}
+                    placeholder="battle_model name"
+                    className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+
+                {/* Direction */}
+                <div>
+                  <span className="text-[9px] text-slate-500">Direction</span>
+                  <select value={c.direction || ''} onChange={e => set('direction', e.target.value)}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="">— none —</option>
+                    {DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Hero Ability */}
+              <div>
+                <span className="text-[9px] text-slate-500">Hero Ability</span>
+                <div className="flex gap-1">
+                  <select value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
+                    className="flex-1 h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
+                    <option value="">— none —</option>
+                    {HERO_ABILITIES.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <input value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
+                    placeholder="custom ability"
+                    className="w-28 h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Validate button */}
           <div className="pt-1 border-t border-slate-700/40">
             <button
@@ -580,6 +652,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
       charType: 'general', sex: defaultSex, role: '', age: 30,
       faction: defaultFaction, x: null, y: null,
       traits: [], ancillaries: [], army: [],
+      subFaction: '', portrait: '', label: '', battleModel: '', heroAbility: '', direction: '',
     };
     const items = [...(stratData.items || []), newChar];
     onStratDataChange({ ...stratData, items });
@@ -647,6 +720,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
                 key={char.id}
                 char={char}
                 allFactions={allFactions}
+                allStratFactions={allFactions}
                 descrNames={descrNames}
                 namesDisplayMap={namesDisplayMap}
                 traitsList={traitsList}

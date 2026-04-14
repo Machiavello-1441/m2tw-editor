@@ -88,30 +88,70 @@ function parseSettlementBlock(lines, startI, lineStartOverride) {
 }
 
 // ─── Character / Agent inline parser ──────────────────────────────────────────
-// Parses: "character Name, type, sex, [leader|heir], age N, x X, y Y"
-// followed optionally by traits/ancillaries/army/character_record/relative lines
+// Parses: "character [sub_faction F,] Name, type, sex, [leader|heir], age N, x X, y Y[, portrait P][, label L][, battle_model B][, hero_ability H][, direction D]"
+// followed optionally by traits/ancillaries/army lines
 function parseCharacterLine(line, lineIndex) {
-  // character  William, named character, male, leader, age 40, x 109, y 147
-  const m = line.match(/^character\s+(.+?),\s*(named character|general|admiral|spy|merchant|diplomat|priest|assassin|princess|heretic|witch|inquisitor)\s*,?\s*(male|female)?,?\s*(leader|heir)?,?\s*age\s+(\d+),\s*x\s+(\d+),\s*y\s+(\d+)/i);
+  // Extract optional sub_faction prefix
+  let subFaction = '';
+  let coreLine = line;
+  const sfm = line.match(/^character\s+sub_faction\s+(\S+)\s*,\s*/i);
+  if (sfm) {
+    subFaction = sfm[1];
+    coreLine = 'character ' + line.slice(sfm[0].length);
+  }
+
+  const m = coreLine.match(/^character\s+(.+?),\s*(named character|general|admiral|spy|merchant|diplomat|priest|assassin|princess|heretic|witch|inquisitor)\s*,?\s*(male|female)?,?\s*(leader|heir)?,?\s*age\s+(\d+),\s*x\s+(\d+),\s*y\s+(\d+)(.*)/i);
   if (!m) return null;
+
   const fullName = m[1].trim();
   const spaceIdx = fullName.indexOf(' ');
   const firstName = spaceIdx >= 0 ? fullName.slice(0, spaceIdx) : fullName;
   const surname = spaceIdx >= 0 ? fullName.slice(spaceIdx + 1) : '';
+
+  // Parse optional trailing fields: portrait P, label L, battle_model B, hero_ability H, direction D
+  const tail = m[8] || '';
+  const portrait     = (tail.match(/,\s*portrait\s+(\S+)/i)     || [])[1] || '';
+  const label        = (tail.match(/,\s*label\s+(\S+)/i)        || [])[1] || '';
+  const battleModel  = (tail.match(/,\s*battle_model\s+(\S+)/i) || [])[1] || '';
+  const heroAbility  = (tail.match(/,\s*hero_ability\s+(\S+)/i) || [])[1] || '';
+  const direction    = (tail.match(/,\s*direction\s+(\S+)/i)    || [])[1] || '';
+
   return {
     name: firstName,
     surname,
     charType: m[2].toLowerCase().trim(),
     sex: (m[3] || 'male').toLowerCase(),
-    role: (m[4] || '').toLowerCase(), // 'leader', 'heir', or ''
+    role: (m[4] || '').toLowerCase(),
     age: parseInt(m[5]),
     x: parseInt(m[6]),
     y: parseInt(m[7]),
+    subFaction,
+    portrait,
+    label,
+    battleModel,
+    heroAbility,
+    direction,
     traits: [],
     ancillaries: [],
     army: [],
     _lineNum: lineIndex,
   };
+}
+
+// Build a character line string from a char object
+function serializeCharLine(char) {
+  const fullName = [char.name, char.surname].filter(Boolean).join(' ');
+  let line = `\tcharacter\t`;
+  if (char.subFaction) line += `sub_faction ${char.subFaction}, `;
+  line += `${fullName}, ${char.charType}, ${char.sex}`;
+  if (char.role) line += `, ${char.role}`;
+  line += `, age ${char.age}, x ${char.x ?? 0}, y ${char.y ?? 0}`;
+  if (char.portrait)    line += `, portrait ${char.portrait}`;
+  if (char.label)       line += `, label ${char.label}`;
+  if (char.battleModel) line += `, battle_model ${char.battleModel}`;
+  if (char.heroAbility) line += `, hero_ability ${char.heroAbility}`;
+  if (char.direction)   line += `, direction ${char.direction}`;
+  return line;
 }
 
 // ─── descr_strat.txt ─────────────────────────────────────────────────────────
@@ -274,14 +314,9 @@ export function parseDescrStrat(text) {
         }
 
         // Inline character line: character Name, type, sex, role, age N, x X, y Y
-        // Also handle "character sub_faction X, Name, type, ..."
-        let charLineForParse = fl;
-        if (/^character\s+sub_faction\s+\S+,/i.test(fl)) {
-          // Strip "sub_faction X," prefix so parseCharacterLine can handle it
-          charLineForParse = fl.replace(/^(character\s+)sub_faction\s+\S+,\s*/i, '$1');
-        }
+        // sub_faction prefix is handled inside parseCharacterLine
         if (/^character\s+/i.test(fl)) {
-          const char = parseCharacterLine(charLineForParse, i);
+          const char = parseCharacterLine(fl, i);
           if (char) {
             char.id = itemId++;
             char.faction = faction.name;
@@ -700,19 +735,17 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // Patch moved characters/resources/forts
+  // Patch modified characters/resources/forts
   for (const item of overlayItems) {
     const orig = stratData.items?.find(o => o.id === item.id);
-    if (!orig || (orig.x === item.x && orig.y === item.y)) continue;
+    if (!orig) continue;
 
     if (item.category === 'character' && orig._lineNum !== undefined) {
-      const old = lines[orig._lineNum];
-      if (old) {
-        lines[orig._lineNum] = old
-          .replace(/,\s*x\s+\d+/, `, x ${item.x}`)
-          .replace(/,\s*y\s+\d+/, `, y ${item.y}`);
-      }
+      // Always re-serialize full character line to capture all field changes
+      lines[orig._lineNum] = serializeCharLine(item);
     }
+
+    if ((orig.x === item.x && orig.y === item.y)) continue; // skip pos patch if unchanged
 
     if (item.category === 'resource' && orig._lineNum !== undefined) {
       const old = lines[orig._lineNum];
