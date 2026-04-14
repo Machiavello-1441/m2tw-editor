@@ -110,6 +110,8 @@ export default function CampaignMap() {
   const [traitsList, setTraitsList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_traits_raw'); return r ? parseExportDescrTraits(r) : []; } catch { return []; } });
   const [ancillariesList, setAncillariesList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_ancillaries_raw'); return r ? parseExportDescrAncillaries(r) : []; } catch { return []; } });
   const [eduUnits, setEduUnits] = useState(() => { try { const r = sessionStorage.getItem('m2tw_edu_raw'); return r ? parseEDU(r) : []; } catch { return []; } });
+  // namesDisplayMap: decoded from names.txt.strings.bin (separate from region settlement names)
+  const [namesDisplayMap, setNamesDisplayMap] = useState(() => { try { const r = sessionStorage.getItem('m2tw_char_names_display'); return r ? JSON.parse(r) : {}; } catch { return {}; } });
 
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
@@ -369,7 +371,13 @@ export default function CampaignMap() {
         if (decoded?.entries?.length) {
           const namesMap = {};
           for (const { key, value } of decoded.entries) if (key) namesMap[key] = value;
-          setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
+          // If it's a character names file, store separately for character display names
+          if (name.toLowerCase().includes('names') && !name.toLowerCase().includes('settlement') && !name.toLowerCase().includes('region')) {
+            setNamesDisplayMap(prev => ({ ...prev, ...namesMap }));
+            try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify({ ...namesMap })); } catch {}
+          } else {
+            setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
+          }
         }
       }
       if (name === 'descr_cultures.txt') {
@@ -1117,10 +1125,11 @@ export default function CampaignMap() {
                     mapH={mapH}
                     onLoadTgaLayer={loadLayerFile}
                     descrNames={descrNames}
+                    namesDisplayMap={namesDisplayMap}
                     traitsList={traitsList}
                     ancillariesList={ancillariesList}
                     eduUnits={eduUnits}
-                    onPinCharacter={handlePinCharacter}
+                    onPinCharacter={(char) => setPendingPlace({ ...char })}
                     />
               </div>
             )}

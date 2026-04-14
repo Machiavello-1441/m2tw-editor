@@ -707,7 +707,7 @@ export default function StratPanel({
   rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList,
   onRelocatePixel, mapH,
   onLoadTgaLayer,
-  descrNames, traitsList, ancillariesList, eduUnits, onPinCharacter,
+  descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onPinCharacter,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -1112,6 +1112,7 @@ export default function StratPanel({
             onStratDataChange={onStratDataChange}
             onSelectItem={onSelectItem}
             descrNames={descrNames}
+            namesDisplayMap={namesDisplayMap}
             traitsList={traitsList}
             ancillariesList={ancillariesList}
             eduUnits={eduUnits}
