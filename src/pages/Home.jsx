@@ -410,6 +410,13 @@ export default function Home() {
             localStorage.setItem('m2tw_resources_file', text);
           } catch {}
         }
+        // Store EDU in localStorage for campaign map editor
+        if (key === 'unit') {
+          try {
+            localStorage.setItem('m2tw_units_file', text);
+            sessionStorage.setItem('m2tw_edu_raw', text);
+          } catch {}
+        }
       }
       setFileStatus((prev) => ({ ...prev, [key]: 'ok' }));
     }

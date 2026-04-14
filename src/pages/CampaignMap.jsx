@@ -232,47 +232,48 @@ export default function CampaignMap() {
         }
       }
     } catch {}
-    // Auto-restore descr_names from localStorage if not in sessionStorage
+    // Always re-parse descr_names from localStorage (format may have been fixed)
     try {
-      if (!sessionStorage.getItem('m2tw_descr_names_raw')) {
-        const raw = localStorage.getItem('m2tw_names_file');
-        if (raw) {
-          sessionStorage.setItem('m2tw_descr_names_raw', raw);
-          setDescrNames(parseDescrNames(raw));
-        }
+      const raw = localStorage.getItem('m2tw_names_file');
+      if (raw) {
+        sessionStorage.setItem('m2tw_descr_names_raw', raw);
+        setDescrNames(parseDescrNames(raw));
       }
     } catch {}
-    // Auto-restore traits from localStorage if not in sessionStorage
+    // Auto-restore traits from localStorage
     try {
-      if (!sessionStorage.getItem('m2tw_traits_raw')) {
-        const raw = localStorage.getItem('m2tw_traits_file');
-        if (raw) {
-          sessionStorage.setItem('m2tw_traits_raw', raw);
-          setTraitsList(parseExportDescrTraits(raw));
-        }
-      }
+      const raw = localStorage.getItem('m2tw_traits_file');
+      if (raw) { setTraitsList(parseExportDescrTraits(raw)); }
     } catch {}
-    // Auto-restore ancillaries from localStorage if not in sessionStorage
+    // Auto-restore ancillaries from localStorage
     try {
-      if (!sessionStorage.getItem('m2tw_ancillaries_raw')) {
-        const raw = localStorage.getItem('m2tw_anc_file');
-        if (raw) {
-          sessionStorage.setItem('m2tw_ancillaries_raw', raw);
-          setAncillariesList(parseExportDescrAncillaries(raw));
-        }
-      }
+      const raw = localStorage.getItem('m2tw_anc_file');
+      if (raw) { setAncillariesList(parseExportDescrAncillaries(raw)); }
     } catch {}
-    // Auto-restore names.strings.bin display map from strings bin store
+    // Auto-restore EDU from localStorage
+    try {
+      const raw = localStorage.getItem('m2tw_units_file');
+      if (raw) { sessionStorage.setItem('m2tw_edu_raw', raw); setEduUnits(parseEDU(raw)); }
+    } catch {}
+    // Auto-restore names display map: try sessionStorage, then localStorage (from CharacterNamesTab), then strings bin store
     try {
       if (!sessionStorage.getItem('m2tw_char_names_display')) {
-        const store = getStringsBinStore();
-        for (const [fname, binData] of Object.entries(store)) {
-          if (fname.toLowerCase().includes('names') && !fname.toLowerCase().includes('settlement') && !fname.toLowerCase().includes('region')) {
-            const namesMap = {};
-            for (const { key, value } of binData.entries) if (key) namesMap[key] = value;
-            setNamesDisplayMap(namesMap);
-            try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(namesMap)); } catch {}
-            break;
+        // CharacterNamesTab stores parsed bin entries here
+        const lsEntries = localStorage.getItem('m2tw_names_bin_entries');
+        if (lsEntries) {
+          const namesMap = JSON.parse(lsEntries);
+          setNamesDisplayMap(namesMap);
+          try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(namesMap)); } catch {}
+        } else {
+          const store = getStringsBinStore();
+          for (const [fname, binData] of Object.entries(store)) {
+            if (fname.toLowerCase().includes('names') && !fname.toLowerCase().includes('settlement') && !fname.toLowerCase().includes('region')) {
+              const namesMap = {};
+              for (const { key, value } of binData.entries) if (key) namesMap[key] = value;
+              setNamesDisplayMap(namesMap);
+              try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(namesMap)); } catch {}
+              break;
+            }
           }
         }
       }
@@ -1103,8 +1104,10 @@ export default function CampaignMap() {
                   cultureList={cultureList}
                  edbData={edbData}
                  onStratDataChange={(updatedStratData) => {
-                   setStratDataRaw(updatedStratData);
-                   setOverlayItems(updatedStratData.items || overlayItems);
+                   // Preserve raw so the CharactersTab guard (!stratData?.raw) keeps working
+                   const withRaw = updatedStratData.raw ? updatedStratData : { ...updatedStratData, raw: stratData?.raw };
+                   setStratDataRaw(withRaw);
+                   setOverlayItems(withRaw.items || overlayItems);
                    setOverlayDirty(true);
                  }}
                  onStratLoad={(text) => {

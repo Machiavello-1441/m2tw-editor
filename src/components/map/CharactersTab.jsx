@@ -17,11 +17,17 @@ function getSexForType(charType) {
   return null; // family = free choice
 }
 
-// Get available names from descr_names for a faction + sex
+// Get available first names from descrNames for a faction + sex
 function getNames(descrNames, faction, sex) {
   if (!descrNames || !faction) return [];
   const sexKey = sex === 'female' ? 'female' : 'male';
   return descrNames[sexKey]?.[faction] || [];
+}
+
+// Get available surnames from descrNames for a faction
+function getSurnames(descrNames, faction) {
+  if (!descrNames || !faction) return [];
+  return descrNames._surnames?.[faction] || [];
 }
 
 // Get display name from namesDisplayMap (parsed from names.strings.bin)
@@ -73,7 +79,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   const hasArmy = c.charType === 'general' || c.charType === 'named character' || c.charType === 'admiral';
 
   const firstNames = useMemo(() => getNames(descrNames, c.faction, effectiveSex), [descrNames, c.faction, effectiveSex]);
-  const surnameNames = useMemo(() => getNames(descrNames, c.faction, effectiveSex), [descrNames, c.faction, effectiveSex]);
+  const surnameNames = useMemo(() => getSurnames(descrNames, c.faction), [descrNames, c.faction]);
 
   const firstNameDisplay = getDisplayName(namesDisplayMap, c.name);
   const surnameDisplay = getDisplayName(namesDisplayMap, c.surname);
@@ -421,14 +427,13 @@ function CharacterRecordRow({ rec, factionName, onUpdate }) {
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
             </div>
             <div>
-              <span className="text-[9px] text-slate-500">Role / Status</span>
-              <select value={isDead ? 'dead' : (rec.status || 'never_a_leader')} onChange={e => {
-                const v = e.target.value;
-                if (v === 'dead') set('status', 'dead');
-                else set('status', v);
+              <span className="text-[9px] text-slate-500">Alive / Dead</span>
+              <select value={isDead ? 'dead' : 'alive'} onChange={e => {
+                if (e.target.value === 'dead') set('status', 'dead');
+                else set('status', rec.status === 'dead' ? 'never_a_leader' : (rec.status || 'never_a_leader'));
               }}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300">
-                {RECORD_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value="alive">alive</option>
                 <option value="dead">dead</option>
               </select>
             </div>
@@ -437,6 +442,15 @@ function CharacterRecordRow({ rec, factionName, onUpdate }) {
                 <span className="text-[9px] text-slate-500">Years Dead</span>
                 <input type="number" min={0} value={rec.deadYears || 0} onChange={e => set('deadYears', parseInt(e.target.value) || 0)}
                   className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-red-300 font-mono" />
+              </div>
+            )}
+            {!isDead && (
+              <div>
+                <span className="text-[9px] text-slate-500">Role</span>
+                <select value={rec.status || 'never_a_leader'} onChange={e => set('status', e.target.value)}
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300">
+                  {RECORD_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
               </div>
             )}
           </div>
