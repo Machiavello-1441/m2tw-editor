@@ -9,7 +9,7 @@ const MALE_ONLY_TYPES = new Set(['general', 'admiral', 'spy', 'merchant', 'diplo
 // "family" type is both sexes, goes to character_record
 const ALL_CHARACTER_TYPES = ['general', 'admiral', 'spy', 'merchant', 'diplomat', 'priest', 'assassin', 'princess', 'heretic', 'witch', 'inquisitor', 'named character', 'family'];
 const NAMED_TYPES = new Set(['named character', 'general', 'admiral']);
-const RECORD_ROLES = ['never_a_leader', 'past_leader', 'leader', 'heir'];
+const RECORD_ROLES = ['never_a_leader', 'past_leader', 'past_heir', 'leader', 'heir'];
 
 function getSexForType(charType) {
   if (FEMALE_ONLY_TYPES.has(charType)) return 'female';
@@ -217,19 +217,21 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
             )}
 
             {/* Position */}
-            <div className="col-span-2">
-              <span className="text-[9px] text-slate-500">Position</span>
-              <div className="flex items-center gap-1">
-                <input type="number" placeholder="X" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
-                  className="flex-1 h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                <input type="number" placeholder="Y" value={c.y ?? ''} onChange={e => set('y', parseInt(e.target.value))}
-                  className="flex-1 h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                <button onClick={() => onPin(char)}
-                  className="h-6 px-2 flex items-center gap-1 rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
-                  <MapPin className="w-2.5 h-2.5" /> Pin
-                </button>
+            {!isFamily && (
+              <div className="col-span-2">
+                <span className="text-[9px] text-slate-500">Position</span>
+                <div className="flex items-center gap-1">
+                  <input type="number" placeholder="X" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
+                    className="w-16 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  <input type="number" placeholder="Y" value={c.y ?? ''} onChange={e => set('y', parseInt(e.target.value))}
+                    className="w-16 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  <button onClick={() => onPin(char)}
+                    className="h-6 px-1.5 flex items-center gap-0.5 rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
+                    <MapPin className="w-2.5 h-2.5" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Traits — family type skips this */}
@@ -419,11 +421,15 @@ function CharacterRecordRow({ rec, factionName, onUpdate }) {
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
             </div>
             <div>
-              <span className="text-[9px] text-slate-500">Status</span>
-              <select value={isDead ? 'dead' : 'alive'} onChange={e => set('status', e.target.value === 'dead' ? 'dead' : rec.status === 'dead' ? 'never_a_leader' : rec.status)}
+              <span className="text-[9px] text-slate-500">Role / Status</span>
+              <select value={isDead ? 'dead' : (rec.status || 'never_a_leader')} onChange={e => {
+                const v = e.target.value;
+                if (v === 'dead') set('status', 'dead');
+                else set('status', v);
+              }}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300">
-                <option value="alive">Alive</option>
-                <option value="dead">Dead</option>
+                {RECORD_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value="dead">dead</option>
               </select>
             </div>
             {isDead && (
@@ -431,15 +437,6 @@ function CharacterRecordRow({ rec, factionName, onUpdate }) {
                 <span className="text-[9px] text-slate-500">Years Dead</span>
                 <input type="number" min={0} value={rec.deadYears || 0} onChange={e => set('deadYears', parseInt(e.target.value) || 0)}
                   className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-red-300 font-mono" />
-              </div>
-            )}
-            {!isDead && (
-              <div>
-                <span className="text-[9px] text-slate-500">Role</span>
-                <select value={rec.status || 'never_a_leader'} onChange={e => set('status', e.target.value)}
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300">
-                  {RECORD_ROLES.map(r => <option key={r}>{r}</option>)}
-                </select>
               </div>
             )}
           </div>

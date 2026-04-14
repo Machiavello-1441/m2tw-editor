@@ -232,6 +232,51 @@ export default function CampaignMap() {
         }
       }
     } catch {}
+    // Auto-restore descr_names from localStorage if not in sessionStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_descr_names_raw')) {
+        const raw = localStorage.getItem('m2tw_names_file');
+        if (raw) {
+          sessionStorage.setItem('m2tw_descr_names_raw', raw);
+          setDescrNames(parseDescrNames(raw));
+        }
+      }
+    } catch {}
+    // Auto-restore traits from localStorage if not in sessionStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_traits_raw')) {
+        const raw = localStorage.getItem('m2tw_traits_file');
+        if (raw) {
+          sessionStorage.setItem('m2tw_traits_raw', raw);
+          setTraitsList(parseExportDescrTraits(raw));
+        }
+      }
+    } catch {}
+    // Auto-restore ancillaries from localStorage if not in sessionStorage
+    try {
+      if (!sessionStorage.getItem('m2tw_ancillaries_raw')) {
+        const raw = localStorage.getItem('m2tw_anc_file');
+        if (raw) {
+          sessionStorage.setItem('m2tw_ancillaries_raw', raw);
+          setAncillariesList(parseExportDescrAncillaries(raw));
+        }
+      }
+    } catch {}
+    // Auto-restore names.strings.bin display map from strings bin store
+    try {
+      if (!sessionStorage.getItem('m2tw_char_names_display')) {
+        const store = getStringsBinStore();
+        for (const [fname, binData] of Object.entries(store)) {
+          if (fname.toLowerCase().includes('names') && !fname.toLowerCase().includes('settlement') && !fname.toLowerCase().includes('region')) {
+            const namesMap = {};
+            for (const { key, value } of binData.entries) if (key) namesMap[key] = value;
+            setNamesDisplayMap(namesMap);
+            try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(namesMap)); } catch {}
+            break;
+          }
+        }
+      }
+    } catch {}
     // Auto-restore settlement names from strings bin store if not already loaded
     try {
       if (!sessionStorage.getItem('m2tw_names_raw')) {
