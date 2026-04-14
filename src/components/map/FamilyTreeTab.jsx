@@ -231,12 +231,14 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
   const handleDrop = (slot, char) => set({ [slot]: char });
   const handleClear = (slot) => set({ [slot]: null });
 
+  const sortByAgeDesc = (arr) => [...arr].sort((a, b) => (b.age || 0) - (a.age || 0));
+
   const handleAddRootChild = (charId) => {
     const char = allChars.find(c => String(c.id) === charId);
     if (!char) return;
     if ((children || []).find(c => c.id === char.id)) return;
     if ((children || []).length >= MAX_CHILDREN) return;
-    set({ children: [...(children || []), char] });
+    set({ children: sortByAgeDesc([...(children || []), char]) });
   };
 
   const handleRemoveRootChild = (charId) => {
@@ -251,7 +253,8 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
     const existingChildren = (tree.nestedChildren || {})[parentId] || [];
     if (existingChildren.find(c => c.id === child.id)) return;
     if (existingChildren.length >= MAX_CHILDREN) return;
-    set({ nestedChildren: { ...(tree.nestedChildren || {}), [parentId]: [...existingChildren, child] } });
+    const sorted = sortByAgeDesc([...existingChildren, child]);
+    set({ nestedChildren: { ...(tree.nestedChildren || {}), [parentId]: sorted } });
   };
 
   const handleRemoveDescendantChild = (parentId, childId) => {
