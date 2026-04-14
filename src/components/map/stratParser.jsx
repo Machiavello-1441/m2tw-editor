@@ -110,11 +110,13 @@ function parseCharacterLine(line, lineIndex) {
 
   // Parse optional trailing fields: portrait P, label L, battle_model B, hero_ability H, direction D
   const tail = m[8] || '';
-  const portrait     = (tail.match(/,\s*portrait\s+(\S+)/i)     || [])[1] || '';
-  const label        = (tail.match(/,\s*label\s+(\S+)/i)        || [])[1] || '';
-  const battleModel  = (tail.match(/,\s*battle_model\s+(\S+)/i) || [])[1] || '';
-  const heroAbility  = (tail.match(/,\s*hero_ability\s+(\S+)/i) || [])[1] || '';
-  const direction    = (tail.match(/,\s*direction\s+(\S+)/i)    || [])[1] || '';
+  // Strip trailing comma from values (comma is a separator, not part of the value)
+  const stripComma = s => s ? s.replace(/,$/, '') : '';
+  const portrait     = stripComma((tail.match(/,\s*portrait\s+(\S+)/i)     || [])[1] || '');
+  const label        = stripComma((tail.match(/,\s*label\s+(\S+)/i)        || [])[1] || '');
+  const battleModel  = stripComma((tail.match(/,\s*battle_model\s+(\S+)/i) || [])[1] || '');
+  const heroAbility  = stripComma((tail.match(/,\s*hero_ability\s+(\S+)/i) || [])[1] || '');
+  const direction    = stripComma((tail.match(/,\s*direction\s+(\S+)/i)    || [])[1] || '');
 
   return {
     name: firstName,
@@ -750,46 +752,56 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // Append newly added characters (negative ID = user-created, no _lineNum)
-  const newChars = overlayItems.filter(i => i.id < 0 && i.category === 'character');
+  // Append newly added characters (negative ID = user-created)
+  // Only insert chars that have been confirmed (no _isNew flag)
+  const newChars = overlayItems.filter(i => i.id < 0 && i.category === 'character' && !i._isNew);
   if (newChars.length > 0) {
     for (const char of newChars) {
-      if (!char.name || !char.faction) continue; // skip incomplete chars
+      if (!char.name || !char.faction) continue;
       const factionName = char.faction;
       const factionLineIdx = lines.findIndex(l => {
         const cl = l.replace(/;.*$/, '').trim();
         return /^faction[\s\t]+/.test(cl) && cl.replace(/^faction[\s\t]+/, '').split(/[\s\t,]/)[0] === factionName;
       });
-      const charLine = serializeCharLine(char);
-      const extraLines = [];
-      if (char.traits?.length) extraLines.push(`\t\ttraits\t${char.traits.map(t => `${t.name} ${t.level}`).join(' , ')}`);
-      if (char.ancillaries?.length) extraLines.push(`\t\tancillaries\t${char.ancillaries.join(', ')}`);
+
+      // Build the block for this character
+      const blockLines = [];
+      if (char.comment) blockLines.push(`;;;;; ${char.comment}`);
+      blockLines.push(serializeCharLine(char));
+      // M2TW correct indentation: no leading tabs on traits/ancillaries/army/unit
+      if (char.traits?.length) blockLines.push(`traits\t${char.traits.map(t => `${t.name} ${t.level}`).join(' , ')}`);
+      if (char.ancillaries?.length) blockLines.push(`ancillaries\t${char.ancillaries.join(', ')}`);
       if (char.army?.length) {
-        extraLines.push('\t\tarmy');
+        blockLines.push('army');
         for (const u of char.army) {
-          if (u.unit) extraLines.push(`\t\t\tunit\t${u.unit} exp ${u.exp ?? 0} armour ${u.armour ?? 0} weapon_lvl ${u.weaponLvl ?? 0}`);
+          if (u.unit) blockLines.push(`unit\t${u.unit} exp ${u.exp ?? 0} armour ${u.armour ?? 0} weapon_lvl ${u.weaponLvl ?? 0}`);
         }
       }
+      blockLines.push(''); // blank line after character
+
       if (factionLineIdx >= 0) {
-        // Insert before end of faction block (before next faction or diplomacy section)
-        let insertIdx = lines.length;
+        // Insert BEFORE the first character_record in the faction block
+        // (or before end of faction block if no character_record exists)
+        let insertIdx = -1;
         let braceDepth = 0;
+        let factionEnd = lines.length;
         for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
           const raw = lines[fi];
           const fl = raw.replace(/;.*$/, '').trim();
           for (const ch of raw) { if (ch === '{') braceDepth++; else if (ch === '}') braceDepth--; }
-          if (braceDepth > 0 || !fl) continue;
+          if (braceDepth > 0) continue;
+          if (/^character_record\b/i.test(fl) && insertIdx < 0) insertIdx = fi;
           if (
             /^faction[\s\t]+\w/i.test(fl) ||
             /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
             /^region[\s\t]+\S/i.test(fl) ||
             /^script\s*$/i.test(fl)
-          ) { insertIdx = fi; break; }
+          ) { factionEnd = fi; break; }
         }
-        lines.splice(insertIdx, 0, charLine, ...extraLines);
+        if (insertIdx < 0) insertIdx = factionEnd;
+        lines.splice(insertIdx, 0, ...blockLines);
       } else {
-        // No faction block — append at end
-        lines.push('', `faction\t${factionName}`, charLine, ...extraLines);
+        lines.push('', `faction\t${factionName}`, ...blockLines);
       }
     }
   }

@@ -71,8 +71,8 @@ function validateChar(char, eduUnits) {
   return { ok: true, reason: '' };
 }
 
-function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin, allStratFactions }) {
-  const [expanded, setExpanded] = useState(false);
+function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin, allStratFactions, onConfirmCreate }) {
+  const [expanded, setExpanded] = useState(char._isNew ?? false);
   const c = char;
   const set = (key, val) => onUpdate(c.id, { ...c, [key]: val });
 
@@ -122,7 +122,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   const typeIcon = isFamily ? '👨‍👩‍👧' : c.charType === 'admiral' ? '⚓' : c.charType === 'spy' ? '🕵️' : c.charType === 'priest' ? '🛐' : c.charType === 'princess' ? '👑' : '⚔️';
 
   return (
-    <div className="rounded border border-slate-700/40 bg-slate-900/20">
+    <div className={`rounded border ${c._isNew ? 'border-amber-500/50 bg-amber-900/10' : 'border-slate-700/40 bg-slate-900/20'}`}>
       <div className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(v => !v)}>
         {expanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
         <span className="text-sm shrink-0">{typeIcon}</span>
@@ -130,6 +130,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
           {fullName || '(unnamed)'} — <span className="text-slate-400">{c.charType}</span>
           {c.role && <span className="ml-1 text-amber-400 text-[9px]">[{c.role}]</span>}
           {isFamily && <span className="ml-1 text-pink-400 text-[9px]">[record]</span>}
+          {c._isNew && <span className="ml-1 text-amber-500 text-[9px] font-semibold">[NEW]</span>}
         </span>
         <span className="text-[9px] text-slate-600 font-mono">{c.x != null ? `${c.x},${c.y}` : 'unplaced'}</span>
         <button onClick={e => { e.stopPropagation(); onPin(char); }}
@@ -147,8 +148,8 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
 
       {expanded && (
         <div className="border-t border-slate-700/40 px-2 py-2 space-y-1.5">
-          <div className="grid grid-cols-2 gap-1.5">
-            {/* Type */}
+          <div className="space-y-1.5">
+            {/* Row 1: Type (full width) */}
             <div>
               <span className="text-[9px] text-slate-500">Type</span>
               <select value={c.charType || 'general'} onChange={e => {
@@ -161,132 +162,118 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
               </select>
             </div>
 
-            {/* Faction */}
-            <div>
-              <span className="text-[9px] text-slate-500">Faction</span>
-              <select value={c.faction || ''} onChange={e => {
-                const newFaction = e.target.value;
-                // Clear sub_faction if switching away from slave
-                onUpdate(c.id, { ...c, faction: newFaction, subFaction: newFaction === 'slave' ? (c.subFaction || '') : '' });
-              }}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                <option value="">— select —</option>
-                {allFactions.map(f => <option key={f}>{f}</option>)}
-              </select>
-            </div>
-
-            {/* Sub-Faction — always visible, only active for slave faction */}
-            <div className={!isSlave ? 'opacity-40 pointer-events-none' : ''}>
-              <span className={`text-[9px] ${isSlave ? 'text-amber-400' : 'text-slate-600'}`}>
-                Sub-Faction {isSlave ? '' : '(slave only)'}
-              </span>
-              <select
-                value={c.subFaction || ''}
-                onChange={e => set('subFaction', e.target.value)}
-                disabled={!isSlave}
-                className={`w-full h-6 px-1.5 text-[11px] rounded border font-mono ${
-                  isSlave
-                    ? 'bg-slate-800 border-amber-600/40 text-amber-200'
-                    : 'bg-slate-800/40 border-slate-700/20 text-slate-600'
-                }`}>
-                <option value="">— none —</option>
-                {(allStratFactions || allFactions).filter(f => f !== 'slave').map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
-              {subFactionActive && (
-                <p className="text-[8px] text-amber-400/70 mt-0.5">Names & units from slave + {c.subFaction}</p>
-              )}
-            </div>
-
-            {/* First Name */}
-            <div>
-              <span className="text-[9px] text-slate-500">First Name</span>
-              {firstNames.length > 0 ? (
-                <select value={c.name || ''} onChange={e => set('name', e.target.value)}
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
-                  <option value="">— select —</option>
-                  {firstNames.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-              ) : (
-                <input value={c.name || ''} onChange={e => set('name', e.target.value)}
-                  placeholder={descrNames ? 'no names for faction' : 'load descr_names.txt'}
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              )}
-              {firstNameDisplay && (
-                <p className="text-[9px] text-amber-300/70 mt-0.5 font-mono">"{firstNameDisplay}"</p>
-              )}
-            </div>
-
-            {/* Surname */}
-            <div>
-              <span className="text-[9px] text-slate-500">Surname / Epithet</span>
-              {surnameNames.length > 0 ? (
-                <select value={c.surname || ''} onChange={e => set('surname', e.target.value)}
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
-                  <option value="">— none —</option>
-                  {surnameNames.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-              ) : (
-                <input value={c.surname || ''} onChange={e => set('surname', e.target.value)}
-                  placeholder="optional"
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              )}
-              {surnameDisplay && (
-                <p className="text-[9px] text-amber-300/70 mt-0.5 font-mono">"{surnameDisplay}"</p>
-              )}
-            </div>
-
-            {/* Sex */}
-            <div>
-              <span className="text-[9px] text-slate-500">Sex</span>
-              {forcedSex ? (
-                <div className="h-6 px-1.5 flex items-center text-[11px] bg-slate-800/50 border border-slate-600/20 rounded text-slate-400 font-mono">
-                  {forcedSex} <span className="ml-1 text-[9px] text-slate-600">(fixed)</span>
-                </div>
-              ) : (
-                <select value={effectiveSex} onChange={e => set('sex', e.target.value)}
+            {/* Row 2: Faction + Sub-Faction */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <div>
+                <span className="text-[9px] text-slate-500">Faction</span>
+                <select value={c.faction || ''} onChange={e => {
+                  const newFaction = e.target.value;
+                  onUpdate(c.id, { ...c, faction: newFaction, subFaction: newFaction === 'slave' ? (c.subFaction || '') : '' });
+                }}
                   className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                  <option value="male">male</option>
-                  <option value="female">female</option>
+                  <option value="">— select —</option>
+                  {allFactions.map(f => <option key={f}>{f}</option>)}
                 </select>
-              )}
+              </div>
+              <div className={!isSlave ? 'opacity-40 pointer-events-none' : ''}>
+                <span className={`text-[9px] ${isSlave ? 'text-amber-400' : 'text-slate-600'}`}>
+                  Sub-Faction {!isSlave && <span className="text-slate-700">(slave only)</span>}
+                </span>
+                <select value={c.subFaction || ''} onChange={e => set('subFaction', e.target.value)}
+                  disabled={!isSlave}
+                  className={`w-full h-6 px-1.5 text-[11px] rounded border font-mono ${isSlave ? 'bg-slate-800 border-amber-600/40 text-amber-200' : 'bg-slate-800/40 border-slate-700/20 text-slate-600'}`}>
+                  <option value="">— none —</option>
+                  {(allStratFactions || allFactions).filter(f => f !== 'slave').map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+                {subFactionActive && <p className="text-[8px] text-amber-400/70 mt-0.5">Names & units from slave + {c.subFaction}</p>}
+              </div>
             </div>
 
-            {/* Age */}
-            <div>
-              <span className="text-[9px] text-slate-500">Age</span>
-              <input type="number" value={c.age || 30} onChange={e => set('age', parseInt(e.target.value) || 30)}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+            {/* Row 3: First Name + Surname */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <div>
+                <span className="text-[9px] text-slate-500">First Name</span>
+                {firstNames.length > 0 ? (
+                  <select value={c.name || ''} onChange={e => set('name', e.target.value)}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
+                    <option value="">— select —</option>
+                    {firstNames.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                ) : (
+                  <input value={c.name || ''} onChange={e => set('name', e.target.value)}
+                    placeholder={descrNames ? 'no names for faction' : 'load descr_names.txt'}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                )}
+                {firstNameDisplay && <p className="text-[9px] text-amber-300/70 mt-0.5 font-mono">"{firstNameDisplay}"</p>}
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-500">Surname / Epithet</span>
+                {surnameNames.length > 0 ? (
+                  <select value={c.surname || ''} onChange={e => set('surname', e.target.value)}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
+                    <option value="">— none —</option>
+                    {surnameNames.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                ) : (
+                  <input value={c.surname || ''} onChange={e => set('surname', e.target.value)}
+                    placeholder="optional"
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                )}
+                {surnameDisplay && <p className="text-[9px] text-amber-300/70 mt-0.5 font-mono">"{surnameDisplay}"</p>}
+              </div>
             </div>
 
-            {/* Role (named character only — generals/admirals cannot have this) */}
-            {canHaveRole && (
+            {/* Row 4: Sex + Age */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <div>
+                <span className="text-[9px] text-slate-500">Sex</span>
+                {forcedSex ? (
+                  <div className="h-6 px-1.5 flex items-center text-[11px] bg-slate-800/50 border border-slate-600/20 rounded text-slate-400 font-mono">
+                    {forcedSex} <span className="ml-1 text-[9px] text-slate-600">(fixed)</span>
+                  </div>
+                ) : (
+                  <select value={effectiveSex} onChange={e => set('sex', e.target.value)}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="male">male</option>
+                    <option value="female">female</option>
+                  </select>
+                )}
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-500">Age</span>
+                <input type="number" value={c.age || 30} onChange={e => set('age', parseInt(e.target.value) || 30)}
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+              </div>
+            </div>
+
+            {/* Row 5: Role + Position */}
+            <div className="grid grid-cols-2 gap-1.5">
               <div>
                 <span className="text-[9px] text-slate-500">Role</span>
                 <select value={c.role || ''} onChange={e => set('role', e.target.value)}
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                  disabled={!canHaveRole}
+                  className={`w-full h-6 px-1.5 text-[11px] rounded border ${canHaveRole ? 'bg-slate-800 border-slate-600/40 text-slate-200' : 'bg-slate-800/40 border-slate-700/20 text-slate-600 opacity-40'}`}>
                   <option value="">— none —</option>
                   <option value="leader">leader</option>
                   <option value="heir">heir</option>
                 </select>
               </div>
-            )}
-
-            {/* Position */}
-            {!isFamily && (
-              <div className="col-span-2">
-                <span className="text-[9px] text-slate-500">Position</span>
-                <div className="flex items-center gap-1">
-                  <input type="number" placeholder="X" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
-                    className="w-16 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                  <input type="number" placeholder="Y" value={c.y ?? ''} onChange={e => set('y', parseInt(e.target.value))}
-                    className="w-16 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                  <button onClick={() => onPin(char)}
-                    className="h-6 px-1.5 flex items-center gap-0.5 rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
-                    <MapPin className="w-2.5 h-2.5" />
-                  </button>
+              {!isFamily && (
+                <div>
+                  <span className="text-[9px] text-slate-500">Position</span>
+                  <div className="flex items-center gap-1">
+                    <input type="number" placeholder="X" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
+                      className="flex-1 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                    <input type="number" placeholder="Y" value={c.y ?? ''} onChange={e => set('y', parseInt(e.target.value))}
+                      className="flex-1 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                    <button onClick={() => onPin(char)}
+                      className="h-6 px-1 flex items-center rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
+                      <MapPin className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Traits — family type skips this */}
@@ -434,10 +421,18 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
             </div>
           )}
 
-          {/* Optional fields: portrait, label, battle_model, hero_ability, direction */}
+          {/* Optional fields: comment, portrait, label, battle_model, hero_ability, direction */}
           {!isFamily && (
             <div className="border-t border-slate-700/30 pt-1.5 space-y-1">
               <p className="text-[9px] text-slate-500 uppercase font-semibold">Optional Fields</p>
+
+              {/* Comment — written as ;;;;; comment before the character line */}
+              <div>
+                <span className="text-[9px] text-slate-500">Comment (written as ;;;;; … before character)</span>
+                <input value={c.comment || ''} onChange={e => set('comment', e.target.value)}
+                  placeholder="optional comment text"
+                  className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-400 font-mono" />
+              </div>
 
               <div className="grid grid-cols-2 gap-1">
                 {/* Portrait */}
@@ -492,23 +487,32 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
             </div>
           )}
 
-          {/* Validate button */}
-          <div className="pt-1 border-t border-slate-700/40">
-            <button
-              disabled={!validation.ok}
-              onClick={() => { /* character is already live in state, just visual confirm */ }}
-              className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
-                validation.ok
-                  ? 'bg-green-700/40 hover:bg-green-700/60 border-green-500/40 text-green-300'
-                  : 'bg-slate-800/40 border-slate-700/30 text-slate-600 cursor-not-allowed opacity-60'
-              }`}
-              title={validation.reason}
-            >
+          {/* Validate + Create button */}
+          <div className="pt-1 border-t border-slate-700/40 space-y-1">
+            <div className={`w-full flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-semibold border ${
+              validation.ok
+                ? 'bg-green-700/20 border-green-500/30 text-green-400'
+                : 'bg-slate-800/40 border-slate-700/30 text-slate-600'
+            }`} title={validation.reason}>
               {validation.ok
                 ? <><CheckCircle className="w-3 h-3" /> Character Valid</>
                 : <><AlertTriangle className="w-3 h-3" /> {validation.reason}</>
               }
-            </button>
+            </div>
+            {/* Only show "Create Character" for new chars (negative ID) */}
+            {c.id < 0 && (
+              <button
+                disabled={!validation.ok}
+                onClick={() => { if (validation.ok) onConfirmCreate(c.id); }}
+                className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
+                  validation.ok
+                    ? 'bg-amber-600/80 hover:bg-amber-600 border-amber-500/60 text-slate-900'
+                    : 'bg-slate-800/40 border-slate-700/30 text-slate-600 cursor-not-allowed opacity-60'
+                }`}
+              >
+                <Plus className="w-3 h-3" /> Create Character
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -691,15 +695,23 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   const handleAdd = () => {
     if (!stratData) return;
     const defaultFaction = allFactions[0] || '';
-    const defaultSex = 'male';
     const newChar = {
       id: -(Date.now()), category: 'character', name: '', surname: '',
-      charType: 'general', sex: defaultSex, role: '', age: 30,
+      charType: 'general', sex: 'male', role: '', age: 30,
       faction: defaultFaction, x: null, y: null,
       traits: [], ancillaries: [], army: [],
       subFaction: '', portrait: '', label: '', battleModel: '', heroAbility: '', direction: '',
+      comment: '', _isNew: true,
     };
-    const items = [...(stratData.items || []), newChar];
+    // New chars go at the TOP of items so they appear first in the list
+    const items = [newChar, ...(stratData.items || [])];
+    onStratDataChange({ ...stratData, items });
+  };
+
+  // "Create Character" button: marks the char as confirmed (removes _isNew flag, keeps negative ID for serializer)
+  const handleConfirmCreate = (id) => {
+    if (!stratData) return;
+    const items = (stratData.items || []).map(i => i.id === id ? { ...i, _isNew: false } : i);
     onStratDataChange({ ...stratData, items });
   };
 
@@ -770,7 +782,8 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-            {filtered.map(char => (
+            {/* New unconfirmed chars first, then the rest */}
+            {[...filtered.filter(c => c._isNew), ...filtered.filter(c => !c._isNew)].map(char => (
               <CharacterRow
                 key={char.id}
                 char={char}
@@ -785,6 +798,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
                 onDelete={handleDelete}
                 onSelect={onSelectItem}
                 onPin={handlePin}
+                onConfirmCreate={handleConfirmCreate}
               />
             ))}
 
