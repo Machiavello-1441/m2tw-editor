@@ -1138,6 +1138,12 @@ export default function CampaignMap() {
                   }}
                   overlayItems={overlayItems}
                   selectedItem={selectedItem}
+                  onSaveItem={(item) => {
+                    setOverlayItems(prev => prev.map(i => i.id === item.id ? item : i));
+                    setStratDataRaw(prev => prev ? { ...prev, items: (prev.items || []).map(i => i.id === item.id ? item : i) } : prev);
+                    setSelectedItem(item);
+                    setOverlayDirty(true);
+                  }}
                   onSelectItem={(item) => {
                     setSelectedItem(item);
                     if (jumpRef.current && item.x != null) jumpRef.current(item.x, mapH > 0 ? mapH - 1 - item.y : item.y);

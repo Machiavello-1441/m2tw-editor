@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor } from 'lucide-react';
+import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save } from 'lucide-react';
 import { getItemIcon, getItemLabel } from './StratOverlay';
 import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, parseWinConditions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { exportTGA, downloadBlob } from './tgaExporter';
@@ -12,6 +12,114 @@ import NewRegionForm from './NewRegionForm';
 import FactionsCampaignTab from './FactionsCampaignTab';
 import CharactersTab from './CharactersTab';
 
+// ─── Inline resource editor ────────────────────────────────────────────────────
+function ResourceEditor({ item, onSave }) {
+  const [draft, setDraft] = useState({ type: item.type || '', x: item.x ?? '', y: item.y ?? '' });
+  useEffect(() => { setDraft({ type: item.type || '', x: item.x ?? '', y: item.y ?? '' }); }, [item.id]);
+  return (
+    <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
+      <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit Resource</p>
+      <div className="space-y-1">
+        <div>
+          <span className="text-[9px] text-slate-500">Type</span>
+          <select value={draft.type} onChange={e => setDraft(d => ({ ...d, type: e.target.value }))}
+            className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+            {RESOURCE_TYPES_LIST.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <span className="text-[9px] text-slate-500">X / Y</span>
+          <div className="flex gap-0.5">
+            <input type="number" value={draft.x} placeholder="X"
+              onChange={e => setDraft(d => ({ ...d, x: parseInt(e.target.value) || 0 }))}
+              className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+            <input type="number" value={draft.y} placeholder="Y"
+              onChange={e => setDraft(d => ({ ...d, y: parseInt(e.target.value) || 0 }))}
+              className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+          </div>
+        </div>
+        <button onClick={() => onSave({ ...item, ...draft })}
+          className="w-full flex items-center justify-center gap-1 py-1 text-[10px] font-semibold rounded border border-green-600/40 bg-green-700/20 text-green-400 hover:bg-green-700/40 transition-colors">
+          <Save className="w-3 h-3" /> Save Changes
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inline fort/watchtower editor ─────────────────────────────────────────────
+function FortEditor({ item, cultureList, onSave }) {
+  const [draft, setDraft] = useState({
+    fortType: item.fortType || 'me_fort_a',
+    culture: item.culture || '',
+    comment: item.comment || '',
+    x: item.x ?? '',
+    y: item.y ?? '',
+  });
+  useEffect(() => {
+    setDraft({
+      fortType: item.fortType || 'me_fort_a',
+      culture: item.culture || '',
+      comment: item.comment || '',
+      x: item.x ?? '',
+      y: item.y ?? '',
+    });
+  }, [item.id]);
+  return (
+    <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
+      <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit {item.type === 'watchtower' ? 'Watchtower' : 'Fort'}</p>
+      <div className="space-y-1">
+        {item.type === 'fort' && (
+          <>
+            <div>
+              <span className="text-[9px] text-slate-500">Fort Type</span>
+              <select value={draft.fortType} onChange={e => setDraft(d => ({ ...d, fortType: e.target.value }))}
+                className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                {FORT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Culture</span>
+              {cultureList?.length > 0 ? (
+                <select value={draft.culture} onChange={e => setDraft(d => ({ ...d, culture: e.target.value }))}
+                  className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                  <option value="">— none —</option>
+                  {cultureList.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              ) : (
+                <input value={draft.culture} onChange={e => setDraft(d => ({ ...d, culture: e.target.value }))}
+                  placeholder="culture"
+                  className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+              )}
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Comment</span>
+              <input value={draft.comment} onChange={e => setDraft(d => ({ ...d, comment: e.target.value }))}
+                placeholder="optional comment"
+                className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-400 font-mono" />
+            </div>
+          </>
+        )}
+        <div>
+          <span className="text-[9px] text-slate-500">X / Y</span>
+          <div className="flex gap-0.5">
+            <input type="number" value={draft.x} placeholder="X"
+              onChange={e => setDraft(d => ({ ...d, x: parseInt(e.target.value) || 0 }))}
+              className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+            <input type="number" value={draft.y} placeholder="Y"
+              onChange={e => setDraft(d => ({ ...d, y: parseInt(e.target.value) || 0 }))}
+              className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+          </div>
+        </div>
+        <button onClick={() => onSave({ ...item, ...draft })}
+          className="w-full flex items-center justify-center gap-1 py-1 text-[10px] font-semibold rounded border border-green-600/40 bg-green-700/20 text-green-400 hover:bg-green-700/40 transition-colors">
+          <Save className="w-3 h-3" /> Save Changes
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const CATEGORIES = [
   { id: 'settlement',    label: 'Settlements',   emoji: '🏛️' },
   { id: 'resource',      label: 'Resources',     emoji: '💎' },
@@ -20,7 +128,8 @@ const CATEGORIES = [
 ];
 
 // CHARACTER_TYPES moved to CharactersTab
-const RESOURCE_TYPES  = ['coal','fish','amber','furs','gold','silver','iron','timber','wine','wool','grain','silk','dyes','tin','marble','ivory','sugar','spices','tobacco','chocolate','cotton','sulfur','slaves'];
+const RESOURCE_TYPES_LIST = ['coal','fish','amber','furs','gold','silver','iron','timber','wine','wool','grain','silk','dyes','tin','marble','ivory','sugar','spices','tobacco','chocolate','cotton','sulfur','slaves'];
+const RESOURCE_TYPES  = RESOURCE_TYPES_LIST;
 const FORT_TYPES      = ['me_fort_a','me_fort_b','stone_fort_a','stone_fort_b','stone_fort_c','stone_fort_d'];
 const BOOL_FLAGS      = ['marian_reforms_disabled','marian_reforms_activated','rebelling_characters_active','gladiator_uprising_disabled','night_battles_enabled','show_date_as_turns'];
 const SEASONS         = ['summer', 'winter'];
@@ -698,7 +807,7 @@ export default function StratPanel({
   onStratLoad, onRegionsLoad, onNamesLoad, onFactionsLoad,
   onRegionsDataUpdate, onStratDataChange,
   onSettlementNamesChange,
-  overlayItems, selectedItem, onSelectItem,
+  overlayItems, selectedItem, onSelectItem, onSaveItem,
   visibleCategories, onToggleCategory,
   onDeleteItem, onAddItem, onSettlementChange,
   cultureList, edbData, regionsLayer,
@@ -1089,82 +1198,12 @@ export default function StratPanel({
 
               {/* Inline editor for resource */}
               {selectedItem.category === 'resource' && (
-                <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
-                  <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit Resource</p>
-                  <div className="grid grid-cols-2 gap-1">
-                    <div>
-                      <span className="text-[9px] text-slate-500">Type</span>
-                      <select value={selectedItem.type || ''} onChange={e => onAddItem && onSelectItem({ ...selectedItem, type: e.target.value }) || null}
-                        className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                        {RESOURCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <span className="text-[9px] text-slate-500">X / Y</span>
-                      <div className="flex gap-0.5">
-                        <input type="number" value={selectedItem.x ?? ''} placeholder="X"
-                          onChange={e => onSelectItem({ ...selectedItem, x: parseInt(e.target.value) || 0 })}
-                          className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                        <input type="number" value={selectedItem.y ?? ''} placeholder="Y"
-                          onChange={e => onSelectItem({ ...selectedItem, y: parseInt(e.target.value) || 0 })}
-                          className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <ResourceEditor item={selectedItem} onSave={saved => { onSaveItem?.(saved); onSelectItem(saved); }} />
               )}
 
               {/* Inline editor for fort/watchtower */}
               {selectedItem.category === 'fortification' && (
-                <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
-                  <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit {selectedItem.type === 'watchtower' ? 'Watchtower' : 'Fort'}</p>
-                  <div className="grid grid-cols-2 gap-1">
-                    {selectedItem.type === 'fort' && (
-                      <>
-                        <div>
-                          <span className="text-[9px] text-slate-500">Fort Type</span>
-                          <select value={selectedItem.fortType || 'me_fort_a'} onChange={e => onSelectItem({ ...selectedItem, fortType: e.target.value })}
-                            className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                            {FORT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <span className="text-[9px] text-slate-500">Culture</span>
-                          {cultureList?.length > 0 ? (
-                            <select value={selectedItem.culture || ''} onChange={e => onSelectItem({ ...selectedItem, culture: e.target.value })}
-                              className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                              <option value="">— none —</option>
-                              {cultureList.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                          ) : (
-                            <input value={selectedItem.culture || ''} onChange={e => onSelectItem({ ...selectedItem, culture: e.target.value })}
-                              placeholder="culture"
-                              className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                          )}
-                        </div>
-                      </>
-                    )}
-                    <div className={selectedItem.type === 'fort' ? 'col-span-2' : 'col-span-2'}>
-                      <span className="text-[9px] text-slate-500">X / Y</span>
-                      <div className="flex gap-0.5">
-                        <input type="number" value={selectedItem.x ?? ''} placeholder="X"
-                          onChange={e => onSelectItem({ ...selectedItem, x: parseInt(e.target.value) || 0 })}
-                          className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                        <input type="number" value={selectedItem.y ?? ''} placeholder="Y"
-                          onChange={e => onSelectItem({ ...selectedItem, y: parseInt(e.target.value) || 0 })}
-                          className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                      </div>
-                    </div>
-                    {selectedItem.type === 'fort' && (
-                      <div className="col-span-2">
-                        <span className="text-[9px] text-slate-500">Comment</span>
-                        <input value={selectedItem.comment || ''} onChange={e => onSelectItem({ ...selectedItem, comment: e.target.value })}
-                          placeholder="optional comment"
-                          className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-400 font-mono" />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <FortEditor item={selectedItem} cultureList={cultureList} onSave={saved => { onSaveItem?.(saved); onSelectItem(saved); }} />
               )}
             </div>
           )}

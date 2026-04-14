@@ -40,11 +40,13 @@ function getDisplayName(namesDisplayMap, internalName) {
   return namesDisplayMap[internalName] || namesDisplayMap[internalName.toLowerCase()] || '';
 }
 
-// Validate character for the "Confirm" button
+// Validate character for the "Save Character" button
 function validateChar(char, eduUnits) {
   if (!char.faction) return { ok: false, reason: 'No faction selected' };
   if (!char.name) return { ok: false, reason: 'No name selected' };
   if (char.charType === 'family') return { ok: true, reason: '' };
+  // Must be placed on map (x and y required) for non-family types
+  if (char.x == null || char.y == null) return { ok: false, reason: 'Character must be placed on the map (X/Y required)' };
 
   const factionUnits = (eduUnits || []).filter(u =>
     u.ownership && (u.ownership.includes(char.faction) || u.ownership.includes('all'))
@@ -249,34 +251,36 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
               </div>
             </div>
 
-            {/* Row 5: Role + Position (same line) */}
-            <div className="grid grid-cols-2 gap-1.5">
-              <div>
-                <span className="text-[9px] text-slate-500">Role</span>
-                <select value={c.role || ''} onChange={e => set('role', e.target.value)}
-                  disabled={!canHaveRole}
-                  className={`w-full h-6 px-1.5 text-[11px] rounded border ${canHaveRole ? 'bg-slate-800 border-slate-600/40 text-slate-200' : 'bg-slate-800/40 border-slate-700/20 text-slate-600 opacity-40'}`}>
-                  <option value="">— none —</option>
-                  <option value="leader">leader</option>
-                  <option value="heir">heir</option>
-                </select>
-              </div>
-              {!isFamily && (
-                <div>
-                  <span className="text-[9px] text-slate-500">Position (X / Y)</span>
-                  <div className="flex items-center gap-1">
-                    <input type="number" placeholder="X" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
-                      className="flex-1 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                    <input type="number" placeholder="Y" value={c.y ?? ''} onChange={e => set('y', parseInt(e.target.value))}
-                      className="flex-1 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                    <button onClick={() => onPin(char)} title="Pin on map"
-                      className="h-6 px-1 flex items-center rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
-                      <MapPin className="w-2.5 h-2.5" />
-                    </button>
-                  </div>
-                </div>
-              )}
+            {/* Row 5: Role */}
+            <div>
+              <span className="text-[9px] text-slate-500">Role</span>
+              <select value={c.role || ''} onChange={e => set('role', e.target.value)}
+                disabled={!canHaveRole}
+                className={`w-full h-6 px-1.5 text-[11px] rounded border ${canHaveRole ? 'bg-slate-800 border-slate-600/40 text-slate-200' : 'bg-slate-800/40 border-slate-700/20 text-slate-600 opacity-40'}`}>
+                <option value="">— none —</option>
+                <option value="leader">leader</option>
+                <option value="heir">heir</option>
+              </select>
             </div>
+
+            {/* Row 6: Position (separate line) */}
+            {!isFamily && (
+              <div>
+                <span className={`text-[9px] ${c.x == null || c.y == null ? 'text-red-400' : 'text-slate-500'}`}>
+                  Position (X / Y) {c.x == null || c.y == null ? <span className="text-red-400">— required</span> : null}
+                </span>
+                <div className="flex items-center gap-1">
+                  <input type="number" placeholder="X" value={c.x ?? ''} onChange={e => set('x', e.target.value === '' ? null : parseInt(e.target.value))}
+                    className={`flex-1 h-6 px-1 text-[10px] bg-slate-800 rounded text-slate-200 font-mono border ${c.x == null ? 'border-red-500/50' : 'border-slate-600/40'}`} />
+                  <input type="number" placeholder="Y" value={c.y ?? ''} onChange={e => set('y', e.target.value === '' ? null : parseInt(e.target.value))}
+                    className={`flex-1 h-6 px-1 text-[10px] bg-slate-800 rounded text-slate-200 font-mono border ${c.y == null ? 'border-red-500/50' : 'border-slate-600/40'}`} />
+                  <button onClick={() => onPin(char)} title="Click on map to place"
+                    className="h-6 px-1.5 flex items-center gap-0.5 rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
+                    <MapPin className="w-2.5 h-2.5" /> Place
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Traits — family type skips this */}
@@ -494,32 +498,38 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
             </div>
           )}
 
-          {/* Validate + Create button */}
+          {/* Validate + Save button — shown for ALL characters (new and existing) */}
           <div className="pt-1 border-t border-slate-700/40 space-y-1">
+            {/* Validation status */}
             <div className={`w-full flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-semibold border ${
               validation.ok
                 ? 'bg-green-700/20 border-green-500/30 text-green-400'
                 : 'bg-slate-800/40 border-slate-700/30 text-slate-600'
             }`} title={validation.reason}>
               {validation.ok
-                ? <><CheckCircle className="w-3 h-3" /> Character Valid</>
+                ? <><CheckCircle className="w-3 h-3" /> Ready to save</>
                 : <><AlertTriangle className="w-3 h-3" /> {validation.reason}</>
               }
             </div>
-            {/* Only show "Create Character" for new chars (negative ID) */}
-            {c.id < 0 && (
-              <button
-                disabled={!validation.ok}
-                onClick={() => { if (validation.ok) onConfirmCreate(c.id); }}
-                className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
-                  validation.ok
-                    ? 'bg-amber-600/80 hover:bg-amber-600 border-amber-500/60 text-slate-900'
-                    : 'bg-slate-800/40 border-slate-700/30 text-slate-600 cursor-not-allowed opacity-60'
-                }`}
-              >
-                <Plus className="w-3 h-3" /> Create Character
-              </button>
-            )}
+            <button
+              disabled={!validation.ok}
+              onClick={() => {
+                if (!validation.ok) return;
+                if (c.id < 0) {
+                  // New char: confirm creation (removes _isNew flag)
+                  onConfirmCreate(c.id);
+                }
+                // For existing chars (positive ID), changes are already live via onUpdate; just give visual feedback
+                setExpanded(false);
+              }}
+              className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
+                validation.ok
+                  ? 'bg-green-700/80 hover:bg-green-700 border-green-600/60 text-white'
+                  : 'bg-slate-800/40 border-slate-700/30 text-slate-600 cursor-not-allowed opacity-60'
+              }`}
+            >
+              <CheckCircle className="w-3 h-3" /> Save Character
+            </button>
           </div>
         </div>
       )}
