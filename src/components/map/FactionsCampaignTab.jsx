@@ -254,6 +254,7 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
 
 // ── Diplomacy editor ──────────────────────────────────────────────────────────
 function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
+  const [diploTab, setDiploTab] = useState('standings');
   const standings = stratData?.factionStandings || [];
   const relationships = stratData?.factionRelationships || [];
 
@@ -290,66 +291,82 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
   };
 
   return (
-    <div className="space-y-2">
-      {/* faction_standings */}
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-[9px] text-slate-500 uppercase font-semibold">Faction Standings
-            <InfoTooltip text="Values from -1.00 (hostile) to 1.00 (friendly). Defines initial diplomatic attitude between factions." />
-          </p>
-          <button onClick={addStanding} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
-        </div>
-        <div className="space-y-1 max-h-36 overflow-y-auto">
-          {standings.map((s, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <select value={s.faction} onChange={e => updateStanding(i, 'faction', e.target.value)}
-                className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
-                {allFactionNames.map(f => <option key={f}>{f}</option>)}
-              </select>
-              <input type="number" step="0.1" min="-1" max="1" value={s.value}
-                onChange={e => updateStanding(i, 'value', parseFloat(e.target.value))}
-                className="h-5 w-14 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400 font-mono text-center" />
-              <select value={s.targets?.[0] || ''} onChange={e => updateStanding(i, 'targets', [e.target.value])}
-                className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
-                {allFactionNames.map(f => <option key={f}>{f}</option>)}
-              </select>
-              <button onClick={() => removeStanding(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
-            </div>
-          ))}
-          {standings.length === 0 && <p className="text-[10px] text-slate-600 italic">No standings defined</p>}
-        </div>
+    <div className="flex flex-col h-full space-y-2">
+      {/* Inner sub-tabs: Standings | Relationships */}
+      <div className="flex rounded overflow-hidden border border-slate-700/50 shrink-0">
+        <button onClick={() => setDiploTab('standings')}
+          className={`flex-1 py-1 text-[9px] font-semibold transition-colors ${diploTab === 'standings' ? 'bg-amber-600/20 text-amber-400' : 'bg-slate-800/40 text-slate-500 hover:text-slate-300'}`}>
+          Standings ({standings.length})
+        </button>
+        <button onClick={() => setDiploTab('relationships')}
+          className={`flex-1 py-1 text-[9px] font-semibold transition-colors border-l border-slate-700/50 ${diploTab === 'relationships' ? 'bg-amber-600/20 text-amber-400' : 'bg-slate-800/40 text-slate-500 hover:text-slate-300'}`}>
+          Relationships ({relationships.length})
+        </button>
       </div>
 
+      {/* faction_standings */}
+      {diploTab === 'standings' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between mb-1 shrink-0">
+            <p className="text-[9px] text-slate-500 uppercase font-semibold">Faction Standings
+              <InfoTooltip text="Values from -1.00 (hostile) to 1.00 (friendly). Defines initial diplomatic attitude between factions." />
+            </p>
+            <button onClick={addStanding} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1">
+            {standings.map((s, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <select value={s.faction} onChange={e => updateStanding(i, 'faction', e.target.value)}
+                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
+                  {allFactionNames.map(f => <option key={f}>{f}</option>)}
+                </select>
+                <input type="number" step="0.1" min="-1" max="1" value={s.value}
+                  onChange={e => updateStanding(i, 'value', parseFloat(e.target.value))}
+                  className="h-5 w-14 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400 font-mono text-center" />
+                <select value={s.targets?.[0] || ''} onChange={e => updateStanding(i, 'targets', [e.target.value])}
+                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
+                  {allFactionNames.map(f => <option key={f}>{f}</option>)}
+                </select>
+                <button onClick={() => removeStanding(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
+              </div>
+            ))}
+            {standings.length === 0 && <p className="text-[10px] text-slate-600 italic">No standings defined</p>}
+          </div>
+        </div>
+      )}
+
       {/* faction_relationships */}
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-[9px] text-slate-500 uppercase font-semibold">Faction Relationships
-            <InfoTooltip text="at_war_with or allied_to. Neutral relationships don't need to be listed." />
-          </p>
-          <button onClick={addRelationship} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
+      {diploTab === 'relationships' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between mb-1 shrink-0">
+            <p className="text-[9px] text-slate-500 uppercase font-semibold">Faction Relationships
+              <InfoTooltip text="at_war_with or allied_to. Neutral relationships don't need to be listed." />
+            </p>
+            <button onClick={addRelationship} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1">
+            {relationships.map((r, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <select value={r.faction} onChange={e => updateRelationship(i, 'faction', e.target.value)}
+                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
+                  {allFactionNames.map(f => <option key={f}>{f}</option>)}
+                </select>
+                <select value={r.relation} onChange={e => updateRelationship(i, 'relation', e.target.value)}
+                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400">
+                  <option value="at_war_with">at_war_with</option>
+                  <option value="allied_to">allied_to</option>
+                </select>
+                <select value={r.targets?.[0] || ''} onChange={e => updateRelationship(i, 'targets', [e.target.value])}
+                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
+                  {allFactionNames.map(f => <option key={f}>{f}</option>)}
+                </select>
+                <button onClick={() => removeRelationship(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
+              </div>
+            ))}
+            {relationships.length === 0 && <p className="text-[10px] text-slate-600 italic">No special relationships</p>}
+          </div>
         </div>
-        <div className="space-y-1 max-h-36 overflow-y-auto">
-          {relationships.map((r, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <select value={r.faction} onChange={e => updateRelationship(i, 'faction', e.target.value)}
-                className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
-                {allFactionNames.map(f => <option key={f}>{f}</option>)}
-              </select>
-              <select value={r.relation} onChange={e => updateRelationship(i, 'relation', e.target.value)}
-                className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400">
-                <option value="at_war_with">at_war_with</option>
-                <option value="allied_to">allied_to</option>
-              </select>
-              <select value={r.targets?.[0] || ''} onChange={e => updateRelationship(i, 'targets', [e.target.value])}
-                className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
-                {allFactionNames.map(f => <option key={f}>{f}</option>)}
-              </select>
-              <button onClick={() => removeRelationship(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
-            </div>
-          ))}
-          {relationships.length === 0 && <p className="text-[10px] text-slate-600 italic">No special relationships</p>}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -554,7 +571,7 @@ export default function FactionsCampaignTab({
           </>
         )}
         {subTab === 'diplomacy' && (
-          <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2.5">
+          <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2.5 flex flex-col" style={{ minHeight: '60vh' }}>
             <DiplomacyEditor
               stratData={stratData}
               allFactionNames={allFactionNames}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
 
@@ -82,6 +82,9 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   const canHaveRole = CAN_HAVE_ROLE.has(c.charType);
   const hasArmy = c.charType === 'general' || c.charType === 'named character' || c.charType === 'admiral';
   const isNamedChar = c.charType === 'named character';
+  // Only named characters and generals can have battle_model and hero_ability
+  const canHaveBattleModel = c.charType === 'named character' || c.charType === 'general';
+  const canHaveHeroAbility = c.charType === 'named character' || c.charType === 'general';
 
   const isSlave = c.faction === 'slave';
   const subFactionActive = isSlave && !!c.subFaction;
@@ -246,7 +249,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
               </div>
             </div>
 
-            {/* Row 5: Role + Position */}
+            {/* Row 5: Role + Position (same line) */}
             <div className="grid grid-cols-2 gap-1.5">
               <div>
                 <span className="text-[9px] text-slate-500">Role</span>
@@ -260,13 +263,13 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
               </div>
               {!isFamily && (
                 <div>
-                  <span className="text-[9px] text-slate-500">Position</span>
+                  <span className="text-[9px] text-slate-500">Position (X / Y)</span>
                   <div className="flex items-center gap-1">
                     <input type="number" placeholder="X" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
                       className="flex-1 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
                     <input type="number" placeholder="Y" value={c.y ?? ''} onChange={e => set('y', parseInt(e.target.value))}
                       className="flex-1 h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                    <button onClick={() => onPin(char)}
+                    <button onClick={() => onPin(char)} title="Pin on map"
                       className="h-6 px-1 flex items-center rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
                       <MapPin className="w-2.5 h-2.5" />
                     </button>
@@ -304,8 +307,8 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 </div>
               ))}
               <button onClick={() => set('traits', [...(c.traits || []), { name: '', level: 1 }])}
-                className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
-                <Plus className="w-2.5 h-2.5" /> Add trait {traitsList.length === 0 && <span className="text-slate-600">(load traits file)</span>}
+                className="mt-1 w-full flex items-center justify-center gap-1 py-1 text-[10px] font-semibold rounded border border-slate-600/50 bg-slate-800/60 text-slate-300 hover:text-slate-100 hover:bg-slate-700/60 transition-colors">
+                <Plus className="w-3 h-3" /> Add Trait {traitsList.length === 0 && <span className="text-slate-500 font-normal text-[9px]">(load traits file)</span>}
               </button>
             </div>
           )}
@@ -327,17 +330,17 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                     set('ancillaries', [...(c.ancillaries || []), e.target.value]);
                   }
                   e.target.value = '';
-                }} className="w-full h-5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                  <option value="">— add ancillary —</option>
+                }} className="w-full h-7 px-1.5 text-[10px] font-semibold bg-slate-800 border border-slate-600/50 rounded text-slate-300 hover:border-slate-500 transition-colors cursor-pointer">
+                  <option value="">＋ Add Ancillary…</option>
                   {ancillariesList.filter(a => !(c.ancillaries || []).includes(a)).map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
               ) : (
                 <div className="flex gap-1">
-                  <input id={`anc-${c.id}`} placeholder="ancillary_name (load file for dropdown)" className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  <input id={`anc-${c.id}`} placeholder="ancillary_name (load file for dropdown)" className="flex-1 h-7 px-1.5 text-[10px] bg-slate-800 border border-slate-600/50 rounded text-slate-200 font-mono" />
                   <button onClick={() => {
                     const inp = document.getElementById(`anc-${c.id}`);
                     if (inp?.value) { set('ancillaries', [...(c.ancillaries || []), inp.value]); inp.value = ''; }
-                  }} className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
+                  }} className="h-7 px-2 rounded bg-slate-700/60 border border-slate-600/50 text-slate-300 hover:text-slate-100 font-semibold text-[10px]">＋</button>
                 </div>
               )}
             </div>
@@ -414,8 +417,8 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
               {/* For named character, only allow adding more units after general_unit is set */}
               {(!isNamedChar || !namedCharNeedsGeneralUnit) && (
                 <button onClick={() => set('army', [...(c.army || []), { unit: '', exp: 0, armour: 0, weaponLvl: 0 }])}
-                  className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
-                  <Plus className="w-2.5 h-2.5" /> Add unit
+                  className="mt-1 w-full flex items-center justify-center gap-1 py-1 text-[10px] font-semibold rounded border border-slate-600/50 bg-slate-800/60 text-slate-300 hover:text-slate-100 hover:bg-slate-700/60 transition-colors">
+                  <Plus className="w-3 h-3" /> Add Unit
                 </button>
               )}
             </div>
@@ -451,13 +454,15 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                     className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
                 </div>
 
-                {/* Battle Model */}
-                <div>
-                  <span className="text-[9px] text-slate-500">Battle Model</span>
-                  <input value={c.battleModel || ''} onChange={e => set('battleModel', e.target.value)}
-                    placeholder="battle_model name"
-                    className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                </div>
+                {/* Battle Model — only for named character and general */}
+                {canHaveBattleModel && (
+                  <div>
+                    <span className="text-[9px] text-slate-500">Battle Model</span>
+                    <input value={c.battleModel || ''} onChange={e => set('battleModel', e.target.value)}
+                      placeholder="battle_model name"
+                      className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  </div>
+                )}
 
                 {/* Direction */}
                 <div>
@@ -470,20 +475,22 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 </div>
               </div>
 
-              {/* Hero Ability */}
-              <div>
-                <span className="text-[9px] text-slate-500">Hero Ability</span>
-                <div className="flex gap-1">
-                  <select value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
-                    className="flex-1 h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
-                    <option value="">— none —</option>
-                    {HERO_ABILITIES.map(h => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                  <input value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
-                    placeholder="custom ability"
-                    className="w-28 h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+              {/* Hero Ability — only for named character and general */}
+              {canHaveHeroAbility && (
+                <div>
+                  <span className="text-[9px] text-slate-500">Hero Ability</span>
+                  <div className="flex gap-1">
+                    <select value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
+                      className="flex-1 h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
+                      <option value="">— none —</option>
+                      {HERO_ABILITIES.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                    <input value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
+                      placeholder="custom ability"
+                      className="w-28 h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -628,6 +635,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   // Family tree state lives HERE so it persists across tab switches
   const [familyTrees, setFamilyTrees] = useState({});
   const [treesInitialized, setTreesInitialized] = useState(false);
+  const listTopRef = useRef(null);
 
   const allFactions = useMemo(() => {
     const from = (stratData?.factions || []).map(f => f.name).filter(Boolean);
@@ -706,6 +714,8 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
     // New chars go at the TOP of items so they appear first in the list
     const items = [newChar, ...(stratData.items || [])];
     onStratDataChange({ ...stratData, items });
+    // Scroll to top of list so new char is visible
+    setTimeout(() => listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
 
   // "Create Character" button: marks the char as confirmed (removes _isNew flag, keeps negative ID for serializer)
@@ -782,6 +792,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+            <div ref={listTopRef} />
             {/* New unconfirmed chars first, then the rest */}
             {[...filtered.filter(c => c._isNew), ...filtered.filter(c => !c._isNew)].map(char => (
               <CharacterRow

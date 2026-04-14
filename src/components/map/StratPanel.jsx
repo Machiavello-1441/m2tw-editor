@@ -1070,7 +1070,7 @@ export default function StratPanel({
             )}
           </div>
 
-          {/* Selected item */}
+          {/* Selected item — with inline editor for forts and resources */}
           {selectedItem && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-900/10 p-2.5 space-y-1.5">
               <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">Selected</p>
@@ -1086,6 +1086,86 @@ export default function StratPanel({
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
+
+              {/* Inline editor for resource */}
+              {selectedItem.category === 'resource' && (
+                <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
+                  <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit Resource</p>
+                  <div className="grid grid-cols-2 gap-1">
+                    <div>
+                      <span className="text-[9px] text-slate-500">Type</span>
+                      <select value={selectedItem.type || ''} onChange={e => onAddItem && onSelectItem({ ...selectedItem, type: e.target.value }) || null}
+                        className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                        {RESOURCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-slate-500">X / Y</span>
+                      <div className="flex gap-0.5">
+                        <input type="number" value={selectedItem.x ?? ''} placeholder="X"
+                          onChange={e => onSelectItem({ ...selectedItem, x: parseInt(e.target.value) || 0 })}
+                          className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                        <input type="number" value={selectedItem.y ?? ''} placeholder="Y"
+                          onChange={e => onSelectItem({ ...selectedItem, y: parseInt(e.target.value) || 0 })}
+                          className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Inline editor for fort/watchtower */}
+              {selectedItem.category === 'fortification' && (
+                <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
+                  <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit {selectedItem.type === 'watchtower' ? 'Watchtower' : 'Fort'}</p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {selectedItem.type === 'fort' && (
+                      <>
+                        <div>
+                          <span className="text-[9px] text-slate-500">Fort Type</span>
+                          <select value={selectedItem.fortType || 'me_fort_a'} onChange={e => onSelectItem({ ...selectedItem, fortType: e.target.value })}
+                            className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                            {FORT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-slate-500">Culture</span>
+                          {cultureList?.length > 0 ? (
+                            <select value={selectedItem.culture || ''} onChange={e => onSelectItem({ ...selectedItem, culture: e.target.value })}
+                              className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                              <option value="">— none —</option>
+                              {cultureList.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          ) : (
+                            <input value={selectedItem.culture || ''} onChange={e => onSelectItem({ ...selectedItem, culture: e.target.value })}
+                              placeholder="culture"
+                              className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                          )}
+                        </div>
+                      </>
+                    )}
+                    <div className={selectedItem.type === 'fort' ? 'col-span-2' : 'col-span-2'}>
+                      <span className="text-[9px] text-slate-500">X / Y</span>
+                      <div className="flex gap-0.5">
+                        <input type="number" value={selectedItem.x ?? ''} placeholder="X"
+                          onChange={e => onSelectItem({ ...selectedItem, x: parseInt(e.target.value) || 0 })}
+                          className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                        <input type="number" value={selectedItem.y ?? ''} placeholder="Y"
+                          onChange={e => onSelectItem({ ...selectedItem, y: parseInt(e.target.value) || 0 })}
+                          className="flex-1 h-6 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                      </div>
+                    </div>
+                    {selectedItem.type === 'fort' && (
+                      <div className="col-span-2">
+                        <span className="text-[9px] text-slate-500">Comment</span>
+                        <input value={selectedItem.comment || ''} onChange={e => onSelectItem({ ...selectedItem, comment: e.target.value })}
+                          placeholder="optional comment"
+                          className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-400 font-mono" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>}
