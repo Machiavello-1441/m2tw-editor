@@ -11,7 +11,8 @@ import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat, serializeDescrRegions } from '../components/map/stratParser';
-import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
+import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB, parseDescrNames, parseExportDescrTraits, parseExportDescrAncillaries } from '../components/map/additionalParsers';
+import { parseEDU } from '../components/units/EDUParser';
 import { parseStringsBin } from '../components/strings/stringsBinCodec';
 import { getStringsBinStore } from '../lib/stringsBinStore';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
@@ -103,6 +104,12 @@ export default function CampaignMap() {
   const [mercenaryPools, setMercenaryPools] = useState(() => { try { const r = sessionStorage.getItem('m2tw_mercenaries_raw'); return r ? parseDescrMercenaries(r) : []; } catch { return []; } });
   const [musicTypes, setMusicTypes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_music_types_raw'); return r ? parseDescrSoundsMusicTypes(r) : []; } catch { return []; } });
   const [cultures, setCultures] = useState(() => { try { const r = sessionStorage.getItem('m2tw_cultures_raw'); return r ? parseDescrCultures(r) : []; } catch { return []; } });
+
+  // ── Character creation data sources ──────────────────────────────────────
+  const [descrNames, setDescrNames] = useState(() => { try { const r = sessionStorage.getItem('m2tw_descr_names_raw'); return r ? parseDescrNames(r) : null; } catch { return null; } });
+  const [traitsList, setTraitsList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_traits_raw'); return r ? parseExportDescrTraits(r) : []; } catch { return []; } });
+  const [ancillariesList, setAncillariesList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_ancillaries_raw'); return r ? parseExportDescrAncillaries(r) : []; } catch { return []; } });
+  const [eduUnits, setEduUnits] = useState(() => { try { const r = sessionStorage.getItem('m2tw_edu_raw'); return r ? parseEDU(r) : []; } catch { return []; } });
 
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
@@ -395,6 +402,26 @@ export default function CampaignMap() {
         try { sessionStorage.setItem('m2tw_music_types_raw', text); } catch {}
         setMusicTypes(parseDescrSoundsMusicTypes(text));
       }
+      if (name === 'descr_names.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_descr_names_raw', text); } catch {}
+        setDescrNames(parseDescrNames(text));
+      }
+      if (name === 'export_descr_character_traits.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_traits_raw', text); } catch {}
+        setTraitsList(parseExportDescrTraits(text));
+      }
+      if (name === 'export_descr_ancillaries.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_ancillaries_raw', text); } catch {}
+        setAncillariesList(parseExportDescrAncillaries(text));
+      }
+      if (name === 'export_descr_unit.txt') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_edu_raw', text); } catch {}
+        setEduUnits(parseEDU(text));
+      }
       // Store additional campaign text files for ZIP export
       const extraSessionMap = {
         'descr_events.txt': 'm2tw_events_raw',
@@ -652,13 +679,22 @@ export default function CampaignMap() {
     }
 
     if (pendingPlace) {
-      // ry from MapCanvas is in pixel-space (y=0 top), flip to M2TW space
       const stratY = mapH > 0 ? mapH - 1 - ry : ry;
-      const newItem = { ...pendingPlace, id: Date.now(), x: rx, y: stratY };
-      setOverlayItems(prev => [...prev, newItem]);
-      setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
-      setPendingPlace(null);
-      setSelectedItem(newItem);
+      // If the pending item already exists in stratData (has a real id), just update its position
+      const existingItem = stratData?.items?.find(i => i.id === pendingPlace.id);
+      if (existingItem) {
+        const updated = { ...existingItem, x: rx, y: stratY };
+        setOverlayItems(prev => prev.map(i => i.id === pendingPlace.id ? updated : i));
+        setStratDataRaw(prev => prev ? { ...prev, items: (prev.items || []).map(i => i.id === pendingPlace.id ? updated : i) } : prev);
+        setPendingPlace(null);
+        setSelectedItem(updated);
+      } else {
+        const newItem = { ...pendingPlace, id: pendingPlace.id || Date.now(), x: rx, y: stratY };
+        setOverlayItems(prev => [...prev, newItem]);
+        setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
+        setPendingPlace(null);
+        setSelectedItem(newItem);
+      }
       setOverlayDirty(true);
       return;
     }
@@ -714,6 +750,12 @@ export default function CampaignMap() {
 
   const handleAddItem = (itemTemplate) => {
     setPendingPlace(itemTemplate);
+    setSelectedItem(null);
+  };
+
+  const handlePinCharacter = (char) => {
+    // Set the character as pending place so the user can click the map to place it
+    setPendingPlace({ ...char });
     setSelectedItem(null);
   };
 
@@ -1074,6 +1116,11 @@ export default function CampaignMap() {
                   onRelocatePixel={handleRelocatePixel}
                     mapH={mapH}
                     onLoadTgaLayer={loadLayerFile}
+                    descrNames={descrNames}
+                    traitsList={traitsList}
+                    ancillariesList={ancillariesList}
+                    eduUnits={eduUnits}
+                    onPinCharacter={handlePinCharacter}
                     />
               </div>
             )}

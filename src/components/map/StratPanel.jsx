@@ -707,6 +707,7 @@ export default function StratPanel({
   rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList,
   onRelocatePixel, mapH,
   onLoadTgaLayer,
+  descrNames, traitsList, ancillariesList, eduUnits, onPinCharacter,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -1108,13 +1109,13 @@ export default function StratPanel({
         {tab === 'characters' && (
           <CharactersTab
             stratData={stratData}
-            onStratDataChange={(updatedStratData) => {
-              onStratDataChange(updatedStratData);
-            }}
-            onSelectItem={(item) => {
-              onSelectItem(item);
-              onAddItem && typeof onAddItem === 'function' && item.x == null && onAddItem({ ...item, _pendingPlace: true });
-            }}
+            onStratDataChange={onStratDataChange}
+            onSelectItem={onSelectItem}
+            descrNames={descrNames}
+            traitsList={traitsList}
+            ancillariesList={ancillariesList}
+            eduUnits={eduUnits}
+            onPinCharacter={onPinCharacter}
           />
         )}
 

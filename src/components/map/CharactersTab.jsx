@@ -1,32 +1,123 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Archive } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
 
-const CHARACTER_TYPES = ['general','admiral','spy','merchant','diplomat','priest','assassin','princess','heretic','witch','inquisitor','named character'];
-const NAMED_TYPES = new Set(['named character','general','admiral']); // types that can have leader/heir role
+// Types that are always female
+const FEMALE_ONLY_TYPES = new Set(['princess', 'witch']);
+// Types that are always male
+const MALE_ONLY_TYPES = new Set(['general','admiral','spy','merchant','diplomat','priest','assassin','heretic','inquisitor','named character']);
+// "family" type = character_record only, no army/traits/ancillaries
+const ALL_CHARACTER_TYPES = ['general','admiral','spy','merchant','diplomat','priest','assassin','princess','heretic','witch','inquisitor','named character','family'];
+const NAMED_TYPES = new Set(['named character','general','admiral']);
 const RECORD_ROLES = ['never_a_leader','past_leader','leader','heir'];
 
-function CharacterRow({ char, allFactions, allNames, onUpdate, onDelete, onSelect }) {
+// Derive sex from type
+function sexForType(type) {
+  if (FEMALE_ONLY_TYPES.has(type)) return 'female';
+  if (MALE_ONLY_TYPES.has(type)) return 'male';
+  return null; // family = both ok
+}
+
+// Get filtered names list for a faction/sex from descrNames
+function getNames(descrNames, faction, sex) {
+  if (!descrNames || !faction) return [];
+  // Try exact faction match first, then collect all
+  const sexObj = descrNames[sex] || {};
+  const factionNames = sexObj[faction] || [];
+  if (factionNames.length > 0) return factionNames;
+  // fallback: return all names for that sex across all factions
+  const all = new Set();
+  for (const names of Object.values(sexObj)) names.forEach(n => all.add(n));
+  return [...all].sort();
+}
+
+// Validate a character for placing/saving
+function validateCharacter(char, eduUnits) {
+  if (!char.faction) return { ok: false, reason: 'No faction selected' };
+  if (!char.name) return { ok: false, reason: 'No name' };
+  if (char.charType === 'family') return { ok: true };
+
+  const factionUnits = (eduUnits || []).filter(u => {
+    const owners = u.ownership || [];
+    return owners.includes(char.faction) || owners.includes('all');
+  });
+
+  if (char.charType === 'named character') {
+    const hasGeneral = factionUnits.some(u => (u.attributes || []).includes('general_unit'));
+    if (!hasGeneral) return { ok: false, reason: `Faction "${char.faction}" has no general unit in EDU` };
+  }
+  if (char.charType === 'general') {
+    const army = char.army || [];
+    if (army.length === 0) return { ok: false, reason: 'General needs at least 1 army unit' };
+    const unitNames = factionUnits.map(u => u.type);
+    const hasValidUnit = army.some(a => unitNames.includes(a.unit));
+    if (!hasValidUnit) return { ok: false, reason: `No valid army unit found for faction "${char.faction}" in EDU` };
+  }
+  if (char.charType === 'admiral') {
+    const army = char.army || [];
+    if (army.length === 0) return { ok: false, reason: 'Admiral needs at least 1 ship unit' };
+    const shipUnits = factionUnits.filter(u => u.category === 'ship').map(u => u.type);
+    const hasShip = army.some(a => shipUnits.includes(a.unit));
+    if (!hasShip) return { ok: false, reason: `No valid ship unit found for faction "${char.faction}" in EDU` };
+  }
+  return { ok: true };
+}
+
+function CharacterRow({ char, allFactions, descrNames, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin }) {
   const [expanded, setExpanded] = useState(false);
   const c = char;
   const set = (key, val) => onUpdate(c.id, { ...c, [key]: val });
+
+  const enforcedSex = sexForType(c.charType);
+  const isFamily = c.charType === 'family';
   const isNamedType = NAMED_TYPES.has(c.charType);
+  const hasArmy = c.charType === 'general' || c.charType === 'named character' || c.charType === 'admiral';
   const fullName = [c.name, c.surname].filter(Boolean).join(' ');
+
+  // Name lists from descrNames
+  const sex = enforcedSex || c.sex || 'male';
+  const firstNames = useMemo(() => getNames(descrNames, c.faction, sex), [descrNames, c.faction, sex]);
+  const surnameNames = useMemo(() => getNames(descrNames, c.faction, 'male').concat(getNames(descrNames, c.faction, 'female')), [descrNames, c.faction]);
+
+  // Display name lookup (from names.strings.bin merged into descrNames parent or settlement names)
+  // We pass descrNames as raw object; display names aren't available separately here, so we skip for now.
+
+  const validation = useMemo(() => validateCharacter(c, eduUnits), [c, eduUnits]);
+
+  // Faction units for dropdowns
+  const factionUnits = useMemo(() => {
+    if (!eduUnits?.length || !c.faction) return [];
+    return eduUnits.filter(u => {
+      const owners = u.ownership || [];
+      return owners.includes(c.faction) || owners.includes('all');
+    });
+  }, [eduUnits, c.faction]);
+
+  const landUnits = useMemo(() => factionUnits.filter(u => u.category !== 'ship'), [factionUnits]);
+  const shipUnits = useMemo(() => factionUnits.filter(u => u.category === 'ship'), [factionUnits]);
+  const unitOptions = c.charType === 'admiral' ? shipUnits : landUnits;
+
+  const handleTypeChange = (newType) => {
+    const newSex = sexForType(newType);
+    onUpdate(c.id, { ...c, charType: newType, sex: newSex || c.sex });
+  };
+
+  const icon = c.charType === 'admiral' ? '⚓' : c.charType === 'spy' ? '🕵️' : c.charType === 'priest' ? '✝' : c.charType === 'princess' ? '👸' : c.charType === 'family' ? '👪' : '⚔️';
 
   return (
     <div className="rounded border border-slate-700/40 bg-slate-900/20">
       <div className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(v => !v)}>
         {expanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
-        <span className="text-sm shrink-0">
-          {c.charType === 'admiral' ? '⚓' : c.charType === 'spy' ? '🕵️' : c.charType === 'priest' ? '✝' : '⚔️'}
-        </span>
+        <span className="text-sm shrink-0">{icon}</span>
         <span className="text-[11px] font-mono flex-1 truncate text-slate-200">
           {fullName || '(unnamed)'} — <span className="text-slate-400">{c.charType}</span>
           {c.role && <span className="ml-1 text-amber-400 text-[9px]">[{c.role}]</span>}
         </span>
         <span className="text-[9px] text-slate-600 font-mono">{c.x != null ? `${c.x},${c.y}` : 'unplaced'}</span>
-        <button onClick={e => { e.stopPropagation(); onSelect(char); }}
-          className="text-[9px] px-1 py-0.5 rounded bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 shrink-0">Go</button>
+        {!isFamily && (
+          <button onClick={e => { e.stopPropagation(); onSelect(char); }}
+            className="text-[9px] px-1 py-0.5 rounded bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 shrink-0">Go</button>
+        )}
         <button onClick={e => { e.stopPropagation(); onDelete(c.id); }}
           className="p-0.5 text-slate-600 hover:text-red-400 transition-colors shrink-0">
           <Trash2 className="w-3 h-3" />
@@ -36,27 +127,47 @@ function CharacterRow({ char, allFactions, allNames, onUpdate, onDelete, onSelec
       {expanded && (
         <div className="border-t border-slate-700/40 px-2 py-2 space-y-1.5">
           <div className="grid grid-cols-2 gap-1.5">
+            {/* First Name - from descrNames */}
             <div>
               <span className="text-[9px] text-slate-500">First Name</span>
-              <input list={`names-${c.id}`} value={c.name || ''} onChange={e => set('name', e.target.value)}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              <datalist id={`names-${c.id}`}>
-                {allNames.map(n => <option key={n} value={n} />)}
-              </datalist>
+              {firstNames.length > 0 ? (
+                <select value={c.name || ''} onChange={e => set('name', e.target.value)}
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
+                  <option value="">— select —</option>
+                  {firstNames.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              ) : (
+                <input value={c.name || ''} onChange={e => set('name', e.target.value)}
+                  placeholder="Load descr_names.txt"
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+              )}
             </div>
+            {/* Surname - from descrNames surnames */}
             <div>
-              <span className="text-[9px] text-slate-500">Surname / Epithet</span>
-              <input value={c.surname || ''} onChange={e => set('surname', e.target.value)}
-                placeholder="e.g. the Bastard"
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+              <span className="text-[9px] text-slate-500">Surname</span>
+              {surnameNames.length > 0 ? (
+                <select value={c.surname || ''} onChange={e => set('surname', e.target.value)}
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
+                  <option value="">— none —</option>
+                  {surnameNames.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              ) : (
+                <input value={c.surname || ''} onChange={e => set('surname', e.target.value)}
+                  placeholder="e.g. the Bastard"
+                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+              )}
             </div>
+
+            {/* Type */}
             <div>
               <span className="text-[9px] text-slate-500">Type</span>
-              <select value={c.charType || 'general'} onChange={e => set('charType', e.target.value)}
+              <select value={c.charType || 'general'} onChange={e => handleTypeChange(e.target.value)}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                {CHARACTER_TYPES.map(t => <option key={t}>{t}</option>)}
+                {ALL_CHARACTER_TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
+
+            {/* Faction */}
             <div>
               <span className="text-[9px] text-slate-500">Faction</span>
               <select value={c.faction || ''} onChange={e => set('faction', e.target.value)}
@@ -65,22 +176,35 @@ function CharacterRow({ char, allFactions, allNames, onUpdate, onDelete, onSelec
                 {allFactions.map(f => <option key={f}>{f}</option>)}
               </select>
             </div>
+
+            {/* Sex */}
             <div>
               <span className="text-[9px] text-slate-500">Sex</span>
-              <select value={c.sex || 'male'} onChange={e => set('sex', e.target.value)}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                <option value="male">male</option>
-                <option value="female">female</option>
+              <select value={sex} onChange={e => set('sex', e.target.value)}
+                disabled={!!enforcedSex}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                {enforcedSex ? (
+                  <option value={enforcedSex}>{enforcedSex} (forced)</option>
+                ) : (
+                  <>
+                    <option value="male">male</option>
+                    <option value="female">female</option>
+                  </>
+                )}
               </select>
             </div>
+
+            {/* Age */}
             <div>
               <span className="text-[9px] text-slate-500">Age</span>
               <input type="number" value={c.age || 30} onChange={e => set('age', parseInt(e.target.value) || 30)}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
             </div>
+
+            {/* Role (named/general only) */}
             {isNamedType && (
               <div>
-                <span className="text-[9px] text-slate-500">Role (named/family only)</span>
+                <span className="text-[9px] text-slate-500">Role</span>
                 <select value={c.role || ''} onChange={e => set('role', e.target.value)}
                   className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                   <option value="">— none —</option>
@@ -89,70 +213,123 @@ function CharacterRow({ char, allFactions, allNames, onUpdate, onDelete, onSelec
                 </select>
               </div>
             )}
-            <div>
-              <span className="text-[9px] text-slate-500">X (map)</span>
-              <input type="number" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-            </div>
-            <div>
-              <span className="text-[9px] text-slate-500">Y (map)</span>
-              <input type="number" value={c.y ?? ''} onChange={e => set('y', parseInt(e.target.value))}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-            </div>
+
+            {/* Position */}
+            {!isFamily && (
+              <>
+                <div>
+                  <span className="text-[9px] text-slate-500">X (map)</span>
+                  <input type="number" value={c.x ?? ''} onChange={e => set('x', parseInt(e.target.value))}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">Y (map)</span>
+                  <input type="number" value={c.y ?? ''} onChange={e => set('y', parseInt(e.target.value))}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Traits */}
-          <div>
-            <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Traits</p>
-            {(c.traits || []).map((t, i) => (
-              <div key={i} className="flex items-center gap-1 mb-0.5">
-                <input value={t.name} onChange={e => {
-                  const traits = c.traits.map((x, j) => j === i ? { ...x, name: e.target.value } : x);
-                  set('traits', traits);
-                }} className="flex-1 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" placeholder="TraitName" />
-                <input type="number" value={t.level} onChange={e => {
-                  const traits = c.traits.map((x, j) => j === i ? { ...x, level: parseInt(e.target.value) } : x);
-                  set('traits', traits);
-                }} className="w-10 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
-                <button onClick={() => set('traits', c.traits.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 text-[9px]">✕</button>
-              </div>
-            ))}
-            <button onClick={() => set('traits', [...(c.traits || []), { name: '', level: 1 }])}
-              className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
-              <Plus className="w-2.5 h-2.5" /> Add trait
+          {/* Pin on map button */}
+          {!isFamily && (
+            <button
+              onClick={() => onPin(char)}
+              className="w-full flex items-center justify-center gap-1 py-1 text-[10px] rounded border border-cyan-600/40 text-cyan-400 hover:bg-cyan-600/20 transition-colors">
+              <MapPin className="w-3 h-3" /> Pin on Map (click map to place)
             </button>
-          </div>
+          )}
 
-          {/* Ancillaries */}
-          <div>
-            <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Ancillaries</p>
-            <div className="flex flex-wrap gap-0.5 mb-0.5">
-              {(c.ancillaries || []).map((a, i) => (
-                <span key={i} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-purple-300 font-mono">
-                  {a}<button onClick={() => set('ancillaries', c.ancillaries.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-1">
-              <input id={`anc-${c.id}`} placeholder="ancillary_name" className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              <button onClick={() => {
-                const inp = document.getElementById(`anc-${c.id}`);
-                if (inp?.value) { set('ancillaries', [...(c.ancillaries||[]), inp.value]); inp.value = ''; }
-              }} className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
-            </div>
-          </div>
-
-          {/* Army */}
-          {(c.charType === 'general' || c.charType === 'named character' || c.charType === 'admiral') && (
+          {/* Traits (from parsed file, not manual) */}
+          {!isFamily && (
             <div>
-              <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Army Units</p>
+              <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Traits</p>
+              {(c.traits || []).map((t, i) => (
+                <div key={i} className="flex items-center gap-1 mb-0.5">
+                  {traitsList.length > 0 ? (
+                    <select value={t.name} onChange={e => {
+                      const traits = c.traits.map((x, j) => j === i ? { ...x, name: e.target.value } : x);
+                      set('traits', traits);
+                    }} className="flex-1 h-5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
+                      <option value="">— select trait —</option>
+                      {traitsList.map(tn => <option key={tn} value={tn}>{tn}</option>)}
+                    </select>
+                  ) : (
+                    <input value={t.name} onChange={e => {
+                      const traits = c.traits.map((x, j) => j === i ? { ...x, name: e.target.value } : x);
+                      set('traits', traits);
+                    }} className="flex-1 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" placeholder="TraitName" />
+                  )}
+                  <input type="number" value={t.level} onChange={e => {
+                    const traits = c.traits.map((x, j) => j === i ? { ...x, level: parseInt(e.target.value) } : x);
+                    set('traits', traits);
+                  }} className="w-10 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
+                  <button onClick={() => set('traits', c.traits.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 text-[9px]">✕</button>
+                </div>
+              ))}
+              <button onClick={() => set('traits', [...(c.traits || []), { name: '', level: 1 }])}
+                className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
+                <Plus className="w-2.5 h-2.5" /> Add trait
+              </button>
+            </div>
+          )}
+
+          {/* Ancillaries (from parsed file) */}
+          {!isFamily && (
+            <div>
+              <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Ancillaries</p>
+              <div className="flex flex-wrap gap-0.5 mb-0.5">
+                {(c.ancillaries || []).map((a, i) => (
+                  <span key={i} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-700/50 rounded text-[9px] text-purple-300 font-mono">
+                    {a}<button onClick={() => set('ancillaries', c.ancillaries.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 ml-0.5">×</button>
+                  </span>
+                ))}
+              </div>
+              {ancillariesList.length > 0 ? (
+                <select defaultValue="" onChange={e => {
+                  if (e.target.value && !(c.ancillaries||[]).includes(e.target.value)) {
+                    set('ancillaries', [...(c.ancillaries||[]), e.target.value]);
+                  }
+                  e.target.value = '';
+                }} className="w-full h-5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                  <option value="">— add ancillary —</option>
+                  {ancillariesList.filter(a => !(c.ancillaries||[]).includes(a)).map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              ) : (
+                <div className="flex gap-1">
+                  <input id={`anc-${c.id}`} placeholder="ancillary_name" className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  <button onClick={() => {
+                    const inp = document.getElementById(`anc-${c.id}`);
+                    if (inp?.value) { set('ancillaries', [...(c.ancillaries||[]), inp.value]); inp.value = ''; }
+                  }} className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Army Units */}
+          {hasArmy && !isFamily && (
+            <div>
+              <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">
+                Army Units {c.charType === 'admiral' ? '(ships only)' : ''}
+              </p>
               <div className="space-y-0.5">
                 {(c.army || []).map((u, i) => (
                   <div key={i} className="flex items-center gap-1">
-                    <input value={u.unit} onChange={e => {
-                      const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
-                      set('army', army);
-                    }} className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" placeholder="unit name" />
+                    {unitOptions.length > 0 ? (
+                      <select value={u.unit} onChange={e => {
+                        const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
+                        set('army', army);
+                      }} className="flex-1 h-5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
+                        <option value="">— select unit —</option>
+                        {unitOptions.map(u2 => <option key={u2.type} value={u2.type}>{u2.type}</option>)}
+                      </select>
+                    ) : (
+                      <input value={u.unit} onChange={e => {
+                        const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
+                        set('army', army);
+                      }} className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" placeholder="unit name" />
+                    )}
                     <input type="number" title="exp" value={u.exp ?? 0} min={0} onChange={e => {
                       const army = c.army.map((x, j) => j === i ? { ...x, exp: parseInt(e.target.value)||0 } : x);
                       set('army', army);
@@ -173,6 +350,27 @@ function CharacterRow({ char, allFactions, allNames, onUpdate, onDelete, onSelec
               <button onClick={() => set('army', [...(c.army || []), { unit: '', exp: 0, armour: 0, weaponLvl: 0 }])}
                 className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
                 <Plus className="w-2.5 h-2.5" /> Add unit
+              </button>
+            </div>
+          )}
+
+          {/* Validate button */}
+          {!isFamily && (
+            <div className="pt-1 border-t border-slate-700/40">
+              <button
+                disabled={!validation.ok}
+                onClick={() => { if (validation.ok && c.x == null) onPin(char); }}
+                className={`w-full flex items-center justify-center gap-1 py-1.5 text-[10px] rounded border font-semibold transition-colors ${
+                  validation.ok
+                    ? 'bg-green-700/80 hover:bg-green-700 border-green-600/40 text-green-200'
+                    : 'bg-slate-800/50 border-slate-600/30 text-slate-600 cursor-not-allowed'
+                }`}
+                title={validation.ok ? 'Character is valid' : validation.reason}
+              >
+                {validation.ok
+                  ? <><CheckCircle className="w-3 h-3" /> Valid</>
+                  : <><AlertTriangle className="w-3 h-3" /> {validation.reason}</>
+                }
               </button>
             </div>
           )}
@@ -210,7 +408,7 @@ function CharacterRecordRow({ rec, factionName, onUpdate }) {
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
             </div>
             <div>
-              <span className="text-[9px] text-slate-500">Surname / Epithet</span>
+              <span className="text-[9px] text-slate-500">Surname</span>
               <input value={rec.surname || ''} onChange={e => set('surname', e.target.value)}
                 placeholder="optional"
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
@@ -259,7 +457,7 @@ function CharacterRecordRow({ rec, factionName, onUpdate }) {
   );
 }
 
-export default function CharactersTab({ stratData, onStratDataChange, onSelectItem }) {
+export default function CharactersTab({ stratData, onStratDataChange, onSelectItem, descrNames, traitsList, ancillariesList, eduUnits, onPinCharacter }) {
   const [subTab, setSubTab] = useState('list');
   const [search, setSearch] = useState('');
   const [filterFaction, setFilterFaction] = useState('');
@@ -275,23 +473,10 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
     [stratData?.items]
   );
 
-  // Collect unique first names for autocomplete datalist
-  const allNames = useMemo(() => {
-    const names = new Set();
-    for (const c of allChars) if (c.name) names.add(c.name);
-    for (const f of (stratData?.factions || [])) {
-      for (const r of (f.characterRecords || [])) if (r.name) names.add(r.name);
-    }
-    return [...names].sort();
-  }, [allChars, stratData]);
-
-  // Flat list of all character_records with faction info
   const allRecords = useMemo(() => {
     const recs = [];
     for (const f of (stratData?.factions || [])) {
-      for (const r of (f.characterRecords || [])) {
-        recs.push({ ...r, _faction: f.name });
-      }
+      for (const r of (f.characterRecords || [])) recs.push({ ...r, _faction: f.name });
     }
     return recs;
   }, [stratData]);
@@ -330,9 +515,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
     if (!stratData) return;
     const factions = (stratData.factions || []).map(f => {
       if (f.name !== factionName) return f;
-      const characterRecords = (f.characterRecords || []).map(r =>
-        r.name === oldRec.name ? updated : r
-      );
+      const characterRecords = (f.characterRecords || []).map(r => r.name === oldRec.name ? updated : r);
       return { ...f, characterRecords };
     });
     onStratDataChange({ ...stratData, factions });
@@ -340,14 +523,19 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
 
   const handleAdd = () => {
     if (!stratData) return;
+    const defaultFaction = allFactions[0] || '';
     const newChar = {
-      id: -(Date.now()), category: 'character', name: 'New Character', surname: '',
+      id: -(Date.now()), category: 'character', name: '', surname: '',
       charType: 'general', sex: 'male', role: '', age: 30,
-      faction: allFactions[0] || '', x: null, y: null,
+      faction: defaultFaction, x: null, y: null,
       traits: [], ancillaries: [], army: [],
     };
     const items = [...(stratData.items || []), newChar];
     onStratDataChange({ ...stratData, items });
+  };
+
+  const handlePin = (char) => {
+    if (onPinCharacter) onPinCharacter(char);
   };
 
   if (!stratData?.raw) {
@@ -383,6 +571,10 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
                 {allFactions.map(f => <option key={f}>{f}</option>)}
               </select>
             </div>
+            {/* File load hints */}
+            {!descrNames && <p className="text-[9px] text-amber-600/80 italic">Load descr_names.txt for name dropdowns</p>}
+            {(!traitsList?.length || !ancillariesList?.length) && <p className="text-[9px] text-amber-600/80 italic">Load traits/ancillaries files for dropdowns</p>}
+            {!eduUnits?.length && <p className="text-[9px] text-amber-600/80 italic">Load export_descr_unit.txt for validation</p>}
             <button onClick={handleAdd}
               className="w-full flex items-center justify-center gap-1 py-1 text-[10px] rounded border border-slate-600/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
               <Plus className="w-3 h-3" /> Add Character
@@ -390,16 +582,19 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-            {/* Active characters */}
             {filtered.map(char => (
               <CharacterRow
                 key={char.id}
                 char={char}
                 allFactions={allFactions}
-                allNames={allNames}
+                descrNames={descrNames}
+                traitsList={traitsList || []}
+                ancillariesList={ancillariesList || []}
+                eduUnits={eduUnits || []}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 onSelect={onSelectItem}
+                onPin={handlePin}
               />
             ))}
 
@@ -407,7 +602,6 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
               <div className="text-[10px] text-slate-600 italic text-center py-2">No characters in descr_strat.txt</div>
             )}
 
-            {/* Character records section */}
             {filteredRecords.length > 0 && (
               <>
                 <div className="flex items-center gap-2 py-1 mt-2">

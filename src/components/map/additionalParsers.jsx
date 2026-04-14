@@ -58,6 +58,51 @@ export function parseDescrCultures(text) {
   return [...new Set(cultures)];
 }
 
+// descr_names.txt → { male: { factionName: [names] }, female: { factionName: [names] } }
+// Format: faction <name>\n  male\n    <name>\n  female\n    <name>
+export function parseDescrNames(text) {
+  const result = { male: {}, female: {} };
+  let currentFaction = null;
+  let currentSex = null;
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/;.*$/, '').trim();
+    if (!line) continue;
+    const fm = line.match(/^faction\s+(\S+)/i);
+    if (fm) { currentFaction = fm[1]; currentSex = null; continue; }
+    if (!currentFaction) continue;
+    if (/^male$/i.test(line)) { currentSex = 'male'; continue; }
+    if (/^female$/i.test(line)) { currentSex = 'female'; continue; }
+    if (/^end$/i.test(line)) { currentSex = null; continue; }
+    if (currentSex && /^\w+$/.test(line)) {
+      if (!result[currentSex][currentFaction]) result[currentSex][currentFaction] = [];
+      result[currentSex][currentFaction].push(line);
+    }
+  }
+  return result;
+}
+
+// export_descr_character_traits.txt → sorted array of trait names
+export function parseExportDescrTraits(text) {
+  const traits = new Set();
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/;.*$/, '').trim();
+    const m = line.match(/^Trait\s+(\S+)/i);
+    if (m) traits.add(m[1]);
+  }
+  return [...traits].sort();
+}
+
+// export_descr_ancillaries.txt → sorted array of ancillary names
+export function parseExportDescrAncillaries(text) {
+  const ancs = new Set();
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/;.*$/, '').trim();
+    const m = line.match(/^Ancillary\s+(\S+)/i);
+    if (m) ancs.add(m[1]);
+  }
+  return [...ancs].sort();
+}
+
 // descr_sounds_music_types.txt → array of music type name strings
 export function parseDescrSoundsMusicTypes(text) {
   const types = [];
