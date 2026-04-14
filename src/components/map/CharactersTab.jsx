@@ -8,7 +8,8 @@ const FEMALE_ONLY_TYPES = new Set(['princess', 'witch']);
 const MALE_ONLY_TYPES = new Set(['general', 'admiral', 'spy', 'merchant', 'diplomat', 'priest', 'assassin', 'heretic', 'inquisitor', 'named character']);
 // "family" type is both sexes, goes to character_record
 const ALL_CHARACTER_TYPES = ['general', 'admiral', 'spy', 'merchant', 'diplomat', 'priest', 'assassin', 'princess', 'heretic', 'witch', 'inquisitor', 'named character', 'family'];
-const NAMED_TYPES = new Set(['named character', 'general', 'admiral']);
+// Only named character can have leader/heir role (generals/admirals cannot)
+const CAN_HAVE_ROLE = new Set(['named character']);
 const RECORD_ROLES = ['never_a_leader', 'past_leader', 'past_heir', 'leader', 'heir'];
 
 function getSexForType(charType) {
@@ -75,8 +76,18 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   const forcedSex = getSexForType(c.charType);
   const effectiveSex = forcedSex || c.sex || 'male';
   const isFamily = c.charType === 'family';
-  const isNamedType = NAMED_TYPES.has(c.charType);
+  const canHaveRole = CAN_HAVE_ROLE.has(c.charType);
   const hasArmy = c.charType === 'general' || c.charType === 'named character' || c.charType === 'admiral';
+  const isNamedChar = c.charType === 'named character';
+
+  // For named character: first army slot must be a general_unit; extra units only allowed after that
+  const generalUnitInArmy = isNamedChar
+    ? (c.army || []).find(u => {
+        const eu = factionEduUnits.find(e => e.type === u.unit);
+        return eu?.attributes?.includes('general_unit') || eu?.attributes?.includes('general_unit_upgrade');
+      })
+    : null;
+  const namedCharNeedsGeneralUnit = isNamedChar && !generalUnitInArmy;
 
   const firstNames = useMemo(() => getNames(descrNames, c.faction, effectiveSex), [descrNames, c.faction, effectiveSex]);
   const surnameNames = useMemo(() => getSurnames(descrNames, c.faction), [descrNames, c.faction]);
@@ -209,8 +220,8 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
             </div>
 
-            {/* Role (named types only) */}
-            {isNamedType && (
+            {/* Role (named character only — generals/admirals cannot have this) */}
+            {canHaveRole && (
               <div>
                 <span className="text-[9px] text-slate-500">Role</span>
                 <select value={c.role || ''} onChange={e => set('role', e.target.value)}
@@ -315,44 +326,73 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 {c.faction && availableUnits.length > 0 && <span className="ml-1 text-slate-600">({availableUnits.length} available)</span>}
                 {c.faction && availableUnits.length === 0 && eduUnits.length > 0 && <span className="ml-1 text-amber-500"> — load EDU</span>}
               </p>
-              <div className="space-y-0.5">
-                {(c.army || []).map((u, i) => (
-                  <div key={i} className="flex items-center gap-1">
-                    {availableUnits.length > 0 ? (
-                      <select value={u.unit} onChange={e => {
-                        const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
-                        set('army', army);
-                      }} className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
-                        <option value="">— select unit —</option>
-                        {availableUnits.map(u2 => <option key={u2.type} value={u2.type}>{u2.type}</option>)}
+
+              {/* Named character: must pick general_unit first */}
+              {isNamedChar && namedCharNeedsGeneralUnit && (
+                <div className="mb-1">
+                  <p className="text-[9px] text-amber-400 mb-0.5">⚠ Pick a general unit first (required)</p>
+                  {(() => {
+                    const generalUnits = factionEduUnits.filter(u =>
+                      u.attributes?.includes('general_unit') || u.attributes?.includes('general_unit_upgrade')
+                    );
+                    return (
+                      <select defaultValue="" onChange={e => {
+                        if (e.target.value) set('army', [{ unit: e.target.value, exp: 0, armour: 0, weaponLvl: 0 }, ...(c.army || [])]);
+                        e.target.value = '';
+                      }} className="w-full h-6 px-1 text-[9px] bg-slate-800 border border-amber-500/40 rounded text-amber-200 font-mono">
+                        <option value="">{generalUnits.length ? '— select general unit —' : 'No general units in EDU (load EDU)'}</option>
+                        {generalUnits.map(u => <option key={u.type} value={u.type}>{u.type}</option>)}
                       </select>
-                    ) : (
-                      <input value={u.unit} onChange={e => {
-                        const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
+                    );
+                  })()}
+                </div>
+              )}
+
+              <div className="space-y-0.5">
+                {(c.army || []).map((u, i) => {
+                  const eu = factionEduUnits.find(e => e.type === u.unit);
+                  const isGeneralUnit = eu?.attributes?.includes('general_unit') || eu?.attributes?.includes('general_unit_upgrade');
+                  return (
+                    <div key={i} className={`flex items-center gap-1 ${isNamedChar && isGeneralUnit ? 'ring-1 ring-amber-500/30 rounded' : ''}`}>
+                      {availableUnits.length > 0 ? (
+                        <select value={u.unit} onChange={e => {
+                          const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
+                          set('army', army);
+                        }} className={`flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded font-mono ${isNamedChar && isGeneralUnit ? 'text-amber-300' : 'text-slate-200'}`}>
+                          <option value="">— select unit —</option>
+                          {availableUnits.map(u2 => <option key={u2.type} value={u2.type}>{u2.type}</option>)}
+                        </select>
+                      ) : (
+                        <input value={u.unit} onChange={e => {
+                          const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
+                          set('army', army);
+                        }} className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" placeholder="unit name" />
+                      )}
+                      <input type="number" title="exp" value={u.exp ?? 0} min={0} onChange={e => {
+                        const army = c.army.map((x, j) => j === i ? { ...x, exp: parseInt(e.target.value) || 0 } : x);
                         set('army', army);
-                      }} className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" placeholder="unit name" />
-                    )}
-                    <input type="number" title="exp" value={u.exp ?? 0} min={0} onChange={e => {
-                      const army = c.army.map((x, j) => j === i ? { ...x, exp: parseInt(e.target.value) || 0 } : x);
-                      set('army', army);
-                    }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-300 font-mono text-center" />
-                    <input type="number" title="armour" value={u.armour ?? 0} min={0} onChange={e => {
-                      const army = c.army.map((x, j) => j === i ? { ...x, armour: parseInt(e.target.value) || 0 } : x);
-                      set('army', army);
-                    }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-blue-300 font-mono text-center" />
-                    <input type="number" title="wpn" value={u.weaponLvl ?? 0} min={0} onChange={e => {
-                      const army = c.army.map((x, j) => j === i ? { ...x, weaponLvl: parseInt(e.target.value) || 0 } : x);
-                      set('army', army);
-                    }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-red-300 font-mono text-center" />
-                    <button onClick={() => set('army', c.army.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 text-[9px] shrink-0">✕</button>
-                  </div>
-                ))}
+                      }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-300 font-mono text-center" />
+                      <input type="number" title="armour" value={u.armour ?? 0} min={0} onChange={e => {
+                        const army = c.army.map((x, j) => j === i ? { ...x, armour: parseInt(e.target.value) || 0 } : x);
+                        set('army', army);
+                      }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-blue-300 font-mono text-center" />
+                      <input type="number" title="wpn" value={u.weaponLvl ?? 0} min={0} onChange={e => {
+                        const army = c.army.map((x, j) => j === i ? { ...x, weaponLvl: parseInt(e.target.value) || 0 } : x);
+                        set('army', army);
+                      }} className="w-8 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-red-300 font-mono text-center" />
+                      <button onClick={() => set('army', c.army.filter((_, j) => j !== i))} className="text-slate-600 hover:text-red-400 text-[9px] shrink-0">✕</button>
+                    </div>
+                  );
+                })}
               </div>
               <p className="text-[8px] text-slate-600 mb-0.5">exp | armour | wpn_lvl</p>
-              <button onClick={() => set('army', [...(c.army || []), { unit: '', exp: 0, armour: 0, weaponLvl: 0 }])}
-                className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
-                <Plus className="w-2.5 h-2.5" /> Add unit
-              </button>
+              {/* For named character, only allow adding more units after general_unit is set */}
+              {(!isNamedChar || !namedCharNeedsGeneralUnit) && (
+                <button onClick={() => set('army', [...(c.army || []), { unit: '', exp: 0, armour: 0, weaponLvl: 0 }])}
+                  className="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-0.5">
+                  <Plus className="w-2.5 h-2.5" /> Add unit
+                </button>
+              )}
             </div>
           )}
 
@@ -464,6 +504,9 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   const [subTab, setSubTab] = useState('list');
   const [search, setSearch] = useState('');
   const [filterFaction, setFilterFaction] = useState('');
+  // Family tree state lives HERE so it persists across tab switches
+  const [familyTrees, setFamilyTrees] = useState({});
+  const [treesInitialized, setTreesInitialized] = useState(false);
 
   const allFactions = useMemo(() => {
     const from = (stratData?.factions || []).map(f => f.name).filter(Boolean);
@@ -563,7 +606,13 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
 
       {subTab === 'trees' && (
         <div className="flex-1 overflow-hidden">
-          <FamilyTreeTab stratData={stratData} />
+          <FamilyTreeTab
+            stratData={stratData}
+            trees={familyTrees}
+            onTreesChange={setFamilyTrees}
+            initialized={treesInitialized}
+            onInitialized={() => setTreesInitialized(true)}
+          />
         </div>
       )}
 

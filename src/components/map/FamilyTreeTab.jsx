@@ -346,10 +346,8 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
   );
 }
 
-export default function FamilyTreeTab({ stratData }) {
+export default function FamilyTreeTab({ stratData, trees, onTreesChange, initialized, onInitialized }) {
   const [factionFilter, setFactionFilter] = useState('');
-  const [trees, setTrees] = useState({});
-  const [initialized, setInitialized] = useState(false);
 
   const allChars = useMemo(() => buildAllChars(stratData), [stratData]);
 
@@ -359,12 +357,12 @@ export default function FamilyTreeTab({ stratData }) {
     return [...new Set([...from, ...fromLists])].sort();
   }, [stratData]);
 
-  // Initialize trees from file on first load
+  // Initialize trees from file on first load (only once, persisted in parent)
   useEffect(() => {
     if (stratData?.raw && !initialized) {
       const fromFile = buildInitialTrees(stratData, allChars);
-      setTrees(fromFile);
-      setInitialized(true);
+      onTreesChange(fromFile);
+      onInitialized();
     }
   }, [stratData?.raw, initialized]);
 
@@ -382,18 +380,18 @@ export default function FamilyTreeTab({ stratData }) {
 
   const addTree = () => {
     const newTree = { id: Date.now(), father: null, mother: null, children: [], spouses: {}, nestedChildren: {} };
-    setTrees(prev => ({ ...prev, [activeFaction]: [...(prev[activeFaction] || []), newTree] }));
+    onTreesChange(prev => ({ ...prev, [activeFaction]: [...(prev[activeFaction] || []), newTree] }));
   };
 
   const updateTree = (tid, updated) => {
-    setTrees(prev => ({
+    onTreesChange(prev => ({
       ...prev,
       [activeFaction]: (prev[activeFaction] || []).map(t => t.id === tid ? updated : t),
     }));
   };
 
   const deleteTree = (tid) => {
-    setTrees(prev => ({
+    onTreesChange(prev => ({
       ...prev,
       [activeFaction]: (prev[activeFaction] || []).filter(t => t.id !== tid),
     }));
