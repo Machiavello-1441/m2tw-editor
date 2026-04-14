@@ -113,22 +113,31 @@ function CharacterDragCard({ onDrop, slot, assigned, onClear, allChars }) {
   );
 }
 
-function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild, onRemoveChild, spouses, children, faction }) {
+function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild, onRemoveChild, spouses, children, faction, usedChildIds }) {
   const [expanded, setExpanded] = useState(true);
   const [showAddChild, setShowAddChild] = useState(false);
   const spouse = spouses?.[char.id];
   const myChildren = children?.[char.id] || [];
   const canAddChild = myChildren.length < MAX_CHILDREN;
-  const ageLimit = (char.age || 0) - MIN_PARENT_CHILD_AGE_DIFF;
+  const ageLimit = Math.max(0, (char.age || 0) - MIN_PARENT_CHILD_AGE_DIFF);
   const opposSex = char.sex === 'male' ? 'female' : 'male';
 
+  // Exclude characters who are parents in this tree from being spouses of their own children
   const eligibleSpouses = useMemo(() =>
     allChars.filter(c => c.faction === faction && c.id !== char.id && c.sex === opposSex && !Object.values(spouses || {}).find(s => s?.id === c.id)),
     [allChars, char, faction, spouses, opposSex]
   );
   const eligibleChildren = useMemo(() =>
-    allChars.filter(c => c.faction === faction && (c.age || 0) <= ageLimit && c.id !== char.id && !myChildren.find(mc => mc.id === c.id) && !(spouse && c.id === spouse.id)),
-    [allChars, char, faction, ageLimit, myChildren, spouse]
+    allChars.filter(c =>
+      c.faction === faction &&
+      (c.age || 0) >= 0 &&
+      (c.age || 0) <= ageLimit &&
+      c.id !== char.id &&
+      !myChildren.find(mc => mc.id === c.id) &&
+      !(spouse && c.id === spouse.id) &&
+      !usedChildIds.has(c.id)
+    ),
+    [allChars, char, faction, ageLimit, myChildren, spouse, usedChildIds]
   );
 
   return (
@@ -181,6 +190,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
               spouses={spouses}
               children={children}
               faction={faction}
+              usedChildIds={usedChildIds}
             />
           ))}
 
@@ -218,7 +228,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
   );
 }
 
-function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
+function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTrees }) {
   const treeId = tree.id;
   const father = tree.father;
   const mother = tree.mother;
@@ -228,7 +238,26 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
 
   const set = (patch) => onUpdate(treeId, { ...tree, ...patch });
 
-  const handleDrop = (slot, char) => set({ [slot]: char });
+  // All child IDs used across ALL trees in this faction (across all branches)
+  const usedChildIds = useMemo(() => {
+    const ids = new Set();
+    for (const t of allFactionTrees) {
+      for (const c of (t.children || [])) ids.add(c.id);
+      for (const nested of Object.values(t.nestedChildren || {})) {
+        for (const c of nested) ids.add(c.id);
+      }
+    }
+    return ids;
+  }, [allFactionTrees]);
+
+  const handleDrop = (slot, char) => {
+    // Prevent a character from being both parent and child in same tree
+    if ((children || []).find(c => c.id === char.id)) return;
+    // Prevent mother being assigned as father and vice versa
+    if (slot === 'father' && mother?.id === char.id) return;
+    if (slot === 'mother' && father?.id === char.id) return;
+    set({ [slot]: char });
+  };
   const handleClear = (slot) => set({ [slot]: null });
 
   const sortByAgeDesc = (arr) => [...arr].sort((a, b) => (b.age || 0) - (a.age || 0));
@@ -266,14 +295,16 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
     const fatherAge = father?.age || 0;
     const motherAge = mother?.age || 0;
     const parentAge = (father && mother) ? Math.min(fatherAge, motherAge) : (fatherAge || motherAge);
-    const minAge = parentAge - MIN_PARENT_CHILD_AGE_DIFF;
+    const maxChildAge = Math.max(0, parentAge - MIN_PARENT_CHILD_AGE_DIFF);
     return allChars.filter(c =>
       c.faction === faction &&
-      (c.age || 0) <= minAge &&
+      (c.age || 0) >= 0 &&
+      (c.age || 0) <= maxChildAge &&
       !(children || []).find(x => x.id === c.id) &&
-      c.id !== father?.id && c.id !== mother?.id
+      c.id !== father?.id && c.id !== mother?.id &&
+      !usedChildIds.has(c.id)
     );
-  }, [allChars, father, mother, children, faction]);
+  }, [allChars, father, mother, children, faction, usedChildIds]);
 
   const canAddChild = (children || []).length < MAX_CHILDREN;
   const nestedChildrenMap = { ...(tree.nestedChildren || {}) };
@@ -309,6 +340,7 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction }) {
             spouses={spouses || {}}
             children={nestedChildrenMap}
             faction={faction}
+            usedChildIds={usedChildIds}
           />
         ))}
 
@@ -467,6 +499,7 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
             onUpdate={updateTree}
             onDelete={deleteTree}
             faction={activeFaction}
+            allFactionTrees={factionTrees}
           />
         ))}
       </div>
