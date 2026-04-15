@@ -722,8 +722,9 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       });
       const block = generateSettlementBlock(s, '');
       if (factionLineIdx >= 0) {
-        // Find the end of this faction block using brace depth tracking to avoid
-        // false positives from 'region' keyword inside existing settlement blocks
+        // Find the insertion point: just BEFORE the first character line (or
+        // character_record / relative / faction-end marker), so the settlement
+        // lands in the correct position inside the faction's settlement list.
         let insertIdx = lines.length;
         let braceDepth = 0;
         for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
@@ -733,8 +734,14 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
             if (ch === '{') braceDepth++;
             else if (ch === '}') braceDepth--;
           }
-          if (braceDepth > 0 || !fl) continue; // inside a nested block
+          if (braceDepth > 0) continue; // inside a nested block (settlement/building)
+          if (!fl) continue;
+          // Stop at the first character line, character_record, relative, or
+          // any other top-level faction-end keyword
           if (
+            /^character[\s\t]+/i.test(fl) ||
+            /^character_record\b/i.test(fl) ||
+            /^relative\b/i.test(fl) ||
             /^faction[\s\t]+\w/i.test(fl) ||
             /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
             /^region[\s\t]+\S/i.test(fl) ||
