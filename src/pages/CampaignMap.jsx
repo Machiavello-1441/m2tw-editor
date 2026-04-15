@@ -848,6 +848,20 @@ export default function CampaignMap() {
     setSelectedItem(null);
   };
 
+  // Reorder settlements within a faction — updates overlayItems order which drives serializer
+  const handleReorderSettlements = useCallback((factionName, orderedIds) => {
+    setOverlayItems(prev => {
+      const nonFactionItems = prev.filter(i => !(i.category === 'settlement' && i.faction === factionName));
+      // Find insertion index: position of first settlement of this faction in current list
+      const firstIdx = prev.findIndex(i => i.category === 'settlement' && i.faction === factionName);
+      const reordered = orderedIds.map(id => prev.find(i => i.id === id)).filter(Boolean);
+      const result = [...nonFactionItems];
+      result.splice(firstIdx < 0 ? result.length : Math.min(firstIdx, result.length), 0, ...reordered);
+      return result;
+    });
+    setOverlayDirty(true);
+  }, []);
+
   const handlePinCharacter = (char) => {
     // Set the character as pending place so the user can click the map to place it
     setPendingPlace({ ...char });
@@ -1225,6 +1239,7 @@ export default function CampaignMap() {
                     ancillariesList={ancillariesList}
                     eduUnits={eduUnits}
                     onPinCharacter={(char) => setPendingPlace({ ...char })}
+                    onReorderSettlements={handleReorderSettlements}
                     />
               </div>
             )}

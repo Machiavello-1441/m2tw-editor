@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save } from 'lucide-react';
+import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { getItemIcon, getItemLabel } from './StratOverlay';
 import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, parseWinConditions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { exportTGA, downloadBlob } from './tgaExporter';
@@ -810,6 +811,7 @@ export default function StratPanel({
   overlayItems, selectedItem, onSelectItem, onSaveItem,
   visibleCategories, onToggleCategory,
   onDeleteItem, onAddItem, onSettlementChange,
+  onReorderSettlements,
   cultureList, edbData, regionsLayer,
   onRecolorRegion, onAddNewRegion,
   layers, dirtyLayers, editedSettlements,
@@ -1273,47 +1275,79 @@ export default function StratPanel({
           )}
           {settlements.length === 0
             ? <div className="text-[10px] text-slate-600 text-center py-4">Load descr_strat.txt to see settlements</div>
-            : byFaction.map(([factionName, setts]) => (
-              <div key={factionName}>
-                <div className="flex items-center gap-1.5 px-1 py-0.5 mb-0.5">
-                  <FactionDot factionColors={factionColors} factionName={factionName} />
-                  <span className="text-[10px] font-semibold text-slate-400">{settlementNames?.[factionName] || factionName}</span>
-                  <span className="text-[9px] text-slate-600 font-mono">({setts.length})</span>
+            : <DragDropContext onDragEnd={result => {
+                if (!result.destination || !onReorderSettlements) return;
+                const { source, destination } = result;
+                if (source.droppableId !== destination.droppableId || source.index === destination.index) return;
+                const factionName = source.droppableId;
+                const factionSetts = byFaction.find(([f]) => f === factionName)?.[1] || [];
+                const reordered = [...factionSetts];
+                const [moved] = reordered.splice(source.index, 1);
+                reordered.splice(destination.index, 0, moved);
+                onReorderSettlements(factionName, reordered.map(s => s.id));
+              }}>
+              {byFaction.map(([factionName, setts]) => (
+                <div key={factionName}>
+                  <div className="flex items-center gap-1.5 px-1 py-0.5 mb-0.5">
+                    <FactionDot factionColors={factionColors} factionName={factionName} />
+                    <span className="text-[10px] font-semibold text-slate-400">{settlementNames?.[factionName] || factionName}</span>
+                    <span className="text-[9px] text-slate-600 font-mono">({setts.length})</span>
+                    <span className="text-[8px] text-slate-700 italic ml-1">drag to reorder • 1st = capital</span>
+                  </div>
+                  <Droppable droppableId={factionName}>
+                    {(provided) => (
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-0.5 ml-2">
+                        {setts.map((s, idx) => (
+                          <Draggable key={String(s.id)} draggableId={String(s.id)} index={idx}>
+                            {(drag, snapshot) => (
+                              <div ref={drag.innerRef} {...drag.draggableProps}
+                                className={snapshot.isDragging ? 'opacity-70' : ''}>
+                                <div className="flex items-center gap-1">
+                                  <div {...drag.dragHandleProps} className="shrink-0 cursor-grab text-slate-700 hover:text-slate-400 px-0.5">
+                                    <GripVertical className="w-3 h-3" />
+                                  </div>
+                                  {idx === 0 && <span className="text-[8px] text-amber-500 shrink-0" title="Capital">★</span>}
+                                  <div className="flex-1 min-w-0">
+                                    <SettlementRow
+                                      item={s}
+                                      isSelected={selectedItem?.id === s.id}
+                                      factionColors={factionColors}
+                                      onSelect={item => onSelectItem(item)}
+                                      onDelete={onDeleteItem}
+                                      onChange={onSettlementChange}
+                                      edbData={edbData}
+                                      regionsData={regionsData}
+                                      settlementNames={settlementNames}
+                                      onSettlementNamesChange={onSettlementNamesChange}
+                                      onRegionsDataChange={(regionName, edits) => {
+                                        if (onRegionsDataUpdate) {
+                                          onRegionsDataUpdate(prev => prev ? prev.map(r => r.regionName === regionName ? { ...r, ...edits } : r) : prev);
+                                        }
+                                      }}
+                                      onRecolorRegion={onRecolorRegion}
+                                      overlayItems={overlayItems}
+                                      regionsLayer={regionsLayer}
+                                      onRelocatePixel={onRelocatePixel}
+                                      mapH={mapH}
+                                      rebelFactionList={rebelFactionList}
+                                      musicTypeList={musicTypeList}
+                                      mercenaryPoolList={mercenaryPoolList}
+                                      religionList={religionList}
+                                      allFactions={allFactions}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
                 </div>
-                <div className="space-y-0.5 ml-2">
-                  {setts.map(s => (
-                    <SettlementRow
-                      key={s.id}
-                      item={s}
-                      isSelected={selectedItem?.id === s.id}
-                      factionColors={factionColors}
-                      onSelect={item => onSelectItem(item)}
-                      onDelete={onDeleteItem}
-                      onChange={onSettlementChange}
-                      edbData={edbData}
-                      regionsData={regionsData}
-                      settlementNames={settlementNames}
-                      onSettlementNamesChange={onSettlementNamesChange}
-                      onRegionsDataChange={(regionName, edits) => {
-                        if (onRegionsDataUpdate) {
-                          onRegionsDataUpdate(prev => prev ? prev.map(r => r.regionName === regionName ? { ...r, ...edits } : r) : prev);
-                        }
-                      }}
-                      onRecolorRegion={onRecolorRegion}
-                      overlayItems={overlayItems}
-                      regionsLayer={regionsLayer}
-                      onRelocatePixel={onRelocatePixel}
-                      mapH={mapH}
-                      rebelFactionList={rebelFactionList}
-                      musicTypeList={musicTypeList}
-                      mercenaryPoolList={mercenaryPoolList}
-                      religionList={religionList}
-                      allFactions={allFactions}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
+              ))}
+            </DragDropContext>
           }
         </>}
 
