@@ -58,12 +58,29 @@ export default function CampaignMap() {
   const [stratData, setStratDataRaw] = useState(() => {
     try {
       const raw = sessionStorage.getItem('m2tw_strat_raw');
-      if (raw) { const p = parseDescrStrat(raw); return p; }
+      if (raw) {
+        const p = parseDescrStrat(raw);
+        // Merge any persisted overlay items (includes newly added items from previous session)
+        const savedOverlay = sessionStorage.getItem('m2tw_overlay_items_json');
+        if (savedOverlay) {
+          const savedItems = JSON.parse(savedOverlay);
+          // Add new items (negative IDs) that aren't in the parsed strat
+          const parsedIds = new Set((p.items || []).map(i => i.id));
+          const newItems = savedItems.filter(i => i.id < 0 && !parsedIds.has(i.id));
+          if (newItems.length > 0) {
+            return { ...p, items: [...(p.items || []), ...newItems] };
+          }
+        }
+        return p;
+      }
     } catch {}
     return null;
   });
   const [regionsData, setRegionsDataRaw] = useState(() => {
     try {
+      // Prefer the JSON snapshot which includes any newly added regions
+      const savedJson = sessionStorage.getItem('m2tw_regions_data_json');
+      if (savedJson) return JSON.parse(savedJson);
       const raw = sessionStorage.getItem('m2tw_regions_raw');
       if (raw) return parseDescrRegions(raw);
     } catch {}
@@ -85,6 +102,10 @@ export default function CampaignMap() {
   });
   const [overlayItems, setOverlayItems] = useState(() => {
     try {
+      // First try the persisted overlay (includes any new items added in this session)
+      const savedOverlay = sessionStorage.getItem('m2tw_overlay_items_json');
+      if (savedOverlay) return JSON.parse(savedOverlay);
+      // Fall back to parsing strat raw
       const raw = sessionStorage.getItem('m2tw_strat_raw');
       if (raw) { const p = parseDescrStrat(raw); return p.items || []; }
     } catch {}
@@ -115,6 +136,19 @@ export default function CampaignMap() {
 
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
+
+  // Persist overlayItems to sessionStorage whenever they change so navigation
+  // away and back doesn't lose newly added items (settlements, characters, etc.)
+  useEffect(() => {
+    try { sessionStorage.setItem('m2tw_overlay_items_json', JSON.stringify(overlayItems)); } catch {}
+  }, [overlayItems]);
+
+  // Persist regionsData to sessionStorage whenever it changes
+  useEffect(() => {
+    if (regionsData?.length) {
+      try { sessionStorage.setItem('m2tw_regions_data_json', JSON.stringify(regionsData)); } catch {}
+    }
+  }, [regionsData]);
 
   const { edbData } = useEDB();
   const hiddenResourceList = useMemo(() => extractHiddenResourcesFromEDB(edbData || {}), [edbData]);
@@ -591,7 +625,6 @@ export default function CampaignMap() {
     }
 
     // 1. Add to regionsData — merge manual resources + hidden resources + map-detected resources
-    // All of these go into the single `resources` line of descr_regions.txt
     const allResources = [...new Set([
       ...(draft.resources || []),
       ...(draft.hiddenResources || []),
@@ -610,12 +643,13 @@ export default function CampaignMap() {
       musicType: draft.musicType || '',
       mercenaryPool: draft.mercenaryPool || '',
     };
-    setRegionsDataRaw(prev => [...(prev || []), newRegion]);
+    setRegionsDataRaw(prev => {
+      const updated = [...(prev || []), newRegion];
+      return updated;
+    });
 
     // 2. Add settlement overlay item with the placed city position
     const stratY = mapH > 0 ? mapH - 1 - cityY : cityY;
-    // Use a negative ID to mark this as a NEW item (not in original strat file).
-    // The serializer checks origIds from stratData.items; negative IDs won't collide.
     const newItemId = -(Date.now());
     const newItem = {
       id: newItemId,
@@ -631,9 +665,16 @@ export default function CampaignMap() {
       buildings: draft.buildings || [],
       x: cityX, y: stratY,
     };
+
+    // Add the new settlement both to overlayItems AND into stratData so the serializer
+    // can find it even if stratData was already enriched. Items with negative IDs are
+    // treated as NEW by the serializer (not present in origIds from the original file).
     setOverlayItems(prev => [...prev, newItem]);
-    // Do NOT add to stratData.items — the serializer detects new settlements as
-    // those whose id is NOT in stratData.items. Keep stratData.items as-is (original only).
+    setStratDataRaw(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, items: [...(prev.items || []), newItem] };
+      return updated;
+    });
     setOverlayDirty(true);
 
     // 3. Update settlement names
