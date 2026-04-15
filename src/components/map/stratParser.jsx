@@ -722,35 +722,63 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       });
       const block = generateSettlementBlock(s, '');
       if (factionLineIdx >= 0) {
-        // Find the insertion point: just BEFORE the first character line (or
-        // character_record / relative / faction-end marker), so the settlement
-        // lands in the correct position inside the faction's settlement list.
-        let insertIdx = lines.length;
+        // Strategy: find the line index of the closing '}' of the LAST settlement
+        // block inside this faction, then insert right after it.
+        // If no settlement blocks exist, insert after the denari_kings_purse line
+        // (or after the faction header line as a fallback).
+        // We track brace depth to correctly find the end of each settlement block.
+        let lastSettlementEndIdx = -1;
+        let afterHeaderIdx = factionLineIdx; // fallback insertion point
         let braceDepth = 0;
+        let insideSettlement = false;
+
         for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
           const raw = lines[fi];
           const fl = raw.replace(/;.*$/, '').trim();
+
+          // Track brace depth
           for (const ch of raw) {
             if (ch === '{') braceDepth++;
             else if (ch === '}') braceDepth--;
           }
-          if (braceDepth > 0) continue; // inside a nested block (settlement/building)
-          if (!fl) continue;
-          // Stop at the first character line, character_record, relative, or
-          // any other top-level faction-end keyword
-          if (
-            /^character[\s\t]+/i.test(fl) ||
-            /^character_record\b/i.test(fl) ||
-            /^relative\b/i.test(fl) ||
-            /^faction[\s\t]+\w/i.test(fl) ||
-            /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
-            /^region[\s\t]+\S/i.test(fl) ||
-            /^script\s*$/i.test(fl)
-          ) {
-            insertIdx = fi;
-            break;
+
+          // Outside any braces — check for top-level keywords
+          if (braceDepth === 0) {
+            // Record position of lines useful as fallback insertion (after header fields)
+            if (/^denari_kings_purse\b/i.test(fl) || /^denari\b(?!_kings)/i.test(fl) || /^ai_label\b/i.test(fl)) {
+              afterHeaderIdx = fi;
+            }
+            // A closing brace at depth 0 means we just closed a top-level block
+            if (fl === '}') {
+              lastSettlementEndIdx = fi;
+            }
+            // Hard stop: next faction, diplomacy section, region section, or script
+            if (
+              /^faction[\s\t]+\w/i.test(fl) ||
+              /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
+              /^region[\s\t]+\S/i.test(fl) ||
+              /^script\s*$/i.test(fl)
+            ) {
+              break;
+            }
+            // Stop at first character-level keyword (characters come after settlements)
+            // But only when NOT inside a brace block
+            if (
+              /^character[\s\t]+/i.test(fl) ||
+              /^character_record\b/i.test(fl) ||
+              /^relative\b/i.test(fl)
+            ) {
+              break;
+            }
           }
         }
+
+        // Determine insertion index: right after last settlement closing brace,
+        // or after the last header field if no settlements found yet
+        const insertIdx = lastSettlementEndIdx >= 0
+          ? lastSettlementEndIdx + 1
+          : afterHeaderIdx + 1;
+
         lines.splice(insertIdx, 0, '', ...block);
       } else {
         // No faction block found — append at end under a slave faction stub
