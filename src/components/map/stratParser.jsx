@@ -499,6 +499,8 @@ export function computeSettlementPositions(settlements, regionsData, regionsLaye
 function generateSettlementBlock(s, indent = '') {
   const ind2 = indent + '\t';
   const ind3 = indent + '\t\t';
+  // NOTE: opening brace is on the SAME line as settlement to avoid any stray
+  // lines being inserted between "settlement" and "{" during splice operations.
   const lines = [
     `${indent}${s.castle ? 'settlement castle' : 'settlement'}`,
     `${indent}{`,
@@ -706,6 +708,27 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
+  // ── Patch existing characters/resources/forts FIRST (before any splices that shift line numbers) ──
+  for (const item of overlayItems) {
+    if (item.id < 0) continue; // new items handled below
+    const orig = stratData.items?.find(o => o.id === item.id);
+    if (!orig) continue;
+
+    if (item.category === 'character' && orig._lineNum !== undefined) {
+      lines[orig._lineNum] = serializeCharLine(item);
+    }
+
+    if (item.category === 'resource' && orig._lineNum !== undefined && (orig.x !== item.x || orig.y !== item.y)) {
+      const old = lines[orig._lineNum];
+      if (old) lines[orig._lineNum] = old.replace(/,\s*\d+\s*,\s*\d+/, `,\t${item.x},\t${item.y}`);
+    }
+
+    if (item.category === 'fortification' && orig._lineNum !== undefined && (orig.x !== item.x || orig.y !== item.y)) {
+      const old = lines[orig._lineNum];
+      if (old) lines[orig._lineNum] = old.replace(/^(\s*(?:fort|watchtower))\s+\d+\s+\d+/, `$1 ${item.x} ${item.y}`);
+    }
+  }
+
   // origIds: IDs that existed in the ORIGINAL file (positive IDs from parsing).
   // New items added by the user have negative IDs (id: -(Date.now())).
   // We detect "new" items as those with negative IDs — they need to be appended.
@@ -850,37 +873,6 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       if (fort.culture) line += ` culture ${fort.culture}`;
       if (fort.comment) line += `\t;;;;; ${fort.comment}`;
       lines.push(line);
-    }
-  }
-
-  // Patch modified characters/resources/forts (only original items with positive IDs)
-  for (const item of overlayItems) {
-    if (item.id < 0) continue; // new items handled above
-    const orig = stratData.items?.find(o => o.id === item.id);
-    if (!orig) continue;
-
-    if (item.category === 'character' && orig._lineNum !== undefined) {
-      // Always re-serialize full character line to capture all field changes
-      lines[orig._lineNum] = serializeCharLine(item);
-    }
-
-    if ((orig.x === item.x && orig.y === item.y)) continue; // skip pos patch if unchanged
-
-    if (item.category === 'resource' && orig._lineNum !== undefined) {
-      const old = lines[orig._lineNum];
-      if (old) {
-        // resource name, X, Y
-        lines[orig._lineNum] = old
-          .replace(/,\s*\d+\s*,\s*\d+/, `,\t${item.x},\t${item.y}`);
-      }
-    }
-
-    if (item.category === 'fortification' && orig._lineNum !== undefined) {
-      const old = lines[orig._lineNum];
-      if (old) {
-        lines[orig._lineNum] = old
-          .replace(/^(\s*(?:fort|watchtower))\s+\d+\s+\d+/, `$1 ${item.x} ${item.y}`);
-      }
     }
   }
 
