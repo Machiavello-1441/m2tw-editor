@@ -758,7 +758,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
 
   const handleAdd = () => {
     if (!stratData) return;
-    const defaultFaction = allFactions[0] || '';
+    const defaultFaction = filterFaction || allFactions[0] || '';
     const newChar = {
       id: -(Date.now()), category: 'character', name: '', surname: '',
       charType: 'general', sex: 'male', role: '', age: 30,
