@@ -51,6 +51,16 @@ export const FEATURES_PALETTE = [
   { id: 'volcano',      color: '#ff0000', label: 'Volcano' },
 ];
 
+/** Converts a CSS hex color string to an {r, g, b} object. */
+export function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16),
+  };
+}
+
 /** Returns the pixel dimensions of a given layer relative to the base map size. */
 export function getLayerDimensions(def, mapWidth, mapHeight) {
   // Ground/climates are 2× regions size + 1 in M2TW; everything else matches base size
