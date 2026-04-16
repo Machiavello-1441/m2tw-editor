@@ -889,7 +889,6 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
             {filtered.length === 0 && allChars.length === 0 && (
               <div className="text-[10px] text-slate-600 italic text-center py-2">No characters in descr_strat.txt</div>
             )}
-            </div>
 
             {filteredRecords.length > 0 && (
               <>
