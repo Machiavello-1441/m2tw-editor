@@ -352,7 +352,7 @@ export default function CharacterNamesTab() {
             </div>
             <div className="space-y-0.5 max-h-96 overflow-y-auto">
               {filteredFactions.map(f => (
-                <button key={f} onClick={() => setSelectedFaction(f)}
+                <button key={f} onClick={() => { setSelectedFaction(f); setSearch(''); }}
                   className={`w-full text-left px-2 py-1 rounded text-[11px] font-mono transition-colors truncate ${
                     selectedFaction === f
                       ? 'bg-primary/20 text-primary'

@@ -18,6 +18,7 @@ import { getStringsBinStore } from '../lib/stringsBinStore';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
+import { setLayer, getLayer, getAllLayers, hasAnyLayer } from '../lib/mapLayerStore';
 
 const INITIAL_PAINT = {
   active: false,
@@ -43,9 +44,16 @@ const TXT_MAP = {
 };
 
 export default function CampaignMap() {
-  const [layers, setLayers] = useState(() =>
-    Object.fromEntries(LAYER_DEFS.map(d => [d.id, { visible: d.defaultVisible, opacity: d.defaultOpacity }]))
-  );
+  const [layers, setLayers] = useState(() => {
+    // Restore pixel data from module-level store (survives navigation, not page close)
+    const stored = getAllLayers();
+    return Object.fromEntries(LAYER_DEFS.map(d => {
+      const base = { visible: d.defaultVisible, opacity: d.defaultOpacity };
+      const saved = stored[d.id];
+      if (saved?.data) return [d.id, { ...base, ...saved }];
+      return [d.id, base];
+    }));
+  });
   const [dirtyLayers, setDirtyLayers] = useState(new Set());
   const [overlayDirty, setOverlayDirty] = useState(false);
   const [paintState, setPaintState] = useState(INITIAL_PAINT);
@@ -138,6 +146,13 @@ export default function CampaignMap() {
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
 
+  // Sync TGA pixel data to module-level store so it survives navigation
+  useEffect(() => {
+    for (const [id, layer] of Object.entries(layers)) {
+      if (layer?.data) setLayer(id, { data: layer.data, width: layer.width, height: layer.height, bitmap: layer.bitmap });
+    }
+  }, [layers]);
+
   // Persist overlayItems to sessionStorage whenever they change so navigation
   // away and back doesn't lose newly added items (settlements, characters, etc.)
   useEffect(() => {
@@ -207,108 +222,17 @@ export default function CampaignMap() {
       handleFolderImport({ files: cached, target: { value: '' } });
     }
 
-    // Auto-restore campaign text files from localStorage
-    try {
-      const stratRaw = localStorage.getItem('m2tw_campaign_strat');
-      if (stratRaw && !sessionStorage.getItem('m2tw_strat_raw')) {
-        sessionStorage.setItem('m2tw_strat_raw', stratRaw);
-        const parsed = parseDescrStrat(stratRaw);
-        setStratDataRaw(parsed);
-        setOverlayItems(parsed.items || []);
-      }
-    } catch {}
-    // Auto-restore factions from localStorage if not in sessionStorage
-    try {
-      if (!sessionStorage.getItem('m2tw_factions_raw')) {
-        const facRaw = localStorage.getItem('m2tw_factions_file');
-        if (facRaw) {
-          sessionStorage.setItem('m2tw_factions_raw', facRaw);
-          setFactionColorsRaw(parseDescrSmFactions(facRaw));
-        }
-      }
-    } catch {}
-    // Auto-restore religions from localStorage if not in sessionStorage
-    try {
-      if (!sessionStorage.getItem('m2tw_religions_raw')) {
-        const relRaw = localStorage.getItem('m2tw_religions_file');
-        if (relRaw) {
-          sessionStorage.setItem('m2tw_religions_raw', relRaw);
-          setReligions(parseDescrReligions(relRaw));
-        }
-      }
-    } catch {}
-    // Auto-restore rebel factions from localStorage if not in sessionStorage
-    try {
-      if (!sessionStorage.getItem('m2tw_rebel_factions_raw')) {
-        const rebRaw = localStorage.getItem('m2tw_rebel_factions_file');
-        if (rebRaw) {
-          sessionStorage.setItem('m2tw_rebel_factions_raw', rebRaw);
-          setRebelFactions(parseDescrRebelFactions(rebRaw));
-        }
-      }
-    } catch {}
-    // Auto-restore resources from localStorage if not in sessionStorage
-    try {
-      if (!sessionStorage.getItem('m2tw_sm_resources_raw')) {
-        const resRaw = localStorage.getItem('m2tw_resources_file');
-        if (resRaw) {
-          sessionStorage.setItem('m2tw_sm_resources_raw', resRaw);
-          setNaturalRes(parseDescrSmResources(resRaw));
-        }
-      }
-    } catch {}
-    // Auto-restore mercenaries from localStorage if not in sessionStorage
-    try {
-      if (!sessionStorage.getItem('m2tw_mercenaries_raw')) {
-        const mercRaw = localStorage.getItem('m2tw_campaign_mercenaries');
-        if (mercRaw) {
-          sessionStorage.setItem('m2tw_mercenaries_raw', mercRaw);
-          setMercenaryPools(parseDescrMercenaries(mercRaw));
-        }
-      }
-    } catch {}
-    // Always re-parse descr_names from localStorage (format may have been fixed)
-    try {
-      const raw = localStorage.getItem('m2tw_names_file');
-      if (raw) {
-        sessionStorage.setItem('m2tw_descr_names_raw', raw);
-        setDescrNames(parseDescrNames(raw));
-      }
-    } catch {}
-    // Auto-restore traits from localStorage
-    try {
-      const raw = localStorage.getItem('m2tw_traits_file');
-      if (raw) { setTraitsList(parseExportDescrTraits(raw)); }
-    } catch {}
-    // Auto-restore ancillaries from localStorage
-    try {
-      const raw = localStorage.getItem('m2tw_anc_file');
-      if (raw) { setAncillariesList(parseExportDescrAncillaries(raw)); }
-    } catch {}
-    // Auto-restore EDU from localStorage
-    try {
-      const raw = localStorage.getItem('m2tw_units_file');
-      if (raw) { sessionStorage.setItem('m2tw_edu_raw', raw); setEduUnits(parseEDU(raw)); }
-    } catch {}
-    // Auto-restore names display map: try sessionStorage, then localStorage (from CharacterNamesTab), then strings bin store
+    // Auto-restore names display map from sessionStorage only (no localStorage cross-session)
     try {
       if (!sessionStorage.getItem('m2tw_char_names_display')) {
-        // CharacterNamesTab stores parsed bin entries here
-        const lsEntries = localStorage.getItem('m2tw_names_bin_entries');
-        if (lsEntries) {
-          const namesMap = JSON.parse(lsEntries);
-          setNamesDisplayMap(namesMap);
-          try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(namesMap)); } catch {}
-        } else {
-          const store = getStringsBinStore();
-          for (const [fname, binData] of Object.entries(store)) {
-            if (fname.toLowerCase().includes('names') && !fname.toLowerCase().includes('settlement') && !fname.toLowerCase().includes('region')) {
-              const namesMap = {};
-              for (const { key, value } of binData.entries) if (key) namesMap[key] = value;
-              setNamesDisplayMap(namesMap);
-              try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(namesMap)); } catch {}
-              break;
-            }
+        const store = getStringsBinStore();
+        for (const [fname, binData] of Object.entries(store)) {
+          if (fname.toLowerCase().includes('names') && !fname.toLowerCase().includes('settlement') && !fname.toLowerCase().includes('region')) {
+            const namesMap = {};
+            for (const { key, value } of binData.entries) if (key) namesMap[key] = value;
+            setNamesDisplayMap(namesMap);
+            try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(namesMap)); } catch {}
+            break;
           }
         }
       }
@@ -317,7 +241,6 @@ export default function CampaignMap() {
     try {
       if (!sessionStorage.getItem('m2tw_names_raw')) {
         const store = getStringsBinStore();
-        // Look for the imperial_campaign_regions_and_settlement_names file
         for (const [fname, binData] of Object.entries(store)) {
           if (fname.toLowerCase().includes('regions_and_settlement_names')) {
             const namesMap = {};
