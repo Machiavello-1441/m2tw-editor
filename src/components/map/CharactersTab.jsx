@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle, GripVertical } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
