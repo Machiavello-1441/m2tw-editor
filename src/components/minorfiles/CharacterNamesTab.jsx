@@ -424,7 +424,7 @@ export default function CharacterNamesTab() {
               <div className="space-y-0.5">
                 {filteredNames.map(name => (
                   <NameRow
-                    key={name}
+                    key={`${selectedFaction}__${activeSection}__${name}`}
                     internalName={name}
                     displayName={displayNames[name] ?? ''}
                     onDisplayChange={val => setDisplay(name, val)}
