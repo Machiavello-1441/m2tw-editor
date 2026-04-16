@@ -5,7 +5,17 @@
  */
 
 // Re-export constants from mapLayerConstants so imports from mapLayerStore keep working
-export { LAYER_DEFS, CLIMATE_PALETTE, GROUND_TYPE_PALETTE, FEATURES_PALETTE, getLayerDimensions, createBlankImageData, hexToRgb, rgbToHex } from '../components/map/mapLayerConstants';
+export { LAYER_DEFS, LAYER_BY_ID } from '../components/map/mapLayerConstants';
+
+/** Returns the pixel dimensions of a given layer relative to the base map size. */
+export function getLayerDimensions(def, mapWidth, mapHeight) {
+  // Ground/climates are 2× regions size + 1 in M2TW; everything else matches base size
+  const scaled = def?.id === 'ground' || def?.id === 'climates';
+  return {
+    width:  scaled ? mapWidth  * 2 + 1 : mapWidth,
+    height: scaled ? mapHeight * 2 + 1 : mapHeight,
+  };
+}
 
 
 const _store = {
