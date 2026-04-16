@@ -4,6 +4,10 @@
  * Cleared automatically when the browser tab/window is closed.
  */
 
+// Re-export constants from mapLayerConstants so imports from mapLayerStore keep working
+export { LAYER_DEFS, CLIMATE_PALETTE, GROUND_TYPE_PALETTE, FEATURES_PALETTE, getLayerDimensions, createBlankImageData, hexToRgb, rgbToHex } from '../components/map/mapLayerConstants';
+
+
 const _store = {
   layers: {},       // { [layerId]: { data: Uint8ClampedArray, width, height, bitmap } }
   texts: {},        // { [key]: string } — raw text file content
