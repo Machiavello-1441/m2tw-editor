@@ -142,13 +142,16 @@ function parseCharacterLine(line, lineIndex) {
 
 // Build a character line string from a char object
 function serializeCharLine(char) {
-  // family type → character_record (no indent, no x/y)
+  // family type → character_record
   if (char.charType === 'family') {
     const fullName = [char.name, char.surname].filter(Boolean).join(' ');
-    const status = char.status === 'dead'
-      ? `dead ${char.deadYears ?? 0}`
-      : (char.recordRole || 'never_a_leader');
-    return `character_record\t\t\t\t${fullName}, ${char.sex || 'male'}, age ${char.age ?? 0}, alive, ${status}`;
+    const isDead = char.status === 'dead';
+    const recordRole = char.recordRole || 'never_a_leader';
+    // Format: character_record\t\tName, \tsex, age N, dead N, role  OR  alive, role
+    if (isDead) {
+      return `character_record\t\t${fullName}, \t${char.sex || 'male'}, age ${char.age ?? 0}, dead ${char.deadYears ?? 0}, ${recordRole}`;
+    }
+    return `character_record\t\t${fullName}, \t${char.sex || 'male'}, age ${char.age ?? 0}, alive, ${recordRole}`;
   }
   // Normal characters — no leading indent (game format)
   const fullName = [char.name, char.surname].filter(Boolean).join(' ');

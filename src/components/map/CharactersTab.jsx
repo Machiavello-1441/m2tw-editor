@@ -136,8 +136,9 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
         {expanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
         <span className="text-sm shrink-0">{typeIcon}</span>
         <span className="text-[11px] font-mono flex-1 truncate text-slate-200">
+          {c.role === 'leader' && <span className="mr-1 text-yellow-300" title="Leader">★</span>}
+          {c.role === 'heir' && <span className="mr-1 text-sky-300" title="Heir">◆</span>}
           {fullName || '(unnamed)'} — <span className="text-slate-400">{c.charType}</span>
-          {c.role && <span className="ml-1 text-amber-400 text-[9px]">[{c.role}]</span>}
           {isFamily && <span className="ml-1 text-pink-400 text-[9px]">[record]</span>}
           {c._isNew && <span className="ml-1 text-amber-500 text-[9px] font-semibold">[NEW]</span>}
         </span>
@@ -269,21 +270,19 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                       <option value="dead">dead</option>
                     </select>
                   </div>
-                  {c.status === 'dead' ? (
-                    <div>
-                      <span className="text-[9px] text-slate-500">Years Dead</span>
-                      <input type="number" min={0} value={c.deadYears ?? 0} onChange={e => set('deadYears', parseInt(e.target.value) || 0)}
-                        className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-red-300 font-mono" />
-                    </div>
-                  ) : (
-                    <div>
-                      <span className="text-[9px] text-slate-500">Record Role</span>
-                      <select value={c.recordRole || 'never_a_leader'} onChange={e => set('recordRole', e.target.value)}
-                        className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                        {RECORD_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    </div>
-                  )}
+                  <div>
+                    <span className="text-[9px] text-slate-500">Years Dead</span>
+                    <input type="number" min={0} value={c.deadYears ?? 0} onChange={e => set('deadYears', parseInt(e.target.value) || 0)}
+                      disabled={c.status !== 'dead'}
+                      className={`w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded font-mono ${c.status === 'dead' ? 'text-red-300' : 'text-slate-600 opacity-40'}`} />
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">Record Role</span>
+                  <select value={c.recordRole || 'never_a_leader'} onChange={e => set('recordRole', e.target.value)}
+                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    {RECORD_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
                 </div>
               </div>
             ) : (
@@ -306,12 +305,14 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                   Position (X / Y) {c.x == null || c.y == null ? <span className="text-red-400">— required</span> : null}
                 </span>
                 <div className="flex items-center gap-1">
+                  <span className="text-[9px] text-slate-500 shrink-0">X</span>
                   <input type="number" placeholder="X" value={c.x ?? ''} onChange={e => set('x', e.target.value === '' ? null : parseInt(e.target.value))}
-                    className={`flex-1 h-6 px-1 text-[10px] bg-slate-800 rounded text-slate-200 font-mono border ${c.x == null ? 'border-red-500/50' : 'border-slate-600/40'}`} />
+                    className={`w-16 h-6 px-1 text-[10px] bg-slate-800 rounded text-slate-200 font-mono border ${c.x == null ? 'border-red-500/50' : 'border-slate-600/40'}`} />
+                  <span className="text-[9px] text-slate-500 shrink-0">Y</span>
                   <input type="number" placeholder="Y" value={c.y ?? ''} onChange={e => set('y', e.target.value === '' ? null : parseInt(e.target.value))}
-                    className={`flex-1 h-6 px-1 text-[10px] bg-slate-800 rounded text-slate-200 font-mono border ${c.y == null ? 'border-red-500/50' : 'border-slate-600/40'}`} />
+                    className={`w-16 h-6 px-1 text-[10px] bg-slate-800 rounded text-slate-200 font-mono border ${c.y == null ? 'border-red-500/50' : 'border-slate-600/40'}`} />
                   <button onClick={() => onPin(char)} title="Click on map to place"
-                    className="h-6 px-1.5 flex items-center gap-0.5 rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
+                    className="h-6 px-2 flex items-center gap-0.5 rounded text-[10px] border border-amber-500/40 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors shrink-0">
                     <MapPin className="w-2.5 h-2.5" /> Place
                   </button>
                 </div>
