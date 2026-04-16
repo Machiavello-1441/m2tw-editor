@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle, GripVertical } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -74,8 +75,17 @@ function validateChar(char, eduUnits) {
   return { ok: true, reason: '' };
 }
 
-function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin, allStratFactions, onConfirmCreate, dragHandleProps }) {
+function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin, allStratFactions, onConfirmCreate, dragHandleProps, shouldOpen, onOpened }) {
   const [expanded, setExpanded] = useState(char._isNew ?? false);
+  const rowRef = useRef(null);
+
+  useEffect(() => {
+    if (shouldOpen) {
+      setExpanded(true);
+      rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      onOpened?.();
+    }
+  }, [shouldOpen]);
   const c = char;
   const set = (key, val) => onUpdate(c.id, { ...c, [key]: val });
 
@@ -128,7 +138,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   const typeIcon = isFamily ? '👨‍👩‍👧' : c.charType === 'admiral' ? '⚓' : c.charType === 'witch' ? '🧙🏻‍♀️' : c.charType === 'heretic' ? '🧙‍♂️' : c.charType === 'inquisitor' ? '🔥' : c.charType === 'diplomat' ? '📜' : c.charType === 'spy' ? '🕵️' : c.charType === 'priest' ? '🛐' : c.charType === 'princess' ? '👑' : c.charType === 'merchant' ? '💰' : c.charType === 'assassin' ? '🗡️': '⚔️';
 
   return (
-    <div className={`rounded border ${c._isNew ? 'border-amber-500/50 bg-amber-900/10' : 'border-slate-700/40 bg-slate-900/20'}`}>
+    <div ref={rowRef} className={`rounded border ${c._isNew ? 'border-amber-500/50 bg-amber-900/10' : 'border-slate-700/40 bg-slate-900/20'}`}>
       <div className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(v => !v)}>
         <span {...dragHandleProps} onClick={e => e.stopPropagation()} className="text-slate-600 hover:text-slate-400 cursor-grab active:cursor-grabbing shrink-0">
           <GripVertical className="w-3 h-3" />
@@ -675,7 +685,7 @@ function serializeFamilyTreesToStratData(stratData, familyTrees) {
   return { ...stratData, factions };
 }
 
-export default function CharactersTab({ stratData, onStratDataChange, onSelectItem, descrNames, namesDisplayMap, traitsList = [], ancillariesList = [], eduUnits = [], onPinCharacter }) {
+export default function CharactersTab({ stratData, onStratDataChange, onSelectItem, descrNames, namesDisplayMap, traitsList = [], ancillariesList = [], eduUnits = [], onPinCharacter, openCharId, onOpenCharHandled }) {
   const [subTab, setSubTab] = useState('list');
   const [search, setSearch] = useState('');
   const [filterFaction, setFilterFaction] = useState('');
@@ -876,6 +886,8 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
                               onPin={handlePin}
                               onConfirmCreate={handleConfirmCreate}
                               dragHandleProps={drag.dragHandleProps}
+                              shouldOpen={openCharId === char.id}
+                              onOpened={onOpenCharHandled}
                             />
                           </div>
                         )}

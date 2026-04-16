@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { getItemIcon, getItemLabel } from './StratOverlay';
@@ -819,6 +820,7 @@ export default function StratPanel({
   onRelocatePixel, mapH,
   onLoadTgaLayer,
   descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onPinCharacter,
+  openItemId, onOpenItemHandled,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -826,6 +828,7 @@ export default function StratPanel({
   const [newFortCulture, setNewFortCulture] = useState('');
   const [newFortComment, setNewFortComment] = useState('');
   const [tab, setTab] = useState('overview');
+  const [openCharId, setOpenCharId] = useState(null);
   const [search, setSearch] = useState('');
   const [showNewRegion, setShowNewRegion] = useState(false);
   const [winConditions, setWinConditions] = useState(() => {
@@ -840,6 +843,22 @@ export default function StratPanel({
     if (selectedItem?.category === 'settlement') setTab('settlements');
     if (selectedItem?.category === 'character') setTab('characters');
   }, [selectedItem?.id]);
+
+  const handleDoubleClickItem = (item) => {
+    if (item.category === 'character') {
+      setTab('characters');
+      setOpenCharId(item.id);
+    }
+  };
+
+  // Handle openItemId from parent (double-click on map overlay)
+  useEffect(() => {
+    if (openItemId != null) {
+      setTab('characters');
+      setOpenCharId(openItemId);
+      onOpenItemHandled?.();
+    }
+  }, [openItemId]);
 
   const loadFile = async (e, type) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -1238,6 +1257,8 @@ export default function StratPanel({
             ancillariesList={ancillariesList}
             eduUnits={eduUnits}
             onPinCharacter={onPinCharacter}
+            openCharId={openCharId}
+            onOpenCharHandled={() => setOpenCharId(null)}
           />
         )}
 

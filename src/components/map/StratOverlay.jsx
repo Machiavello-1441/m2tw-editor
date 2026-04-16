@@ -61,7 +61,7 @@ function groupByPixel(items) {
 
 export default function StratOverlay({
   items = [], transform, mapH = 0,
-  visibleCategories, selectedId, onSelect, onMoveItem,
+  visibleCategories, selectedId, onSelect, onMoveItem, onDoubleClick,
 }) {
   const svgRef = useRef(null);
   const draggingRef = useRef(null);
@@ -139,6 +139,7 @@ export default function StratOverlay({
             <g
               style={{ pointerEvents: 'auto', cursor: 'pointer' }}
               onClick={(e) => { e.stopPropagation(); onSelect && onSelect(displayItem); }}
+              onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick && onDoubleClick(displayItem); }}
               onMouseDown={(e) => { if (isSelected && onMoveItem) handleDragStart(e, displayItem); }}
             >
               <circle
