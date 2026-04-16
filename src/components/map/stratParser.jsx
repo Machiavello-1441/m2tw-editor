@@ -142,8 +142,17 @@ function parseCharacterLine(line, lineIndex) {
 
 // Build a character line string from a char object
 function serializeCharLine(char) {
+  // family type → character_record (no indent, no x/y)
+  if (char.charType === 'family') {
+    const fullName = [char.name, char.surname].filter(Boolean).join(' ');
+    const status = char.status === 'dead'
+      ? `dead ${char.deadYears ?? 0}`
+      : (char.recordRole || 'never_a_leader');
+    return `character_record\t\t\t\t${fullName}, ${char.sex || 'male'}, age ${char.age ?? 0}, alive, ${status}`;
+  }
+  // Normal characters — no leading indent (game format)
   const fullName = [char.name, char.surname].filter(Boolean).join(' ');
-  let line = `\tcharacter\t`;
+  let line = `character\t\t`;
   if (char.subFaction) line += `sub_faction ${char.subFaction}, `;
   line += `${fullName}, ${char.charType}, ${char.sex}`;
   if (char.role) line += `, ${char.role}`;
@@ -826,21 +835,25 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       const blockLines = [];
       if (char.comment) blockLines.push(`;;;;; ${char.comment}`);
       blockLines.push(serializeCharLine(char));
-      // M2TW correct indentation: no leading tabs on traits/ancillaries/army/unit
-      if (char.traits?.length) blockLines.push(`traits\t${char.traits.map(t => `${t.name} ${t.level}`).join(' , ')}`);
-      if (char.ancillaries?.length) blockLines.push(`ancillaries\t${char.ancillaries.join(', ')}`);
-      if (char.army?.length) {
-        blockLines.push('army');
-        for (const u of char.army) {
-          if (u.unit) blockLines.push(`unit\t${u.unit} exp ${u.exp ?? 0} armour ${u.armour ?? 0} weapon_lvl ${u.weaponLvl ?? 0}`);
+      if (char.charType !== 'family') {
+        // M2TW correct indentation: no leading tabs on traits/ancillaries/army/unit
+        if (char.traits?.length) blockLines.push(`traits\t${char.traits.map(t => `${t.name} ${t.level}`).join(' , ')}`);
+        if (char.ancillaries?.length) blockLines.push(`ancillaries\t${char.ancillaries.join(', ')}`);
+        if (char.army?.length) {
+          blockLines.push('army');
+          for (const u of char.army) {
+            if (u.unit) blockLines.push(`unit\t${u.unit} exp ${u.exp ?? 0} armour ${u.armour ?? 0} weapon_lvl ${u.weaponLvl ?? 0}`);
+          }
         }
+        blockLines.push(''); // blank line after character
       }
-      blockLines.push(''); // blank line after character
 
       if (factionLineIdx >= 0) {
-        // Insert BEFORE the first character_record in the faction block
-        // (or before end of faction block if no character_record exists)
-        let insertIdx = -1;
+        // family chars → insert after last character_record (or at factionEnd)
+        // normal chars → insert before first character_record (or at factionEnd)
+        const isFamily = char.charType === 'family';
+        let firstRecordIdx = -1;
+        let lastRecordIdx = -1;
         let braceDepth = 0;
         let factionEnd = lines.length;
         for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
@@ -848,7 +861,10 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
           const fl = raw.replace(/;.*$/, '').trim();
           for (const ch of raw) { if (ch === '{') braceDepth++; else if (ch === '}') braceDepth--; }
           if (braceDepth > 0) continue;
-          if (/^character_record\b/i.test(fl) && insertIdx < 0) insertIdx = fi;
+          if (/^character_record\b/i.test(fl)) {
+            if (firstRecordIdx < 0) firstRecordIdx = fi;
+            lastRecordIdx = fi;
+          }
           if (
             /^faction[\s\t]+\w/i.test(fl) ||
             /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
@@ -856,7 +872,9 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
             /^script\s*$/i.test(fl)
           ) { factionEnd = fi; break; }
         }
-        if (insertIdx < 0) insertIdx = factionEnd;
+        const insertIdx = isFamily
+          ? (lastRecordIdx >= 0 ? lastRecordIdx + 1 : factionEnd)
+          : (firstRecordIdx >= 0 ? firstRecordIdx : factionEnd);
         lines.splice(insertIdx, 0, ...blockLines);
       } else {
         lines.push('', `faction\t${factionName}`, ...blockLines);

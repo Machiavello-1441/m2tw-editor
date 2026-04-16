@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle, GripVertical } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 // Types that force female sex
 const FEMALE_ONLY_TYPES = new Set(['princess', 'witch']);
@@ -73,7 +74,7 @@ function validateChar(char, eduUnits) {
   return { ok: true, reason: '' };
 }
 
-function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin, allStratFactions, onConfirmCreate }) {
+function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onUpdate, onDelete, onSelect, onPin, allStratFactions, onConfirmCreate, dragHandleProps }) {
   const [expanded, setExpanded] = useState(char._isNew ?? false);
   const c = char;
   const set = (key, val) => onUpdate(c.id, { ...c, [key]: val });
@@ -129,6 +130,9 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   return (
     <div className={`rounded border ${c._isNew ? 'border-amber-500/50 bg-amber-900/10' : 'border-slate-700/40 bg-slate-900/20'}`}>
       <div className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(v => !v)}>
+        <span {...dragHandleProps} onClick={e => e.stopPropagation()} className="text-slate-600 hover:text-slate-400 cursor-grab active:cursor-grabbing shrink-0">
+          <GripVertical className="w-3 h-3" />
+        </span>
         {expanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
         <span className="text-sm shrink-0">{typeIcon}</span>
         <span className="text-[11px] font-mono flex-1 truncate text-slate-200">
@@ -251,19 +255,51 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
               </div>
             </div>
 
-            {/* Row 5: Role */}
-            <div>
-              <span className="text-[9px] text-slate-500">Role</span>
-              <select value={c.role || ''} onChange={e => set('role', e.target.value)}
-                disabled={!canHaveRole}
-                className={`w-full h-6 px-1.5 text-[11px] rounded border ${canHaveRole ? 'bg-slate-800 border-slate-600/40 text-slate-200' : 'bg-slate-800/40 border-slate-700/20 text-slate-600 opacity-40'}`}>
-                <option value="">— none —</option>
-                <option value="leader">leader</option>
-                <option value="heir">heir</option>
-              </select>
-            </div>
+            {/* Row 5: Role (named character) OR Alive/Dead + Record Role (family) */}
+            {isFamily ? (
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <span className="text-[9px] text-slate-500">Status</span>
+                    <select value={c.status === 'dead' ? 'dead' : 'alive'} onChange={e => {
+                      if (e.target.value === 'dead') set('status', 'dead');
+                      else onUpdate(c.id, { ...c, status: 'alive', deadYears: 0 });
+                    }} className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                      <option value="alive">alive</option>
+                      <option value="dead">dead</option>
+                    </select>
+                  </div>
+                  {c.status === 'dead' ? (
+                    <div>
+                      <span className="text-[9px] text-slate-500">Years Dead</span>
+                      <input type="number" min={0} value={c.deadYears ?? 0} onChange={e => set('deadYears', parseInt(e.target.value) || 0)}
+                        className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-red-300 font-mono" />
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-[9px] text-slate-500">Record Role</span>
+                      <select value={c.recordRole || 'never_a_leader'} onChange={e => set('recordRole', e.target.value)}
+                        className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                        {RECORD_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <span className="text-[9px] text-slate-500">Role</span>
+                <select value={c.role || ''} onChange={e => set('role', e.target.value)}
+                  disabled={!canHaveRole}
+                  className={`w-full h-6 px-1.5 text-[11px] rounded border ${canHaveRole ? 'bg-slate-800 border-slate-600/40 text-slate-200' : 'bg-slate-800/40 border-slate-700/20 text-slate-600 opacity-40'}`}>
+                  <option value="">— none —</option>
+                  <option value="leader">leader</option>
+                  <option value="heir">heir</option>
+                </select>
+              </div>
+            )}
 
-            {/* Row 6: Position (separate line) */}
+            {/* Row 6: Position (separate line) — hidden for family */}
             {!isFamily && (
               <div>
                 <span className={`text-[9px] ${c.x == null || c.y == null ? 'text-red-400' : 'text-slate-500'}`}>
@@ -739,6 +775,18 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
     if (onPinCharacter) onPinCharacter(char);
   };
 
+  const handleDragEnd = (result) => {
+    if (!result.destination || result.destination.index === result.source.index) return;
+    if (!stratData) return;
+    // Work on the full filtered list order (new items first, then rest)
+    const ordered = [...filtered.filter(c => c._isNew), ...filtered.filter(c => !c._isNew)];
+    const [moved] = ordered.splice(result.source.index, 1);
+    ordered.splice(result.destination.index, 0, moved);
+    // Rebuild items: replace chars in their new order, keep non-char items
+    const nonChars = (stratData.items || []).filter(i => i.category !== 'character');
+    onStratDataChange({ ...stratData, items: [...ordered, ...nonChars] });
+  };
+
   if (!stratData?.raw) {
     return <div className="p-3 text-[10px] text-slate-600 text-center">Load descr_strat.txt to edit characters</div>;
   }
@@ -803,29 +851,45 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
 
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
             <div ref={listTopRef} />
-            {/* New unconfirmed chars first, then the rest */}
-            {[...filtered.filter(c => c._isNew), ...filtered.filter(c => !c._isNew)].map(char => (
-              <CharacterRow
-                key={char.id}
-                char={char}
-                allFactions={allFactions}
-                allStratFactions={allFactions}
-                descrNames={descrNames}
-                namesDisplayMap={namesDisplayMap}
-                traitsList={traitsList}
-                ancillariesList={ancillariesList}
-                eduUnits={eduUnits}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-                onSelect={onSelectItem}
-                onPin={handlePin}
-                onConfirmCreate={handleConfirmCreate}
-              />
-            ))}
+            {/* Drag-to-reorder character list */}
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="characters-list">
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-0.5">
+                    {[...filtered.filter(c => c._isNew), ...filtered.filter(c => !c._isNew)].map((char, idx) => (
+                      <Draggable key={String(char.id)} draggableId={String(char.id)} index={idx}>
+                        {(drag) => (
+                          <div ref={drag.innerRef} {...drag.draggableProps}>
+                            <CharacterRow
+                              char={char}
+                              allFactions={allFactions}
+                              allStratFactions={allFactions}
+                              descrNames={descrNames}
+                              namesDisplayMap={namesDisplayMap}
+                              traitsList={traitsList}
+                              ancillariesList={ancillariesList}
+                              eduUnits={eduUnits}
+                              onUpdate={handleUpdate}
+                              onDelete={handleDelete}
+                              onSelect={onSelectItem}
+                              onPin={handlePin}
+                              onConfirmCreate={handleConfirmCreate}
+                              dragHandleProps={drag.dragHandleProps}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
 
             {filtered.length === 0 && allChars.length === 0 && (
               <div className="text-[10px] text-slate-600 italic text-center py-2">No characters in descr_strat.txt</div>
             )}
+            </div>
 
             {filteredRecords.length > 0 && (
               <>

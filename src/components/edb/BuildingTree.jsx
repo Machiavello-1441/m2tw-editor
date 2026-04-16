@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search, AlertTriangle } from
+  ChevronRight, ChevronDown, Castle, Layers, Plus, Trash2, Search, AlertTriangle, GripVertical } from
 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -24,7 +25,7 @@ const PREFIXES = [
 { value: 'guild_', label: 'guild_', hint: 'Guild — needs entry in export_descr_guilds.txt (max 3 levels)' }];
 
 
-function BuildingNode({ building }) {
+function BuildingNode({ building, dragHandleProps }) {
   const { selectedBuilding, setSelectedBuilding, selectedLevel, setSelectedLevel,
     deleteBuilding, addLevel, deleteLevel } = useEDB();
   const [expanded, setExpanded] = useState(selectedBuilding === building.name);
@@ -39,6 +40,9 @@ function BuildingNode({ building }) {
   return (
     <div className="mb-0.5">
       <div className="bg-primary/15 text-primary pr-2 text-sm rounded-md flex items-center gap-1 cursor-pointer group transition-colors">
+        <span {...dragHandleProps} onClick={e => e.stopPropagation()} className="pl-1 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing shrink-0">
+          <GripVertical className="w-3 h-3" />
+        </span>
 
         
 
@@ -141,7 +145,7 @@ function BuildingNode({ building }) {
 }
 
 export default function BuildingTree() {
-  const { edbData, addBuilding } = useEDB();
+  const { edbData, addBuilding, reorderBuildings } = useEDB();
   const [search, setSearch] = useState('');
   const [newName, setNewName] = useState('');
   const [newPrefix, setNewPrefix] = useState('none');
@@ -234,12 +238,36 @@ export default function BuildingTree() {
       </div>
       <ScrollArea className="flex-1">
         <div className="mx-auto pt-2 pr-2 pb-2 pl-1">
-          {filtered.map((building) =>
-          <BuildingNode key={building.name} building={building} />
-          )}
-          {filtered.length === 0 &&
-          <p className="text-xs text-muted-foreground text-center py-8">No buildings found</p>
-          }
+          <DragDropContext onDragEnd={(result) => {
+            if (!result.destination || result.destination.index === result.source.index) return;
+            // Map filtered indices back to edbData.buildings indices
+            const fromBuilding = filtered[result.source.index];
+            const toBuilding = filtered[result.destination.index];
+            const allBuildings = edbData.buildings;
+            const fromIdx = allBuildings.findIndex(b => b.name === fromBuilding.name);
+            const toIdx = allBuildings.findIndex(b => b.name === toBuilding.name);
+            reorderBuildings(fromIdx, toIdx);
+          }}>
+            <Droppable droppableId="buildings-list">
+              {(provided) => (
+                <div ref={provided.innerRef} {...provided.droppableProps}>
+                  {filtered.map((building, idx) => (
+                    <Draggable key={building.name} draggableId={building.name} index={idx}>
+                      {(drag) => (
+                        <div ref={drag.innerRef} {...drag.draggableProps}>
+                          <BuildingNode building={building} dragHandleProps={drag.dragHandleProps} />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                  {filtered.length === 0 &&
+                    <p className="text-xs text-muted-foreground text-center py-8">No buildings found</p>
+                  }
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </div>
       </ScrollArea>
     </div>);

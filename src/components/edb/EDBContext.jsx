@@ -186,6 +186,17 @@ export function EDBProvider({ children }) {
     setIsDirty(true);
   }, []);
 
+  const reorderBuildings = useCallback((fromIndex, toIndex) => {
+    setEdbData(prev => {
+      if (!prev) return prev;
+      const buildings = [...prev.buildings];
+      const [moved] = buildings.splice(fromIndex, 1);
+      buildings.splice(toIndex, 0, moved);
+      return { ...prev, buildings };
+    });
+    setIsDirty(true);
+  }, []);
+
   const deleteLevel = useCallback((buildingName, levelName) => {
     setEdbData(prev => {
       if (!prev) return prev;
@@ -259,7 +270,7 @@ export function EDBProvider({ children }) {
     selectedBuilding, setSelectedBuilding,
     selectedLevel, setSelectedLevel,
     updateBuilding, updateLevel,
-    addBuilding, deleteBuilding,
+    addBuilding, deleteBuilding, reorderBuildings,
     addLevel, deleteLevel,
     textData, setTextData,
     imageData, setImageData, loadTgaImages, loadBuildingTgaImages,
