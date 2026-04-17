@@ -1,54 +1,9 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Rectangle, useMapEvents, ImageOverlay, useMap } from 'react-leaflet';
 import { hexToRgb } from '@/lib/mapLayerStore';
 import { ReferenceLayerTiles } from './ReferenceLayers';
 import OhmOverlay from './OhmOverlay';
 import 'leaflet/dist/leaflet.css';
-
-// Paints onto a layer's canvas at a given lat/lng
-function usePainter({ mapRef, canvasRef, activeTool, brushSize, color, onLayerUpdate, activeLayerId, layers }) {
-  const painting = useRef(false);
-
-  const getPixelFromLatLng = (map, latlng, canvas) => {
-    if (!map || !canvas) return null;
-    const bounds = map.getBounds();
-    const mapW = bounds.getEast() - bounds.getWest();
-    const mapH = bounds.getNorth() - bounds.getSouth();
-    const px = Math.round(((latlng.lng - bounds.getWest()) / mapW) * canvas.width);
-    const py = Math.round(((bounds.getNorth() - latlng.lat) / mapH) * canvas.height);
-    return { px, py };
-  };
-
-  const paint = useCallback((latlng) => {
-    const layer = layers[activeLayerId];
-    if (!layer?.imageData || !mapRef.current || !canvasRef.current) return;
-    const map = mapRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const pos = getPixelFromLatLng(map, latlng, canvas);
-    if (!pos) return;
-
-    const { px, py } = pos;
-    const { r, g, b } = activeTool === 'eraser' ? { r: 0, g: 0, b: 0 } : hexToRgb(color);
-
-    if (activeTool === 'fill') {
-      // Flood fill on imageData
-      floodFill(layer.imageData, px, py, [r, g, b, 255]);
-      onLayerUpdate(activeLayerId, { ...layer, imageData: layer.imageData, dirty: true });
-    } else {
-      ctx.globalCompositeOperation = activeTool === 'eraser' ? 'destination-out' : 'source-over';
-      ctx.fillStyle = activeTool === 'eraser' ? 'rgba(0,0,0,1)' : `rgb(${r},${g},${b})`;
-      const radius = brushSize / 2;
-      ctx.beginPath();
-      ctx.arc(px, py, radius, 0, Math.PI * 2);
-      ctx.fill();
-      const updated = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      onLayerUpdate(activeLayerId, { ...layer, imageData: updated, dirty: true });
-    }
-  }, [activeTool, brushSize, color, layers, activeLayerId, onLayerUpdate]);
-
-  return { paint, painting };
-}
 
 function floodFill(imageData, startX, startY, fillColor) {
   const { data, width, height } = imageData;
@@ -68,26 +23,43 @@ function floodFill(imageData, startX, startY, fillColor) {
   }
 }
 
-// Disable map drag during selection mode OR when painting
-function DragController({ selectionMode, isPainting }) {
+// Convert latlng → pixel coords using the fixed bbox bounds (not viewport)
+function latlngToPixel(latlng, bboxBounds, imgWidth, imgHeight) {
+  if (!bboxBounds) return null;
+  const { north, south, west, east } = bboxBounds;
+  const px = Math.round(((latlng.lng - west) / (east - west)) * (imgWidth - 1));
+  const py = Math.round(((north - latlng.lat) / (north - south)) * (imgHeight - 1));
+  return { px, py };
+}
+
+// Controls map drag — disable while painting, enable otherwise
+function DragController({ disabled }) {
   const map = useMap();
   useEffect(() => {
-    if (selectionMode || isPainting) {
+    if (disabled) {
       map.dragging.disable();
     } else {
       map.dragging.enable();
     }
-    if (selectionMode) {
+  }, [disabled, map]);
+  return null;
+}
+
+// Scroll wheel zoom controller
+function ZoomController({ disabled }) {
+  const map = useMap();
+  useEffect(() => {
+    if (disabled) {
       map.scrollWheelZoom.disable();
     } else {
       map.scrollWheelZoom.enable();
     }
-  }, [selectionMode, isPainting, map]);
+  }, [disabled, map]);
   return null;
 }
 
-// Map event handler component
-function MapEventHandler({ activeTool, onMapClick, onMapMove, onCoordsChange, selectionMode, onSelectionUpdate }) {
+// Map event handler
+function MapEventHandler({ onMouseDown, onMouseMove, onMouseUp, onCoordsChange, selectionMode, onSelectionUpdate }) {
   const selecting = useRef(false);
   const startLatLng = useRef(null);
 
@@ -97,8 +69,7 @@ function MapEventHandler({ activeTool, onMapClick, onMapMove, onCoordsChange, se
       if (selectionMode && selecting.current) {
         onSelectionUpdate({ start: startLatLng.current, end: e.latlng });
       } else if (!selectionMode) {
-        // continuous paint on drag
-        onMapMove(e.latlng, false, false);
+        onMouseMove(e.latlng);
       }
     },
     mousedown(e) {
@@ -106,7 +77,7 @@ function MapEventHandler({ activeTool, onMapClick, onMapMove, onCoordsChange, se
         selecting.current = true;
         startLatLng.current = e.latlng;
       } else {
-        onMapMove(e.latlng, true, false);
+        onMouseDown(e.latlng);
       }
     },
     mouseup(e) {
@@ -114,11 +85,8 @@ function MapEventHandler({ activeTool, onMapClick, onMapMove, onCoordsChange, se
         selecting.current = false;
         onSelectionUpdate({ start: startLatLng.current, end: e.latlng, confirmed: true });
       } else {
-        onMapMove(e.latlng, false, true);
+        onMouseUp(e.latlng);
       }
-    },
-    click(e) {
-      if (!selectionMode) onMapClick(e.latlng);
     },
   });
   return null;
@@ -128,101 +96,98 @@ export default function MapCanvas({
   layers, activeLayerId, activeTool, brushSize, color,
   onLayerUpdate, onCoordsChange, selectionMode, selection, onSelectionUpdate,
   onPickColor, bboxBounds,
-  // Reference tile layers (browse/generate phase)
   refLayers,
-  // OHM overlay (edit phase)
   ohmVisible, ohmYear, ohmOpacity,
 }) {
-  const mapRef = useRef(null);
-  const canvasRef = useRef(null);
   const isPainting = useRef(false);
+  const [dragDisabled, setDragDisabled] = useState(false);
 
-  useEffect(() => {}, []);  // no-op, map ref used internally
+  const isPaintTool = activeTool === 'brush' || activeTool === 'eraser' || activeTool === 'river' || activeTool === 'fill';
 
-  const handleMapMove = (latlng, isStart, isEnd) => {
-    if (isStart) {
-      isPainting.current = true;
-      paintAt(latlng); // paint on initial mousedown too
-    }
-    if (isEnd) { isPainting.current = false; return; }
-    if (isPainting.current && (activeTool === 'brush' || activeTool === 'eraser' || activeTool === 'river')) {
-      paintAt(latlng);
-    }
-  };
-
-  const handleMapClick = (latlng) => {
-    if (activeTool === 'picker') {
-      pickColorAt(latlng);
-    } else if (activeTool === 'fill') {
-      // fill always works on click
-      isPainting.current = true;
-      paintAt(latlng);
-      isPainting.current = false;
-    }
-    // brush/eraser/river already handled by mousedown+mousemove
-  };
-
-  const getPixel = (latlng, canvas) => {
-    const map = mapRef.current;
-    if (!map || !canvas) return null;
-    const bounds = map.getBounds();
-    const mapW = bounds.getEast() - bounds.getWest();
-    const mapH = bounds.getNorth() - bounds.getSouth();
-    const px = Math.round(((latlng.lng - bounds.getWest()) / mapW) * canvas.width);
-    const py = Math.round(((bounds.getNorth() - latlng.lat) / mapH) * canvas.height);
-    return { px, py };
-  };
-
-  const paintAt = (latlng) => {
+  const applyPaint = useCallback((latlng) => {
     const layer = layers[activeLayerId];
-    if (!layer?.imageData || !isPainting.current) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = layer.imageData.width;
-    canvas.height = layer.imageData.height;
-    const ctx = canvas.getContext('2d');
-    ctx.putImageData(layer.imageData, 0, 0);
-    const pos = getPixel(latlng, canvas);
+    if (!layer?.imageData) return;
+    const iw = layer.imageData.width;
+    const ih = layer.imageData.height;
+    const pos = latlngToPixel(latlng, bboxBounds, iw, ih);
     if (!pos) return;
     const { px, py } = pos;
-    if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) return;
+    if (px < 0 || py < 0 || px >= iw || py >= ih) return;
+
     const rgb = activeTool === 'eraser' ? { r: 0, g: 0, b: 0 } : hexToRgb(color);
     const { r, g, b } = rgb;
+
     if (activeTool === 'fill') {
-      const copy = new ImageData(new Uint8ClampedArray(layer.imageData.data), layer.imageData.width, layer.imageData.height);
+      const copy = new ImageData(new Uint8ClampedArray(layer.imageData.data), iw, ih);
       floodFill(copy, px, py, [r, g, b, 255]);
       onLayerUpdate(activeLayerId, { ...layer, imageData: copy, dirty: true });
     } else if (activeTool === 'river') {
-      // 1px wide river
-      const d = layer.imageData.data;
-      const i = (py * canvas.width + px) * 4;
-      d[i] = r; d[i+1] = g; d[i+2] = b; d[i+3] = 255;
-      onLayerUpdate(activeLayerId, { ...layer, imageData: layer.imageData, dirty: true });
+      // Direct pixel write — 1px
+      const copy = new ImageData(new Uint8ClampedArray(layer.imageData.data), iw, ih);
+      const i = (py * iw + px) * 4;
+      copy.data[i] = r; copy.data[i+1] = g; copy.data[i+2] = b; copy.data[i+3] = 255;
+      onLayerUpdate(activeLayerId, { ...layer, imageData: copy, dirty: true });
     } else {
-      const radius = activeTool === 'eraser' ? brushSize / 2 : brushSize / 2;
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      // brush / eraser — draw circle on canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = iw; canvas.height = ih;
+      const ctx = canvas.getContext('2d');
+      ctx.putImageData(layer.imageData, 0, 0);
+      const radius = Math.max(1, brushSize / 2);
+      if (activeTool === 'eraser') {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgb(0,0,0)';
+      } else {
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+      }
       ctx.beginPath();
-      ctx.arc(px, py, Math.max(1, radius), 0, Math.PI * 2);
+      ctx.arc(px, py, radius, 0, Math.PI * 2);
       ctx.fill();
-      const updated = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const updated = ctx.getImageData(0, 0, iw, ih);
       onLayerUpdate(activeLayerId, { ...layer, imageData: updated, dirty: true });
     }
-  };
+  }, [activeTool, brushSize, color, layers, activeLayerId, onLayerUpdate, bboxBounds]);
 
-  const pickColorAt = (latlng) => {
+  const pickColor = useCallback((latlng) => {
     const layer = layers[activeLayerId];
     if (!layer?.imageData) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = layer.imageData.width; canvas.height = layer.imageData.height;
-    const ctx = canvas.getContext('2d');
-    ctx.putImageData(layer.imageData, 0, 0);
-    const pos = getPixel(latlng, canvas);
+    const iw = layer.imageData.width;
+    const ih = layer.imageData.height;
+    const pos = latlngToPixel(latlng, bboxBounds, iw, ih);
     if (!pos) return;
     const { px, py } = pos;
+    if (px < 0 || py < 0 || px >= iw || py >= ih) return;
     const d = layer.imageData.data;
-    const i = (py * layer.imageData.width + px) * 4;
+    const i = (py * iw + px) * 4;
     const hex = '#' + [d[i],d[i+1],d[i+2]].map(v => v.toString(16).padStart(2,'0')).join('');
     onPickColor(hex);
-  };
+  }, [layers, activeLayerId, bboxBounds, onPickColor]);
+
+  const handleMouseDown = useCallback((latlng) => {
+    if (activeTool === 'picker') {
+      pickColor(latlng);
+      return;
+    }
+    if (isPaintTool) {
+      isPainting.current = true;
+      setDragDisabled(true);
+      applyPaint(latlng);
+    }
+  }, [activeTool, isPaintTool, applyPaint, pickColor]);
+
+  const handleMouseMove = useCallback((latlng) => {
+    if (isPainting.current && isPaintTool) {
+      applyPaint(latlng);
+    }
+  }, [isPaintTool, applyPaint]);
+
+  const handleMouseUp = useCallback((latlng) => {
+    if (isPainting.current) {
+      applyPaint(latlng);
+      isPainting.current = false;
+      setDragDisabled(false);
+    }
+  }, [applyPaint]);
 
   const getLayerDataURL = (layerId) => {
     const layer = layers[layerId];
@@ -234,7 +199,6 @@ export default function MapCanvas({
     return canvas.toDataURL();
   };
 
-  // If a confirmed bbox exists, overlay layers only within that bbox
   const layerBounds = bboxBounds
     ? [[bboxBounds.south, bboxBounds.west], [bboxBounds.north, bboxBounds.east]]
     : [[-85.051129, -180], [85.051129, 180]];
@@ -244,13 +208,10 @@ export default function MapCanvas({
       center={[45, 15]} zoom={4}
       style={{ width: '100%', height: '100%' }}
       zoomControl={true}
-      ref={mapRef}
     >
-      {/* Reference tile layers (controlled by ReferenceLayers panel) */}
       {refLayers ? (
         <ReferenceLayerTiles refLayers={refLayers} />
       ) : (
-        // Default base map when no ref layers prop is passed
         <TileLayer
           url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
           attribution='&copy; OpenTopoMap contributors'
@@ -259,12 +220,10 @@ export default function MapCanvas({
         />
       )}
 
-      {/* OHM historical overlay (edit phase) */}
       {ohmVisible && ohmYear && (
         <OhmOverlay ohmYear={ohmYear} opacity={ohmOpacity ?? 0.5} />
       )}
 
-      {/* Render each visible layer as an image overlay within the bbox */}
       {Object.entries(layers).map(([id, layer]) => {
         if (!layer?.imageData || layer.visible === false) return null;
         const url = getLayerDataURL(id);
@@ -277,7 +236,6 @@ export default function MapCanvas({
         );
       })}
 
-      {/* Always show confirmed bbox if present */}
       {bboxBounds && (
         <Rectangle
           bounds={[[bboxBounds.south, bboxBounds.west], [bboxBounds.north, bboxBounds.east]]}
@@ -285,7 +243,6 @@ export default function MapCanvas({
         />
       )}
 
-      {/* Selection rectangle while drawing */}
       {selectionMode && selection?.start && selection?.end && (
         <Rectangle
           bounds={[
@@ -296,11 +253,12 @@ export default function MapCanvas({
         />
       )}
 
-      <DragController selectionMode={selectionMode} isPainting={activeTool !== 'none' && activeTool !== 'picker'} />
+      <DragController disabled={dragDisabled || selectionMode} />
+      <ZoomController disabled={selectionMode} />
       <MapEventHandler
-        activeTool={activeTool}
-        onMapClick={handleMapClick}
-        onMapMove={handleMapMove}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
         onCoordsChange={onCoordsChange}
         selectionMode={selectionMode}
         onSelectionUpdate={onSelectionUpdate}
