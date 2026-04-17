@@ -9,6 +9,8 @@ import SelectionPanel from '../components/newmap/SelectionPanel';
 import MapCanvas from '../components/newmap/MapCanvas';
 import BboxLayerGenerator from '../components/newmap/BboxLayerGenerator';
 import LayerPreviewPanel from '../components/newmap/LayerPreviewPanel';
+import { useReferenceLayers, ReferenceLayerControls } from '../components/newmap/ReferenceLayers';
+import { OhmOverlayControls } from '../components/newmap/OhmOverlay';
 
 const PHASES = [
   { id: 'browse', label: 'Select Area', icon: MousePointer },
@@ -33,6 +35,14 @@ export default function NewMapEditor() {
   const [mapHeight, setMapHeight] = useState(512);
   const [regionName, setRegionName] = useState('');
   const mapRef = useRef(null);
+
+  // Reference tile layers (browse/generate phases)
+  const { refLayers, toggleRef, setRefOpacity } = useReferenceLayers();
+
+  // OHM overlay state (edit phase)
+  const [ohmVisible, setOhmVisible] = useState(false);
+  const [ohmYear, setOhmYear] = useState(1095);
+  const [ohmOpacity, setOhmOpacity] = useState(0.5);
 
   const bbox = selection?.start && selection?.end ? {
     south: Math.min(selection.start.lat, selection.end.lat),
@@ -175,6 +185,10 @@ export default function NewMapEditor() {
             onSelectionUpdate={handleSelectionUpdate}
             onPickColor={setColor}
             bboxBounds={bbox}
+            refLayers={(phase === 'browse' || phase === 'generate' || phase === 'resolution') ? refLayers : null}
+            ohmVisible={phase === 'edit' ? ohmVisible : false}
+            ohmYear={ohmYear}
+            ohmOpacity={ohmOpacity}
           />
           <MapStatusBar
             coords={coords}
@@ -207,11 +221,25 @@ export default function NewMapEditor() {
                 onConfirmSelection={confirmSelection}
                 onClearSelection={() => { setSelection(null); setSelectionMode(false); }}
               />
+              <div className="border-t border-slate-700 pt-3">
+                <ReferenceLayerControls
+                  refLayers={refLayers}
+                  onToggle={toggleRef}
+                  onOpacity={setRefOpacity}
+                />
+              </div>
             </div>
           )}
 
           {phase === 'resolution' && (
             <div className="p-3 space-y-4">
+              <div className="border-b border-slate-700 pb-3">
+                <ReferenceLayerControls
+                  refLayers={refLayers}
+                  onToggle={toggleRef}
+                  onOpacity={setRefOpacity}
+                />
+              </div>
               <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 2 — Set Map Resolution</p>
               <p className="text-[11px] text-slate-400">
                 Set the width or height for <span className="text-amber-300 font-mono">map_regions.tga</span>. The other dimension is locked to your selection's aspect ratio.
@@ -306,6 +334,15 @@ export default function NewMapEditor() {
                 <p className="text-[10px] text-slate-500">Regions: <span className="font-mono text-slate-400">{mapWidth}×{mapHeight}</span></p>
                 <p className="text-[10px] text-slate-500">×2 maps: <span className="font-mono text-slate-400">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
               </div>
+
+              <OhmOverlayControls
+                ohmYear={ohmYear}
+                setOhmYear={setOhmYear}
+                visible={ohmVisible}
+                setVisible={setOhmVisible}
+                opacity={ohmOpacity}
+                setOpacity={setOhmOpacity}
+              />
             </>
           )}
         </div>

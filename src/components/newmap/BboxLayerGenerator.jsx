@@ -1,6 +1,29 @@
 import React, { useState } from 'react';
-import { Waves, Map, ExternalLink, RefreshCw, Check } from 'lucide-react';
+import { Map, ExternalLink, RefreshCw, Check, Download } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
+import { rasterizeTiles } from './TileRasterizer';
+
+// Tile URL templates to rasterize for reference layers
+const RASTER_SOURCES = [
+  {
+    id: 'map_heights',
+    label: 'Heightmap (Terrarium)',
+    url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+  },
+  {
+    id: 'topo_ref',   // stored separately, not a M2TW layer — used as visual ref
+    label: 'Topographic (OpenTopoMap)',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+  },
+];
+
+// M2TW layer size for raster reference layers uses ×2+1 spec
+function getRasterSize(layerId, mapWidth, mapHeight) {
+  if (layerId === 'map_heights' || layerId === 'topo_ref') {
+    return { width: mapWidth * 2 + 1, height: mapHeight * 2 + 1 };
+  }
+  return { width: mapWidth, height: mapHeight };
+}
 
 const OHM_OVERPASS = 'https://overpass.openhistoricalmap.org/api/interpreter';
 const NE_OVERPASS = 'https://overpass-api.de/api/interpreter';
@@ -46,6 +69,7 @@ function makeBboxCanvas(bbox, width, height) {
 export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, onDone }) {
   const [status, setStatus] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [rasterProgress, setRasterProgress] = useState({}); // id -> {done, total}
   // OHM date: year as number for slider, converted to ISO string for queries
   const [ohmYear, setOhmYear] = useState(1095);
   const ohmDate = `${ohmYear}-01-01`;
@@ -200,6 +224,32 @@ out geom qt;`;
     setStatus('Done. Import heightmap/climate manually below, then proceed to edit.');
   };
 
+  const rasterizeLayer = async (source) => {
+    const { width, height } = getRasterSize(source.id, mapWidth, mapHeight);
+    setStatus(`Rasterizing ${source.label} (${width}×${height} px)…`);
+    setRasterProgress(p => ({ ...p, [source.id]: { done: 0, total: 1 } }));
+    try {
+      const imageData = await rasterizeTiles(
+        source.url, bbox, width, height,
+        (done, total) => setRasterProgress(p => ({ ...p, [source.id]: { done, total } }))
+      );
+      onLayerUpdate(source.id, { imageData, visible: true, opacity: 0.8, dirty: true });
+      setGenerated(p => ({ ...p, [source.id]: true }));
+      setStatus(`${source.label} rasterized at ${width}×${height} px.`);
+    } catch (e) {
+      setStatus(`Error rasterizing ${source.label}: ${e.message}`);
+    }
+    setRasterProgress(p => ({ ...p, [source.id]: null }));
+  };
+
+  const rasterizeAll = async () => {
+    setGenerating(true);
+    for (const src of RASTER_SOURCES) {
+      await rasterizeLayer(src);
+    }
+    setGenerating(false);
+  };
+
   const genBtn = (label, fn, key, blue = false) => (
     <button
       onClick={async () => { setGenerating(true); await fn(); setGenerating(false); }}
@@ -251,6 +301,40 @@ out geom qt;`;
           className="flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-slate-800 border border-slate-600/50 text-amber-300 hover:bg-slate-700">
           <ExternalLink className="w-3 h-3" /> OpenHistoricalMap ↗
         </a>
+      </div>
+
+      {/* Rasterize reference layers from tile servers */}
+      <div>
+        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Rasterize from Tiles</p>
+        <p className="text-[9px] text-slate-500 mb-2">
+          Captures tile layers (heightmap, topo) as nearest-neighbour TGA images at your set resolution, perfectly aligned to the bbox.
+        </p>
+        <div className="space-y-1.5">
+          <button onClick={rasterizeAll} disabled={generating}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-700 border border-slate-600 text-slate-200 hover:bg-slate-600 disabled:opacity-50 transition-colors font-semibold">
+            <Download className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
+            Rasterize All Reference Layers
+          </button>
+          {RASTER_SOURCES.map(src => {
+            const prog = rasterProgress[src.id];
+            const done = generated[src.id];
+            const pct = prog ? Math.round((prog.done / Math.max(prog.total, 1)) * 100) : null;
+            return (
+              <div key={src.id} className="flex items-center gap-1">
+                <button
+                  onClick={() => { setGenerating(true); rasterizeLayer(src).finally(() => setGenerating(false)); }}
+                  disabled={generating}
+                  className={`flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 ${
+                    done ? 'bg-green-800/30 border-green-600/40 text-green-300' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
+                  }`}>
+                  {done ? <Check className="w-3 h-3 shrink-0" /> : <Download className="w-3 h-3 shrink-0" />}
+                  {src.label}
+                  {pct !== null && <span className="ml-auto font-mono text-amber-300">{pct}%</span>}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Auto-generate */}

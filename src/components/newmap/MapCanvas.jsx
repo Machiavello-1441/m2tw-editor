@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Rectangle, useMapEvents, ImageOverlay, useMap } from 'react-leaflet';
 import { hexToRgb } from '@/lib/mapLayerStore';
+import { ReferenceLayerTiles } from './ReferenceLayers';
+import OhmOverlay from './OhmOverlay';
 import 'leaflet/dist/leaflet.css';
 
 // Paints onto a layer's canvas at a given lat/lng
@@ -119,7 +121,11 @@ function MapEventHandler({ activeTool, onMapClick, onMapMove, onCoordsChange, se
 export default function MapCanvas({
   layers, activeLayerId, activeTool, brushSize, color,
   onLayerUpdate, onCoordsChange, selectionMode, selection, onSelectionUpdate,
-  onPickColor, bboxBounds
+  onPickColor, bboxBounds,
+  // Reference tile layers (browse/generate phase)
+  refLayers,
+  // OHM overlay (edit phase)
+  ohmVisible, ohmYear, ohmOpacity,
 }) {
   const mapRef = useRef(null);
   const canvasRef = useRef(null);
@@ -218,13 +224,23 @@ export default function MapCanvas({
       zoomControl={true}
       ref={mapRef}
     >
-      {/* Base reference tiles — OpenTopoMap (topography + rivers + borders) */}
-      <TileLayer
-        url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> contributors'
-        opacity={0.75}
-        maxZoom={17}
-      />
+      {/* Reference tile layers (controlled by ReferenceLayers panel) */}
+      {refLayers ? (
+        <ReferenceLayerTiles refLayers={refLayers} />
+      ) : (
+        // Default base map when no ref layers prop is passed
+        <TileLayer
+          url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+          attribution='&copy; OpenTopoMap contributors'
+          opacity={0.7}
+          maxZoom={17}
+        />
+      )}
+
+      {/* OHM historical overlay (edit phase) */}
+      {ohmVisible && ohmYear && (
+        <OhmOverlay ohmYear={ohmYear} opacity={ohmOpacity ?? 0.5} />
+      )}
 
       {/* Render each visible layer as an image overlay within the bbox */}
       {Object.entries(layers).map(([id, layer]) => {
