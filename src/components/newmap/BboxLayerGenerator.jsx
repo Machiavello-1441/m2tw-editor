@@ -1,6 +1,30 @@
 import React, { useState } from 'react';
-import { ExternalLink, RefreshCw, Check, Download, Mountain, Copy } from 'lucide-react';
+import { ExternalLink, RefreshCw, Check, Download } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
+import { rasterizeTiles } from './TileRasterizer';
+
+// Tile URL templates to rasterize
+const RASTER_SOURCES = [
+  {
+    id: 'heights',           // matches LAYER_DEFS id
+    label: 'Heightmap (Terrarium)',
+    url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+    grayscale: true,
+  },
+  {
+    id: 'topo_ref',          // visual reference only, not a M2TW layer
+    label: 'Topographic (OpenTopoMap)',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+  },
+];
+
+function getRasterSize(layerId, mapWidth, mapHeight) {
+  // heights and topo_ref use the ×2+1 resolution
+  if (layerId === 'heights' || layerId === 'topo_ref') {
+    return { width: mapWidth * 2 + 1, height: mapHeight * 2 + 1 };
+  }
+  return { width: mapWidth, height: mapHeight };
+}
 
 const OSM_OVERPASS = 'https://overpass-api.de/api/interpreter';
 const OHM_OVERPASS = 'https://overpass.openhistoricalmap.org/api/interpreter';
@@ -31,17 +55,10 @@ function makeBboxCanvas(bbox, width, height) {
 export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, onDone }) {
   const [status, setStatus] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [rasterProgress, setRasterProgress] = useState({});
   const [ohmYear, setOhmYear] = useState(1095);
   const ohmDate = `${ohmYear}-01-01`;
   const [generated, setGenerated] = useState({});
-  const [copied, setCopied] = useState(false);
-
-  const copyBbox = () => {
-    const text = `N: ${bbox.north.toFixed(4)}  S: ${bbox.south.toFixed(4)}\nW: ${bbox.west.toFixed(4)}  E: ${bbox.east.toFixed(4)}`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
 
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
   const ohmDateParam = `[date:"${ohmDate}"]`;
@@ -120,6 +137,33 @@ out geom qt;`;
     img.src = URL.createObjectURL(file);
   };
 
+  const rasterizeLayer = async (source) => {
+    const { width, height } = getRasterSize(source.id, mapWidth, mapHeight);
+    setStatus(`Rasterizing ${source.label} (${width}×${height} px)…`);
+    setRasterProgress(p => ({ ...p, [source.id]: { done: 0, total: 1 } }));
+    try {
+      const imageData = await rasterizeTiles(
+        source.url, bbox, width, height,
+        (done, total) => setRasterProgress(p => ({ ...p, [source.id]: { done, total } })),
+        { grayscale: source.grayscale }
+      );
+      onLayerUpdate(source.id, { imageData, visible: true, opacity: 0.8, dirty: true });
+      setGenerated(p => ({ ...p, [source.id]: true }));
+      setStatus(`${source.label} rasterized at ${width}×${height} px.`);
+    } catch (e) {
+      setStatus(`Error rasterizing ${source.label}: ${e.message}`);
+    }
+    setRasterProgress(p => ({ ...p, [source.id]: null }));
+  };
+
+  const rasterizeAll = async () => {
+    setGenerating(true);
+    for (const src of RASTER_SOURCES) {
+      await rasterizeLayer(src);
+    }
+    setGenerating(false);
+  };
+
   const generateAll = async () => {
     setGenerating(true);
     await generateRivers();
@@ -165,57 +209,38 @@ out geom qt;`;
         </a>
       </div>
 
-      {/* CotaMap heightmap workflow */}
-      <div className="bg-amber-900/20 border border-amber-600/40 rounded-lg p-3 space-y-2.5">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Mountain className="w-3.5 h-3.5 text-amber-400" />
-          <p className="text-[11px] text-amber-300 font-bold uppercase tracking-wider">Heightmap via CotaMap</p>
-        </div>
-        <p className="text-[9px] text-slate-400 leading-relaxed">
-          CotaMap generates real-world grayscale heightmaps. Enter your bbox coordinates in CotaMap's "Real Terrain" panel, export as PNG, then import it here.
+      {/* Rasterize from tile servers */}
+      <div>
+        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Rasterize from Tiles</p>
+        <p className="text-[9px] text-slate-500 mb-2">
+          Heightmap: sea → RGB(0,0,255), land → grayscale 1–255. Perfectly aligned to your bbox.
         </p>
-
-        {/* Bbox coords to copy */}
-        <div className="bg-slate-900/60 rounded p-2 font-mono text-[10px] text-slate-300 space-y-0.5">
-          <div className="flex justify-between"><span className="text-slate-500">North:</span><span className="text-amber-300">{bbox.north.toFixed(4)}°</span></div>
-          <div className="flex justify-between"><span className="text-slate-500">South:</span><span className="text-amber-300">{bbox.south.toFixed(4)}°</span></div>
-          <div className="flex justify-between"><span className="text-slate-500">West:</span> <span className="text-amber-300">{bbox.west.toFixed(4)}°</span></div>
-          <div className="flex justify-between"><span className="text-slate-500">East:</span> <span className="text-amber-300">{bbox.east.toFixed(4)}°</span></div>
+        <div className="space-y-1.5">
+          <button onClick={rasterizeAll} disabled={generating}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-700 border border-slate-600 text-slate-200 hover:bg-slate-600 disabled:opacity-50 transition-colors font-semibold">
+            <Download className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
+            Rasterize All Tile Layers
+          </button>
+          {RASTER_SOURCES.map(src => {
+            const prog = rasterProgress[src.id];
+            const done = generated[src.id];
+            const pct = prog ? Math.round((prog.done / Math.max(prog.total, 1)) * 100) : null;
+            return (
+              <div key={src.id} className="flex items-center gap-1">
+                <button
+                  onClick={() => { setGenerating(true); rasterizeLayer(src).finally(() => setGenerating(false)); }}
+                  disabled={generating}
+                  className={`flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 ${
+                    done ? 'bg-green-800/30 border-green-600/40 text-green-300' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
+                  }`}>
+                  {done ? <Check className="w-3 h-3 shrink-0" /> : <Download className="w-3 h-3 shrink-0" />}
+                  {src.label}
+                  {pct !== null && <span className="ml-auto font-mono text-amber-300">{pct}%</span>}
+                </button>
+              </div>
+            );
+          })}
         </div>
-
-        <button onClick={copyBbox}
-          className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] border transition-colors ${
-            copied ? 'bg-green-800/30 border-green-600/40 text-green-300' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
-          }`}>
-          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-          {copied ? 'Copied!' : 'Copy Coordinates'}
-        </button>
-
-        <a href="https://cotamap.com/" target="_blank" rel="noreferrer"
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded text-[11px] bg-amber-600 border border-amber-500 text-white hover:bg-amber-500 transition-colors font-semibold">
-          <ExternalLink className="w-3.5 h-3.5" /> Open CotaMap ↗
-        </a>
-
-        <ol className="text-[9px] text-slate-500 space-y-0.5 list-decimal list-inside leading-relaxed">
-          <li>In CotaMap, click the <span className="text-amber-400 font-semibold">Globe</span> icon (Real Terrain)</li>
-          <li>Enter the bbox coords above and generate</li>
-          <li>Export as <span className="text-amber-400">PNG</span> (grayscale heightmap)</li>
-          <li>Import it below as <span className="text-amber-400">Heights (PNG)</span></li>
-        </ol>
-
-        {/* Import the CotaMap heightmap */}
-        <label className={`w-full flex items-center gap-2 px-2 py-2 rounded text-[11px] border cursor-pointer transition-colors font-semibold ${
-          generated['heights']
-            ? 'bg-green-800/30 border-green-600/40 text-green-300'
-            : 'bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600'
-        }`}>
-          {generated['heights'] ? <Check className="w-3.5 h-3.5 shrink-0" /> : <Download className="w-3.5 h-3.5 shrink-0" />}
-          {generated['heights'] ? 'Heightmap Imported ✓' : 'Import CotaMap PNG → Heights'}
-          <input type="file" accept="image/*" className="hidden" onChange={e => {
-            handleImportFile('heights', e.target.files?.[0]);
-            e.target.value = '';
-          }} />
-        </label>
       </div>
 
       {/* Auto-generate rivers */}
