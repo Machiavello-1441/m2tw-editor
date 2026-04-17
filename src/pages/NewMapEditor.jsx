@@ -116,7 +116,7 @@ export default function NewMapEditor() {
   const phaseIndex = PHASES.findIndex(p => p.id === phase);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
       {/* Header */}
       <div className="h-10 bg-slate-900 border-b border-slate-700 flex items-center gap-3 px-4 shrink-0">
         <Map className="w-4 h-4 text-amber-400" />
