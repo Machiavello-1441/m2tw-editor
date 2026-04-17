@@ -63,7 +63,7 @@ function buildUrl(urlTemplate, x, y, z) {
  * @param {function} [onProgress]  Called with (fetched, total)
  * @returns {Promise<ImageData>}
  */
-export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgress) {
+export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgress, options) {
   // Pick zoom level: aim for ~2×the target resolution so we have plenty of detail
   let zoom = 5;
   for (let z = 3; z <= 12; z++) {
@@ -150,5 +150,28 @@ export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgres
   outCtx.imageSmoothingEnabled = false; // nearest-neighbor
   outCtx.drawImage(tileCanvas, sx, sy, sw, sh, 0, 0, width, height);
 
-  return outCtx.getImageData(0, 0, width, height);
+  const imageData = outCtx.getImageData(0, 0, width, height);
+
+  if (options?.grayscale) {
+    // Terrarium tiles encode elevation as: elevation = (R*256 + G + B/256) - 32768
+    // Convert to a normalised grayscale where higher = brighter (white = high, black = sea/low)
+    const d = imageData.data;
+    const len = d.length;
+    // First pass: compute elevation range
+    let minElev = Infinity, maxElev = -Infinity;
+    for (let i = 0; i < len; i += 4) {
+      const elev = d[i] * 256 + d[i + 1] + d[i + 2] / 256 - 32768;
+      if (elev < minElev) minElev = elev;
+      if (elev > maxElev) maxElev = elev;
+    }
+    const range = maxElev - minElev || 1;
+    // Second pass: write normalised grayscale
+    for (let i = 0; i < len; i += 4) {
+      const elev = d[i] * 256 + d[i + 1] + d[i + 2] / 256 - 32768;
+      const v = Math.round(((elev - minElev) / range) * 255);
+      d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255;
+    }
+  }
+
+  return imageData;
 }

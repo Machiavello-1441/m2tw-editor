@@ -9,6 +9,7 @@ const RASTER_SOURCES = [
     id: 'map_heights',
     label: 'Heightmap (Terrarium)',
     url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+    grayscale: true,
   },
   {
     id: 'topo_ref',   // stored separately, not a M2TW layer — used as visual ref
@@ -231,7 +232,8 @@ out geom qt;`;
     try {
       const imageData = await rasterizeTiles(
         source.url, bbox, width, height,
-        (done, total) => setRasterProgress(p => ({ ...p, [source.id]: { done, total } }))
+        (done, total) => setRasterProgress(p => ({ ...p, [source.id]: { done, total } })),
+        { grayscale: source.grayscale }
       );
       onLayerUpdate(source.id, { imageData, visible: true, opacity: 0.8, dirty: true });
       setGenerated(p => ({ ...p, [source.id]: true }));
