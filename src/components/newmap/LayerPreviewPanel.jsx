@@ -1,14 +1,14 @@
 import React from 'react';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
-import { LAYER_DEFS } from '@/lib/mapLayerStore';
 
 const LAYER_LABELS = {
-  map_regions: 'Regions',
-  map_features: 'Features / Rivers',
-  map_heights: 'Heightmap',
-  map_climates: 'Climates',
-  map_ground_types: 'Ground Types',
-  map_fog: 'Fog of War',
+  heights:  'Heightmap',
+  ground:   'Ground Types',
+  climates: 'Climates',
+  features: 'Features / Rivers',
+  regions:  'Regions',
+  fog:      'Fog of War',
+  topo_ref: 'Topo Reference',
 };
 
 export default function LayerPreviewPanel({ layers, onToggleVisible, onOpacityChange, onProceed }) {
@@ -18,7 +18,7 @@ export default function LayerPreviewPanel({ layers, onToggleVisible, onOpacityCh
     <div className="p-3 space-y-3">
       <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 4 — Preview Layers</p>
       <p className="text-[11px] text-slate-400">
-        Toggle and adjust layers on the map before proceeding to edit. Use the eye icon to show/hide and the slider to set opacity.
+        Toggle and adjust layers on the map before proceeding to edit.
       </p>
 
       {layerIds.length === 0 && (
@@ -57,7 +57,7 @@ export default function LayerPreviewPanel({ layers, onToggleVisible, onOpacityCh
       </div>
 
       <p className="text-[9px] text-slate-500">
-        Tip: Pan and zoom the map to inspect your layers at different scales. Toggle layers to compare them.
+        Tip: Pan and zoom to inspect layers at different scales.
       </p>
 
       <button

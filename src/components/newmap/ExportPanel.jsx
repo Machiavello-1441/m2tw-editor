@@ -13,7 +13,7 @@ export default function ExportPanel({ layers, mapWidth, mapHeight }) {
     for (const def of LAYER_DEFS) {
       const layer = layers[def.id];
       if (!layer?.imageData) { res.push({ id: def.id, label: def.label, status: 'missing' }); continue; }
-      if (def.id === 'map_regions') {
+      if (def.id === 'regions') {
         const v = validateRegionMap(layer.imageData);
         res.push({ id: def.id, label: def.label, status: v.valid ? 'ok' : 'warn', detail: `${v.regionCount} regions` });
       } else {

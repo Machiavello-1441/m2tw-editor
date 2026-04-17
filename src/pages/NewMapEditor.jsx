@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { getLayerDimensions, LAYER_DEFS } from '@/lib/mapLayerStore';
-import { Map, Download, Crop, Edit3, MousePointer, ChevronDown, ChevronRight } from 'lucide-react';
+import { Map, Download, Crop, Edit3, MousePointer, Layers } from 'lucide-react';
 import LayerSidebar from '../components/newmap/LayerSidebar';
 import ToolSettings from '../components/newmap/ToolSettings';
 import MapStatusBar from '../components/newmap/MapStatusBar';
@@ -9,37 +9,44 @@ import SelectionPanel from '../components/newmap/SelectionPanel';
 import MapCanvas from '../components/newmap/MapCanvas';
 import BboxLayerGenerator from '../components/newmap/BboxLayerGenerator';
 import LayerPreviewPanel from '../components/newmap/LayerPreviewPanel';
+import WorkflowPanel from '../components/newmap/WorkflowPanel';
+import RegionsWorkshop from '../components/newmap/RegionsWorkshop';
 import { useReferenceLayers, ReferenceLayerControls } from '../components/newmap/ReferenceLayers';
 import { OhmOverlayControls } from '../components/newmap/OhmOverlay';
+import { autoGenerateGroundTypes } from '../lib/autoGroundTypes';
 
 const PHASES = [
-  { id: 'browse', label: 'Select Area', icon: MousePointer },
-  { id: 'resolution', label: 'Set Resolution', icon: Map },
-  { id: 'generate', label: 'Generate Layers', icon: Map },
-  { id: 'preview', label: 'Preview Layers', icon: Map },
-  { id: 'edit', label: 'Edit & Export', icon: Edit3 },
+  { id: 'browse',     label: 'Select Area',      icon: MousePointer },
+  { id: 'resolution', label: 'Set Resolution',   icon: Map },
+  { id: 'generate',   label: 'Generate Layers',  icon: Layers },
+  { id: 'preview',    label: 'Preview Layers',   icon: Map },
+  { id: 'edit',       label: 'Edit & Export',    icon: Edit3 },
 ];
+
+// Workflow step order
+const WORKFLOW_STEPS = ['heights', 'ground', 'climates', 'features', 'regions'];
 
 export default function NewMapEditor() {
   const [phase, setPhase] = useState('browse');
   const [layers, setLayers] = useState({});
-  const [activeLayerId, setActiveLayerId] = useState('map_regions');
+  const [workflowStep, setWorkflowStep] = useState('heights');
+  const [activeLayerId, setActiveLayerId] = useState('heights');
   const [activeTool, setActiveTool] = useState('brush');
   const [brushSize, setBrushSize] = useState(8);
-  const [color, setColor] = useState('#0000ff');
+  const [color, setColor] = useState('#808080');
   const [coords, setCoords] = useState(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selection, setSelection] = useState(null);
-  const [openPanel, setOpenPanel] = useState(null);
+  const [rightTab, setRightTab] = useState('tools'); // 'tools' | 'export'
   const [mapWidth, setMapWidth] = useState(512);
   const [mapHeight, setMapHeight] = useState(512);
   const [regionName, setRegionName] = useState('');
-  const mapRef = useRef(null);
+  const [generatingGround, setGeneratingGround] = useState(false);
 
-  // Reference tile layers (browse/generate phases)
+  // Reference tile layers (always shown)
   const { refLayers, toggleRef, setRefOpacity } = useReferenceLayers();
 
-  // OHM overlay state (edit phase)
+  // OHM overlay state
   const [ohmVisible, setOhmVisible] = useState(false);
   const [ohmYear, setOhmYear] = useState(1095);
   const [ohmOpacity, setOhmOpacity] = useState(0.5);
@@ -92,8 +99,6 @@ export default function NewMapEditor() {
     if (bbox) setPhase('resolution');
   };
 
-  // Aspect ratio from bbox — use Web Mercator projected height (not raw lat degrees)
-  // mercLat converts WGS84 lat to Mercator y (log-tan projection)
   const mercLat = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
   const bboxAspect = bbox
     ? (bbox.east - bbox.west) / ((mercLat(bbox.north) - mercLat(bbox.south)) * (180 / Math.PI))
@@ -115,7 +120,33 @@ export default function NewMapEditor() {
     if (mapWidth > 0 && mapHeight > 0) setPhase('generate');
   };
 
-  const togglePanel = (id) => setOpenPanel(prev => prev === id ? null : id);
+  // Workflow: validate current step and advance to next
+  const handleValidateAndNext = (stepId) => {
+    const idx = WORKFLOW_STEPS.indexOf(stepId);
+    if (idx < WORKFLOW_STEPS.length - 1) {
+      const next = WORKFLOW_STEPS[idx + 1];
+      setWorkflowStep(next);
+      setActiveLayerId(next);
+      // Auto-select appropriate color for next layer
+      if (next === 'climates') setColor('#ec008c');
+      else if (next === 'features') setColor('#0000ff');
+      else if (next === 'ground') setColor('#008080');
+      else if (next === 'regions') setColor('#000000');
+    }
+  };
+
+  // Auto-generate ground types from heightmap + topo reference
+  const handleAutoGenerateGround = async () => {
+    const heightLayer = layers.heights;
+    if (!heightLayer?.imageData) return;
+    setGeneratingGround(true);
+    // Small delay to let UI update
+    await new Promise(r => setTimeout(r, 50));
+    const topoLayer = layers.topo_ref;
+    const result = autoGenerateGroundTypes(heightLayer.imageData, topoLayer?.imageData || null);
+    handleLayerUpdate('ground', { imageData: result, visible: true, opacity: 1, dirty: true });
+    setGeneratingGround(false);
+  };
 
   const phaseIndex = PHASES.findIndex(p => p.id === phase);
 
@@ -147,12 +178,11 @@ export default function NewMapEditor() {
           ))}
         </div>
 
-        {/* Show current dimensions in header once set */}
         {phase !== 'browse' && phase !== 'resolution' && (
           <div className="ml-2 flex items-center gap-1 text-[11px]">
             <span className="text-slate-500">Regions:</span>
             <span className="text-amber-400 font-mono">{mapWidth}×{mapHeight}</span>
-            <span className="text-slate-600 ml-1">/ ×2+1 maps:</span>
+            <span className="text-slate-600 ml-1">/ ×2+1:</span>
             <span className="text-slate-400 font-mono">{mapWidth*2+1}×{mapHeight*2+1}</span>
           </div>
         )}
@@ -161,11 +191,12 @@ export default function NewMapEditor() {
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
 
+        {/* Left: Layer sidebar (edit phase) */}
         {phase === 'edit' && (
           <LayerSidebar
             layers={layers}
             activeLayerId={activeLayerId}
-            onSetActive={setActiveLayerId}
+            onSetActive={(id) => { setActiveLayerId(id); }}
             onToggleVisible={handleToggleVisible}
             onOpacityChange={handleOpacityChange}
             onImport={handleImportFile}
@@ -174,7 +205,7 @@ export default function NewMapEditor() {
           />
         )}
 
-        {/* Center: Map canvas always visible */}
+        {/* Center: Map canvas */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           <MapCanvas
             layers={layers}
@@ -189,8 +220,8 @@ export default function NewMapEditor() {
             onSelectionUpdate={handleSelectionUpdate}
             onPickColor={setColor}
             bboxBounds={bbox}
-            refLayers={(phase === 'browse' || phase === 'generate' || phase === 'resolution') ? refLayers : null}
-            ohmVisible={phase === 'edit' ? ohmVisible : false}
+            refLayers={refLayers}
+            ohmVisible={ohmVisible}
             ohmYear={ohmYear}
             ohmOpacity={ohmOpacity}
           />
@@ -212,12 +243,12 @@ export default function NewMapEditor() {
         </div>
 
         {/* Right panel */}
-        <div className="w-64 bg-slate-900 border-l border-slate-700 flex flex-col overflow-y-auto">
+        <div className="w-64 bg-slate-900 border-l border-slate-700 flex flex-col overflow-hidden">
 
+          {/* ── BROWSE ── */}
           {phase === 'browse' && (
-            <div className="p-3 space-y-3">
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
               <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 1 — Select Map Area</p>
-              <p className="text-[11px] text-slate-400">Navigate to your target region, then draw a bounding box around it.</p>
               <SelectionPanel
                 selectionMode={selectionMode}
                 onToggleSelection={() => setSelectionMode(m => !m)}
@@ -227,60 +258,40 @@ export default function NewMapEditor() {
                 onBboxEdit={handleSelectionUpdate}
               />
               <div className="border-t border-slate-700 pt-3">
-                <ReferenceLayerControls
-                  refLayers={refLayers}
-                  onToggle={toggleRef}
-                  onOpacity={setRefOpacity}
-                />
+                <ReferenceLayerControls refLayers={refLayers} onToggle={toggleRef} onOpacity={setRefOpacity} />
               </div>
             </div>
           )}
 
+          {/* ── RESOLUTION ── */}
           {phase === 'resolution' && (
-            <div className="p-3 space-y-4">
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
               <div className="border-b border-slate-700 pb-3">
-                <ReferenceLayerControls
-                  refLayers={refLayers}
-                  onToggle={toggleRef}
-                  onOpacity={setRefOpacity}
-                />
+                <ReferenceLayerControls refLayers={refLayers} onToggle={toggleRef} onOpacity={setRefOpacity} />
               </div>
               <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 2 — Set Map Resolution</p>
-              <p className="text-[11px] text-slate-400">
-                Set the width or height for <span className="text-amber-300 font-mono">map_regions.tga</span>. The other dimension is locked to your selection's aspect ratio.
-              </p>
-
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <label className="text-[10px] text-slate-400 mb-1 block">Width (px)</label>
-                    <input
-                      type="number" min="64" max="4096" step="1"
-                      value={mapWidth}
+                    <input type="number" min="64" max="4096" step="1" value={mapWidth}
                       onChange={e => handleWidthChange(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500"
-                    />
+                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
                   </div>
                   <span className="text-slate-500 mt-4">×</span>
                   <div className="flex-1">
                     <label className="text-[10px] text-slate-400 mb-1 block">Height (px)</label>
-                    <input
-                      type="number" min="64" max="4096" step="1"
-                      value={mapHeight}
+                    <input type="number" min="64" max="4096" step="1" value={mapHeight}
                       onChange={e => handleHeightChange(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500"
-                    />
+                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
                   </div>
                 </div>
-
-                <p className="text-[9px] text-slate-500">Aspect ratio locked to your selected area ({bboxAspect.toFixed(3)}:1).</p>
-
+                <p className="text-[9px] text-slate-500">Aspect ratio locked ({bboxAspect.toFixed(3)}:1).</p>
                 <div className="bg-slate-800 rounded p-2 text-[10px] text-slate-400 space-y-0.5">
                   <p className="text-slate-300 font-semibold mb-1">Resulting dimensions</p>
-                  <p>map_regions / map_features: <span className="font-mono text-slate-200">{mapWidth}×{mapHeight}</span></p>
-                  <p>map_heights / climates / ground: <span className="font-mono text-slate-200">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
+                  <p>regions / features: <span className="font-mono text-slate-200">{mapWidth}×{mapHeight}</span></p>
+                  <p>heights / climates / ground: <span className="font-mono text-slate-200">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
                 </div>
-
                 <button onClick={confirmResolution}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[11px] bg-amber-600 border border-amber-500 text-white hover:bg-amber-500 transition-colors font-semibold">
                   Confirm &amp; Generate Layers →
@@ -289,8 +300,9 @@ export default function NewMapEditor() {
             </div>
           )}
 
+          {/* ── GENERATE ── */}
           {phase === 'generate' && bbox && (
-            <div className="p-3">
+            <div className="flex-1 overflow-y-auto p-3">
               <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-2">Step 3 — Generate Layers</p>
               <BboxLayerGenerator
                 bbox={bbox}
@@ -302,56 +314,99 @@ export default function NewMapEditor() {
             </div>
           )}
 
+          {/* ── PREVIEW ── */}
           {phase === 'preview' && (
-            <LayerPreviewPanel
-              layers={layers}
-              onToggleVisible={handleToggleVisible}
-              onOpacityChange={handleOpacityChange}
-              onProceed={() => setPhase('edit')}
-            />
+            <div className="flex-1 overflow-y-auto">
+              <LayerPreviewPanel
+                layers={layers}
+                onToggleVisible={handleToggleVisible}
+                onOpacityChange={handleOpacityChange}
+                onProceed={() => setPhase('edit')}
+              />
+            </div>
           )}
 
+          {/* ── EDIT ── */}
           {phase === 'edit' && (
-            <>
-              <div className="border-b border-slate-700">
-                <button onClick={() => togglePanel('export')}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-slate-300 hover:text-slate-100 hover:bg-slate-800 transition-colors">
-                  <Download className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-                  <span className="flex-1 text-left font-semibold">Export</span>
-                  {openPanel === 'export' ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
-                </button>
-                {openPanel === 'export' && (
-                  <div className="px-3 pb-3 pt-1">
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Tab bar */}
+              <div className="flex border-b border-slate-700 shrink-0">
+                {[
+                  { id: 'workflow', label: 'Workflow' },
+                  { id: 'tools',    label: 'Tools' },
+                  { id: 'export',   label: 'Export' },
+                ].map(tab => (
+                  <button key={tab.id} onClick={() => setRightTab(tab.id)}
+                    className={`flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                      rightTab === tab.id
+                        ? 'bg-slate-800 text-amber-400 border-b-2 border-amber-500'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {/* Workflow tab */}
+                {rightTab === 'workflow' && (
+                  <>
+                    <WorkflowPanel
+                      layers={layers}
+                      activeLayerId={activeLayerId}
+                      onSetActive={(id) => { setActiveLayerId(id); setWorkflowStep(id); }}
+                      onValidateAndNext={handleValidateAndNext}
+                      currentStepId={workflowStep}
+                      onAutoGenerateGround={handleAutoGenerateGround}
+                      generatingGround={generatingGround}
+                    />
+                    {/* Regions workshop shown in workflow tab when on regions step */}
+                    {workflowStep === 'regions' && (
+                      <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2">
+                        <RegionsWorkshop
+                          bbox={bbox}
+                          layers={layers}
+                          onLayerUpdate={handleLayerUpdate}
+                          mapWidth={mapWidth}
+                          mapHeight={mapHeight}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Tools tab */}
+                {rightTab === 'tools' && (
+                  <div className="space-y-0">
+                    <OhmOverlayControls
+                      ohmYear={ohmYear} setOhmYear={setOhmYear}
+                      visible={ohmVisible} setVisible={setOhmVisible}
+                      opacity={ohmOpacity} setOpacity={setOhmOpacity}
+                    />
+                    <div className="border-t border-slate-700">
+                      <ReferenceLayerControls refLayers={refLayers} onToggle={toggleRef} onOpacity={setRefOpacity} />
+                    </div>
+                    <div className="border-t border-slate-700 p-3">
+                      <button onClick={() => { setPhase('browse'); setSelection(null); setLayers({}); setWorkflowStep('heights'); }}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition-colors">
+                        <Crop className="w-3.5 h-3.5" /> Start Over / New Area
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Export tab */}
+                {rightTab === 'export' && (
+                  <div className="p-3">
                     <ExportPanel layers={layers} mapWidth={mapWidth} mapHeight={mapHeight} />
                   </div>
                 )}
               </div>
-
-              <div className="p-3 border-b border-slate-700">
-                <button onClick={() => { setPhase('browse'); setSelection(null); setLayers({}); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition-colors">
-                  <Crop className="w-3.5 h-3.5" /> Start Over / New Area
-                </button>
-              </div>
-
-              <div className="p-3">
-                <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1">Map Size</p>
-                <p className="text-[10px] text-slate-500">Regions: <span className="font-mono text-slate-400">{mapWidth}×{mapHeight}</span></p>
-                <p className="text-[10px] text-slate-500">×2 maps: <span className="font-mono text-slate-400">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
-              </div>
-
-              <OhmOverlayControls
-                ohmYear={ohmYear}
-                setOhmYear={setOhmYear}
-                visible={ohmVisible}
-                setVisible={setOhmVisible}
-                opacity={ohmOpacity}
-                setOpacity={setOhmOpacity}
-              />
-            </>
+            </div>
           )}
         </div>
 
+        {/* Far-right: Tool Settings panel (edit phase only) */}
         {phase === 'edit' && (
           <ToolSettings
             activeTool={activeTool}

@@ -2,19 +2,33 @@ import React from 'react';
 import { Paintbrush, Eraser, Pipette, Square, Minus } from 'lucide-react';
 import { CLIMATE_PALETTE, GROUND_TYPE_PALETTE, FEATURES_PALETTE, LAYER_DEFS } from '@/lib/mapLayerStore';
 
-const TOOLS = [
+// Heights grayscale quick presets
+const HEIGHT_PALETTE = [
+  { id: 'sea',        color: '#0000ff', label: 'Sea (0,0,255)' },
+  { id: 'lowland',    color: '#202020', label: 'Lowland (dark)' },
+  { id: 'plain',      color: '#505050', label: 'Plains' },
+  { id: 'hills',      color: '#808080', label: 'Hills' },
+  { id: 'mountain',   color: '#b0b0b0', label: 'Mountains' },
+  { id: 'peak',       color: '#ffffff', label: 'High Peaks' },
+];
+
+const ALL_TOOLS = [
   { id: 'brush',  icon: Paintbrush, label: 'Brush' },
   { id: 'fill',   icon: Square,     label: 'Fill' },
   { id: 'eraser', icon: Eraser,     label: 'Eraser' },
   { id: 'picker', icon: Pipette,    label: 'Color Picker' },
-  { id: 'river',  icon: Minus,      label: 'River Draw' },
+  { id: 'river',  icon: Minus,      label: 'River (1px)' },
 ];
 
 export default function ToolSettings({ activeTool, onSetTool, brushSize, onBrushSize, color, onColor, activeLayerId, regionName, onRegionName }) {
   const layerDef = LAYER_DEFS.find(d => d.id === activeLayerId);
-  const showPalette = activeLayerId === 'map_climates' || activeLayerId === 'map_ground_types' || activeLayerId === 'map_features';
-  const palette = activeLayerId === 'map_climates' ? CLIMATE_PALETTE
-    : activeLayerId === 'map_features' ? FEATURES_PALETTE
+  const TOOLS = activeLayerId === 'features'
+    ? ALL_TOOLS
+    : ALL_TOOLS.filter(t => t.id !== 'river');
+  const showPalette = activeLayerId === 'climates' || activeLayerId === 'ground' || activeLayerId === 'features' || activeLayerId === 'heights';
+  const palette = activeLayerId === 'climates' ? CLIMATE_PALETTE
+    : activeLayerId === 'features' ? FEATURES_PALETTE
+    : activeLayerId === 'heights' ? HEIGHT_PALETTE
     : GROUND_TYPE_PALETTE;
 
   return (
@@ -60,8 +74,9 @@ export default function ToolSettings({ activeTool, onSetTool, brushSize, onBrush
       {showPalette && (
         <div className="p-3 border-b border-slate-700 space-y-1">
           <label className="text-[10px] text-slate-400">
-            {activeLayerId === 'map_climates' ? 'Climate Zones (M2TW canonical)'
-              : activeLayerId === 'map_features' ? 'Feature Colors (M2TW canonical)'
+            {activeLayerId === 'climates' ? 'Climate Zones (M2TW canonical)'
+              : activeLayerId === 'features' ? 'Feature Colors (M2TW canonical)'
+              : activeLayerId === 'heights' ? 'Height Presets'
               : 'Ground Types (M2TW canonical)'}
           </label>
           <div className="space-y-0.5 max-h-48 overflow-y-auto">
@@ -79,7 +94,7 @@ export default function ToolSettings({ activeTool, onSetTool, brushSize, onBrush
       )}
 
       {/* Region name */}
-      {activeLayerId === 'map_regions' && (
+      {activeLayerId === 'regions' && (
         <div className="p-3 border-b border-slate-700 space-y-1.5">
           <label className="text-[10px] text-slate-400">Region Name</label>
           <input value={regionName} onChange={e => onRegionName(e.target.value)} placeholder="e.g. england"
