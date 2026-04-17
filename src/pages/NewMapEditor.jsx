@@ -92,8 +92,12 @@ export default function NewMapEditor() {
     if (bbox) setPhase('resolution');
   };
 
-  // Aspect ratio from bbox
-  const bboxAspect = bbox ? ((bbox.east - bbox.west) / (bbox.north - bbox.south)) : 1;
+  // Aspect ratio from bbox — use Web Mercator projected height (not raw lat degrees)
+  // mercLat converts WGS84 lat to Mercator y (log-tan projection)
+  const mercLat = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+  const bboxAspect = bbox
+    ? (bbox.east - bbox.west) / ((mercLat(bbox.north) - mercLat(bbox.south)) * (180 / Math.PI))
+    : 1;
 
   const handleWidthChange = (val) => {
     const w = Math.max(1, parseInt(val) || 0);
@@ -220,6 +224,7 @@ export default function NewMapEditor() {
                 selection={selection}
                 onConfirmSelection={confirmSelection}
                 onClearSelection={() => { setSelection(null); setSelectionMode(false); }}
+                onBboxEdit={handleSelectionUpdate}
               />
               <div className="border-t border-slate-700 pt-3">
                 <ReferenceLayerControls
