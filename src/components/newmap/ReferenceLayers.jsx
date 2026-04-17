@@ -9,8 +9,9 @@
  *  - rivers     : OpenStreetMap Humanitarian (waterways highlighted)
  */
 
-import React, { useState } from 'react';
-import { TileLayer } from 'react-leaflet';
+import React, { useState, useEffect, useRef } from 'react';
+import { TileLayer, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { Eye, EyeOff, Layers } from 'lucide-react';
 
 export const REFERENCE_LAYER_DEFS = [
@@ -68,6 +69,74 @@ export function useReferenceLayers() {
 }
 
 /**
+ * A canvas-based grayscale tile layer that decodes Terrarium RGB elevation to B&W.
+ */
+function GrayscaleHeightmapLayer({ url, opacity }) {
+  const map = useMap();
+  const layerRef = useRef(null);
+
+  useEffect(() => {
+    // Create a custom GridLayer that draws tiles on canvas, decoding Terrarium RGB to grayscale
+    const GrayscaleGridLayer = L.GridLayer.extend({
+      createTile(coords, done) {
+        const tile = document.createElement('canvas');
+        tile.width = tile.height = 256;
+        const ctx = tile.getContext('2d');
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        const tileUrl = url
+          .replace('{z}', coords.z)
+          .replace('{x}', coords.x)
+          .replace('{y}', coords.y);
+
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, 256, 256);
+          const imageData = ctx.getImageData(0, 0, 256, 256);
+          const d = imageData.data;
+
+          // First pass: compute elevation range for this tile
+          let minE = Infinity, maxE = -Infinity;
+          for (let i = 0; i < d.length; i += 4) {
+            const e = d[i] * 256 + d[i + 1] + d[i + 2] / 256 - 32768;
+            if (e < minE) minE = e;
+            if (e > maxE) maxE = e;
+          }
+          const range = maxE - minE || 1;
+
+          // Second pass: write grayscale
+          for (let i = 0; i < d.length; i += 4) {
+            const e = d[i] * 256 + d[i + 1] + d[i + 2] / 256 - 32768;
+            const v = Math.round(((e - minE) / range) * 255);
+            d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255;
+          }
+          ctx.putImageData(imageData, 0, 0);
+          done(null, tile);
+        };
+        img.onerror = () => done(new Error('tile load failed'), tile);
+        img.src = tileUrl;
+        return tile;
+      },
+    });
+
+    const layer = new GrayscaleGridLayer({ opacity, maxZoom: 15, attribution: '&copy; Mapzen/Amazon elevation tiles' });
+    layer.addTo(map);
+    layerRef.current = layer;
+
+    return () => {
+      if (layerRef.current) map.removeLayer(layerRef.current);
+    };
+  }, [map, url]);
+
+  // Update opacity without recreating the layer
+  useEffect(() => {
+    if (layerRef.current) layerRef.current.setOpacity(opacity);
+  }, [opacity]);
+
+  return null;
+}
+
+/**
  * The actual Leaflet TileLayer components — rendered inside MapContainer.
  */
 export function ReferenceLayerTiles({ refLayers }) {
@@ -76,13 +145,24 @@ export function ReferenceLayerTiles({ refLayers }) {
       {REFERENCE_LAYER_DEFS.map(def => {
         const state = refLayers[def.id];
         if (!state?.visible) return null;
+
+        if (def.id === 'heightmap') {
+          return (
+            <GrayscaleHeightmapLayer
+              key={def.id}
+              url={def.url}
+              opacity={state.opacity ?? def.defaultOpacity}
+            />
+          );
+        }
+
         return (
           <TileLayer
             key={def.id}
             url={def.url}
             attribution={def.attribution}
             opacity={state.opacity ?? def.defaultOpacity}
-            maxZoom={def.id === 'heightmap' ? 15 : 19}
+            maxZoom={19}
             crossOrigin="anonymous"
           />
         );
