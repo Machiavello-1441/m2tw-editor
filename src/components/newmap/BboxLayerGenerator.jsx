@@ -46,8 +46,9 @@ function makeBboxCanvas(bbox, width, height) {
 export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, onDone }) {
   const [status, setStatus] = useState('');
   const [generating, setGenerating] = useState(false);
-  // OHM date format: e.g. "1095-01-01" (use OHM's date= parameter)
-  const [ohmDate, setOhmDate] = useState('1095-01-01');
+  // OHM date: year as number for slider, converted to ISO string for queries
+  const [ohmYear, setOhmYear] = useState(1095);
+  const ohmDate = `${ohmYear}-01-01`;
   const [generated, setGenerated] = useState({});
 
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
@@ -223,27 +224,31 @@ out geom qt;`;
         <p>Lng: <span className="text-slate-200 font-mono">{bbox.west.toFixed(2)}° → {bbox.east.toFixed(2)}°</span></p>
       </div>
 
-      {/* OHM Date selector */}
+      {/* OHM Date selector — timeline slider */}
       <div>
         <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Historical Date (OHM)</p>
-        <p className="text-[9px] text-slate-500 mb-1.5">OpenHistoricalMap uses ISO dates. Leave blank for modern OSM data.</p>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[9px] text-slate-500">500 AD</span>
+          <span className="text-[11px] text-amber-300 font-mono font-semibold">{ohmYear} AD</span>
+          <span className="text-[9px] text-slate-500">1600 AD</span>
+        </div>
         <input
-          type="text"
-          value={ohmDate}
-          onChange={e => setOhmDate(e.target.value)}
-          placeholder="YYYY-MM-DD (e.g. 1095-01-01)"
-          className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[11px] text-slate-200 font-mono focus:outline-none focus:border-amber-500"
+          type="range" min="500" max="1600" step="1"
+          value={ohmYear}
+          onChange={e => setOhmYear(Number(e.target.value))}
+          className="w-full h-1.5 accent-amber-400 mb-1"
         />
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {[['500-01-01','500 AD'],['800-01-01','800 AD'],['1095-01-01','1095 AD'],['1200-01-01','1200 AD'],['1350-01-01','1350 AD']].map(([v,l]) => (
-            <button key={v} onClick={() => setOhmDate(v)}
-              className={`px-2 py-0.5 rounded text-[9px] border transition-colors ${
-                ohmDate === v ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700'
-              }`}>{l}</button>
+        {/* Era tick marks */}
+        <div className="flex justify-between text-[8px] text-slate-600 px-0.5 mb-2">
+          {[500,800,1000,1095,1200,1350,1500].map(y => (
+            <button key={y} onClick={() => setOhmYear(y)}
+              className={`transition-colors ${ohmYear === y ? 'text-amber-400' : 'hover:text-slate-400'}`}>
+              {y}
+            </button>
           ))}
         </div>
         <a href="https://www.openhistoricalmap.org/" target="_blank" rel="noreferrer"
-          className="mt-1.5 flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-slate-800 border border-slate-600/50 text-amber-300 hover:bg-slate-700">
+          className="flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-slate-800 border border-slate-600/50 text-amber-300 hover:bg-slate-700">
           <ExternalLink className="w-3 h-3" /> OpenHistoricalMap ↗
         </a>
       </div>

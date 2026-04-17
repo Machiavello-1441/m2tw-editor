@@ -27,7 +27,7 @@ function usePainter({ mapRef, canvasRef, activeTool, brushSize, color, onLayerUp
     if (!pos) return;
 
     const { px, py } = pos;
-    const [r, g, b] = activeTool === 'eraser' ? [0, 0, 0] : hexToRgb(color);
+    const { r, g, b } = activeTool === 'eraser' ? { r: 0, g: 0, b: 0 } : hexToRgb(color);
 
     if (activeTool === 'fill') {
       // Flood fill on imageData
@@ -165,7 +165,8 @@ export default function MapCanvas({
     const pos = getPixel(latlng, canvas);
     if (!pos) return;
     const { px, py } = pos;
-    const [r, g, b] = activeTool === 'eraser' ? [0,0,0] : hexToRgb(color);
+    const rgb = activeTool === 'eraser' ? { r: 0, g: 0, b: 0 } : hexToRgb(color);
+    const { r, g, b } = rgb;
     if (activeTool === 'fill') {
       floodFill(layer.imageData, px, py, [r, g, b, 255]);
       onLayerUpdate(activeLayerId, { ...layer, imageData: layer.imageData, dirty: true });
@@ -217,11 +218,12 @@ export default function MapCanvas({
       zoomControl={true}
       ref={mapRef}
     >
-      {/* Base reference tiles from OpenStreetMap */}
+      {/* Base reference tiles — OpenTopoMap (topography + rivers + borders) */}
       <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        opacity={0.5}
+        url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> contributors'
+        opacity={0.75}
+        maxZoom={17}
       />
 
       {/* Render each visible layer as an image overlay within the bbox */}

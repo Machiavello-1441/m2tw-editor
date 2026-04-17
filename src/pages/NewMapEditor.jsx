@@ -8,11 +8,13 @@ import ExportPanel from '../components/newmap/ExportPanel';
 import SelectionPanel from '../components/newmap/SelectionPanel';
 import MapCanvas from '../components/newmap/MapCanvas';
 import BboxLayerGenerator from '../components/newmap/BboxLayerGenerator';
+import LayerPreviewPanel from '../components/newmap/LayerPreviewPanel';
 
 const PHASES = [
   { id: 'browse', label: 'Select Area', icon: MousePointer },
   { id: 'resolution', label: 'Set Resolution', icon: Map },
   { id: 'generate', label: 'Generate Layers', icon: Map },
+  { id: 'preview', label: 'Preview Layers', icon: Map },
   { id: 'edit', label: 'Edit & Export', icon: Edit3 },
 ];
 
@@ -78,6 +80,21 @@ export default function NewMapEditor() {
   const confirmSelection = () => {
     setSelectionMode(false);
     if (bbox) setPhase('resolution');
+  };
+
+  // Aspect ratio from bbox
+  const bboxAspect = bbox ? ((bbox.east - bbox.west) / (bbox.north - bbox.south)) : 1;
+
+  const handleWidthChange = (val) => {
+    const w = Math.max(1, parseInt(val) || 0);
+    setMapWidth(w);
+    setMapHeight(Math.max(1, Math.round(w / bboxAspect)));
+  };
+
+  const handleHeightChange = (val) => {
+    const h = Math.max(1, parseInt(val) || 0);
+    setMapHeight(h);
+    setMapWidth(Math.max(1, Math.round(h * bboxAspect)));
   };
 
   const confirmResolution = () => {
@@ -197,43 +214,38 @@ export default function NewMapEditor() {
             <div className="p-3 space-y-4">
               <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 2 — Set Map Resolution</p>
               <p className="text-[11px] text-slate-400">
-                Enter the pixel size for <span className="text-amber-300 font-mono">map_regions.tga</span> and <span className="text-amber-300 font-mono">map_features.tga</span>. All other maps will be <span className="font-mono text-slate-300">2× + 1px</span> per axis.
+                Set the width or height for <span className="text-amber-300 font-mono">map_regions.tga</span>. The other dimension is locked to your selection's aspect ratio.
               </p>
 
               <div className="space-y-3">
-                <div>
-                  <label className="text-[10px] text-slate-400 mb-1 block">Width (pixels)</label>
-                  <input
-                    type="number" min="64" max="4096" step="1"
-                    value={mapWidth}
-                    onChange={e => setMapWidth(Math.max(1, parseInt(e.target.value) || 512))}
-                    className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-slate-400 mb-1 block">Width (px)</label>
+                    <input
+                      type="number" min="64" max="4096" step="1"
+                      value={mapWidth}
+                      onChange={e => handleWidthChange(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <span className="text-slate-500 mt-4">×</span>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-slate-400 mb-1 block">Height (px)</label>
+                    <input
+                      type="number" min="64" max="4096" step="1"
+                      value={mapHeight}
+                      onChange={e => handleHeightChange(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 mb-1 block">Height (pixels)</label>
-                  <input
-                    type="number" min="64" max="4096" step="1"
-                    value={mapHeight}
-                    onChange={e => setMapHeight(Math.max(1, parseInt(e.target.value) || 512))}
-                    className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500"
-                  />
-                </div>
+
+                <p className="text-[9px] text-slate-500">Aspect ratio locked to your selected area ({bboxAspect.toFixed(3)}:1).</p>
 
                 <div className="bg-slate-800 rounded p-2 text-[10px] text-slate-400 space-y-0.5">
                   <p className="text-slate-300 font-semibold mb-1">Resulting dimensions</p>
                   <p>map_regions / map_features: <span className="font-mono text-slate-200">{mapWidth}×{mapHeight}</span></p>
                   <p>map_heights / climates / ground: <span className="font-mono text-slate-200">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
-                </div>
-
-                <div className="space-y-1 text-[10px] text-slate-500">
-                  <p className="font-semibold text-slate-400">Common presets:</p>
-                  {[[512,512,'Vanilla M2TW'],[256,256,'Compact'],[1024,1024,'Large'],[2048,2048,'M2EX']].map(([w,h,l]) => (
-                    <button key={l} onClick={() => { setMapWidth(w); setMapHeight(h); }}
-                      className="w-full text-left px-2 py-1 rounded bg-slate-800 border border-slate-700 hover:border-amber-500/40 hover:text-slate-300 transition-colors font-mono">
-                      {l} — {w}×{h}
-                    </button>
-                  ))}
                 </div>
 
                 <button onClick={confirmResolution}
@@ -252,9 +264,18 @@ export default function NewMapEditor() {
                 mapWidth={mapWidth}
                 mapHeight={mapHeight}
                 onLayerUpdate={handleLayerUpdate}
-                onDone={() => setPhase('edit')}
+                onDone={() => setPhase('preview')}
               />
             </div>
+          )}
+
+          {phase === 'preview' && (
+            <LayerPreviewPanel
+              layers={layers}
+              onToggleVisible={handleToggleVisible}
+              onOpacityChange={handleOpacityChange}
+              onProceed={() => setPhase('edit')}
+            />
           )}
 
           {phase === 'edit' && (
