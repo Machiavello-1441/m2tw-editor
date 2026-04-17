@@ -6,20 +6,21 @@ import { rasterizeTiles } from './TileRasterizer';
 // Tile URL templates to rasterize
 const RASTER_SOURCES = [
   {
-    id: 'map_heights',
+    id: 'heights',           // matches LAYER_DEFS id
     label: 'Heightmap (Terrarium)',
     url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
     grayscale: true,
   },
   {
-    id: 'topo_ref',
+    id: 'topo_ref',          // visual reference only, not a M2TW layer
     label: 'Topographic (OpenTopoMap)',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
   },
 ];
 
 function getRasterSize(layerId, mapWidth, mapHeight) {
-  if (layerId === 'map_heights' || layerId === 'topo_ref') {
+  // heights and topo_ref use the ×2+1 resolution
+  if (layerId === 'heights' || layerId === 'topo_ref') {
     return { width: mapWidth * 2 + 1, height: mapHeight * 2 + 1 };
   }
   return { width: mapWidth, height: mapHeight };
@@ -114,8 +115,8 @@ out geom qt;`;
 
     setStatus(`Rivers generated (${elements.length} waterways from ${sourceLabel}).`);
     const imageData = ctx.getImageData(0, 0, width, height);
-    onLayerUpdate('map_features', { imageData, visible: true, opacity: 0.9, dirty: true });
-    setGenerated(p => ({ ...p, map_features: true }));
+    onLayerUpdate('features', { imageData, visible: true, opacity: 0.9, dirty: true });
+    setGenerated(p => ({ ...p, features: true }));
   };
 
   const handleImportFile = (layerId, file) => {
@@ -252,7 +253,7 @@ out geom qt;`;
             <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
             Generate Rivers (OHM → OSM fallback)
           </button>
-          {generated.map_features && (
+          {generated.features && (
             <p className="text-[10px] text-green-400 flex items-center gap-1"><Check className="w-3 h-3" /> Rivers generated</p>
           )}
         </div>
@@ -269,8 +270,8 @@ out geom qt;`;
         </div>
         <div className="space-y-1 mt-1.5">
           {[
-            { id: 'map_climates', label: 'Climates (PNG)' },
-            { id: 'map_ground_types', label: 'Ground Types (PNG)' },
+            { id: 'climates', label: 'Climates (PNG)' },
+            { id: 'ground', label: 'Ground Types (PNG)' },
           ].map(({ id, label }) => (
             <label key={id}
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] border cursor-pointer transition-colors ${
