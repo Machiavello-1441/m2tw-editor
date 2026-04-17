@@ -8,7 +8,7 @@ import CodePreview from '../components/edb/CodePreview';
 import HiddenResourceEditor from '../components/edb/HiddenResourceEditor';
 import RefFileLoader from '../components/edb/RefFileLoader';
 import { Button } from '@/components/ui/button';
-import { Castle, Code2, ShieldAlert, Save } from 'lucide-react';
+import { Castle, Code2, ShieldAlert, Save, Download } from 'lucide-react';
 import AutoSavePanel from '../components/edb/AutoSavePanel';
 
 function decodeTgaToDataUrl(buffer) {
@@ -179,6 +179,25 @@ export default function EDBEditor() {
 
           <Code2 className="w-3 h-3" />
           <span className="hidden lg:block">Code</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="bg-green-700 text-white px-3 text-xs font-medium rounded-md inline-flex items-center justify-center h-7 gap-1 shrink-0 hover:bg-green-600"
+          title="Export export_descr_buildings.txt"
+          onClick={() => {
+            const text = exportEDB();
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName || 'export_descr_buildings.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          <Download className="w-3 h-3" />
+          <span className="hidden lg:block">Export EDB</span>
         </Button>
       </div>
 

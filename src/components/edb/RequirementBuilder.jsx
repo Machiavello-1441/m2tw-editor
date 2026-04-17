@@ -13,7 +13,7 @@ const REQ_TYPES = [
   { value: 'event_counter', label: 'Event Counter' },
   { value: 'hidden_resource', label: 'Hidden Resource' },
   { value: 'building_present_min_level', label: 'Building Present' },
-  { value: 'resource', label: 'Map Resource' },
+  { value: 'resource', label: 'Trade Resource' },
   { value: 'region_religion', label: 'Region Religion' },
 ];
 
@@ -197,18 +197,14 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
 
       {req.type === 'resource' && (
         mapResources.length > 0 ? (
-          <Select value={req.resource || ''} onValueChange={r => updateReq({ resource: r })}>
-            <SelectTrigger className="h-7 text-xs">
-              <SelectValue placeholder="Select map resource..." />
-            </SelectTrigger>
-            <SelectContent>
-              {mapResources.map(r => (
-                <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={req.resource || ''}
+            onValueChange={r => updateReq({ resource: r })}
+            options={mapResources.map(r => ({ value: r, label: r }))}
+            placeholder="Select trade resource..."
+          />
         ) : (
-          <Input className="h-7 text-xs" placeholder="Resource name (load descr_sm_resources.txt)" value={req.resource || ''} onChange={e => updateReq({ resource: e.target.value })} />
+          <Input className="h-7 text-xs" placeholder="Trade resource name" value={req.resource || ''} onChange={e => updateReq({ resource: e.target.value })} />
         )
       )}
 
