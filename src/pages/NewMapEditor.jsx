@@ -1,6 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { getLayerDimensions, LAYER_DEFS } from '@/lib/mapLayerStore';
-import { Map, Download, Crop, Edit3, MousePointer, Layers } from 'lucide-react';
+import {
+  Map, Download, Crop, Edit3, MousePointer, Layers,
+  Settings, Paintbrush, GitBranch, Package
+} from 'lucide-react';
 import LayerSidebar from '../components/newmap/LayerSidebar';
 import ToolSettings from '../components/newmap/ToolSettings';
 import MapStatusBar from '../components/newmap/MapStatusBar';
@@ -16,15 +19,31 @@ import { OhmOverlayControls } from '../components/newmap/OhmOverlay';
 import { autoGenerateGroundTypes } from '@/lib/autoGroundTypes';
 
 const PHASES = [
-  { id: 'browse',     label: 'Select Area',      icon: MousePointer },
-  { id: 'resolution', label: 'Set Resolution',   icon: Map },
-  { id: 'generate',   label: 'Generate Layers',  icon: Layers },
-  { id: 'preview',    label: 'Preview Layers',   icon: Map },
-  { id: 'edit',       label: 'Edit & Export',    icon: Edit3 },
+  { id: 'browse',     label: 'Select Area',     icon: MousePointer },
+  { id: 'resolution', label: 'Set Resolution',  icon: Map },
+  { id: 'generate',   label: 'Generate Layers', icon: Layers },
+  { id: 'preview',    label: 'Preview',         icon: Map },
+  { id: 'edit',       label: 'Edit & Export',   icon: Edit3 },
 ];
 
-// Workflow step order
 const WORKFLOW_STEPS = ['heights', 'ground', 'climates', 'features', 'regions'];
+
+// Sidebar tabs available in each phase
+const SIDEBAR_TABS = {
+  browse:     ['area', 'layers'],
+  resolution: ['area', 'layers'],
+  generate:   ['area', 'layers'],
+  preview:    ['area', 'layers'],
+  edit:       ['workflow', 'paint', 'layers', 'export'],
+};
+
+const TAB_META = {
+  area:     { label: 'Area',     icon: Crop },
+  layers:   { label: 'Layers',   icon: Layers },
+  workflow: { label: 'Workflow', icon: GitBranch },
+  paint:    { label: 'Paint',    icon: Paintbrush },
+  export:   { label: 'Export',   icon: Download },
+};
 
 export default function NewMapEditor() {
   const [phase, setPhase] = useState('browse');
@@ -37,26 +56,29 @@ export default function NewMapEditor() {
   const [coords, setCoords] = useState(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selection, setSelection] = useState(null);
-  const [rightTab, setRightTab] = useState('tools'); // 'tools' | 'export'
+  // CotaMap-style interactive box (null until first draw confirmed)
+  const [box, setBox] = useState(null);
+  const [sideTab, setSideTab] = useState('area');
   const [mapWidth, setMapWidth] = useState(512);
   const [mapHeight, setMapHeight] = useState(512);
   const [regionName, setRegionName] = useState('');
   const [generatingGround, setGeneratingGround] = useState(false);
 
-  // Reference tile layers (always shown)
   const { refLayers, toggleRef, setRefOpacity } = useReferenceLayers();
-
-  // OHM overlay state
   const [ohmVisible, setOhmVisible] = useState(false);
   const [ohmYear, setOhmYear] = useState(1095);
   const [ohmOpacity, setOhmOpacity] = useState(0.5);
 
-  const bbox = selection?.start && selection?.end ? {
-    south: Math.min(selection.start.lat, selection.end.lat),
-    north: Math.max(selection.start.lat, selection.end.lat),
-    west: Math.min(selection.start.lng, selection.end.lng),
-    east: Math.max(selection.start.lng, selection.end.lng),
-  } : null;
+  // bbox derived from box (preferred) or legacy selection
+  const bbox = box
+    ? { south: box.south, north: box.north, west: box.west, east: box.east, rotation: box.rotation ?? 0 }
+    : (selection?.start && selection?.end ? {
+        south: Math.min(selection.start.lat, selection.end.lat),
+        north: Math.max(selection.start.lat, selection.end.lat),
+        west: Math.min(selection.start.lng, selection.end.lng),
+        east: Math.max(selection.start.lng, selection.end.lng),
+        rotation: 0,
+      } : null);
 
   const handleLayerUpdate = useCallback((layerId, data) => {
     setLayers(prev => ({ ...prev, [layerId]: { ...prev[layerId], ...data } }));
@@ -96,7 +118,17 @@ export default function NewMapEditor() {
 
   const confirmSelection = () => {
     setSelectionMode(false);
-    if (bbox) setPhase('resolution');
+    if (selection?.start && selection?.end) {
+      const b = {
+        south: Math.min(selection.start.lat, selection.end.lat),
+        north: Math.max(selection.start.lat, selection.end.lat),
+        west: Math.min(selection.start.lng, selection.end.lng),
+        east: Math.max(selection.start.lng, selection.end.lng),
+        rotation: 0,
+      };
+      setBox(b);
+      setPhase('resolution');
+    }
   };
 
   const mercLat = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
@@ -120,14 +152,12 @@ export default function NewMapEditor() {
     if (mapWidth > 0 && mapHeight > 0) setPhase('generate');
   };
 
-  // Workflow: validate current step and advance to next
   const handleValidateAndNext = (stepId) => {
     const idx = WORKFLOW_STEPS.indexOf(stepId);
     if (idx < WORKFLOW_STEPS.length - 1) {
       const next = WORKFLOW_STEPS[idx + 1];
       setWorkflowStep(next);
       setActiveLayerId(next);
-      // Auto-select appropriate color for next layer
       if (next === 'climates') setColor('#ec008c');
       else if (next === 'features') setColor('#0000ff');
       else if (next === 'ground') setColor('#008080');
@@ -135,12 +165,10 @@ export default function NewMapEditor() {
     }
   };
 
-  // Auto-generate ground types from heightmap + topo reference
   const handleAutoGenerateGround = async () => {
     const heightLayer = layers.heights;
     if (!heightLayer?.imageData) return;
     setGeneratingGround(true);
-    // Small delay to let UI update
     await new Promise(r => setTimeout(r, 50));
     const topoLayer = layers.topo_ref;
     const result = autoGenerateGroundTypes(heightLayer.imageData, topoLayer?.imageData || null);
@@ -149,21 +177,24 @@ export default function NewMapEditor() {
   };
 
   const phaseIndex = PHASES.findIndex(p => p.id === phase);
+  const availableTabs = SIDEBAR_TABS[phase] ?? ['area'];
+
+  // Auto-switch to a valid tab when phase changes
+  const currentTab = availableTabs.includes(sideTab) ? sideTab : availableTabs[0];
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
-      {/* Header */}
+      {/* Header — phase stepper */}
       <div className="h-10 bg-slate-900 border-b border-slate-700 flex items-center gap-3 px-4 shrink-0">
-        <Map className="w-4 h-4 text-amber-400" />
-        <h1 className="text-sm font-bold text-slate-100">New Map Editor</h1>
-        <span className="text-slate-600 text-xs">— M2TW Campaign Map Creator</span>
+        <Map className="w-4 h-4 text-amber-400 shrink-0" />
+        <h1 className="text-sm font-bold text-slate-100 shrink-0">New Map Editor</h1>
 
-        <div className="flex items-center gap-1 ml-4">
+        <div className="flex items-center gap-1 ml-2 overflow-x-auto">
           {PHASES.map((p, i) => (
             <React.Fragment key={p.id}>
               <button
-                onClick={() => { if (i < phaseIndex) setPhase(p.id); }}
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+                onClick={() => { if (i <= phaseIndex) setPhase(p.id); }}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold transition-colors shrink-0 ${
                   phase === p.id
                     ? 'bg-amber-600 text-white'
                     : i < phaseIndex
@@ -173,17 +204,15 @@ export default function NewMapEditor() {
                 <p.icon className="w-3 h-3" />
                 {p.label}
               </button>
-              {i < PHASES.length - 1 && <span className="text-slate-700 text-xs">›</span>}
+              {i < PHASES.length - 1 && <span className="text-slate-700 text-xs shrink-0">›</span>}
             </React.Fragment>
           ))}
         </div>
 
-        {phase !== 'browse' && phase !== 'resolution' && (
-          <div className="ml-2 flex items-center gap-1 text-[11px]">
+        {bbox && phase !== 'browse' && phase !== 'resolution' && (
+          <div className="ml-auto flex items-center gap-1 text-[11px] shrink-0">
             <span className="text-slate-500">Regions:</span>
             <span className="text-amber-400 font-mono">{mapWidth}×{mapHeight}</span>
-            <span className="text-slate-600 ml-1">/ ×2+1:</span>
-            <span className="text-slate-400 font-mono">{mapWidth*2+1}×{mapHeight*2+1}</span>
           </div>
         )}
       </div>
@@ -191,19 +220,236 @@ export default function NewMapEditor() {
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Left: Layer sidebar (edit phase) */}
-        {phase === 'edit' && (
-          <LayerSidebar
-            layers={layers}
-            activeLayerId={activeLayerId}
-            onSetActive={(id) => { setActiveLayerId(id); }}
-            onToggleVisible={handleToggleVisible}
-            onOpacityChange={handleOpacityChange}
-            onImport={handleImportFile}
-            mapWidth={mapWidth}
-            mapHeight={mapHeight}
-          />
-        )}
+        {/* ── Left sidebar — always visible, tabs change by phase ── */}
+        <div className="w-60 bg-slate-900 border-r border-slate-700 flex flex-col overflow-hidden shrink-0">
+          {/* Tab bar */}
+          <div className="flex border-b border-slate-700 shrink-0">
+            {availableTabs.map(tabId => {
+              const meta = TAB_META[tabId];
+              const Icon = meta.icon;
+              return (
+                <button
+                  key={tabId}
+                  onClick={() => setSideTab(tabId)}
+                  title={meta.label}
+                  className={`flex-1 py-1.5 flex flex-col items-center gap-0.5 text-[9px] font-semibold uppercase tracking-wider transition-colors ${
+                    currentTab === tabId
+                      ? 'bg-slate-800 text-amber-400 border-b-2 border-amber-500'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}>
+                  <Icon className="w-3.5 h-3.5" />
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto">
+
+            {/* ── AREA tab ── */}
+            {currentTab === 'area' && (
+              <div className="p-3 space-y-3">
+                {/* Phase-specific content */}
+                {(phase === 'browse' || phase === 'resolution') && (
+                  <>
+                    <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">
+                      {phase === 'browse' ? 'Step 1 — Select Map Area' : 'Step 2 — Set Resolution'}
+                    </p>
+                    <SelectionPanel
+                      selectionMode={selectionMode}
+                      onToggleSelection={() => setSelectionMode(m => !m)}
+                      selection={selection}
+                      onConfirmSelection={confirmSelection}
+                      onClearSelection={() => { setSelection(null); setBox(null); setSelectionMode(false); }}
+                      onBboxEdit={handleSelectionUpdate}
+                    />
+                    {/* Box coords editor once box is set */}
+                    {box && (
+                      <div className="bg-slate-800 border border-slate-700 rounded p-2 text-[10px] space-y-1.5">
+                        <p className="text-amber-400 font-semibold">Interactive Box</p>
+                        <p className="text-slate-400">Drag corners, center, or rotation handle on the map.</p>
+                        <div className="grid grid-cols-2 gap-1">
+                          {[
+                            { label: 'N', field: 'north' },
+                            { label: 'S', field: 'south' },
+                            { label: 'W', field: 'west' },
+                            { label: 'E', field: 'east' },
+                          ].map(({ label, field }) => (
+                            <div key={field}>
+                              <p className="text-slate-500 mb-0.5">{label}</p>
+                              <input type="number" step="0.01"
+                                value={box[field]?.toFixed(3) ?? ''}
+                                onChange={e => setBox(b => ({ ...b, [field]: parseFloat(e.target.value) || b[field] }))}
+                                className="w-full bg-slate-700 border border-slate-600 rounded px-1.5 py-1 text-[10px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
+                            </div>
+                          ))}
+                        </div>
+                        <div>
+                          <p className="text-slate-500 mb-0.5">Rotation (°)</p>
+                          <input type="number" step="1" min="-180" max="180"
+                            value={Math.round(box.rotation ?? 0)}
+                            onChange={e => setBox(b => ({ ...b, rotation: parseFloat(e.target.value) || 0 }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-1.5 py-1 text-[10px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
+                        </div>
+                      </div>
+                    )}
+                    {phase === 'resolution' && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <label className="text-[10px] text-slate-400 mb-1 block">Width</label>
+                            <input type="number" min="64" max="4096" value={mapWidth}
+                              onChange={e => handleWidthChange(e.target.value)}
+                              className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
+                          </div>
+                          <span className="text-slate-500 mt-4">×</span>
+                          <div className="flex-1">
+                            <label className="text-[10px] text-slate-400 mb-1 block">Height</label>
+                            <input type="number" min="64" max="4096" value={mapHeight}
+                              onChange={e => handleHeightChange(e.target.value)}
+                              className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
+                          </div>
+                        </div>
+                        <p className="text-[9px] text-slate-500">Aspect ratio: {bboxAspect.toFixed(3)}:1</p>
+                        <div className="bg-slate-800 rounded p-2 text-[10px] text-slate-400 space-y-0.5">
+                          <p className="text-slate-300 font-semibold mb-1">Dimensions</p>
+                          <p>regions/features: <span className="font-mono text-slate-200">{mapWidth}×{mapHeight}</span></p>
+                          <p>heights/ground: <span className="font-mono text-slate-200">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
+                        </div>
+                        <button onClick={confirmResolution}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[11px] bg-amber-600 border border-amber-500 text-white hover:bg-amber-500 transition-colors font-semibold">
+                          Confirm &amp; Generate →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {phase === 'generate' && bbox && (
+                  <>
+                    <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-2">Step 3 — Generate Layers</p>
+                    <BboxLayerGenerator
+                      bbox={bbox}
+                      mapWidth={mapWidth}
+                      mapHeight={mapHeight}
+                      onLayerUpdate={handleLayerUpdate}
+                      onDone={() => setPhase('preview')}
+                    />
+                  </>
+                )}
+
+                {phase === 'preview' && (
+                  <LayerPreviewPanel
+                    layers={layers}
+                    onToggleVisible={handleToggleVisible}
+                    onOpacityChange={handleOpacityChange}
+                    onProceed={() => { setPhase('edit'); setSideTab('workflow'); }}
+                  />
+                )}
+
+                {phase === 'edit' && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-slate-400">
+                      Selected area: <span className="font-mono text-amber-400">{mapWidth}×{mapHeight}</span>
+                    </p>
+                    {bbox && (
+                      <div className="text-[10px] text-slate-500 font-mono space-y-0.5">
+                        <p>N {bbox.north?.toFixed(2)} / S {bbox.south?.toFixed(2)}</p>
+                        <p>W {bbox.west?.toFixed(2)} / E {bbox.east?.toFixed(2)}</p>
+                        {bbox.rotation ? <p>Rot {bbox.rotation?.toFixed(1)}°</p> : null}
+                      </div>
+                    )}
+                    <button onClick={() => { setPhase('browse'); setSelection(null); setBox(null); setLayers({}); setWorkflowStep('heights'); setSideTab('area'); }}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition-colors">
+                      <Crop className="w-3.5 h-3.5" /> Start Over / New Area
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── LAYERS tab (reference layers + layer stack) ── */}
+            {currentTab === 'layers' && (
+              <div className="p-3 space-y-4">
+                <ReferenceLayerControls refLayers={refLayers} onToggle={toggleRef} onOpacity={setRefOpacity} />
+                {phase === 'edit' && (
+                  <div className="border-t border-slate-700 pt-3">
+                    <OhmOverlayControls
+                      ohmYear={ohmYear} setOhmYear={setOhmYear}
+                      visible={ohmVisible} setVisible={setOhmVisible}
+                      opacity={ohmOpacity} setOpacity={setOhmOpacity}
+                    />
+                  </div>
+                )}
+                {phase === 'edit' && (
+                  <div className="border-t border-slate-700 pt-3">
+                    <LayerSidebar
+                      layers={layers}
+                      activeLayerId={activeLayerId}
+                      onSetActive={(id) => setActiveLayerId(id)}
+                      onToggleVisible={handleToggleVisible}
+                      onOpacityChange={handleOpacityChange}
+                      onImport={handleImportFile}
+                      mapWidth={mapWidth}
+                      mapHeight={mapHeight}
+                      compact
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── WORKFLOW tab (edit phase) ── */}
+            {currentTab === 'workflow' && phase === 'edit' && (
+              <div className="space-y-0">
+                <WorkflowPanel
+                  layers={layers}
+                  activeLayerId={activeLayerId}
+                  onSetActive={(id) => { setActiveLayerId(id); setWorkflowStep(id); }}
+                  onValidateAndNext={handleValidateAndNext}
+                  currentStepId={workflowStep}
+                  onAutoGenerateGround={handleAutoGenerateGround}
+                  generatingGround={generatingGround}
+                />
+                {workflowStep === 'regions' && (
+                  <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2">
+                    <RegionsWorkshop
+                      bbox={bbox}
+                      layers={layers}
+                      onLayerUpdate={handleLayerUpdate}
+                      mapWidth={mapWidth}
+                      mapHeight={mapHeight}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── PAINT tab (edit phase) ── */}
+            {currentTab === 'paint' && phase === 'edit' && (
+              <ToolSettings
+                activeTool={activeTool}
+                onSetTool={setActiveTool}
+                brushSize={brushSize}
+                onBrushSize={setBrushSize}
+                color={color}
+                onColor={setColor}
+                activeLayerId={activeLayerId}
+                regionName={regionName}
+                onRegionName={setRegionName}
+                inline
+              />
+            )}
+
+            {/* ── EXPORT tab (edit phase) ── */}
+            {currentTab === 'export' && phase === 'edit' && (
+              <div className="p-3">
+                <ExportPanel layers={layers} mapWidth={mapWidth} mapHeight={mapHeight} />
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Center: Map canvas */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -224,6 +470,8 @@ export default function NewMapEditor() {
             ohmVisible={ohmVisible}
             ohmYear={ohmYear}
             ohmOpacity={ohmOpacity}
+            box={box}
+            onBoxChange={setBox}
           />
           <MapStatusBar
             coords={coords}
@@ -233,193 +481,14 @@ export default function NewMapEditor() {
             mapHeight={mapHeight}
           />
 
-          {phase === 'browse' && !selectionMode && !bbox && (
+          {phase === 'browse' && !selectionMode && !box && (
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-none">
               <div className="bg-slate-900/90 border border-amber-600/40 rounded-lg px-4 py-2 text-[12px] text-amber-300 text-center shadow-xl">
-                Navigate the map, then click <strong>"Draw Selection Box"</strong> →
+                Navigate the map, then click <strong>"Draw Selection Box"</strong> in the sidebar
               </div>
             </div>
           )}
         </div>
-
-        {/* Right panel */}
-        <div className="w-64 bg-slate-900 border-l border-slate-700 flex flex-col overflow-hidden">
-
-          {/* ── BROWSE ── */}
-          {phase === 'browse' && (
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 1 — Select Map Area</p>
-              <SelectionPanel
-                selectionMode={selectionMode}
-                onToggleSelection={() => setSelectionMode(m => !m)}
-                selection={selection}
-                onConfirmSelection={confirmSelection}
-                onClearSelection={() => { setSelection(null); setSelectionMode(false); }}
-                onBboxEdit={handleSelectionUpdate}
-              />
-              <div className="border-t border-slate-700 pt-3">
-                <ReferenceLayerControls refLayers={refLayers} onToggle={toggleRef} onOpacity={setRefOpacity} />
-              </div>
-            </div>
-          )}
-
-          {/* ── RESOLUTION ── */}
-          {phase === 'resolution' && (
-            <div className="flex-1 overflow-y-auto p-3 space-y-4">
-              <div className="border-b border-slate-700 pb-3">
-                <ReferenceLayerControls refLayers={refLayers} onToggle={toggleRef} onOpacity={setRefOpacity} />
-              </div>
-              <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Step 2 — Set Map Resolution</p>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <label className="text-[10px] text-slate-400 mb-1 block">Width (px)</label>
-                    <input type="number" min="64" max="4096" step="1" value={mapWidth}
-                      onChange={e => handleWidthChange(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
-                  </div>
-                  <span className="text-slate-500 mt-4">×</span>
-                  <div className="flex-1">
-                    <label className="text-[10px] text-slate-400 mb-1 block">Height (px)</label>
-                    <input type="number" min="64" max="4096" step="1" value={mapHeight}
-                      onChange={e => handleHeightChange(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-[13px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
-                  </div>
-                </div>
-                <p className="text-[9px] text-slate-500">Aspect ratio locked ({bboxAspect.toFixed(3)}:1).</p>
-                <div className="bg-slate-800 rounded p-2 text-[10px] text-slate-400 space-y-0.5">
-                  <p className="text-slate-300 font-semibold mb-1">Resulting dimensions</p>
-                  <p>regions / features: <span className="font-mono text-slate-200">{mapWidth}×{mapHeight}</span></p>
-                  <p>heights / climates / ground: <span className="font-mono text-slate-200">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
-                </div>
-                <button onClick={confirmResolution}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[11px] bg-amber-600 border border-amber-500 text-white hover:bg-amber-500 transition-colors font-semibold">
-                  Confirm &amp; Generate Layers →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── GENERATE ── */}
-          {phase === 'generate' && bbox && (
-            <div className="flex-1 overflow-y-auto p-3">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-2">Step 3 — Generate Layers</p>
-              <BboxLayerGenerator
-                bbox={bbox}
-                mapWidth={mapWidth}
-                mapHeight={mapHeight}
-                onLayerUpdate={handleLayerUpdate}
-                onDone={() => setPhase('preview')}
-              />
-            </div>
-          )}
-
-          {/* ── PREVIEW ── */}
-          {phase === 'preview' && (
-            <div className="flex-1 overflow-y-auto">
-              <LayerPreviewPanel
-                layers={layers}
-                onToggleVisible={handleToggleVisible}
-                onOpacityChange={handleOpacityChange}
-                onProceed={() => setPhase('edit')}
-              />
-            </div>
-          )}
-
-          {/* ── EDIT ── */}
-          {phase === 'edit' && (
-            <div className="flex flex-col h-full overflow-hidden">
-              {/* Tab bar */}
-              <div className="flex border-b border-slate-700 shrink-0">
-                {[
-                  { id: 'workflow', label: 'Workflow' },
-                  { id: 'tools',    label: 'Tools' },
-                  { id: 'export',   label: 'Export' },
-                ].map(tab => (
-                  <button key={tab.id} onClick={() => setRightTab(tab.id)}
-                    className={`flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                      rightTab === tab.id
-                        ? 'bg-slate-800 text-amber-400 border-b-2 border-amber-500'
-                        : 'text-slate-500 hover:text-slate-300'
-                    }`}>
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {/* Workflow tab */}
-                {rightTab === 'workflow' && (
-                  <>
-                    <WorkflowPanel
-                      layers={layers}
-                      activeLayerId={activeLayerId}
-                      onSetActive={(id) => { setActiveLayerId(id); setWorkflowStep(id); }}
-                      onValidateAndNext={handleValidateAndNext}
-                      currentStepId={workflowStep}
-                      onAutoGenerateGround={handleAutoGenerateGround}
-                      generatingGround={generatingGround}
-                    />
-                    {/* Regions workshop shown in workflow tab when on regions step */}
-                    {workflowStep === 'regions' && (
-                      <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2">
-                        <RegionsWorkshop
-                          bbox={bbox}
-                          layers={layers}
-                          onLayerUpdate={handleLayerUpdate}
-                          mapWidth={mapWidth}
-                          mapHeight={mapHeight}
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Tools tab */}
-                {rightTab === 'tools' && (
-                  <div className="space-y-0">
-                    <OhmOverlayControls
-                      ohmYear={ohmYear} setOhmYear={setOhmYear}
-                      visible={ohmVisible} setVisible={setOhmVisible}
-                      opacity={ohmOpacity} setOpacity={setOhmOpacity}
-                    />
-                    <div className="border-t border-slate-700">
-                      <ReferenceLayerControls refLayers={refLayers} onToggle={toggleRef} onOpacity={setRefOpacity} />
-                    </div>
-                    <div className="border-t border-slate-700 p-3">
-                      <button onClick={() => { setPhase('browse'); setSelection(null); setLayers({}); setWorkflowStep('heights'); }}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700 transition-colors">
-                        <Crop className="w-3.5 h-3.5" /> Start Over / New Area
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Export tab */}
-                {rightTab === 'export' && (
-                  <div className="p-3">
-                    <ExportPanel layers={layers} mapWidth={mapWidth} mapHeight={mapHeight} />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Far-right: Tool Settings panel (edit phase only) */}
-        {phase === 'edit' && (
-          <ToolSettings
-            activeTool={activeTool}
-            onSetTool={setActiveTool}
-            brushSize={brushSize}
-            onBrushSize={setBrushSize}
-            color={color}
-            onColor={setColor}
-            activeLayerId={activeLayerId}
-            regionName={regionName}
-            onRegionName={setRegionName}
-          />
-        )}
       </div>
     </div>
   );

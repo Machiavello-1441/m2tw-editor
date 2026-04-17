@@ -2,13 +2,11 @@ import React from 'react';
 import { Eye, EyeOff, Upload } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 
-export default function LayerSidebar({ layers, activeLayerId, onSetActive, onToggleVisible, onOpacityChange, onImport, mapWidth, mapHeight }) {
-  return (
-    <div className="w-56 shrink-0 bg-slate-900 border-r border-slate-700 flex flex-col h-full overflow-hidden">
-      <div className="px-3 py-2 border-b border-slate-700">
-        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Map Layers</p>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+export default function LayerSidebar({ layers, activeLayerId, onSetActive, onToggleVisible, onOpacityChange, onImport, mapWidth, mapHeight, compact }) {
+  // compact = rendered inside an existing tab, no fixed-width wrapper
+  const content = (
+    <div className="p-2 space-y-1">
+      {compact && <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mb-1">Map Layers</p>}
         {LAYER_DEFS.map(def => {
           const layer = layers[def.id] || {};
           const isActive = activeLayerId === def.id;
@@ -58,6 +56,18 @@ export default function LayerSidebar({ layers, activeLayerId, onSetActive, onTog
             </div>
           );
         })}
+    </div>
+  );
+
+  if (compact) return content;
+
+  return (
+    <div className="w-56 shrink-0 bg-slate-900 border-r border-slate-700 flex flex-col h-full overflow-hidden">
+      <div className="px-3 py-2 border-b border-slate-700">
+        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Map Layers</p>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {content}
       </div>
     </div>
   );

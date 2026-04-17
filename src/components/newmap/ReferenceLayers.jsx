@@ -10,14 +10,14 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { TileLayer, useMap } from 'react-leaflet';
+import { TileLayer, WMSTileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Eye, EyeOff, Layers } from 'lucide-react';
 
 export const REFERENCE_LAYER_DEFS = [
   {
     id: 'topo',
-    label: 'Topographic',
+    label: 'Topographic (OpenTopo)',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: '&copy; OpenTopoMap contributors',
     defaultOpacity: 1.0,
@@ -25,15 +25,26 @@ export const REFERENCE_LAYER_DEFS = [
     color: '#4ade80',
   },
   {
+    id: 'demis',
+    label: 'Demis World Map',
+    // Demis WMS served as XYZ proxy through a public CORS-safe endpoint
+    url: 'https://www2.demis.nl/wms/wms.asp?wms=WorldMap&LAYERS=Countries,Borders,Cities,Rivers,Streams,Waterbodies,Hillshading&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=TRUE&SRS=EPSG:4326&BBOX={west},{south},{east},{north}&WIDTH=256&HEIGHT=256',
+    attribution: '&copy; Demis BV — Demis Online World Map',
+    defaultOpacity: 0.85,
+    defaultVisible: false,
+    color: '#38bdf8',
+    wms: true, // flag — rendered as WMS not XYZ
+    wmsUrl: 'https://www2.demis.nl/wms/wms.asp',
+    wmsLayers: 'Countries,Borders,Topography,Cities,Rivers,Streams,Waterbodies,Railroads,Roads,Hillshading',
+  },
+  {
     id: 'heightmap',
-    label: 'Heightmap (Tangram)',
-    // Terrarium RGB-encoded elevation tiles — standard Mapzen/AWS terrain tiles
+    label: 'Heightmap (Terrarium)',
     url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
     attribution: '&copy; Mapzen/Amazon elevation tiles',
     defaultOpacity: 0.65,
     defaultVisible: false,
     color: '#a3e635',
-    // Note: these are RGB-encoded elevation (not visual), so we show them as a grayscale overlay
   },
   {
     id: 'rivers',
@@ -152,6 +163,22 @@ export function ReferenceLayerTiles({ refLayers }) {
               key={def.id}
               url={def.url}
               opacity={state.opacity ?? def.defaultOpacity}
+            />
+          );
+        }
+
+        if (def.wms) {
+          return (
+            <WMSTileLayer
+              key={def.id}
+              url={def.wmsUrl}
+              layers={def.wmsLayers}
+              format="image/png"
+              transparent={true}
+              version="1.1.1"
+              opacity={state.opacity ?? def.defaultOpacity}
+              attribution={def.attribution}
+              maxZoom={19}
             />
           );
         }

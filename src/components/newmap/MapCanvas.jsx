@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Rectangle, useMapEvents, ImageOverlay, useMap 
 import { hexToRgb } from '@/lib/mapLayerStore';
 import { ReferenceLayerTiles } from './ReferenceLayers';
 import OhmOverlay from './OhmOverlay';
+import SelectionBox from './SelectionBox';
 import 'leaflet/dist/leaflet.css';
 
 function floodFill(imageData, startX, startY, fillColor) {
@@ -98,6 +99,8 @@ export default function MapCanvas({
   onPickColor, bboxBounds,
   refLayers,
   ohmVisible, ohmYear, ohmOpacity,
+  // CotaMap-style box
+  box, onBoxChange,
 }) {
   const isPainting = useRef(false);
   const [dragDisabled, setDragDisabled] = useState(false);
@@ -243,7 +246,11 @@ export default function MapCanvas({
         />
       )}
 
-      {selectionMode && selection?.start && selection?.end && (
+      {/* CotaMap-style interactive selection box */}
+      {box && <SelectionBox box={box} onChange={onBoxChange} />}
+
+      {/* Legacy simple rectangle during initial draw */}
+      {selectionMode && !box && selection?.start && selection?.end && (
         <Rectangle
           bounds={[
             [Math.min(selection.start.lat, selection.end.lat), Math.min(selection.start.lng, selection.end.lng)],
