@@ -13,7 +13,7 @@ import WorkflowPanel from '../components/newmap/WorkflowPanel';
 import RegionsWorkshop from '../components/newmap/RegionsWorkshop';
 import { useReferenceLayers, ReferenceLayerControls } from '../components/newmap/ReferenceLayers';
 import { OhmOverlayControls } from '../components/newmap/OhmOverlay';
-import { autoGenerateGroundTypes } from '../lib/autoGroundTypes';
+import { autoGenerateGroundTypes } from '@/lib/autoGroundTypes';
 
 const PHASES = [
   { id: 'browse',     label: 'Select Area',      icon: MousePointer },
