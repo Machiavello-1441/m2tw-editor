@@ -196,16 +196,22 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
       )}
 
       {req.type === 'resource' && (
-        mapResources.length > 0 ? (
-          <SearchableSelect
+        <div className="space-y-1">
+          {mapResources.length > 0 ? (
+            <SearchableSelect
+              value={mapResources.includes(req.resource || '') ? req.resource : ''}
+              onValueChange={r => updateReq({ resource: r })}
+              options={mapResources.map(r => ({ value: r, label: r }))}
+              placeholder="Select trade resource..."
+            />
+          ) : null}
+          <Input
+            className="h-7 text-xs"
+            placeholder={mapResources.length > 0 ? 'Or type resource name manually…' : 'Resource name (load descr_sm_resources.txt)'}
             value={req.resource || ''}
-            onValueChange={r => updateReq({ resource: r })}
-            options={mapResources.map(r => ({ value: r, label: r }))}
-            placeholder="Select trade resource..."
+            onChange={e => updateReq({ resource: e.target.value })}
           />
-        ) : (
-          <Input className="h-7 text-xs" placeholder="Trade resource name" value={req.resource || ''} onChange={e => updateReq({ resource: e.target.value })} />
-        )
+        </div>
       )}
 
       {req.type === 'region_religion' && (
