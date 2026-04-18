@@ -186,14 +186,25 @@ function parseCapabilityLine(line) {
     };
   }
   
-  // agent-style: "agent merchant" or "agent_limit merchant 1"
+  // agent-style: "agent merchant" or "agent merchant 0 requires factions { ... }" or "agent_limit merchant 1"
   if (line.startsWith('agent_limit')) {
     const parts = line.split(/\s+/);
     return { type: 'agent_limit', identifier: 'agent_limit', agentType: parts[1], value: parseInt(parts[2] || 1) };
   }
   if (line.startsWith('agent ')) {
+    // Format: agent <type> [<value>] [requires ...]
+    const reqIdx = line.search(/\brequires\b/);
+    if (reqIdx !== -1) {
+      const beforeReq = line.slice(0, reqIdx).trim().split(/\s+/);
+      const agentType = beforeReq[1];
+      const agentValue = beforeReq[2] !== undefined ? parseInt(beforeReq[2]) : undefined;
+      const reqText = line.slice(reqIdx + 'requires'.length).trim();
+      return { type: 'agent', identifier: 'agent', agentType, agentValue, requirements: parseRequirements(reqText) };
+    }
     const parts = line.split(/\s+/);
-    return { type: 'agent', identifier: 'agent', agentType: parts[1] };
+    const agentType = parts[1];
+    const agentValue = parts[2] !== undefined ? parseInt(parts[2]) : undefined;
+    return { type: 'agent', identifier: 'agent', agentType, agentValue, requirements: [] };
   }
   
   // body_guard
@@ -267,6 +278,11 @@ function parseBuilding(lines, startIndex) {
     
     if (line.startsWith('convert_to ')) {
       building.convertTo = line.replace('convert_to ', '').trim();
+      i++; continue;
+    }
+    
+    if (line.startsWith('religion ')) {
+      building.religion = line.replace('religion ', '').trim();
       i++; continue;
     }
     
@@ -544,6 +560,10 @@ export function serializeBuilding(building) {
     out += `    convert_to ${building.convertTo}\n`;
   }
   
+  if (building.religion) {
+    out += `    religion ${building.religion}\n`;
+  }
+  
   const levelNames = building.levels.map(l => l.name).join(' ');
   out += `    levels ${levelNames} \n    {\n`;
   
@@ -572,7 +592,7 @@ function serializeRequirements(reqs) {
     }
     
     if (req.type === 'factions') {
-      out += `factions { ${req.values.join(', ')}, }`;
+      out += `factions { ${req.values.join(', ')}, }  `;
     } else if (req.type === 'event_counter') {
       out += `event_counter ${req.event} ${req.value}`;
     } else if (req.type === 'hidden_resource') {
@@ -653,7 +673,12 @@ function serializeCapability(cap) {
   }
   
   if (cap.type === 'agent') {
-    return `agent ${cap.agentType}`;
+    let line = `agent ${cap.agentType}`;
+    if (cap.agentValue !== undefined) line += `  ${cap.agentValue}`;
+    if (cap.requirements && cap.requirements.length > 0) {
+      line += `  requires ${serializeRequirements(cap.requirements)}`;
+    }
+    return line;
   }
   
   if (cap.type === 'agent_limit') {
