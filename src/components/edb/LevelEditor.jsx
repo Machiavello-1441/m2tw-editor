@@ -166,8 +166,9 @@ function LevelEditorInner({ building, level, levelIndex, selectedBuilding, selec
                   className="h-7 text-xs mt-1"
                   type="number"
                   min="0"
-                  value={level.convertTo !== null && level.convertTo !== undefined ? level.convertTo : levelIndex}
-                  onChange={(e) => update('convertTo', e.target.value)} />
+                  placeholder="(none)"
+                  value={level.convertTo !== null && level.convertTo !== undefined && level.convertTo !== '' ? level.convertTo : ''}
+                  onChange={(e) => update('convertTo', e.target.value === '' ? null : parseInt(e.target.value))} />
                 
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     Building converts to <span className="text-primary font-mono">{building.convertTo}</span>. Auto-index: {levelIndex}

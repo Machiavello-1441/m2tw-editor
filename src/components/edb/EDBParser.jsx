@@ -618,9 +618,13 @@ function serializeLevel(level) {
   }
   
   const stPart = level.settlementType ? ` ${level.settlementType}` : '';
-  let out = `        ${level.name}${stPart}${reqStr} \n        {\n`;
+  // The trailing space is already included in reqStr when the last condition is a factions block.
+  // For other cases we don't want an extra space, so only add one if reqStr doesn't end with space.
+  const trailingSpace = reqStr && !reqStr.endsWith(' ') ? ' ' : '';
+  let out = `        ${level.name}${stPart}${reqStr}${trailingSpace}\n        {\n`;
   
-  if (level.convertTo !== null && level.convertTo !== undefined) {
+  // Only emit convert_to if it was explicitly present in the source (not null/undefined/empty string)
+  if (level.convertTo !== null && level.convertTo !== undefined && level.convertTo !== '') {
     out += `            convert_to ${level.convertTo}\n`;
   }
   
