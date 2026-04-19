@@ -335,7 +335,7 @@ function parseBuilding(lines, startIndex) {
           // extract settlement type and requires string
           const rest = lLine.slice(firstToken.length).trim();
           const stMatch = rest.match(/^(city|castle)(.*)/);
-          const settlementType = stMatch ? stMatch[1] : 'city';
+          const settlementType = stMatch ? stMatch[1] : null;
           const requiresStr = stMatch ? stMatch[2].trim() : rest;
           const level = parseLevelBlock(lines, i, firstToken, settlementType, requiresStr);
           building.levels.push(level.data);
@@ -387,7 +387,7 @@ function parseBuilding(lines, startIndex) {
 function parseLevelBlock(lines, startIndex, levelName, settlementType, requiresStr) {
   const level = {
     name: levelName,
-    settlementType,
+    settlementType: settlementType ?? null,
     requirements: [],
     convertTo: null,
     capabilities: [],
@@ -592,7 +592,7 @@ function serializeRequirements(reqs) {
     }
     
     if (req.type === 'factions') {
-      out += `factions { ${req.values.join(', ')}, }  `;
+      out += `factions { ${req.values.join(', ')}, } `;
     } else if (req.type === 'event_counter') {
       out += `event_counter ${req.event} ${req.value}`;
     } else if (req.type === 'hidden_resource') {
@@ -617,7 +617,8 @@ function serializeLevel(level) {
     reqStr = ' requires ' + serializeRequirements(level.requirements);
   }
   
-  let out = `        ${level.name} ${level.settlementType}${reqStr} \n        {\n`;
+  const stPart = level.settlementType ? ` ${level.settlementType}` : '';
+  let out = `        ${level.name}${stPart}${reqStr} \n        {\n`;
   
   if (level.convertTo !== null && level.convertTo !== undefined) {
     out += `            convert_to ${level.convertTo}\n`;
