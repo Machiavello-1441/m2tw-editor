@@ -148,6 +148,13 @@ export default function DataFolderPicker({ onLoad, loading }) {
         </Button>
       </label>
 
+      {/* Hint before scan */}
+      {!scanned && (
+        <p className="text-[10px] text-muted-foreground text-center">
+          After selecting the folder, a checklist will appear so you can choose what to load.
+        </p>
+      )}
+
       {/* File list with checkboxes */}
       {scanned && (
         <div className="border border-border rounded-lg overflow-hidden bg-background">
