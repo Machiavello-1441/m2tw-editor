@@ -8,6 +8,7 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
+import DataFolderPicker from '../components/home/DataFolderPicker';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
   FileText, Package, ArrowRight, Info, Castle, Image, Map, Layers } from
@@ -182,6 +183,7 @@ export default function Home() {
   const [luaCount, setLuaCount] = useState(0);
   const [campaignName, setCampaignName] = useState('');
   const [campaignError, setCampaignError] = useState('');
+  const [loadingData, setLoadingData] = useState(false);
   const dataFolderRef = useRef();
   const ancImagesFolderRef = useRef();
   const campaignFolderRef = useRef();
@@ -195,10 +197,13 @@ export default function Home() {
     r.readAsText(file);
   });
 
-  const handleDataFolder = async (e) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
+  const handleDataFolderFromPicker = async (files, campaignFolders, selectedCampaigns) => {
+    setLoadingData(true);
+    await processDataFiles(files);
+    setLoadingData(false);
+  };
 
+  const processDataFiles = async (files) => {
     // Clear all stale cached data so this fresh load is authoritative
     try {
       localStorage.removeItem('m2tw_edb_file');
@@ -537,6 +542,13 @@ export default function Home() {
     }
   };
 
+  const handleDataFolder = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length === 0) return;
+    await processDataFiles(files);
+  };
+
   const handleAncImagesFolder = async (e) => {
     const files = Array.from(e.target.files || []).filter((f) => f.name.toLowerCase().endsWith('.tga'));
     e.target.value = '';
@@ -782,17 +794,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
           {/* Text files */}
           <div className="space-y-2">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Game Data Files</p>
-            <label className="cursor-pointer">
-              <input ref={dataFolderRef} type="file" className="hidden"
-              webkitdirectory="" directory="" multiple onChange={handleDataFolder} />
-              <Button asChild variant="outline"
-              className="w-full h-11 border-primary/30 text-primary hover:bg-primary/10 pointer-events-none gap-2">
-                <span>
-                  <FolderOpen className="w-4 h-4" />
-                  Browse to <code className="text-xs font-mono">…\data\</code> folder
-                </span>
-              </Button>
-            </label>
+            <DataFolderPicker onLoad={handleDataFolderFromPicker} loading={loadingData} />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt" status={fileStatus.edb} />
               <FileStatus label="Building Text" hint="text\export_buildings.txt" status={fileStatus.txt} />
@@ -818,15 +820,6 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
           {/* UI images */}
           <div className="space-y-2">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">IMAGES</p>
-            
-
-
-
-
-
-
-
-
 
 
 
