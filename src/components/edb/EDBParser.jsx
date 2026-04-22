@@ -588,11 +588,11 @@ function serializeRequirements(reqs) {
     if (i > 0) {
       // Support both old 'connector' (on previous) and new 'prevConnector' (on current)
       const conn = req.prevConnector || reqs[i - 1].connector || 'and';
-      out += `${conn} `;
+      out += ` ${conn} `;
     }
     
     if (req.type === 'factions') {
-      out += `factions { ${req.values.join(', ')}, } `;
+      out += `factions { ${req.values.join(', ')}, }`;
     } else if (req.type === 'event_counter') {
       out += `event_counter ${req.event} ${req.value}`;
     } else if (req.type === 'hidden_resource') {
@@ -618,9 +618,7 @@ function serializeLevel(level) {
   }
   
   const stPart = level.settlementType ? ` ${level.settlementType}` : '';
-  // The trailing space is already included in reqStr when the last condition is a factions block.
-  // For other cases we don't want an extra space, so only add one if reqStr doesn't end with space.
-  const trailingSpace = reqStr && !reqStr.endsWith(' ') ? ' ' : '';
+  const trailingSpace = reqStr ? ' ' : '';
   let out = `        ${level.name}${stPart}${reqStr}${trailingSpace}\n        {\n`;
   
   // Only emit convert_to if it was explicitly present in the source (not null/undefined/empty string)
