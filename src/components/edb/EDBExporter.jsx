@@ -102,8 +102,8 @@ export default function EDBExporter() {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
 
-      // 1. EDB file
-      const edbText = serializeEDB(edbData);
+      // 1. EDB file — encode as UTF-8 with Windows line endings (CRLF)
+      const edbText = serializeEDB(edbData).replace(/\n/g, '\r\n');
       zip.file('data/export_descr_buildings.txt', edbText);
 
       // 2. Strings.bin

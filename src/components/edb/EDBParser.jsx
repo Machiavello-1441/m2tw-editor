@@ -611,13 +611,14 @@ function serializeRequirements(reqs) {
 }
 
 function serializeLevel(level) {
-  let reqStr = '';
-  if (level.requirements && level.requirements.length > 0) {
-    reqStr = ' requires ' + serializeRequirements(level.requirements);
-  }
+  const reqSerialized = (level.requirements && level.requirements.length > 0)
+    ? serializeRequirements(level.requirements)
+    : '';
   
   const stPart = level.settlementType ? ` ${level.settlementType}` : '';
-  let out = `        ${level.name}${stPart}${reqStr}\n        {\n`;
+  // M2TW format uses two spaces before 'requires'
+  const reqPart = reqSerialized ? `  requires ${reqSerialized}` : '';
+  let out = `        ${level.name}${stPart}${reqPart}\n        {\n`;
   
   // Only emit convert_to if it was explicitly present in the source (not null/undefined/empty string)
   if (level.convertTo !== null && level.convertTo !== undefined && level.convertTo !== '') {
