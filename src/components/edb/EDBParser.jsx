@@ -592,7 +592,7 @@ function serializeRequirements(reqs) {
     }
     
     if (req.type === 'factions') {
-      out += `factions { ${req.values.join(', ')}, }`;
+      out += `factions { ${req.values.join(', ')}, } `;
     } else if (req.type === 'event_counter') {
       out += `event_counter ${req.event} ${req.value}`;
     } else if (req.type === 'hidden_resource') {
