@@ -64,7 +64,7 @@ function LevelEditorInner({ building, level, levelIndex, selectedBuilding, selec
 
   return (
     <ScrollArea className="h-full">
-      <div className="bg-slate-900 pt-4 pr-4 pb-4 pl-4 space-y-4">
+      <div className="bg-slate-950 pt-4 pr-4 pb-4 pl-4 space-y-4">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
             <Settings className="w-4 h-4 text-primary" />
