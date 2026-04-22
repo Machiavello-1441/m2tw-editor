@@ -100,7 +100,7 @@ function LevelEditorInner({ building, level, levelIndex, selectedBuilding, selec
         </div>
 
         <Card>
-          <CardHeader className="bg-gray-600 pb-2 p-3 flex flex-col space-y-1.5">
+          <CardHeader className="flex flex-col space-y-1.5 p-3 pb-2">
             <CardTitle className="text-xs font-semibold">Core Attributes</CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 space-y-3">
