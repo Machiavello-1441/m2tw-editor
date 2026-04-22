@@ -617,8 +617,7 @@ function serializeLevel(level) {
   }
   
   const stPart = level.settlementType ? ` ${level.settlementType}` : '';
-  const gap = reqStr ? '  ' : '';
-  let out = `        ${level.name}${stPart}${gap}${reqStr}\n        {\n`;
+  let out = `        ${level.name}${stPart}${reqStr}\n        {\n`;
   
   // Only emit convert_to if it was explicitly present in the source (not null/undefined/empty string)
   if (level.convertTo !== null && level.convertTo !== undefined && level.convertTo !== '') {
