@@ -222,6 +222,7 @@ function ImageSlot({ culture, levelName, slot }) {
 
 function CultureRow({ culture, levelName, allCultures, isBase }) {
   const { textData, setTextData, imageData, loadBuildingTgaImages } = useEDB();
+  const { cultures } = useRefData();
   const [copyFrom, setCopyFrom] = useState('');
 
   const textKeys = isBase
@@ -243,15 +244,17 @@ function CultureRow({ culture, levelName, allCultures, isBase }) {
       [textKeys.short]: prev[srcKeys.short] ?? '',
     }));
 
-    // Copy images
+    // Copy images — source culture for image lookup
+    const imgSrcCulture = isBaseSrc ? (cultures[0] || culture) : srcCulture;
     const newImages = [];
     for (const slot of IMAGE_SLOTS) {
-      const srcKey = `${levelName}_${isBaseSrc ? culture : srcCulture}_${slot.type}`;
+      const srcKey = `${levelName}_${imgSrcCulture}_${slot.type}`;
       const srcImg = imageData[srcKey];
       if (srcImg) {
+        const filename = `#${culture}_${levelName}${slot.type === 'construction' ? '_constructed' : ''}.tga`;
         newImages.push({
-          path: `data/ui/${culture}/buildings/${slot.type === 'icon' ? 'constructed/' : ''}#${culture}_${levelName}${slot.type === 'construction' ? '_constructed' : ''}.tga`,
-          name: `#${culture}_${levelName}.tga`,
+          path: `data/ui/${culture}/buildings/${slot.type === 'icon' ? 'constructed/' : ''}${filename}`,
+          name: filename,
           url: srcImg.url,
         });
       }
@@ -313,6 +316,44 @@ function CultureRow({ culture, levelName, allCultures, isBase }) {
 
 export default function LevelCultureEditor({ levelName }) {
   const { cultures } = useRefData();
+  const { textData, setTextData, imageData, loadBuildingTgaImages } = useEDB();
+
+  const handleCopyBaseToAll = () => {
+    if (cultures.length === 0) return;
+    const baseDesc = textData[`${levelName}_desc`] ?? '';
+    const baseShort = textData[`${levelName}_desc_short`] ?? '';
+    const baseName = textData[levelName] ?? '';
+    const updates = {};
+    for (const culture of cultures) {
+      updates[`${levelName}_${culture}`] = baseName;
+      updates[`${levelName}_${culture}_desc`] = baseDesc;
+      updates[`${levelName}_${culture}_desc_short`] = baseShort;
+    }
+    setTextData(prev => ({ ...prev, ...updates }));
+
+    // Copy images from first culture that has them, or from base slots
+    for (const culture of cultures) {
+      const newImages = [];
+      for (const slot of IMAGE_SLOTS) {
+        // Try to find an image in any other culture and copy it
+        for (const srcCulture of cultures) {
+          if (srcCulture === culture) continue;
+          const srcKey = `${levelName}_${srcCulture}_${slot.type}`;
+          const srcImg = imageData[srcKey];
+          if (srcImg) {
+            const filename = `#${culture}_${levelName}${slot.type === 'construction' ? '_constructed' : ''}.tga`;
+            newImages.push({
+              path: `data/ui/${culture}/buildings/${slot.type === 'icon' ? 'constructed/' : ''}${filename}`,
+              name: filename,
+              url: srcImg.url,
+            });
+            break;
+          }
+        }
+      }
+      if (newImages.length > 0) loadBuildingTgaImages(newImages);
+    }
+  };
 
   return (
     <Card>
@@ -320,6 +361,15 @@ export default function LevelCultureEditor({ levelName }) {
         <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
           <FileText className="w-3.5 h-3.5 text-primary" />
           Names, Descriptions &amp; Images
+          {cultures.length > 0 && (
+            <button
+              onClick={handleCopyBaseToAll}
+              className="ml-auto text-[9px] px-2 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium"
+              title="Copy base text to all cultures"
+            >
+              Copy base → all cultures
+            </button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-0 space-y-2">

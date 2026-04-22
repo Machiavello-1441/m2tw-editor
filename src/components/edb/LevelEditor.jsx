@@ -228,7 +228,6 @@ function LevelEditorInner({ building, level, levelIndex, selectedBuilding, selec
 function BuildingOverview({ building, edbData }) {
   const { updateBuilding, deleteBuilding, setSelectedBuilding } = useEDB();
   const buildingOptions = edbData.buildings.
-  filter((b) => b.name !== building.name).
   map((b) => ({ value: b.name, label: b.name }));
 
   return (

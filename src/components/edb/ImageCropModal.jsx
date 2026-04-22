@@ -107,7 +107,7 @@ export default function ImageCropModal({ open, onClose, onConfirm, sourceDataUrl
             ref={canvasRef}
             width={cW}
             height={cH}
-            style={{ width: cW, height: cH, cursor: dragging ? 'grabbing' : 'grab', display: 'block', margin: '0 auto', borderRadius: 4, maxWidth: '100%' }}
+            style={{ width: '100%', aspectRatio: `${cW} / ${cH}`, cursor: dragging ? 'grabbing' : 'grab', display: 'block', margin: '0 auto', borderRadius: 4 }}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}

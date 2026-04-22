@@ -92,7 +92,7 @@ export default function Export() {
     const dataFolder = zip.folder(`${modName}/data`);
 
     if (edbData) {
-      const edbText = exportEDB();
+      const edbText = exportEDB().replace(/\n/g, '\r\n');
       dataFolder.file('export_descr_buildings.txt', edbText);
     }
 
@@ -125,7 +125,7 @@ export default function Export() {
 
     // Export traits
     if (traitsData) {
-      dataFolder.file('export_descr_character_traits.txt', exportTraitsFile());
+      dataFolder.file('export_descr_character_traits.txt', exportTraitsFile().replace(/\n/g, '\r\n'));
     }
     if (traitsTextData && Object.keys(traitsTextData).length > 0) {
       let traitsTextContent = exportTraitsTextFile();
@@ -136,7 +136,7 @@ export default function Export() {
 
     // Export ancillaries
     if (ancData) {
-      dataFolder.file('export_descr_ancillaries.txt', exportAncFile());
+      dataFolder.file('export_descr_ancillaries.txt', exportAncFile().replace(/\n/g, '\r\n'));
     }
     if (ancTextData && Object.keys(ancTextData).length > 0) {
       let ancTextContent = exportAncTextFile();
@@ -168,12 +168,12 @@ export default function Export() {
           }
         }
       } catch {}
-      campFolder.file('descr_strat.txt', stratText);
+      campFolder.file('descr_strat.txt', stratText.replace(/\n/g, '\r\n'));
     }
     if (campaigns.length > 0) {
       // Merge all campaign descriptions into one file
       const allDescs = campaigns.map(c => c.descriptions || '').join('\n');
-      dataFolder.folder('text').file('campaign_descriptions.txt', `¬\n${allDescs}`);
+      dataFolder.folder('text').file('campaign_descriptions.txt', `¬\n${allDescs}`.replace(/\n/g, '\r\n'));
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });
