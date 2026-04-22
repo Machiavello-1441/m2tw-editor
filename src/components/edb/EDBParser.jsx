@@ -547,7 +547,6 @@ export function serializeEDB(edbData) {
   
   for (const building of edbData.buildings) {
     output += serializeBuilding(building);
-    output += '\n';
   }
   
   return output;
@@ -618,8 +617,7 @@ function serializeLevel(level) {
   }
   
   const stPart = level.settlementType ? ` ${level.settlementType}` : '';
-  const trailingSpace = reqStr ? ' ' : '';
-  let out = `        ${level.name}${stPart}${reqStr}${trailingSpace}\n        {\n`;
+  let out = `        ${level.name}${stPart}${reqStr}\n        {\n`;
   
   // Only emit convert_to if it was explicitly present in the source (not null/undefined/empty string)
   if (level.convertTo !== null && level.convertTo !== undefined && level.convertTo !== '') {
