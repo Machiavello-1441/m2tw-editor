@@ -934,9 +934,9 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
       {/* Step 3 — Lua Scripts */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
         <div className="p-4 border-b border-border bg-accent/10">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Layers className="w-4 h-4 text-primary" />
-            Step 3 — Load Lua Scripts <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">Step 2 — Load Lua Scripts
+(optional)
+
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1">
             Browse to your <code className="text-[10px] font-mono bg-accent px-1 rounded">eopData\eopScripts\</code> folder to load Lua scripts into the script editor.
