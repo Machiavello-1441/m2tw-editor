@@ -11,7 +11,7 @@ import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/
 import DataFolderPicker from '../components/home/DataFolderPicker';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
-  FileText, Package, ArrowRight, Info, Castle, Image, Map, Layers } from
+  FileText, Package, ArrowRight, Info, Castle, Image, Map } from
 'lucide-react';
 
 function decodeTgaToDataUrl(buffer) {
@@ -875,7 +875,18 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
       </div>
 
       {/* Step 2 — Campaign Map */}
-      
+      <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden hidden">
+        
+
+
+
+
+
+
+
+
+        
+        
 
 
 
@@ -917,19 +928,8 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-      
+        
+      </div>
 
       {/* Step 3 — Lua Scripts */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
