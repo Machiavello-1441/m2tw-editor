@@ -98,7 +98,6 @@ const DATA_FILE_MAP = {
   'descr_sm_resources.txt': 'res',
   'export_descr_unit.txt': 'unit',
   'descr_events.txt': 'ev',
-  'descr_buildings.txt.strings.bin': 'txt_bin',
   'export_buildings.txt.strings.bin': 'txt_bin',
   'export_buildings.txt': 'txt',
   'export_descr_character_traits.txt': 'traits',
@@ -442,7 +441,6 @@ export default function Home() {
       const merged = { ...existing, ...stringsBinFiles };
       setStringsBinStore(merged);
       // Dispatch specific events for vnvs/ancillaries text bins so contexts pick them up directly
-      // Also feed descr_buildings / export_buildings into EDB text data
       for (const [filename, binData] of Object.entries(stringsBinFiles)) {
         const lname = filename.toLowerCase();
         const map = {};
@@ -452,14 +450,6 @@ export default function Home() {
           window.dispatchEvent(new CustomEvent('load-vnvs', { detail: { content: map, filename, binMeta } }));
         } else if (lname.includes('ancillar')) {
           window.dispatchEvent(new CustomEvent('load-anctxt', { detail: { content: map, filename, binMeta } }));
-        } else if (lname.includes('descr_buildings') || lname.includes('export_buildings')) {
-          // Feed building strings into EDB text editor
-          const textContent = binData.entries.map((e) => `{${e.key}}${e.value}`).join('\n');
-          loadTextFile(textContent);
-          // Store magic bytes for export
-          try { localStorage.setItem('m2tw_edb_txt_bin_magic1', String(binData.magic1)); } catch {}
-          try { localStorage.setItem('m2tw_edb_txt_bin_magic2', String(binData.magic2)); } catch {}
-          setFileStatus((prev) => ({ ...prev, txt: 'ok' }));
         }
       }
       window.dispatchEvent(new CustomEvent('strings-bin-updated', { detail: { bulk: true } }));
