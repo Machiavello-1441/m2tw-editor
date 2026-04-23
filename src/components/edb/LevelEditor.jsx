@@ -21,6 +21,7 @@ import SearchableSelect from './SearchableSelect.jsx';
 import { BuildingTreeTextEditor } from './BuildingTextEditor';
 import UpgradesEditor from './UpgradesEditor';
 import LevelCultureEditor from './LevelCultureEditor';
+import GuildEditor from './GuildEditor';
 
 export default function LevelEditor() {
   const { edbData, selectedBuilding, selectedLevel, setSelectedLevel, updateLevel, deleteLevel, deleteBuilding } = useEDB();
@@ -98,6 +99,10 @@ function LevelEditorInner({ building, level, levelIndex, selectedBuilding, selec
             </AlertDialog>
           }
         </div>
+
+        {building.name.toLowerCase().startsWith('guild_') && (
+          <GuildEditor buildingName={building.name} />
+        )}
 
         <Card>
           <CardHeader className="flex flex-col space-y-1.5 p-3 pb-2">
@@ -293,6 +298,10 @@ function BuildingOverview({ building, edbData }) {
         </Card>
 
         <BuildingTreeTextEditor buildingName={building.name} />
+
+        {building.name.toLowerCase().startsWith('guild_') && (
+          <GuildEditor buildingName={building.name} />
+        )}
 
         <p className="text-xs text-muted-foreground text-center pt-4">
           Select a level from the tree to edit its details

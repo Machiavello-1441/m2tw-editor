@@ -109,7 +109,8 @@ const DATA_FILE_MAP = {
   'descr_religions.txt': 'religions',
   'battle_models.modeldb': 'modeldb',
   'descr_skeleton.txt': 'skeleton',
-  'descr_mount.txt': 'mount'
+  'descr_mount.txt': 'mount',
+  'export_descr_guilds.txt': 'guilds'
 };
 
 
@@ -148,7 +149,7 @@ function FileStatus({ label, hint, status }) {
 
 export default function Home() {
   const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
-  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadSkeletonFile, loadMountFile, loadCampaignScript } = useRefData();
+  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadSkeletonFile, loadMountFile, loadCampaignScript, loadGuildsFile } = useRefData();
 
   const [fileStatus, setFileStatus] = useState(() => {
     // Show 'ok' for files already cached in localStorage from a previous session
@@ -164,6 +165,7 @@ export default function Home() {
       txt: ls('m2tw_edb_txt_file') ? 'ok' : 'idle',
       traits: ls('m2tw_traits_file') ? 'ok' : 'idle',
       anc: ls('m2tw_anc_file') ? 'ok' : 'idle',
+      guilds: ls('m2tw_guilds_file') ? 'ok' : 'idle',
       vnvs: ls('m2tw_vnvs_file') ? 'ok' : 'idle',
       anctxt: ls('m2tw_anctxt_file') ? 'ok' : 'idle',
       expunits: ls('m2tw_export_units_file') ? 'ok' : 'idle',
@@ -238,6 +240,7 @@ export default function Home() {
       unit: loadUnitsFile,
       skeleton: loadSkeletonFile,
       mount: loadMountFile,
+      guilds: loadGuildsFile,
       txt: loadTextFile,
       txt_bin: (text) => {}, // handled below as binary
       cultures: null,
@@ -828,6 +831,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
               <FileStatus label="Names" hint="descr_names.txt" status={fileStatus.names} />
               <FileStatus label="Rebel Factions" hint="descr_rebel_factions.txt" status={fileStatus.rebel_fac} />
               <FileStatus label="Religions" hint="descr_religions.txt" status={fileStatus.religions} />
+              <FileStatus label="Guilds" hint="export_descr_guilds.txt" status={fileStatus.guilds} />
               <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />
             </div>
           </div>

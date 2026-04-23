@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
 import { useTraits } from '../components/traits/TraitsContext';
 import { useAncillaries } from '../components/ancillaries/AncillariesContext';
+import { useRefData } from '../components/edb/RefDataContext';
 import { encodeStringsBin } from '../components/strings/stringsBinCodec';
 import { parseDescrStrat, serializeDescrStrat } from '../components/map/stratParser';
 import { Button } from '@/components/ui/button';
@@ -72,6 +73,7 @@ export default function Export() {
   const { edbData, exportEDB, textData, exportTextFile, imageData } = useEDB();
   const { traitsData, traitsFilename, exportTraitsFile, textData: traitsTextData, textBinMeta: traitsBinMeta, textFilename: traitsTextFilename, exportTextFile: exportTraitsTextFile } = useTraits();
   const { ancData, ancFilename, exportAncFile, textData: ancTextData, textBinMeta: ancBinMeta, textFilename: ancTextFilename, exportTextFile: exportAncTextFile } = useAncillaries();
+  const { guildData, exportGuildsFile } = useRefData();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
   const [exportingTwemp, setExportingTwemp] = useState(false);
@@ -132,6 +134,11 @@ export default function Export() {
       if (traitsTextContent instanceof ArrayBuffer) traitsTextContent = new Uint8Array(traitsTextContent);
       const traitsTextName = traitsTextFilename || 'export_VnVs.txt';
       dataFolder.folder('text').file(traitsTextName, traitsTextContent);
+    }
+
+    // Export guilds
+    if (guildData?.length) {
+      dataFolder.file('export_descr_guilds.txt', exportGuildsFile().replace(/\n/g, '\r\n'));
     }
 
     // Export ancillaries
@@ -215,6 +222,7 @@ export default function Export() {
 
   const hasEDB = !!edbData;
   const hasText = textData && Object.keys(textData).length > 0;
+  const hasGuilds = !!guildData?.length;
   const hasTraits = !!traitsData;
   const hasTraitsText = traitsTextData && Object.keys(traitsTextData).length > 0;
   const hasAnc = !!ancData;
@@ -273,6 +281,13 @@ export default function Export() {
                   detail={`${Object.keys(imageData).length} image(s) exported as TGA`}
                 />
               )}
+              <ExportRow
+                icon={<FileText className="w-4 h-4 text-amber-400/70" />}
+                label="export_descr_guilds.txt"
+                path={`${modName}/data/`}
+                status={hasGuilds ? 'ready' : 'skip'}
+                detail={hasGuilds ? `${guildData.length} guild definitions` : 'No guilds file loaded'}
+              />
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-purple-400/70" />}
                 label="export_descr_character_traits.txt"

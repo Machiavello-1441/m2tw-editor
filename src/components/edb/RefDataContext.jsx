@@ -3,6 +3,7 @@ import {
   parseFactionsFile, parseResourcesFile, parseEventsFile, parseUnitsFile,
   FACTIONS as DEFAULT_FACTIONS, CULTURES as DEFAULT_CULTURES, HIDDEN_RESOURCES_DEFAULT
 } from './EDBParser';
+import { parseGuildsFile, serializeGuildsFile } from './GuildsParser';
 
 const RefDataContext = createContext(null);
 
@@ -13,6 +14,7 @@ const LS_KEYS = {
   units: 'm2tw_units_file',
   skeleton: 'm2tw_skeleton_file',
   mount: 'm2tw_mount_file',
+  guilds: 'm2tw_guilds_file',
 };
 
 // Parse campaign_script.txt for declare_counter entries
@@ -60,6 +62,7 @@ export function RefDataProvider({ children }) {
   const [skeletonTypes, setSkeletonTypes] = useState([]); // string[]
   const [skeletonAnimations, setSkeletonAnimations] = useState([]); // string[]
   const [mountTypes, setMountTypes] = useState([]); // string[]
+  const [guildData, setGuildData] = useState(null); // Array of guild objects | null (not loaded)
 
   // Auto-restore from localStorage on mount
   useEffect(() => {
@@ -96,6 +99,11 @@ export function RefDataProvider({ children }) {
       if (mountRaw) {
         const mt = parseMountFile(mountRaw);
         if (mt.length) setMountTypes(mt);
+      }
+      const guildsRaw = localStorage.getItem(LS_KEYS.guilds);
+      if (guildsRaw) {
+        const g = parseGuildsFile(guildsRaw);
+        if (g.length) setGuildData(g);
       }
     } catch {}
   }, []);
@@ -147,12 +155,34 @@ export function RefDataProvider({ children }) {
     try { localStorage.setItem(LS_KEYS.mount, text); } catch {}
   }, []);
 
+  const loadGuildsFile = useCallback((text) => {
+    const g = parseGuildsFile(text);
+    setGuildData(g);
+    try { localStorage.setItem(LS_KEYS.guilds, text); } catch {}
+  }, []);
+
+  const updateGuild = useCallback((guildName, patch) => {
+    setGuildData(prev => {
+      if (!prev) return prev;
+      const updated = prev.map(g => g.name === guildName ? { ...g, ...patch } : g);
+      // Persist serialized
+      try { localStorage.setItem(LS_KEYS.guilds, serializeGuildsFile(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const exportGuildsFile = useCallback(() => {
+    if (!guildData) return '';
+    return serializeGuildsFile(guildData);
+  }, [guildData]);
+
   return (
     <RefDataContext.Provider value={{
       factions, cultures, mapResources, eventCounters, units,
       skeletonTypes, skeletonAnimations, mountTypes,
+      guildData, updateGuild, exportGuildsFile,
       loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile,
-      loadSkeletonFile, loadMountFile, loadCampaignScript,
+      loadSkeletonFile, loadMountFile, loadCampaignScript, loadGuildsFile,
     }}>
       {children}
     </RefDataContext.Provider>
