@@ -197,24 +197,13 @@ export default function Home() {
     r.readAsText(file);
   });
 
-  // Per-file status for the new picker UI: keyed by file.name
-  const [pickerFileStatuses, setPickerFileStatuses] = useState({});
-
-  const setPickerStatus = (filename, status) => {
-    setPickerFileStatuses(prev => ({ ...prev, [filename]: status }));
-  };
-
-  const handleDataFolderFromPicker = async (files) => {
-    // Reset statuses for newly selected files
-    const initStatuses = {};
-    for (const f of files) initStatuses[f.name] = 'loading';
-    setPickerFileStatuses(initStatuses);
+  const handleDataFolderFromPicker = async (files, campaignFolders, selectedCampaigns) => {
     setLoadingData(true);
-    await processDataFiles(files, setPickerStatus);
+    await processDataFiles(files);
     setLoadingData(false);
   };
 
-  const processDataFiles = async (files, setPickerStatus) => {
+  const processDataFiles = async (files) => {
     // Clear all stale cached data so this fresh load is authoritative
     try {
       localStorage.removeItem('m2tw_edb_file');
@@ -294,9 +283,6 @@ export default function Home() {
           const parsed = parseStringsBin(buf);
           if (parsed) {
             stringsBinFiles[file.name] = { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 };
-            setPickerStatus?.(file.name, 'ok');
-          } else {
-            setPickerStatus?.(file.name, 'error');
           }
           continue;
         }
@@ -318,10 +304,7 @@ export default function Home() {
           baseMapFiles.push(file);
         } else if (pathLower.includes('/terrain/aerial_map/ground_types/')) {
           groundTypeTgaFiles.push(file);
-        } else if (pathLower.includes('/maps/campaign/')) {
-          baseMapFiles.push(file);
         }
-        // TGA files get their status set in batch at the end
         continue;
       }
 
@@ -329,7 +312,6 @@ export default function Home() {
       const BASE_MAP_TXTS = ['descr_strat.txt', 'descr_regions.txt', 'descr_sounds_music_types.txt', 'descr_terrain.txt'];
       if (BASE_MAP_TXTS.includes(name) && pathLower.includes('/maps/base/')) {
         baseMapFiles.push(file);
-        setPickerStatus?.(file.name, 'ok');
         continue;
       }
 
@@ -349,7 +331,6 @@ export default function Home() {
           const csTxt = await readText(file);
           try {localStorage.setItem(csKey, csTxt);} catch {}
         }
-        setPickerStatus?.(file.name, 'ok');
         continue;
       }
       // Campaign TGA files
@@ -368,14 +349,13 @@ export default function Home() {
         const buf = await file.arrayBuffer();
         const parsed = parseStringsBin(buf);
         if (parsed) {
+          // Convert entries to plain text format {key}value\n
           const textContent = parsed.entries.map((e) => `{${e.key}}${e.value}`).join('\n');
           loadTextFile(textContent);
+          // Store original binary for export
           try {localStorage.setItem('m2tw_edb_txt_bin_magic1', String(parsed.magic1));} catch {}
           try {localStorage.setItem('m2tw_edb_txt_bin_magic2', String(parsed.magic2));} catch {}
           setFileStatus((prev) => ({ ...prev, txt_bin: 'ok', txt: 'ok' }));
-          setPickerStatus?.(file.name, 'ok');
-        } else {
-          setPickerStatus?.(file.name, 'error');
         }
         continue;
       }
@@ -386,7 +366,6 @@ export default function Home() {
         try {localStorage.setItem('m2tw_aerial_ground_types', JSON.stringify(parsed));} catch {}
         window._m2tw_aerial_ground_types = parsed;
         setFileStatus((prev) => ({ ...prev, aerial_ground_types: 'ok' }));
-        setPickerStatus?.(file.name, 'ok');
         continue;
       } else if (key === 'edb') {
         loadEDB(text, file.name);
@@ -445,7 +424,6 @@ export default function Home() {
         }
       }
       setFileStatus((prev) => ({ ...prev, [key]: 'ok' }));
-      setPickerStatus?.(file.name, 'ok');
     }
 
     // Flush .strings.bin files into shared store
@@ -478,23 +456,21 @@ export default function Home() {
       for (const file of ancTgaFiles) {
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
-        if (dataUrl) { images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl; setPickerStatus?.(file.name, 'ok'); }
-        else setPickerStatus?.(file.name, 'error');
+        if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window.dispatchEvent(new CustomEvent('load-anc-tga-batch', { detail: images }));
       setAncImgCount(Object.keys(images).length);
       setFileStatus((prev) => ({ ...prev, anc_images: 'ok' }));
     }
 
-    // Auto-load unit images
+    // Auto-load unit images (icon: #dict.tga in ui/units/[faction|merc]/, info: dict_info.tga in ui/unit_info/[faction|merc]/)
     if (unitTgaFiles.length > 0) {
       setFileStatus((prev) => ({ ...prev, unit_images: 'loading' }));
       const images = {};
       for (const file of unitTgaFiles) {
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
-        if (dataUrl) { images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl; setPickerStatus?.(file.name, 'ok'); }
-        else setPickerStatus?.(file.name, 'error');
+        if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window._m2tw_unit_images = images;
       window.dispatchEvent(new CustomEvent('load-unit-images', { detail: images }));
@@ -508,8 +484,7 @@ export default function Home() {
       for (const file of religionPipFiles) {
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
-        if (dataUrl) { pips[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl; setPickerStatus?.(file.name, 'ok'); }
-        else setPickerStatus?.(file.name, 'error');
+        if (dataUrl) pips[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window._m2tw_religion_pips = { ...(window._m2tw_religion_pips || {}), ...pips };
     }
@@ -520,8 +495,7 @@ export default function Home() {
       for (const file of resourceTgaFiles) {
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
-        if (dataUrl) { icons[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl; setPickerStatus?.(file.name, 'ok'); }
-        else setPickerStatus?.(file.name, 'error');
+        if (dataUrl) icons[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window._m2tw_resource_icons = { ...(window._m2tw_resource_icons || {}), ...icons };
       window.dispatchEvent(new CustomEvent('load-resource-icons', { detail: icons }));
@@ -535,8 +509,7 @@ export default function Home() {
       for (const file of groundTypeTgaFiles) {
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
-        if (dataUrl) { textures[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl; setPickerStatus?.(file.name, 'ok'); }
-        else setPickerStatus?.(file.name, 'error');
+        if (dataUrl) textures[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window._m2tw_ground_textures = textures;
       window.dispatchEvent(new CustomEvent('load-ground-textures', { detail: textures }));
@@ -546,7 +519,6 @@ export default function Home() {
 
     // Auto-load base map files
     if (baseMapFiles.length > 0) {
-      for (const file of baseMapFiles) setPickerStatus?.(file.name, 'ok');
       window._m2tw_map_files = (window._m2tw_map_files || []).concat(baseMapFiles);
       window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: baseMapFiles, source: 'base' } }));
       setMapFileCount((prev) => prev + baseMapFiles.length);
@@ -562,12 +534,9 @@ export default function Home() {
         const url = decodeTgaToDataUrl(buf);
         if (url) {
           parsed.push({ path: file.webkitRelativePath || file.name, name: file.name, url });
-          setPickerStatus?.(file.name, 'ok');
-        } else {
-          setPickerStatus?.(file.name, 'error');
         }
       }
-      loadBuildingTgaImages(parsed, true);
+      loadBuildingTgaImages(parsed, true); // replace=true clears stale images
       setBldImgCount(parsed.length);
       setFileStatus((prev) => ({ ...prev, bld_images: 'ok' }));
     }
@@ -816,21 +785,51 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
             <Castle className="w-4 h-4 text-primary" />
             Step 1 — Load Mod Files &amp; Images
           </h2>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Browse to your mod's <code className="text-[10px] font-mono bg-accent px-1 rounded">data\</code> folder. All recognised files are grouped by category — select which ones to load, then click Load.
+          <p className="text-[11px] text-muted-foreground mt-1">This step browse your whole data\ folder to load all game files, then browse data\ui\ to load UI images.
+
+
           </p>
         </div>
         <div className="p-4 space-y-4">
-          <DataFolderPicker
-            onLoad={handleDataFolderFromPicker}
-            loading={loadingData}
-            fileStatuses={pickerFileStatuses}
-          />
+          {/* Text files */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Game Data Files</p>
+            <DataFolderPicker onLoad={handleDataFolderFromPicker} loading={loadingData} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt" status={fileStatus.edb} />
+              <FileStatus label="Building Text" hint="text\export_buildings.txt" status={fileStatus.txt} />
+              <FileStatus label="Factions" hint="descr_sm_factions.txt" status={fileStatus.fac} />
+              <FileStatus label="Resources" hint="descr_sm_resources.txt" status={fileStatus.res} />
+              <FileStatus label="Units" hint="export_descr_unit.txt" status={fileStatus.unit} />
+              {/* Events loaded in Step 2 (campaign descr_event.txt) — not shown here */}
+              <FileStatus label="Traits" hint="export_descr_character_traits.txt" status={fileStatus.traits} />
 
-          {/* UI images summary (counts, shown only after loading) */}
-          {(fileStatus.anc_images === 'ok' || fileStatus.unit_images === 'ok' || fileStatus.bld_images === 'ok' || fileStatus.ground_textures === 'ok' || fileStatus.resource_icons === 'ok') && (
-          <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Loaded Image Batches</p>
+              <FileStatus label="Ancillaries" hint="export_descr_ancillaries.txt" status={fileStatus.anc} />
+
+              <FileStatus label="Unit Descriptions" hint="text\export_units.txt" status={fileStatus.expunits} />
+              <FileStatus label="Cultures" hint="descr_cultures.txt" status={fileStatus.cultures} />
+              <FileStatus label="Names" hint="descr_names.txt" status={fileStatus.names} />
+              <FileStatus label="Rebel Factions" hint="descr_rebel_factions.txt" status={fileStatus.rebel_fac} />
+              <FileStatus label="Religions" hint="descr_religions.txt" status={fileStatus.religions} />
+              <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />
+            </div>
+          </div>
+
+          <div className="border-t border-border" />
+
+          {/* UI images */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">IMAGES</p>
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -872,7 +871,6 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
 
             </div>
           </div>
-          )}
         </div>
       </div>
 
