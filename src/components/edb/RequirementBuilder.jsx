@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -66,6 +66,78 @@ function FactionSelector({ values, onChange, factions, cultures }) {
   );
 }
 
+// Suffix options for yes/no event counters
+const SUFFIXES = [
+  { value: '', label: 'none' },
+  { value: '_accepted', label: '_accepted' },
+  { value: '_declined', label: '_declined' },
+];
+
+function EventCounterEditor({ req, updateReq, eventCounters }) {
+  // Separate the base name from any suffix
+  const currentEvent = req.event || '';
+  let baseName = currentEvent;
+  let activeSuffix = '';
+  for (const { value } of SUFFIXES.filter(s => s.value)) {
+    if (currentEvent.endsWith(value)) {
+      baseName = currentEvent.slice(0, -value.length);
+      activeSuffix = value;
+      break;
+    }
+  }
+
+  const setBase = (newBase) => updateReq({ event: newBase + activeSuffix });
+  const setSuffix = (newSuffix) => updateReq({ event: baseName + newSuffix });
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-2">
+        {eventCounters.length > 0 ? (
+          <SearchableSelect
+            value={baseName}
+            onValueChange={setBase}
+            options={eventCounters.map(e => ({ value: e, label: e }))}
+            placeholder="Select or type event…"
+            className="flex-1"
+          />
+        ) : null}
+        <Input
+          className="h-7 text-xs flex-1"
+          placeholder={eventCounters.length > 0 ? 'Or type manually…' : 'Event counter name (load campaign_script.txt or descr_events.txt)'}
+          value={baseName}
+          onChange={e => setBase(e.target.value)}
+        />
+        <Input
+          className="h-7 text-xs w-16"
+          type="number"
+          value={req.value ?? 1}
+          onChange={e => updateReq({ value: parseInt(e.target.value) || 0 })}
+        />
+      </div>
+      {/* Suffix toggle buttons */}
+      <div className="flex items-center gap-1">
+        <span className="text-[9px] text-muted-foreground">Suffix:</span>
+        {SUFFIXES.map(({ value, label }) => (
+          <button
+            key={label}
+            onClick={() => setSuffix(value)}
+            className={`px-1.5 py-0.5 text-[9px] rounded border font-mono transition-colors
+              ${activeSuffix === value
+                ? 'bg-primary/20 border-primary/40 text-primary'
+                : 'bg-accent/50 border-border text-muted-foreground hover:border-primary/30'
+              }`}
+          >
+            {label}
+          </button>
+        ))}
+        {activeSuffix && (
+          <span className="text-[9px] text-muted-foreground ml-1">→ <span className="font-mono text-foreground">{baseName + activeSuffix}</span></span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
   const { factions, cultures, mapResources, eventCounters } = useRefData();
   const updateReq = (updates) => onChange(index, { ...req, ...updates });
@@ -124,23 +196,7 @@ function RequirementRow({ req, index, isLast, onChange, onRemove, edbData }) {
       )}
 
       {req.type === 'event_counter' && (
-        <div className="flex gap-2">
-          {eventCounters.length > 0 ? (
-            <Select value={req.event || ''} onValueChange={e => updateReq({ event: e })}>
-              <SelectTrigger className="h-7 text-xs flex-1">
-                <SelectValue placeholder="Select event..." />
-              </SelectTrigger>
-              <SelectContent>
-                {eventCounters.map(e => (
-                  <SelectItem key={e} value={e} className="text-xs">{e}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input className="h-7 text-xs flex-1" placeholder="Event name (load descr_events.txt)" value={req.event || ''} onChange={e => updateReq({ event: e.target.value })} />
-          )}
-          <Input className="h-7 text-xs w-16" type="number" value={req.value ?? 1} onChange={e => updateReq({ value: parseInt(e.target.value) || 0 })} />
-        </div>
+        <EventCounterEditor req={req} updateReq={updateReq} eventCounters={eventCounters} />
       )}
 
       {req.type === 'hidden_resource' && (() => {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Swords, Shield, UserRound, Building2, Sword, Info } from 'lucide-react';
+import { Plus, Trash2, Swords, UserRound, Building2, Sword, Info } from 'lucide-react';
 import { useRefData } from './RefDataContext';
 import RequirementBuilder from './RequirementBuilder';
 import SearchableSelect from './SearchableSelect.jsx';
@@ -53,7 +53,6 @@ function needsBonusSuffix(code) {
 // ─── Row Components ───────────────────────────────────────────────────────────
 
 function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
-  const [showReqs, setShowReqs] = useState(false);
   const { units } = useRefData();
   const unitOptions = units.map((u) => ({ value: u.type, label: u.type }));
 
@@ -109,23 +108,16 @@ function RecruitPoolRow({ cap, index, onChange, onRemove, edbData }) {
 
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="bg-slate-500 px-2 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 shrink-0" onClick={() => setShowReqs(!showReqs)}>
-          <Shield className="w-3 h-3 mr-1" />
-          Req ({cap.requirements?.length || 0})
-        </Button>
         <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded shrink-0">
           <Trash2 className="w-3 h-3 text-destructive" />
         </button>
       </div>
-      {showReqs &&
       <div className="ml-6">
-          <RequirementBuilder
+        <RequirementBuilder
           requirements={cap.requirements || []}
           onChange={(reqs) => onChange(index, { ...cap, requirements: reqs })}
           edbData={edbData} />
-
-        </div>
-      }
+      </div>
     </div>);
 
 }
@@ -166,7 +158,6 @@ function AgentRow({ cap, index, onChange, onRemove }) {
 }
 
 function BonusRow({ cap, index, onChange, onRemove, edbData, options, accentClass }) {
-  const [showReqs, setShowReqs] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const entry = getLibraryEntry(cap.identifier || '');
   const rangeHint = entry ? `Range: ${entry.range}` : '';
@@ -207,11 +198,6 @@ function BonusRow({ cap, index, onChange, onRemove, edbData, options, accentClas
           </button>
         }
 
-        {/* Requirements toggle */}
-        <button onClick={() => setShowReqs(!showReqs)} className="p-1 hover:bg-accent rounded shrink-0">
-          <Shield className="w-3 h-3 text-muted-foreground" />
-        </button>
-
         <button onClick={() => onRemove(index)} className="p-1 hover:bg-destructive/20 rounded">
           <Trash2 className="w-3 h-3 text-destructive" />
         </button>
@@ -223,15 +209,12 @@ function BonusRow({ cap, index, onChange, onRemove, edbData, options, accentClas
         </div>
       }
 
-      {showReqs &&
       <div className="ml-2 pt-1 border-t border-border/50">
-          <RequirementBuilder
+        <RequirementBuilder
           requirements={cap.requirements || []}
           onChange={(reqs) => onChange(index, { ...cap, requirements: reqs })}
           edbData={edbData} />
-
-        </div>
-      }
+      </div>
     </div>);
 
 }

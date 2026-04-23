@@ -148,7 +148,7 @@ function FileStatus({ label, hint, status }) {
 
 export default function Home() {
   const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
-  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadSkeletonFile, loadMountFile } = useRefData();
+  const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadSkeletonFile, loadMountFile, loadCampaignScript } = useRefData();
 
   const [fileStatus, setFileStatus] = useState(() => {
     // Show 'ok' for files already cached in localStorage from a previous session
@@ -338,6 +338,7 @@ export default function Home() {
         if (csKey) {
           const csTxt = await readText(file);
           try {localStorage.setItem(csKey, csTxt);} catch {}
+          if (name === 'campaign_script.txt') loadCampaignScript(csTxt);
         }
         continue;
       }
@@ -676,12 +677,12 @@ export default function Home() {
 
       const csKey = CAMPAIGN_STORE[name];
       if (csKey) {
-        const txt = await readText(file);
-        try {localStorage.setItem(csKey, txt);} catch {}
-        // Also store mercenaries in sessionStorage for immediate use
-        if (name === 'descr_mercenaries.txt') {
-          try {sessionStorage.setItem('m2tw_mercenaries_raw', txt);} catch {}
-        }
+      const txt = await readText(file);
+      try {localStorage.setItem(csKey, txt);} catch {}
+      if (name === 'descr_mercenaries.txt') {
+        try {sessionStorage.setItem('m2tw_mercenaries_raw', txt);} catch {}
+      }
+      if (name === 'campaign_script.txt') loadCampaignScript(txt);
       }
 
       const extraKey = CAMPAIGN_EXTRA_STORE[name];

@@ -15,6 +15,16 @@ const LS_KEYS = {
   mount: 'm2tw_mount_file',
 };
 
+// Parse campaign_script.txt for declare_counter entries
+export function parseCampaignScriptCounters(text) {
+  const counters = new Set();
+  for (const line of text.split('\n')) {
+    const m = line.trim().match(/^declare_counter\s+(\S+)/i);
+    if (m) counters.add(m[1]);
+  }
+  return [...counters];
+}
+
 // Parse descr_skeleton.txt → { types: string[], animations: string[] }
 function parseSkeletonFile(text) {
   const types = [];
@@ -66,10 +76,11 @@ export function RefDataProvider({ children }) {
         if (res.length) setMapResources(res);
       }
       const evRaw = localStorage.getItem(LS_KEYS.events);
-      if (evRaw) {
-        const evs = parseEventsFile(evRaw);
-        if (evs.length) setEventCounters(evs);
-      }
+      const scriptRaw = localStorage.getItem('m2tw_campaign_script');
+      const allCounters = new Set();
+      if (evRaw) { for (const e of parseEventsFile(evRaw)) allCounters.add(e); }
+      if (scriptRaw) { for (const e of parseCampaignScriptCounters(scriptRaw)) allCounters.add(e); }
+      if (allCounters.size) setEventCounters([...allCounters]);
       const unitRaw = localStorage.getItem(LS_KEYS.units);
       if (unitRaw) {
         const u = parseUnitsFile(unitRaw);
@@ -104,8 +115,17 @@ export function RefDataProvider({ children }) {
 
   const loadEventsFile = useCallback((text) => {
     const evs = parseEventsFile(text);
-    if (evs.length) setEventCounters(evs);
+    const scriptRaw = (() => { try { return localStorage.getItem('m2tw_campaign_script'); } catch { return null; } })();
+    const scriptCounters = scriptRaw ? parseCampaignScriptCounters(scriptRaw) : [];
+    const merged = [...new Set([...evs, ...scriptCounters])];
+    if (merged.length) setEventCounters(merged);
     try { localStorage.setItem(LS_KEYS.events, text); } catch {}
+  }, []);
+
+  const loadCampaignScript = useCallback((text) => {
+    const scriptCounters = parseCampaignScriptCounters(text);
+    setEventCounters(prev => [...new Set([...prev, ...scriptCounters])]);
+    try { localStorage.setItem('m2tw_campaign_script', text); } catch {}
   }, []);
 
   const loadUnitsFile = useCallback((text) => {
@@ -132,7 +152,7 @@ export function RefDataProvider({ children }) {
       factions, cultures, mapResources, eventCounters, units,
       skeletonTypes, skeletonAnimations, mountTypes,
       loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile,
-      loadSkeletonFile, loadMountFile,
+      loadSkeletonFile, loadMountFile, loadCampaignScript,
     }}>
       {children}
     </RefDataContext.Provider>
