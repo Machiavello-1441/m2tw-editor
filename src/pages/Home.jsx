@@ -451,6 +451,14 @@ export default function Home() {
         } else if (lname.includes('ancillar')) {
           window.dispatchEvent(new CustomEvent('load-anctxt', { detail: { content: map, filename, binMeta } }));
         }
+        // Load export_buildings.txt.strings.bin into the EDB text context
+        if (lname.includes('export_buildings')) {
+          const textContent = binData.entries.map((e) => `{${e.key}}${e.value}`).join('\n');
+          loadTextFile(textContent);
+          try {localStorage.setItem('m2tw_edb_txt_bin_magic1', String(binData.magic1 ?? 2));} catch {}
+          try {localStorage.setItem('m2tw_edb_txt_bin_magic2', String(binData.magic2 ?? 2048));} catch {}
+          setFileStatus((prev) => ({ ...prev, txt: 'ok' }));
+        }
       }
       window.dispatchEvent(new CustomEvent('strings-bin-updated', { detail: { bulk: true } }));
       setStringsBinCount(Object.keys(merged).length);
