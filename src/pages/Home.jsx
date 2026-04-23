@@ -117,7 +117,7 @@ const DATA_FILE_MAP = {
 function FileStatus({ label, hint, status }) {
   const colors = {
     idle: 'border-border bg-card text-muted-foreground',
-    ok: 'border-green-500/40 bg-green-500/5 text-green-400',
+    ok: 'border-green-500/40 bg-green-500/10 text-green-400',
     error: 'border-destructive/40 bg-destructive/5 text-destructive',
     loading: 'border-primary/30 bg-primary/5 text-primary'
   };
@@ -127,7 +127,15 @@ function FileStatus({ label, hint, status }) {
     error: <AlertCircle className="w-3.5 h-3.5 shrink-0 text-destructive" />,
     loading: <div className="w-3.5 h-3.5 shrink-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
   };
-  return null;
+  return (
+    <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[11px] font-medium ${colors[status] || colors.idle}`}>
+      {icons[status] || icons.idle}
+      <div className="min-w-0">
+        <div className="truncate">{label}</div>
+        {hint && <div className="text-[10px] opacity-60 truncate font-normal">{hint}</div>}
+      </div>
+    </div>
+  );
 
 
 

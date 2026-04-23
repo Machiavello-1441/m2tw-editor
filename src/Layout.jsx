@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { EDBProvider } from './components/edb/EDBContext';
@@ -7,6 +7,45 @@ import { TraitsProvider } from './components/traits/TraitsContext';
 import { AncillariesProvider } from './components/ancillaries/AncillariesContext';
 import { ModDataProvider } from './components/shared/ModDataContext';
 import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2, FileText, ScrollText, Gem } from 'lucide-react';
+
+// localStorage keys that indicate a given editor has data loaded
+const NAV_DATA_KEYS = {
+  EDBEditor:         ['m2tw_edb_file'],
+  TraitsEditor:      ['m2tw_traits_file'],
+  AncillariesEditor: ['m2tw_anc_file'],
+  UnitEditor:        ['m2tw_units_file'],
+  CampaignMap:       ['m2tw_campaign_strat'],
+  ScriptEditor:      ['m2tw_lua_scripts'],
+  MinorFiles:        ['m2tw_rebel_factions_file', 'm2tw_religions_file'],
+  FactionsEditor:    ['m2tw_factions_file'],
+  StringsBinEditor:  ['m2tw_edb_txt_file'],
+  LuaScripts:        ['m2tw_lua_scripts'],
+};
+
+function useLoadedPages() {
+  const [loaded, setLoaded] = useState({});
+  useEffect(() => {
+    function check() {
+      const result = {};
+      for (const [page, keys] of Object.entries(NAV_DATA_KEYS)) {
+        try {
+          result[page] = keys.some(k => !!localStorage.getItem(k));
+        } catch { result[page] = false; }
+      }
+      setLoaded(result);
+    }
+    check();
+    window.addEventListener('storage', check);
+    // Also re-check when custom load events fire
+    const events = ['load-traits','load-ancillaries','load-export-units','strings-bin-updated','lua-scripts-loaded','modeldb-file-loaded'];
+    events.forEach(e => window.addEventListener(e, check));
+    return () => {
+      window.removeEventListener('storage', check);
+      events.forEach(e => window.removeEventListener(e, check));
+    };
+  }, []);
+  return loaded;
+}
 
 const navItems = [
 { name: 'Home', icon: Home, page: 'Home' },
@@ -29,6 +68,7 @@ const navItems = [
 
 
 export default function Layout({ children, currentPageName }) {
+  const loadedPages = useLoadedPages();
   return (
     <RefDataProvider>
     <EDBProvider>
@@ -55,14 +95,20 @@ export default function Layout({ children, currentPageName }) {
                         <Link
                           key={item.page}
                           to={createPageUrl(item.page)}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
+                          className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
                       ${isActive ?
                           'bg-primary/15 text-primary' :
                           'text-muted-foreground hover:text-foreground hover:bg-accent'}`
                           }>
                           
                     <item.icon className="w-4 h-4 shrink-0" />
-                    <span className="hidden lg:block">{item.name}</span>
+                    <span className="hidden lg:block flex-1">{item.name}</span>
+                    {loadedPages[item.page] && (
+                      <span className="hidden lg:block w-2 h-2 rounded-full bg-green-500 shrink-0 ml-auto" title="Data loaded" />
+                    )}
+                    {loadedPages[item.page] && (
+                      <span className="lg:hidden w-2 h-2 rounded-full bg-green-500 shrink-0 absolute bottom-1 right-1" />
+                    )}
                   </Link>);
 
                     })}
