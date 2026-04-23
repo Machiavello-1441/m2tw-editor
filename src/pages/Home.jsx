@@ -875,7 +875,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
       </div>
 
       {/* Step 2 — Campaign Map */}
-      <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
+      <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden hidden">
         
 
 
