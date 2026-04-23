@@ -109,7 +109,7 @@ const DATA_FILE_MAP = {
   'descr_religions.txt': 'religions',
   'battle_models.modeldb': 'modeldb',
   'descr_skeleton.txt': 'skeleton',
-  'descr_mount.txt': 'mount',
+  'descr_mount.txt': 'mount'
 };
 
 
@@ -128,7 +128,7 @@ function FileStatus({ label, hint, status }) {
     loading: <div className="w-3.5 h-3.5 shrink-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
   };
   return (
-    <div className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all ${colors[status]}`}>
+    <div className="flex items-center gap-2.5 p-2.5 rounded-lg border transition-all border-border bg-card text-muted-foreground hidden">
       {icons[status]}
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold leading-none">{label}</p>
@@ -815,11 +815,11 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
             </div>
           </div>
 
-          <div className="border-t border-border" />
+          <div className="border-t border-border hidden" />
 
           {/* UI images */}
           <div className="space-y-2">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">IMAGES</p>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden">IMAGES</p>
 
 
 
@@ -876,7 +876,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
 
       {/* Step 2 — Campaign Map */}
       <div className="w-full max-w-2xl bg-card border border-border rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-border bg-accent/10">
+        <div className="p-4 border-b border-border bg-accent/10 hidden">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Map className="w-4 h-4 text-primary" />
             Step 2 — Load Campaign Map <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
@@ -886,7 +886,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
             Base map TGAs are auto-loaded from Step 1.
           </p>
         </div>
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 hidden">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <FileStatus
               label="Base Map (auto)"
