@@ -1,213 +1,136 @@
 /**
  * Parser and serializer for export_descr_guilds.txt (M2TW)
  *
- * File structure (simplified):
+ * Real file format:
  *
- *   GuildDef
- *   {
- *       Name                guild_assassins
- *       Points              120 200 350           ; threshold pts for levels 1, 2, 3
- *       SettlementMinLevel  large_town
+ *   ;------------------------------------------
+ *   Guild assassins_guild
+ *       building guild_assassins_guild
+ *       levels  100 250 500
  *       ...
  *       Trigger <name>
  *       {
  *           WhenToTest  <event>
  *           Condition   <expr>
- *           ...
  *           GuildPointsEffect   <building>  <s|o|a>  <integer>
  *       }
- *   }
  *
- * Guild point scores (from research / guide):
- *   "o"  — adds points to the LOCAL settlement being exported
- *   "a"  — adds points to ALL settlements of the faction
- *   "s"  — effectively same as "o" in practice (game ignores the label
- *            unless the token is "a"); kept for compatibility
- *
- * Only settlement-export events respect "o"/"s" vs "a". Faction-export
- * events only respond to "a".
+ * The separator line ";---..." is a comment and is ignored.
+ * Each guild block starts with "Guild <name>" (no braces around the whole block).
+ * A new guild block begins when the next "Guild" keyword is encountered.
  */
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function stripComment(line) {
   const sc = line.indexOf(';');
   return sc >= 0 ? line.slice(0, sc) : line;
 }
 
-function tokenize(text) {
-  // Return an array of { type: 'word'|'open'|'close', value } tokens
-  const tokens = [];
-  for (const raw of text.split('\n')) {
-    const line = stripComment(raw).trim();
-    if (!line) continue;
-    for (const tok of line.split(/\s+/)) {
-      if (!tok) continue;
-      if (tok === '{') tokens.push({ type: 'open' });
-      else if (tok === '}') tokens.push({ type: 'close' });
-      else tokens.push({ type: 'word', value: tok });
-    }
-  }
-  return tokens;
-}
+// ── Parse one Trigger block (brace-delimited) ─────────────────────────────────
 
-// ── Parse one Trigger block ───────────────────────────────────────────────────
-
-function parseTrigger(tokens, pos) {
-  // Expect name already consumed; pos points to '{' or the trigger body words
-  // Actually: "Trigger <name>" then "{ ... }"
+function parseTrigger(lines, startIdx) {
   const trigger = { name: '', whenToTest: '', conditions: [], pointsEffects: [] };
-  // name was consumed before call, passed in
-  // advance past '{'
-  if (tokens[pos]?.type === 'open') pos++;
+  let i = startIdx;
 
-  while (pos < tokens.length) {
-    const tok = tokens[pos];
-    if (tok.type === 'close') { pos++; break; }
-    if (tok.type !== 'word') { pos++; continue; }
+  // Find the opening brace
+  while (i < lines.length && !lines[i].trim().startsWith('{')) i++;
+  i++; // skip '{'
 
-    const key = tok.value.toLowerCase();
+  while (i < lines.length) {
+    const raw = stripComment(lines[i]).trim();
+    i++;
+    if (raw === '}') break;
+    if (!raw) continue;
+
+    const tokens = raw.split(/\s+/);
+    const key = tokens[0].toLowerCase();
+
     if (key === 'whentotest') {
-      trigger.whenToTest = tokens[++pos]?.value || '';
-      pos++;
+      trigger.whenToTest = tokens[1] || '';
     } else if (key === 'condition') {
-      // Collect rest of the condition line (until next keyword-like word on a new logical line)
-      // Tokens are flattened, so we collect until we see a known keyword or block boundary
-      const condParts = ['Condition'];
-      pos++;
-      while (pos < tokens.length && tokens[pos].type === 'word') {
-        const peek = tokens[pos].value.toLowerCase();
-        if (['condition', 'and', 'or', 'guildpointseffect', 'whentotest'].includes(peek) ||
-            tokens[pos].type === 'close') break;
-        condParts.push(tokens[pos].value);
-        pos++;
-      }
-      trigger.conditions.push(condParts.join(' '));
+      trigger.conditions.push(raw);
     } else if (key === 'and' || key === 'or') {
-      // "and Condition ..." or "or Condition ..."
-      const connector = tok.value; // preserve case
-      pos++;
-      const condParts = [connector];
-      if (tokens[pos]?.value?.toLowerCase() === 'condition') {
-        condParts.push('Condition');
-        pos++;
-      }
-      while (pos < tokens.length && tokens[pos].type === 'word') {
-        const peek = tokens[pos].value.toLowerCase();
-        if (['condition', 'and', 'or', 'guildpointseffect', 'whentotest'].includes(peek) ||
-            tokens[pos].type === 'close') break;
-        condParts.push(tokens[pos].value);
-        pos++;
-      }
-      trigger.conditions.push(condParts.join(' '));
+      trigger.conditions.push(raw);
     } else if (key === 'guildpointseffect') {
-      // GuildPointsEffect  <building_level_or_guild_name>  <s|o|a>  <integer>
-      const building = tokens[++pos]?.value || '';
-      const scope = tokens[++pos]?.value || 'o'; // s | o | a
-      const amount = parseInt(tokens[++pos]?.value) || 0;
-      pos++;
+      const building = tokens[1] || '';
+      const scope = tokens[2] || 'o';
+      const amount = parseInt(tokens[3]) || 0;
       trigger.pointsEffects.push({ building, scope, amount });
-    } else {
-      pos++;
-    }
-  }
-  return { trigger, pos };
-}
-
-// ── Parse one GuildDef block ──────────────────────────────────────────────────
-
-function parseGuildDef(tokens, pos) {
-  const guild = {
-    name: '',              // internal guild name (matches building tree prefix)
-    pointThresholds: [],   // [level1pts, level2pts, level3pts]
-    settlementMinLevel: '',
-    factionSupport: [],    // optional per-faction support values
-    triggers: [],
-    rawLines: [],          // preserve unknown lines for round-trip
-  };
-
-  // advance past '{'
-  if (tokens[pos]?.type === 'open') pos++;
-
-  while (pos < tokens.length) {
-    const tok = tokens[pos];
-    if (tok.type === 'close') { pos++; break; }
-    if (tok.type !== 'word') { pos++; continue; }
-
-    const key = tok.value.toLowerCase();
-
-    if (key === 'name') {
-      guild.name = tokens[++pos]?.value || '';
-      pos++;
-    } else if (key === 'points') {
-      pos++;
-      const pts = [];
-      while (pos < tokens.length && tokens[pos].type === 'word' && /^-?\d+$/.test(tokens[pos].value)) {
-        pts.push(parseInt(tokens[pos].value));
-        pos++;
-      }
-      guild.pointThresholds = pts;
-    } else if (key === 'settlementsminlevel' || key === 'settlementminlevel') {
-      guild.settlementMinLevel = tokens[++pos]?.value || '';
-      pos++;
-    } else if (key === 'factionsupport') {
-      pos++;
-      // FactionSupport  <faction>  <value> pairs (arbitrary count)
-      while (pos < tokens.length && tokens[pos].type === 'word') {
-        const fac = tokens[pos].value;
-        if (['name','points','trigger','settlementsminlevel','settlementminlevel','factionsupport'].includes(fac.toLowerCase())) break;
-        const val = parseInt(tokens[++pos]?.value) || 0;
-        pos++;
-        guild.factionSupport.push({ faction: fac, value: val });
-      }
-    } else if (key === 'trigger') {
-      const trigName = tokens[++pos]?.value || '';
-      pos++;
-      const { trigger, pos: newPos } = parseTrigger(tokens, pos);
-      trigger.name = trigName;
-      guild.triggers.push(trigger);
-      pos = newPos;
-    } else {
-      // Unknown key — collect this and next token as a raw line
-      const rawKey = tok.value;
-      pos++;
-      const rawVal = tokens[pos]?.type === 'word' ? tokens[pos].value : '';
-      if (rawVal) pos++;
-      guild.rawLines.push({ key: rawKey, value: rawVal });
     }
   }
 
-  return { guild, pos };
+  return { trigger, nextIdx: i };
 }
 
 // ── Main parser ───────────────────────────────────────────────────────────────
 
 export function parseGuildsFile(text) {
-  const tokens = tokenize(text);
+  const lines = text.split('\n');
   const guilds = [];
-  let pos = 0;
+  let current = null;
+  let i = 0;
 
-  while (pos < tokens.length) {
-    const tok = tokens[pos];
-    if (tok.type !== 'word') { pos++; continue; }
-    if (tok.value.toLowerCase() === 'guilddef') {
-      pos++;
-      // skip open brace
-      if (tokens[pos]?.type === 'open') pos++;
-      const { guild, pos: newPos } = parseGuildDef(tokens, pos);
-      guilds.push(guild);
-      pos = newPos;
+  while (i < lines.length) {
+    const raw = lines[i];
+    const clean = stripComment(raw).trim();
+    
+    if (!clean) { i++; continue; }
+
+    const tokens = clean.split(/\s+/);
+    const key = tokens[0].toLowerCase();
+
+    if (key === 'guild') {
+      // Start a new guild block
+      if (current) guilds.push(current);
+      current = {
+        name: tokens[1] || '',           // internal guild name (e.g. assassins_guild)
+        buildingTree: '',                 // building tree name (e.g. guild_assassins_guild)
+        pointThresholds: [],              // [level1pts, level2pts, level3pts]
+        settlementMinLevel: '',
+        factionSupport: [],
+        triggers: [],
+        rawLines: [],
+      };
+      i++;
+    } else if (key === 'building' && current) {
+      current.buildingTree = tokens[1] || '';
+      i++;
+    } else if (key === 'levels' && current) {
+      current.pointThresholds = tokens.slice(1).map(Number).filter(n => !isNaN(n));
+      i++;
+    } else if (key === 'settlementminlevel' && current) {
+      current.settlementMinLevel = tokens[1] || '';
+      i++;
+    } else if (key === 'factionsupport' && current) {
+      // FactionSupport <faction> <value> ...
+      const pairs = tokens.slice(1);
+      for (let p = 0; p + 1 < pairs.length; p += 2) {
+        current.factionSupport.push({ faction: pairs[p], value: parseInt(pairs[p + 1]) || 0 });
+      }
+      i++;
+    } else if (key === 'trigger' && current) {
+      const trigName = tokens[1] || '';
+      const { trigger, nextIdx } = parseTrigger(lines, i + 1);
+      trigger.name = trigName;
+      current.triggers.push(trigger);
+      i = nextIdx;
     } else {
-      pos++;
+      // Unknown line — store as raw for round-trip
+      if (current && clean) {
+        current.rawLines.push({ key: tokens[0], value: tokens.slice(1).join(' ') });
+      }
+      i++;
     }
   }
 
-  return guilds; // Array of guild objects
+  if (current) guilds.push(current);
+  return guilds;
 }
 
 // ── Serializer ────────────────────────────────────────────────────────────────
 
-function serializeTrigger(trigger, indent = '        ') {
+function serializeTrigger(trigger, indent = '    ') {
   const lines = [];
   lines.push(`${indent}Trigger ${trigger.name}`);
   lines.push(`${indent}{`);
@@ -223,37 +146,38 @@ function serializeTrigger(trigger, indent = '        ') {
 }
 
 export function serializeGuildsFile(guilds) {
+  const separator = ';------------------------------------------';
   const out = [];
   for (const guild of guilds) {
-    out.push('GuildDef');
-    out.push('{');
-    out.push(`    Name                ${guild.name}`);
+    out.push(separator);
+    out.push(`Guild ${guild.name}`);
+    if (guild.buildingTree) {
+      out.push(`    building ${guild.buildingTree}`);
+    }
     if (guild.pointThresholds?.length) {
-      out.push(`    Points              ${guild.pointThresholds.join(' ')}`);
+      out.push(`    levels  ${guild.pointThresholds.join(' ')}`);
     }
     if (guild.settlementMinLevel) {
       out.push(`    SettlementMinLevel  ${guild.settlementMinLevel}`);
-    }
-    for (const raw of guild.rawLines || []) {
-      out.push(`    ${raw.key}${raw.value ? '  ' + raw.value : ''}`);
     }
     if (guild.factionSupport?.length) {
       const pairs = guild.factionSupport.map(f => `${f.faction} ${f.value}`).join('  ');
       out.push(`    FactionSupport      ${pairs}`);
     }
+    for (const raw of guild.rawLines || []) {
+      out.push(`    ${raw.key}${raw.value ? '  ' + raw.value : ''}`);
+    }
     for (const trigger of guild.triggers || []) {
       out.push('');
       out.push(serializeTrigger(trigger, '    '));
     }
-    out.push('}');
     out.push('');
   }
   return out.join('\n');
 }
 
-// ── Map guild name → EDB building tree prefix ─────────────────────────────────
-// e.g. "guild_assassins" → building tree starting with "guild_assassins"
-export function getGuildBuildingPrefix(guildName) {
-  // Convention: guild Name IS the building tree prefix in EDB
-  return guildName;
+// ── Map guild building tree name → guild object ───────────────────────────────
+// The EDB building tree name matches the "building" field (e.g. "guild_assassins_guild")
+export function getGuildBuildingPrefix(guildBuildingTree) {
+  return guildBuildingTree;
 }

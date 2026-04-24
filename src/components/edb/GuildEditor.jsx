@@ -219,13 +219,10 @@ function TriggerBlock({ trigger, onUpdate, onDelete }) {
 export default function GuildEditor({ buildingName }) {
   const { guildData, updateGuild } = useRefData();
 
-  // Derive guild internal name: strip "guild_" prefix to find in guild data,
-  // or match by the building name prefix
-  const guildEntry = guildData?.find(g => {
-    const gName = g.name.toLowerCase();
-    const bName = buildingName.toLowerCase();
-    return bName === gName || bName.startsWith(gName + '_') || gName.startsWith(bName.replace(/_\d+$/, ''));
-  }) || guildData?.find(g => buildingName.toLowerCase().includes(g.name.toLowerCase()));
+  // Match by buildingTree field (e.g. "guild_assassins_guild") against the EDB building tree name
+  const bNameLower = buildingName.toLowerCase();
+  const guildEntry = guildData?.find(g => g.buildingTree?.toLowerCase() === bNameLower)
+    || guildData?.find(g => g.name?.toLowerCase() === bNameLower);
 
   if (!guildData) {
     return (
