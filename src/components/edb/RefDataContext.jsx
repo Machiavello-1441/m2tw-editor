@@ -62,7 +62,7 @@ export function RefDataProvider({ children }) {
   const [skeletonTypes, setSkeletonTypes] = useState([]); // string[]
   const [skeletonAnimations, setSkeletonAnimations] = useState([]); // string[]
   const [mountTypes, setMountTypes] = useState([]); // string[]
-  const [guildData, setGuildData] = useState(null); // Array of guild objects | null (not loaded)
+  const [guildData, setGuildData] = useState(null); // { guilds: [], triggers: [] } | null
 
   // Auto-restore from localStorage on mount
   useEffect(() => {
@@ -103,7 +103,7 @@ export function RefDataProvider({ children }) {
       const guildsRaw = localStorage.getItem(LS_KEYS.guilds);
       if (guildsRaw) {
         const g = parseGuildsFile(guildsRaw);
-        if (g.length) setGuildData(g);
+        if (g.guilds?.length || g.triggers?.length) setGuildData(g);
       }
     } catch {}
   }, []);
@@ -164,8 +164,40 @@ export function RefDataProvider({ children }) {
   const updateGuild = useCallback((guildName, patch) => {
     setGuildData(prev => {
       if (!prev) return prev;
-      const updated = prev.map(g => g.name === guildName ? { ...g, ...patch } : g);
-      // Persist serialized
+      const updated = {
+        ...prev,
+        guilds: prev.guilds.map(g => g.name === guildName ? { ...g, ...patch } : g),
+      };
+      try { localStorage.setItem(LS_KEYS.guilds, serializeGuildsFile(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const updateTrigger = useCallback((triggerName, patch) => {
+    setGuildData(prev => {
+      if (!prev) return prev;
+      const updated = {
+        ...prev,
+        triggers: prev.triggers.map(t => t.name === triggerName ? { ...t, ...patch } : t),
+      };
+      try { localStorage.setItem(LS_KEYS.guilds, serializeGuildsFile(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const addTrigger = useCallback((trigger) => {
+    setGuildData(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, triggers: [...prev.triggers, trigger] };
+      try { localStorage.setItem(LS_KEYS.guilds, serializeGuildsFile(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const deleteTrigger = useCallback((triggerName) => {
+    setGuildData(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, triggers: prev.triggers.filter(t => t.name !== triggerName) };
       try { localStorage.setItem(LS_KEYS.guilds, serializeGuildsFile(updated)); } catch {}
       return updated;
     });
@@ -180,7 +212,7 @@ export function RefDataProvider({ children }) {
     <RefDataContext.Provider value={{
       factions, cultures, mapResources, eventCounters, units,
       skeletonTypes, skeletonAnimations, mountTypes,
-      guildData, updateGuild, exportGuildsFile,
+      guildData, updateGuild, updateTrigger, addTrigger, deleteTrigger, exportGuildsFile,
       loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile,
       loadSkeletonFile, loadMountFile, loadCampaignScript, loadGuildsFile,
     }}>

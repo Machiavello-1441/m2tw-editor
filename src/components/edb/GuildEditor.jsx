@@ -217,12 +217,13 @@ function TriggerBlock({ trigger, onUpdate, onDelete }) {
 // ── Main GuildEditor component ───────────────────────────────────────────────
 
 export default function GuildEditor({ buildingName }) {
-  const { guildData, updateGuild } = useRefData();
+  const { guildData, updateGuild, updateTrigger, addTrigger, deleteTrigger } = useRefData();
 
   // Match by buildingTree field (e.g. "guild_assassins_guild") against the EDB building tree name
   const bNameLower = buildingName.toLowerCase();
-  const guildEntry = guildData?.find(g => g.buildingTree?.toLowerCase() === bNameLower)
-    || guildData?.find(g => g.name?.toLowerCase() === bNameLower);
+  const guilds = guildData?.guilds || [];
+  const guildEntry = guilds.find(g => g.buildingTree?.toLowerCase() === bNameLower)
+    || guilds.find(g => g.name?.toLowerCase() === bNameLower);
 
   if (!guildData) {
     return (
@@ -254,15 +255,11 @@ export default function GuildEditor({ buildingName }) {
 
   const update = (patch) => updateGuild(guildEntry.name, patch);
 
-  const addTrigger = () => {
-    const newTrigger = {
-      name: `${guildEntry.name}_trigger_${(guildEntry.triggers || []).length + 1}`,
-      whenToTest: 'GovernorBuildingCompleted',
-      conditions: [],
-      pointsEffects: [{ building: guildEntry.name, scope: 'o', amount: 1 }],
-    };
-    update({ triggers: [...(guildEntry.triggers || []), newTrigger] });
-  };
+  // Triggers are top-level in the file; show all triggers that affect this guild
+  const allTriggers = guildData?.triggers || [];
+  const relevantTriggers = allTriggers.filter(t =>
+    t.pointsEffects?.some(e => e.building?.toLowerCase() === guildEntry.name.toLowerCase())
+  );
 
   const LEVEL_LABELS = ['Level 1 (Guild House)', 'Level 2 (Master Guild)', 'Level 3 (Headquarters)'];
 
@@ -349,36 +346,33 @@ export default function GuildEditor({ buildingName }) {
           </div>
         )}
 
-        {/* Triggers */}
+        {/* Triggers affecting this guild */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
               <Zap className="w-3 h-3" />
-              Triggers ({(guildEntry.triggers || []).length})
+              Triggers affecting this guild ({relevantTriggers.length} of {allTriggers.length} total)
             </Label>
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={addTrigger}>
+            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => {
+              const name = `${guildEntry.name}_trigger_${allTriggers.length + 1}`;
+              addTrigger({ name, whenToTest: 'GovernorBuildingCompleted', conditions: [], pointsEffects: [{ building: guildEntry.name, scope: 'o', amount: 1 }] });
+            }}>
               <Plus className="w-3 h-3 mr-1" /> Add Trigger
             </Button>
           </div>
 
           <div className="space-y-2">
-            {(guildEntry.triggers || []).map((trigger, ti) => (
+            {relevantTriggers.map((trigger) => (
               <TriggerBlock
-                key={ti}
+                key={trigger.name}
                 trigger={trigger}
-                onUpdate={updated => {
-                  const triggers = [...guildEntry.triggers];
-                  triggers[ti] = updated;
-                  update({ triggers });
-                }}
-                onDelete={() => {
-                  update({ triggers: guildEntry.triggers.filter((_, j) => j !== ti) });
-                }}
+                onUpdate={updated => updateTrigger(trigger.name, updated)}
+                onDelete={() => deleteTrigger(trigger.name)}
               />
             ))}
-            {(guildEntry.triggers || []).length === 0 && (
+            {relevantTriggers.length === 0 && (
               <p className="text-[10px] text-muted-foreground italic">
-                No triggers — add a trigger to define when guild standing points accumulate.
+                No triggers affect this guild yet. Add one above or check export_descr_guilds.txt.
               </p>
             )}
           </div>

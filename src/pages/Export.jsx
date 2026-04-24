@@ -137,7 +137,7 @@ export default function Export() {
     }
 
     // Export guilds
-    if (guildData?.length) {
+    if (hasGuilds) {
       dataFolder.file('export_descr_guilds.txt', exportGuildsFile().replace(/\n/g, '\r\n'));
     }
 
@@ -222,7 +222,7 @@ export default function Export() {
 
   const hasEDB = !!edbData;
   const hasText = textData && Object.keys(textData).length > 0;
-  const hasGuilds = !!guildData?.length;
+  const hasGuilds = !!(guildData?.guilds?.length || guildData?.triggers?.length);
   const hasTraits = !!traitsData;
   const hasTraitsText = traitsTextData && Object.keys(traitsTextData).length > 0;
   const hasAnc = !!ancData;
@@ -286,7 +286,7 @@ export default function Export() {
                 label="export_descr_guilds.txt"
                 path={`${modName}/data/`}
                 status={hasGuilds ? 'ready' : 'skip'}
-                detail={hasGuilds ? `${guildData.length} guild definitions` : 'No guilds file loaded'}
+                detail={hasGuilds ? `${guildData.guilds?.length || 0} guild defs, ${guildData.triggers?.length || 0} triggers` : 'No guilds file loaded'}
               />
               <ExportRow
                 icon={<FileText className="w-4 h-4 text-purple-400/70" />}
