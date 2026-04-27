@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Upload, Download, Plus, X, AlertCircle } from 'lucide-react';
+import { Upload, Download, Plus, X, AlertCircle, ImageIcon } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
 
 function parseResourcesFull(text) {
   const resources = [];
@@ -43,28 +44,47 @@ function downloadBlob(blob, name) {
   URL.revokeObjectURL(url);
 }
 
+/** Derive the window._m2tw_resource_icons key from an icon path or resource name.
+ *  icon path e.g. "data/ui/resources/resource_silver.tga" → key "resource_silver"
+ *  fallback: try just the resource name e.g. "silver"
+ */
+function getIconKey(iconPath, resourceName) {
+  if (iconPath) {
+    const parts = iconPath.replace(/\\/g, '/').split('/');
+    return parts[parts.length - 1].replace(/\.tga$/i, '').toLowerCase();
+  }
+  return resourceName?.toLowerCase() || '';
+}
+
+function useResourceIcons() {
+  const [icons, setIcons] = useState(() => window._m2tw_resource_icons || {});
+  useEffect(() => {
+    const handler = (e) => setIcons(prev => ({ ...prev, ...(e.detail || {}) }));
+    window.addEventListener('load-resource-icons', handler);
+    return () => window.removeEventListener('load-resource-icons', handler);
+  }, []);
+  return icons;
+}
+
 export default function ResourcesTab() {
   const [resources, setResources] = useState([]);
-  const [names, setNames] = useState({}); // display_name → display_name2 (strat.txt.strings.bin special format)
+  const [names, setNames] = useState({});
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const txtInputRef = useRef(null);
   const binInputRef = useRef(null);
   const stratTxtInputRef = useRef(null);
+  const resourceIcons = useResourceIcons();
+  // Per-resource upload refs (keyed by index)
+  const imgUploadRefs = useRef({});
 
-  // Auto-load from localStorage on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem('m2tw_resources_file');
-      if (raw) {
-        setResources(parseResourcesFull(raw));
-        setLoaded(true);
-      }
+      if (raw) { setResources(parseResourcesFull(raw)); setLoaded(true); }
     } catch {}
-    // Auto-load strat.txt.strings.bin or strat.txt from strings.bin store
     try {
       const store = getStringsBinStore();
-      // Prefer strat.txt entries from the bin store
       const stratBinEntry = Object.entries(store).find(([k]) => {
         const lk = k.toLowerCase();
         return lk === 'strat.txt.strings.bin' || (lk.includes('strat') && lk.endsWith('.bin'));
@@ -82,10 +102,7 @@ export default function ResourcesTab() {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
     setResources(parseResourcesFull(text));
-    try {
-      sessionStorage.setItem('m2tw_sm_resources_raw', text);
-      localStorage.setItem('m2tw_resources_file', text);
-    } catch {}
+    try { sessionStorage.setItem('m2tw_sm_resources_raw', text); localStorage.setItem('m2tw_resources_file', text); } catch {}
     setLoaded(true);
     e.target.value = '';
   };
@@ -93,7 +110,6 @@ export default function ResourcesTab() {
   const handleLoadStratTxt = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
-    // Parse {key}value format
     const map = {};
     for (const line of text.split('\n')) {
       const m = line.match(/^\{([^}]+)\}(.*)/);
@@ -116,18 +132,48 @@ export default function ResourcesTab() {
     e.target.value = '';
   };
 
-  // Build the strings.bin key for a resource: {SMT_RESOURCE_<NAME>}
+  // Handle per-resource TGA image upload
+  const handleImageUpload = async (e, idx) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const isTga = file.name.toLowerCase().endsWith('.tga');
+    let dataUrl = null;
+    if (isTga) {
+      const buf = await file.arrayBuffer();
+      dataUrl = decodeTgaToDataUrl(buf);
+    } else {
+      // Accept PNG/JPG as preview only (can't re-encode as TGA here, but store as dataUrl)
+      dataUrl = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target.result);
+        reader.readAsDataURL(file);
+      });
+    }
+    if (!dataUrl) return;
+
+    // Derive the icon key from the resource's icon path, or build a default path
+    const r = resources[idx];
+    let iconPath = r.icon;
+    if (!iconPath) {
+      iconPath = `data/ui/resources/resource_${r.name}.tga`;
+      updateResource(idx, 'icon', iconPath);
+    }
+    const key = getIconKey(iconPath, r.name);
+
+    // Inject into the global icons store so StratOverlay picks it up too
+    window._m2tw_resource_icons = { ...(window._m2tw_resource_icons || {}), [key]: dataUrl };
+    window.dispatchEvent(new CustomEvent('load-resource-icons', { detail: { [key]: dataUrl } }));
+
+    e.target.value = '';
+  };
+
   const resourceBinKey = (name) => `{SMT_RESOURCE_${name.toUpperCase()}}`;
-  // Look up display name from the bin map for a resource
   const getDisplayName = (name) => names[resourceBinKey(name)] ?? '';
-  // Update display name for a resource
   const setDisplayName = (name, displayName) => {
     setNames(prev => ({ ...prev, [resourceBinKey(name)]: displayName }));
   };
 
   const handleExportTxt = () => {
-    const text = serializeResources(resources);
-    downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_sm_resources.txt');
+    downloadBlob(new Blob([serializeResources(resources)], { type: 'text/plain' }), 'descr_sm_resources.txt');
   };
 
   const handleExportBin = () => {
@@ -146,7 +192,6 @@ export default function ResourcesTab() {
     setResources(prev => {
       const old = prev[idx];
       if (field === 'name' && old) {
-        // Rename the bin key when internal name changes
         const oldKey = resourceBinKey(old.name);
         const newKey = resourceBinKey(value);
         if (oldKey !== newKey) {
@@ -183,14 +228,23 @@ export default function ResourcesTab() {
       <input ref={binInputRef} type="file" accept=".bin,.strings.bin" className="hidden" onChange={handleLoadBin} />
       <input ref={stratTxtInputRef} type="file" accept=".txt" className="hidden" onChange={handleLoadStratTxt} />
 
-      <div className="flex flex-wrap gap-2">
+      {/* Top toolbar */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {/* Add Resource — prominent at top */}
+        <button onClick={addResource}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-semibold bg-amber-500/20 border border-amber-400/50 text-amber-300 hover:bg-amber-500/35 hover:border-amber-400 transition-colors">
+          <Plus className="w-3.5 h-3.5" /> Add Resource
+        </button>
+
+        <div className="w-px h-4 bg-slate-700" />
+
         <button onClick={() => txtInputRef.current?.click()}
           className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
-          <Upload className="w-3 h-3" /> Load descr_sm_resources.txt
+          <Upload className="w-3 h-3" /> Load resources.txt
         </button>
         <button onClick={() => binInputRef.current?.click()}
           className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
-          <Upload className="w-3 h-3" /> Load strat.txt.strings.bin
+          <Upload className="w-3 h-3" /> Load strat.strings.bin
         </button>
         <button onClick={() => stratTxtInputRef.current?.click()}
           className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
@@ -207,7 +261,7 @@ export default function ResourcesTab() {
       </div>
 
       <p className="text-[9px] text-slate-500 italic">
-        Note: strat.txt.strings.bin keys use the format <code className="text-slate-400">{'{SMT_RESOURCE_<NAME>}'}Display Name</code> — e.g. <code className="text-slate-400">{'{SMT_RESOURCE_GOLD}'}Gold</code>.
+        Bin keys format: <code className="text-slate-400">{'{SMT_RESOURCE_<NAME>}'}Display Name</code> — e.g. <code className="text-slate-400">{'{SMT_RESOURCE_GOLD}'}Gold</code>.
       </p>
 
       {issues.length > 0 && (
@@ -221,61 +275,89 @@ export default function ResourcesTab() {
       )}
 
       <div className="space-y-1.5">
-        {resources.map((r, idx) => (
-          <div key={idx} className="rounded border border-slate-700/40 bg-slate-900/20 p-2 space-y-1">
-            <div className="flex items-center gap-1.5">
-              <input value={r.name} onChange={e => updateResource(idx, 'name', e.target.value)}
-                className="flex-1 h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono"
-                placeholder="Internal name" />
-              <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
-                <input type="checkbox" checked={r.hasMine}
-                  onChange={e => updateResource(idx, 'hasMine', e.target.checked)}
-                  className="w-3 h-3 accent-amber-500" />
-                mine
-              </label>
-              <button onClick={() => removeResource(idx)} className="text-slate-600 hover:text-red-400 transition-colors">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <div>
-                <span className="text-[9px] text-slate-500">Trade Value</span>
-                <input type="number" value={r.tradeValue} onChange={e => updateResource(idx, 'tradeValue', parseInt(e.target.value) || 0)}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-500">Model (.cas)</span>
-                <input value={r.model} onChange={e => updateResource(idx, 'model', e.target.value)}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-500">Icon (.tga)</span>
-                <input value={r.icon} onChange={e => updateResource(idx, 'icon', e.target.value)}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-              </div>
-            </div>
-            {/* Display name from strings.bin: key = {SMT_RESOURCE_<NAME>}, value = display name */}
-            <div className="grid grid-cols-2 gap-1.5">
-              <div>
-                <span className="text-[9px] text-slate-500">Bin Key (auto)</span>
-                <input value={resourceBinKey(r.name)} readOnly
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800/50 border border-slate-700/30 rounded text-slate-500 font-mono cursor-default" />
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-500">Display Name</span>
-                <input value={getDisplayName(r.name)}
-                  onChange={e => setDisplayName(r.name, e.target.value)}
-                  className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+        {resources.map((r, idx) => {
+          const iconKey = getIconKey(r.icon, r.name);
+          const iconUrl = resourceIcons[iconKey]
+            || resourceIcons[`resource_${r.name.toLowerCase()}`]
+            || null;
 
-      <button onClick={addResource}
-        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] border border-dashed border-slate-600/40 text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors">
-        <Plus className="w-3 h-3" /> Add Resource
-      </button>
+          return (
+            <div key={idx} className="rounded border border-slate-700/40 bg-slate-900/20 p-2 space-y-1.5">
+              {/* Row 1: icon preview + name + mine + delete */}
+              <div className="flex items-center gap-2">
+                {/* Icon preview / upload button */}
+                <div className="relative shrink-0">
+                  <input
+                    type="file"
+                    accept=".tga,.png,.jpg,.jpeg"
+                    className="hidden"
+                    ref={el => imgUploadRefs.current[idx] = el}
+                    onChange={e => handleImageUpload(e, idx)}
+                  />
+                  <button
+                    title="Upload icon (.tga)"
+                    onClick={() => imgUploadRefs.current[idx]?.click()}
+                    className="w-9 h-9 rounded border border-slate-600/50 bg-slate-800 hover:border-amber-400/60 hover:bg-slate-700 transition-colors flex items-center justify-center overflow-hidden"
+                  >
+                    {iconUrl ? (
+                      <img src={iconUrl} alt={r.name} className="w-full h-full object-contain" style={{ imageRendering: 'pixelated' }} />
+                    ) : (
+                      <ImageIcon className="w-4 h-4 text-slate-500" />
+                    )}
+                  </button>
+                </div>
+
+                <input value={r.name} onChange={e => updateResource(idx, 'name', e.target.value)}
+                  className="flex-1 h-7 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono"
+                  placeholder="Internal name" />
+                <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer shrink-0">
+                  <input type="checkbox" checked={r.hasMine}
+                    onChange={e => updateResource(idx, 'hasMine', e.target.checked)}
+                    className="w-3 h-3 accent-amber-500" />
+                  mine
+                </label>
+                <button onClick={() => removeResource(idx)} className="text-slate-600 hover:text-red-400 transition-colors shrink-0">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Row 2: trade value / model / icon path */}
+              <div className="grid grid-cols-3 gap-1.5">
+                <div>
+                  <span className="text-[9px] text-slate-500">Trade Value</span>
+                  <input type="number" value={r.tradeValue} onChange={e => updateResource(idx, 'tradeValue', parseInt(e.target.value) || 0)}
+                    className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">Model (.cas)</span>
+                  <input value={r.model} onChange={e => updateResource(idx, 'model', e.target.value)}
+                    className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">Icon path (.tga)</span>
+                  <input value={r.icon} onChange={e => updateResource(idx, 'icon', e.target.value)}
+                    className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                </div>
+              </div>
+
+              {/* Row 3: bin key + display name */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <span className="text-[9px] text-slate-500">Bin Key (auto)</span>
+                  <input value={resourceBinKey(r.name)} readOnly
+                    className="w-full h-5 px-1 text-[10px] bg-slate-800/50 border border-slate-700/30 rounded text-slate-500 font-mono cursor-default" />
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">Display Name</span>
+                  <input value={getDisplayName(r.name)}
+                    onChange={e => setDisplayName(r.name, e.target.value)}
+                    className="w-full h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {!loaded && resources.length === 0 && (
         <p className="text-[10px] text-slate-600 text-center py-4">Load descr_sm_resources.txt to start editing</p>
