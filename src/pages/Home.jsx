@@ -214,23 +214,21 @@ export default function Home() {
   };
 
   const processDataFiles = async (files) => {
-    // Clear all stale cached data so this fresh load is authoritative
-    try {
-      localStorage.removeItem('m2tw_edb_file');
-      localStorage.removeItem('m2tw_edb_file_name');
-      localStorage.removeItem('m2tw_edb_txt_file');
-      localStorage.removeItem('m2tw_edb_images');
-      localStorage.removeItem('m2tw_factions_file');
-      localStorage.removeItem('m2tw_resources_file');
-      localStorage.removeItem('m2tw_events_file');
-      localStorage.removeItem('m2tw_units_file');
-      localStorage.removeItem('m2tw_traits_file');
-      localStorage.removeItem('m2tw_anc_file');
-      localStorage.removeItem('m2tw_vnvs_file');
-      localStorage.removeItem('m2tw_anctxt_file');
-      localStorage.removeItem('m2tw_export_units_file');
-      localStorage.removeItem('m2tw_lua_scripts');
-    } catch {}
+    // Only clear keys for the file types we are actually re-loading in this batch.
+    // Wiping everything upfront causes data loss if the browser crashes or the user
+    // only loads a partial set of files.
+    const fileNames = new Set(files.map(f => f.name.toLowerCase()));
+    const conditionalRemove = (key, condition) => { try { if (condition) localStorage.removeItem(key); } catch {} };
+    conditionalRemove('m2tw_edb_file',          fileNames.has('export_descr_buildings.txt'));
+    conditionalRemove('m2tw_edb_file_name',      fileNames.has('export_descr_buildings.txt'));
+    conditionalRemove('m2tw_edb_txt_file',       fileNames.has('export_buildings.txt') || fileNames.has('export_buildings.txt.strings.bin'));
+    conditionalRemove('m2tw_factions_file',      fileNames.has('descr_sm_factions.txt'));
+    conditionalRemove('m2tw_resources_file',     fileNames.has('descr_sm_resources.txt'));
+    conditionalRemove('m2tw_events_file',        fileNames.has('descr_events.txt'));
+    conditionalRemove('m2tw_units_file',         fileNames.has('export_descr_unit.txt'));
+    conditionalRemove('m2tw_traits_file',        fileNames.has('export_descr_character_traits.txt'));
+    conditionalRemove('m2tw_anc_file',           fileNames.has('export_descr_ancillaries.txt'));
+    conditionalRemove('m2tw_export_units_file',  fileNames.has('export_units.txt'));
 
 
     const loaderMap = {
