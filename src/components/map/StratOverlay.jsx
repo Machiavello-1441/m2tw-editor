@@ -4,7 +4,7 @@
  *
  * Y-axis: M2TW uses y=0 at bottom, screen uses y=0 at top — we invert.
  */
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { SETTLEMENT_LEVEL_ICONS } from './stratParser';
 
 export const ITEM_ICON = {
@@ -59,12 +59,24 @@ function groupByPixel(items) {
   return map;
 }
 
+// Hook to reactively track window._m2tw_resource_icons
+function useResourceIcons() {
+  const [icons, setIcons] = useState(() => window._m2tw_resource_icons || {});
+  useEffect(() => {
+    const handler = (e) => setIcons(prev => ({ ...prev, ...(e.detail || {}) }));
+    window.addEventListener('load-resource-icons', handler);
+    return () => window.removeEventListener('load-resource-icons', handler);
+  }, []);
+  return icons;
+}
+
 export default function StratOverlay({
   items = [], transform, mapH = 0,
   visibleCategories, selectedId, onSelect, onMoveItem, onDoubleClick,
 }) {
   const svgRef = useRef(null);
   const draggingRef = useRef(null);
+  const resourceIcons = useResourceIcons();
 
   // Filter to visible items
   const visible = items.filter(item =>
@@ -127,6 +139,10 @@ export default function StratOverlay({
         const displayItem = selInGroup || first;
         const icon = getItemIcon(displayItem);
         const label = getItemLabel(displayItem);
+        // Use TGA resource icon image if available
+        const resIconUrl = displayItem.category === 'resource' && displayItem.type
+          ? (resourceIcons[displayItem.type.toLowerCase()] || resourceIcons[`resource_${displayItem.type.toLowerCase()}`] || null)
+          : null;
 
         return (
           <g key={key} transform={`translate(${sx}, ${sy})`}>
@@ -148,9 +164,13 @@ export default function StratOverlay({
                 stroke={isSelected ? '#f59e0b' : isStack ? '#60a5fa' : 'rgba(255,255,255,0.3)'}
                 strokeWidth={isSelected ? 2 : isStack ? 1.5 : 1}
               />
-              <text textAnchor="middle" dominantBaseline="central" fontSize={11} style={{ userSelect: 'none' }}>
-                {icon}
-              </text>
+              {resIconUrl ? (
+                <image href={resIconUrl} x={-9} y={-9} width={18} height={18} style={{ imageRendering: 'pixelated' }} />
+              ) : (
+                <text textAnchor="middle" dominantBaseline="central" fontSize={11} style={{ userSelect: 'none' }}>
+                  {icon}
+                </text>
+              )}
             </g>
 
             {/* Stack badge (blue dot with count) */}
@@ -166,6 +186,9 @@ export default function StratOverlay({
             {/* Stack item list (small icons offset when zoomed in) */}
             {isStack && showLabel && groupItems.slice(1).map((extra, idx) => {
               const offsetX = (idx + 1) * 18;
+              const extraResUrl = extra.category === 'resource' && extra.type
+                ? (resourceIcons[extra.type.toLowerCase()] || resourceIcons[`resource_${extra.type.toLowerCase()}`] || null)
+                : null;
               return (
                 <g
                   key={extra.id}
@@ -180,9 +203,13 @@ export default function StratOverlay({
                     stroke={extra.id === selectedId ? '#f59e0b' : 'rgba(255,255,255,0.25)'}
                     strokeWidth={extra.id === selectedId ? 2 : 1}
                   />
-                  <text textAnchor="middle" dominantBaseline="central" fontSize={10} style={{ userSelect: 'none' }}>
-                    {getItemIcon(extra)}
-                  </text>
+                  {extraResUrl ? (
+                    <image href={extraResUrl} x={-7} y={-7} width={14} height={14} style={{ imageRendering: 'pixelated' }} />
+                  ) : (
+                    <text textAnchor="middle" dominantBaseline="central" fontSize={10} style={{ userSelect: 'none' }}>
+                      {getItemIcon(extra)}
+                    </text>
+                  )}
                 </g>
               );
             })}
