@@ -64,15 +64,21 @@ function summarizeFiles(files) {
   return byCategory;
 }
 
-// Detect campaign sub-folders from /maps/campaign/<name>/
+// Detect direct campaign sub-folders from /maps/campaign/<name>/ (e.g. imperial_campaign)
+// Returns { direct: string[], custom: string[] }
+// direct = non-"custom" folders (always included, no checkbox)
+// custom = sub-folders found under /maps/campaign/custom/<name>/
 function detectCampaignFolders(files) {
-  const folders = new Set();
+  const direct = new Set();
+  const custom = new Set();
   for (const file of files) {
     const path = (file.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
-    const match = path.match(/\/maps\/campaign\/([^/]+)\//);
-    if (match) folders.add(match[1]);
+    const customMatch = path.match(/\/maps\/campaign\/custom\/([^/]+)\//);
+    if (customMatch) { custom.add(customMatch[1]); continue; }
+    const directMatch = path.match(/\/maps\/campaign\/([^/]+)\//);
+    if (directMatch && directMatch[1] !== 'custom') direct.add(directMatch[1]);
   }
-  return [...folders];
+  return { direct: [...direct], custom: [...custom] };
 }
 
 // Detect UI sub-folders from /ui/<subfolder>/
@@ -105,7 +111,7 @@ export default function DataFolderPicker({ onLoad, loading }) {
     if (files.length === 0) return;
 
     const byCategory = summarizeFiles(files);
-    const campaignFolders = detectCampaignFolders(files);
+    const { direct: directCampaigns, custom: customCampaigns } = detectCampaignFolders(files);
     const uiFolders = detectUiFolders(byCategory['images_ui'] || []);
 
     const initChecked = {};
@@ -113,8 +119,8 @@ export default function DataFolderPicker({ onLoad, loading }) {
       initChecked[cat] = CATEGORY_LABELS[cat]?.defaultOn ?? true;
     }
     setChecked(initChecked);
-    setScanned({ byCategory, allFiles: files, campaignFolders, uiFolders });
-    setSelectedCampaigns(new Set(campaignFolders));
+    setScanned({ byCategory, allFiles: files, directCampaigns, customCampaigns, uiFolders });
+    setSelectedCampaigns(new Set(customCampaigns)); // only custom sub-folders are toggleable
     setSelectedUiFolders(new Set(uiFolders));
     setExpanded({});
     setExpandedCampaign(new Set());
@@ -148,12 +154,21 @@ export default function DataFolderPicker({ onLoad, loading }) {
     return next;
   });
 
-  // Files in a campaign sub-folder
-  const campaignFolderFiles = (folder) => {
+  // Files in a direct campaign folder (e.g. imperial_campaign)
+  const directCampaignFiles = (folder) => {
     if (!scanned) return [];
     return (scanned.byCategory['campaign'] || []).filter(f => {
       const path = (f.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
-      return path.includes(`/campaign/${folder}/`) || path.includes(`/base/`);
+      return path.includes(`/campaign/${folder}/`);
+    });
+  };
+
+  // Files in a custom sub-folder
+  const customCampaignFiles = (folder) => {
+    if (!scanned) return [];
+    return (scanned.byCategory['campaign'] || []).filter(f => {
+      const path = (f.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
+      return path.includes(`/campaign/custom/${folder}/`);
     });
   };
 
@@ -174,9 +189,14 @@ export default function DataFolderPicker({ onLoad, loading }) {
       if (cat === 'campaign') {
         for (const file of files) {
           const path = (file.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
-          const match = path.match(/\/maps\/campaign\/([^/]+)\//);
-          // Include base map files always, campaign files only if folder selected
-          if (!match || selectedCampaigns.has(match[1])) toLoad.push(file);
+          const customMatch = path.match(/\/maps\/campaign\/custom\/([^/]+)\//);
+          if (customMatch) {
+            // Only include custom sub-folders that are selected
+            if (selectedCampaigns.has(customMatch[1])) toLoad.push(file);
+          } else {
+            // base/ and direct campaign folders (imperial_campaign etc.) are always included
+            toLoad.push(file);
+          }
         }
       } else if (cat === 'images_ui') {
         for (const file of files) {
@@ -188,7 +208,7 @@ export default function DataFolderPicker({ onLoad, loading }) {
         toLoad.push(...files);
       }
     }
-    onLoad(toLoad, scanned.campaignFolders, [...selectedCampaigns]);
+    onLoad(toLoad, [...(scanned.directCampaigns || []), ...(scanned.customCampaigns || [])], [...selectedCampaigns]);
   };
 
   const countSelected = () => {
@@ -199,8 +219,9 @@ export default function DataFolderPicker({ onLoad, loading }) {
       if (cat === 'campaign') {
         s += files.filter(f => {
           const path = (f.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
-          const m = path.match(/\/maps\/campaign\/([^/]+)\//);
-          return !m || selectedCampaigns.has(m[1]);
+          const customMatch = path.match(/\/maps\/campaign\/custom\/([^/]+)\//);
+          if (customMatch) return selectedCampaigns.has(customMatch[1]);
+          return true; // base + direct campaigns always counted
         }).length;
       } else if (cat === 'images_ui') {
         s += files.filter(f => {
@@ -281,71 +302,92 @@ export default function DataFolderPicker({ onLoad, loading }) {
                   {isExp && (
                     <div className="bg-accent/5 px-4 py-2 space-y-1 max-h-64 overflow-y-auto">
 
-                      {/* Campaign: show sub-folder checkboxes, each expandable to show files */}
-                      {cat === 'campaign' && scanned.campaignFolders.length > 0 ? (
+                      {/* Campaign: base + direct (always on, expandable) + custom sub-folders (checkboxes) */}
+                      {cat === 'campaign' ? (
                         <div className="space-y-1">
-                          <p className="text-[10px] text-muted-foreground mb-1.5">Select campaign folders to include:</p>
-                          {scanned.campaignFolders.map(folder => {
-                            const folderFiles = campaignFolderFiles(folder);
-                            const isFolderExp = expandedCampaign.has(folder);
-                            return (
-                              <div key={folder}>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedCampaigns.has(folder)}
-                                    onChange={() => toggleCampaign(folder)}
-                                    className="accent-primary w-3 h-3 shrink-0"
-                                  />
-                                  <span className="text-[11px] font-mono text-foreground flex-1">{folder}</span>
-                                  <span className="text-[10px] text-muted-foreground">{folderFiles.length} files</span>
-                                  <button onClick={() => toggleExpandCampaign(folder)} className="text-muted-foreground hover:text-foreground">
-                                    {isFolderExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                                  </button>
-                                </div>
-                                {isFolderExp && (
-                                  <div className="ml-5 mt-1 space-y-0.5">
-                                    {folderFiles.map((f, i) => (
-                                      <p key={i} className="text-[10px] font-mono text-muted-foreground truncate">
-                                        {f.name}
-                                      </p>
-                                    ))}
-                                    {folderFiles.length === 0 && (
-                                      <p className="text-[10px] text-muted-foreground italic">No files</p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {/* Also show base/map files that aren't per-campaign */}
+                          {/* Base map files — always included */}
                           {(() => {
-                            const baseFiles = (scanned.byCategory['campaign'] || []).filter(f => {
-                              const path = (f.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
-                              return path.includes('/maps/base/');
-                            });
+                            const baseFiles = (scanned.byCategory['campaign'] || []).filter(f =>
+                              (f.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/').includes('/maps/base/')
+                            );
                             if (baseFiles.length === 0) return null;
-                            const isBaseExp = expandedCampaign.has('__base__');
+                            const isExp = expandedCampaign.has('__base__');
                             return (
                               <div>
                                 <div className="flex items-center gap-2">
                                   <div className="w-3 h-3 shrink-0" />
-                                  <span className="text-[11px] font-mono text-muted-foreground flex-1">maps/base/ (always included)</span>
+                                  <span className="text-[11px] font-mono text-foreground flex-1">maps/base/</span>
+                                  <span className="text-[9px] text-green-400 font-medium">always</span>
                                   <span className="text-[10px] text-muted-foreground">{baseFiles.length} files</span>
                                   <button onClick={() => toggleExpandCampaign('__base__')} className="text-muted-foreground hover:text-foreground">
-                                    {isBaseExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                    {isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                                   </button>
                                 </div>
-                                {isBaseExp && (
+                                {isExp && (
                                   <div className="ml-5 mt-1 space-y-0.5">
-                                    {baseFiles.map((f, i) => (
-                                      <p key={i} className="text-[10px] font-mono text-muted-foreground truncate">{f.name}</p>
-                                    ))}
+                                    {baseFiles.map((f, i) => <p key={i} className="text-[10px] font-mono text-muted-foreground truncate">{f.name}</p>)}
                                   </div>
                                 )}
                               </div>
                             );
                           })()}
+
+                          {/* Direct campaign folders (e.g. imperial_campaign) — always included */}
+                          {scanned.directCampaigns.map(folder => {
+                            const folderFiles = directCampaignFiles(folder);
+                            const isExp = expandedCampaign.has(folder);
+                            return (
+                              <div key={folder}>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-3 h-3 shrink-0" />
+                                  <span className="text-[11px] font-mono text-foreground flex-1">{folder}/</span>
+                                  <span className="text-[9px] text-green-400 font-medium">always</span>
+                                  <span className="text-[10px] text-muted-foreground">{folderFiles.length} files</span>
+                                  <button onClick={() => toggleExpandCampaign(folder)} className="text-muted-foreground hover:text-foreground">
+                                    {isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                  </button>
+                                </div>
+                                {isExp && (
+                                  <div className="ml-5 mt-1 space-y-0.5">
+                                    {folderFiles.map((f, i) => <p key={i} className="text-[10px] font-mono text-muted-foreground truncate">{f.name}</p>)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {/* Custom sub-folders — individually selectable */}
+                          {scanned.customCampaigns.length > 0 && (
+                            <>
+                              <p className="text-[10px] text-muted-foreground pt-1 pb-0.5 border-t border-border mt-1">custom/ sub-folders — select to include:</p>
+                              {scanned.customCampaigns.map(folder => {
+                                const folderFiles = customCampaignFiles(folder);
+                                const isExp = expandedCampaign.has(`custom:${folder}`);
+                                return (
+                                  <div key={folder}>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedCampaigns.has(folder)}
+                                        onChange={() => toggleCampaign(folder)}
+                                        className="accent-primary w-3 h-3 shrink-0"
+                                      />
+                                      <span className="text-[11px] font-mono text-foreground flex-1">custom/{folder}/</span>
+                                      <span className="text-[10px] text-muted-foreground">{folderFiles.length} files</span>
+                                      <button onClick={() => toggleExpandCampaign(`custom:${folder}`)} className="text-muted-foreground hover:text-foreground">
+                                        {isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                      </button>
+                                    </div>
+                                    {isExp && (
+                                      <div className="ml-5 mt-1 space-y-0.5">
+                                        {folderFiles.map((f, i) => <p key={i} className="text-[10px] font-mono text-muted-foreground truncate">{f.name}</p>)}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
                         </div>
 
                       /* UI images: show sub-folder checkboxes with file lists */
