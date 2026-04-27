@@ -120,7 +120,8 @@ export default function DataFolderPicker({ onLoad, loading }) {
     }
     setChecked(initChecked);
     setScanned({ byCategory, allFiles: files, directCampaigns, customCampaigns, uiFolders });
-    setSelectedCampaigns(new Set(customCampaigns)); // only custom sub-folders are toggleable
+    // All campaign folders (direct + custom) start checked
+    setSelectedCampaigns(new Set([...directCampaigns, ...customCampaigns]));
     setSelectedUiFolders(new Set(uiFolders));
     setExpanded({});
     setExpandedCampaign(new Set());
@@ -191,12 +192,16 @@ export default function DataFolderPicker({ onLoad, loading }) {
           const path = (file.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
           const customMatch = path.match(/\/maps\/campaign\/custom\/([^/]+)\//);
           if (customMatch) {
-            // Only include custom sub-folders that are selected
             if (selectedCampaigns.has(customMatch[1])) toLoad.push(file);
-          } else {
-            // base/ and direct campaign folders (imperial_campaign etc.) are always included
-            toLoad.push(file);
+            continue;
           }
+          const directMatch = path.match(/\/maps\/campaign\/([^/]+)\//);
+          if (directMatch && directMatch[1] !== 'custom') {
+            if (selectedCampaigns.has(directMatch[1])) toLoad.push(file);
+            continue;
+          }
+          // base/ files always included
+          toLoad.push(file);
         }
       } else if (cat === 'images_ui') {
         for (const file of files) {
@@ -221,7 +226,9 @@ export default function DataFolderPicker({ onLoad, loading }) {
           const path = (f.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
           const customMatch = path.match(/\/maps\/campaign\/custom\/([^/]+)\//);
           if (customMatch) return selectedCampaigns.has(customMatch[1]);
-          return true; // base + direct campaigns always counted
+          const directMatch = path.match(/\/maps\/campaign\/([^/]+)\//);
+          if (directMatch && directMatch[1] !== 'custom') return selectedCampaigns.has(directMatch[1]);
+          return true; // base/ files always counted
         }).length;
       } else if (cat === 'images_ui') {
         s += files.filter(f => {
@@ -332,16 +339,20 @@ export default function DataFolderPicker({ onLoad, loading }) {
                             );
                           })()}
 
-                          {/* Direct campaign folders (e.g. imperial_campaign) — always included */}
+                          {/* Direct campaign folders (e.g. imperial_campaign) — checkboxes */}
                           {scanned.directCampaigns.map(folder => {
                             const folderFiles = directCampaignFiles(folder);
                             const isExp = expandedCampaign.has(folder);
                             return (
                               <div key={folder}>
                                 <div className="flex items-center gap-2">
-                                  <div className="w-3 h-3 shrink-0" />
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCampaigns.has(folder)}
+                                    onChange={() => toggleCampaign(folder)}
+                                    className="accent-primary w-3 h-3 shrink-0"
+                                  />
                                   <span className="text-[11px] font-mono text-foreground flex-1">{folder}/</span>
-                                  <span className="text-[9px] text-green-400 font-medium">always</span>
                                   <span className="text-[10px] text-muted-foreground">{folderFiles.length} files</span>
                                   <button onClick={() => toggleExpandCampaign(folder)} className="text-muted-foreground hover:text-foreground">
                                     {isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
