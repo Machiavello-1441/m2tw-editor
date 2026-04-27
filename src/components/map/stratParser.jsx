@@ -155,7 +155,7 @@ function serializeCharLine(char) {
   }
   // Normal characters — no leading indent (game format)
   const fullName = [char.name, char.surname].filter(Boolean).join(' ');
-  let line = `character\t\t`;
+  let line = `character\t`;
   if (char.subFaction) line += `sub_faction ${char.subFaction}, `;
   line += `${fullName}, ${char.charType}, ${char.sex}`;
   if (char.role) line += `, ${char.role}`;
@@ -165,6 +165,7 @@ function serializeCharLine(char) {
   if (char.battleModel) line += `, battle_model ${char.battleModel}`;
   if (char.heroAbility) line += `, hero_ability ${char.heroAbility}`;
   if (char.direction)   line += `, direction ${char.direction}`;
+  line += ' ';
   return line;
 }
 
@@ -406,7 +407,8 @@ export function parseDescrStrat(text) {
     // Diplomacy: faction_standings
     if ((m = line.match(/^(faction_standings)\s+(\w+)\s*,\s*([-\d.]+)\s+([\w\s,]+)/i))) {
       const targets = m[4].split(',').map(s => s.trim()).filter(Boolean);
-      factionStandings.push({ faction: m[2], value: parseFloat(m[3]), targets });
+      // Preserve the original value string to avoid 0.20 → 0.2 rounding
+      factionStandings.push({ faction: m[2], value: parseFloat(m[3]), valueStr: m[3], targets });
       i++; continue;
     }
 
@@ -545,7 +547,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   if (stratData.timescale)    pl(/^timescale\b/i, `timescale\t${stratData.timescale}`);
   if (stratData.scriptFile) {
     const si = lines.findIndex(l => /^script\s*$/.test(l.replace(/;.*$/, '').trim()));
-    if (si >= 0 && si + 1 < lines.length) lines[si + 1] = `\t${stratData.scriptFile}`;
+    if (si >= 0 && si + 1 < lines.length) lines[si + 1] = stratData.scriptFile;
   }
   // Boolean flags
   const BOOL_FLAGS = ['marian_reforms_disabled','marian_reforms_activated','rebelling_characters_active','rebelling_characters_inactive','gladiator_uprising_disabled','night_battles_enabled','night_battles_disabled','show_date_as_turns'];
@@ -709,9 +711,10 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       // Replace the whole diplomacy block
       const newDiploLines = [];
       for (const s of stratData.factionStandings) {
-        for (const t of s.targets) {
-          newDiploLines.push(`faction_standings\t${s.faction},\t\t${s.value}\t${t}`);
-        }
+        // Use the original value string to preserve decimal precision (e.g. 0.20 not 0.2)
+        const val = s.valueStr ?? String(s.value);
+        // Keep multiple targets on one line, comma-separated, matching original format
+        newDiploLines.push(`faction_standings\t${s.faction},\t\t${val}\t${s.targets.join(', ')}`);
       }
       for (const r of (stratData.factionRelationships || [])) {
         newDiploLines.push(`faction_relationships\t${r.faction}, ${r.relation}\t${r.targets.join(', ')}`);
