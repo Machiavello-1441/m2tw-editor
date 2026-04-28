@@ -174,8 +174,8 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
     <div className="space-y-2">
       {/* Campaign name */}
       <div className="space-y-1">
-        <p className="text-[9px] text-slate-500 uppercase font-semibold hidden">Campaign Name</p>
-        <input value={stratData.campaignName || ''} onChange={(e) => set('campaignName', e.target.value)} className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono hidden" />
+        
+        
         
       </div>
 
