@@ -12,6 +12,7 @@ import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat, serializeDescrRegions } from '../components/map/stratParser';
 import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB, parseDescrNames, parseExportDescrTraits, parseExportDescrAncillaries } from '../components/map/additionalParsers';
+import { parseFactionMovies } from '../components/map/factionMoviesParser';
 import { parseEDU } from '../components/units/EDUParser';
 import { parseStringsBin } from '../components/strings/stringsBinCodec';
 import { getStringsBinStore } from '../lib/stringsBinStore';
@@ -445,6 +446,15 @@ export default function CampaignMap() {
       if (extraSessionMap[name]) {
         const text = await file.text();
         try { sessionStorage.setItem(extraSessionMap[name], text); } catch {}
+        // Also mirror win conditions to localStorage so StratPanel can read it on fresh navigation
+        if (name === 'descr_win_conditions.txt') {
+          try { localStorage.setItem('m2tw_campaign_win_conditions', text); } catch {}
+        }
+      }
+      // Parse descr_faction_movies.xml
+      if (name === 'descr_faction_movies.xml') {
+        const text = await file.text();
+        try { sessionStorage.setItem('m2tw_faction_movies_raw', text); } catch {}
       }
     }
 

@@ -333,13 +333,21 @@ export default function Home() {
           'descr_strat.txt': 'm2tw_campaign_strat',
           'campaign_script.txt': 'm2tw_campaign_script',
           'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
-          'descr_win_conditions.txt': 'm2tw_campaign_win_conditions'
+          'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
+          'descr_faction_movies.xml': 'm2tw_campaign_faction_movies'
         };
         const csKey = CAMPAIGN_STORE_MAP[name];
         if (csKey) {
           const csTxt = await readText(file);
           try {localStorage.setItem(csKey, csTxt);} catch {}
           if (name === 'campaign_script.txt') loadCampaignScript(csTxt);
+          // Mirror to sessionStorage so CampaignMap editor can pick them up immediately
+          if (name === 'descr_win_conditions.txt') {
+            try { sessionStorage.setItem('m2tw_win_conditions_raw', csTxt); } catch {}
+          }
+          if (name === 'descr_faction_movies.xml') {
+            try { sessionStorage.setItem('m2tw_faction_movies_raw', csTxt); } catch {}
+          }
         }
         continue;
       }
@@ -650,7 +658,8 @@ export default function Home() {
       'descr_strat.txt': 'm2tw_campaign_strat',
       'campaign_script.txt': 'm2tw_campaign_script',
       'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
-      'descr_win_conditions.txt': 'm2tw_campaign_win_conditions'
+      'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
+      'descr_faction_movies.xml': 'm2tw_campaign_faction_movies'
     };
 
     // Also store rebel factions + EDB from this folder if present
@@ -678,12 +687,18 @@ export default function Home() {
 
       const csKey = CAMPAIGN_STORE[name];
       if (csKey) {
-      const txt = await readText(file);
-      try {localStorage.setItem(csKey, txt);} catch {}
-      if (name === 'descr_mercenaries.txt') {
-        try {sessionStorage.setItem('m2tw_mercenaries_raw', txt);} catch {}
-      }
-      if (name === 'campaign_script.txt') loadCampaignScript(txt);
+        const txt = await readText(file);
+        try {localStorage.setItem(csKey, txt);} catch {}
+        if (name === 'descr_mercenaries.txt') {
+          try {sessionStorage.setItem('m2tw_mercenaries_raw', txt);} catch {}
+        }
+        if (name === 'campaign_script.txt') loadCampaignScript(txt);
+        if (name === 'descr_win_conditions.txt') {
+          try {sessionStorage.setItem('m2tw_win_conditions_raw', txt);} catch {}
+        }
+        if (name === 'descr_faction_movies.xml') {
+          try {sessionStorage.setItem('m2tw_faction_movies_raw', txt);} catch {}
+        }
       }
 
       const extraKey = CAMPAIGN_EXTRA_STORE[name];

@@ -12,6 +12,7 @@ import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';
 import FactionsCampaignTab from './FactionsCampaignTab';
 import CharactersTab from './CharactersTab';
+import { parseFactionMovies, serializeFactionMovies } from './factionMoviesParser';
 
 // ─── Inline resource editor ────────────────────────────────────────────────────
 function ResourceEditor({ item, onSave }) {
@@ -832,8 +833,17 @@ export default function StratPanel({
   const [showNewRegion, setShowNewRegion] = useState(false);
   const [winConditions, setWinConditions] = useState(() => {
     try {
-      const raw = sessionStorage.getItem('m2tw_win_conditions_raw');
+      // Try sessionStorage first, then fall back to localStorage (loaded from Home)
+      const raw = sessionStorage.getItem('m2tw_win_conditions_raw')
+        || localStorage.getItem('m2tw_campaign_win_conditions');
       return raw ? parseWinConditions(raw) : null;
+    } catch { return null; }
+  });
+
+  const [factionMovies, setFactionMovies] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_faction_movies_raw');
+      return raw ? parseFactionMovies(raw) : null;
     } catch { return null; }
   });
 
@@ -866,6 +876,11 @@ export default function StratPanel({
     else if (type === 'regions')  onRegionsLoad(text);
     else if (type === 'names')    onNamesLoad(text);
     else if (type === 'factions') onFactionsLoad(text);
+    else if (type === 'movies') {
+      const parsed = parseFactionMovies(text);
+      setFactionMovies(parsed);
+      try { sessionStorage.setItem('m2tw_faction_movies_raw', text); } catch {}
+    }
     e.target.value = '';
   };
 
@@ -944,8 +959,16 @@ export default function StratPanel({
       { key: 'm2tw_win_conditions_raw', name: 'descr_win_conditions.txt' },
     ];
     for (const { key, name } of extraFiles) {
-      const raw = sessionStorage.getItem(key);
+      const raw = sessionStorage.getItem(key)
+        || (key === 'm2tw_win_conditions_raw' ? localStorage.getItem('m2tw_campaign_win_conditions') : null);
       if (raw) zip.file(`${basePath}/${name}`, raw);
+    }
+    // descr_faction_movies.xml
+    if (factionMovies && Object.keys(factionMovies).length > 0) {
+      zip.file(`${basePath}/descr_faction_movies.xml`, serializeFactionMovies(factionMovies));
+    } else {
+      const moviesRaw = sessionStorage.getItem('m2tw_faction_movies_raw');
+      if (moviesRaw) zip.file(`${basePath}/descr_faction_movies.xml`, moviesRaw);
     }
     // TGA map layers
     const tgaLayerMap = {
@@ -1024,6 +1047,7 @@ export default function StratPanel({
               { label: 'descr_regions.txt', type: 'regions', loaded: !!regionsData, onDl: handleExportRegions, ready: !!regionsData?.length },
               { label: 'settlement_names', type: 'names', loaded: !!settlementNames, onDl: handleExportNames, ready: !!settlementNames && Object.keys(settlementNames).length > 0, accept: '.txt,.bin,.strings.bin' },
               { label: 'descr_sm_factions.txt', type: 'factions', loaded: !!factionColors, onDl: handleExportFactions, ready: !!factionColors },
+              { label: 'descr_faction_movies.xml', type: 'movies', loaded: !!factionMovies, onDl: () => { if (factionMovies) downloadBlob(new Blob([serializeFactionMovies(factionMovies)], { type: 'text/xml' }), 'descr_faction_movies.xml'); }, ready: !!factionMovies, accept: '.xml' },
             ].map(({ label, type, loaded, onDl, ready, accept }) => (
               <div key={type} className="flex items-center gap-1.5">
                 <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
@@ -1239,6 +1263,11 @@ export default function StratPanel({
             onWinConditionsChange={(wc) => {
               setWinConditions(wc);
               try { sessionStorage.setItem('m2tw_win_conditions_raw', serializeWinConditions(wc)); } catch {}
+            }}
+            factionMovies={factionMovies}
+            onFactionMoviesChange={(fm) => {
+              setFactionMovies(fm);
+              try { sessionStorage.setItem('m2tw_faction_movies_raw', serializeFactionMovies(fm)); } catch {}
             }}
             regionNames={regionNames}
           />

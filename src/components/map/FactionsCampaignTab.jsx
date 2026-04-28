@@ -113,11 +113,20 @@ function SearchableSelect({ value, options, onChange, infoMap, className }) {
   );
 }
 
-function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) {
+function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate, factionMovies, onMoviesChange }) {
   const [expanded, setExpanded] = useState(false);
 
   const f = faction;
-  const set = (key, val) => onUpdate(f.name, { ...f, [key]: val });
+  // Merge movies from factionMovies prop into the faction object for display
+  const fWithMovies = { ...f, movies: factionMovies?.[f.name] || f.movies || {} };
+  const set = (key, val) => {
+    if (key === 'movies') {
+      // movies are stored separately in factionMovies state
+      onMoviesChange?.(f.name, val);
+    } else {
+      onUpdate(f.name, { ...f, [key]: val });
+    }
+  };
 
   return (
     <div className={`rounded border transition-colors ${expanded ? 'border-amber-500/30 bg-amber-900/5' : 'border-slate-700/40 bg-slate-900/20'}`}>
@@ -126,11 +135,11 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
         onClick={() => setExpanded(v => !v)}
       >
         {expanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
-        <span className={`text-[11px] font-mono flex-1 truncate ${f.deadUntilResurrected || f.deadUntilEmerged ? 'text-slate-500 italic' : 'text-slate-200'}`}>{f.name}</span>
-        {f.aiLabel && <span className="text-[9px] text-amber-500/70 font-mono">{f.aiLabel}</span>}
-        {(f.deadUntilResurrected || f.deadUntilEmerged) && <span className="text-[8px] text-red-500/60 font-mono">dead</span>}
-        {f.reEmergent && <span className="text-[8px] text-orange-500/60 font-mono">re_emergent</span>}
-        {f.undiscovered && <span className="text-[8px] text-blue-500/60 font-mono">undiscovered</span>}
+        <span className={`text-[11px] font-mono flex-1 truncate ${fWithMovies.deadUntilResurrected || fWithMovies.deadUntilEmerged ? 'text-slate-500 italic' : 'text-slate-200'}`}>{fWithMovies.name}</span>
+        {fWithMovies.aiLabel && <span className="text-[9px] text-amber-500/70 font-mono">{fWithMovies.aiLabel}</span>}
+        {(fWithMovies.deadUntilResurrected || fWithMovies.deadUntilEmerged) && <span className="text-[8px] text-red-500/60 font-mono">dead</span>}
+        {fWithMovies.reEmergent && <span className="text-[8px] text-orange-500/60 font-mono">re_emergent</span>}
+        {fWithMovies.undiscovered && <span className="text-[8px] text-blue-500/60 font-mono">undiscovered</span>}
       </div>
 
       {expanded && (
@@ -143,7 +152,7 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
                 AI Label <InfoTooltip text="Defines the faction's diplomatic and religious behavior. 'catholic' joins crusades and interacts with the Pope. 'papal_faction' is for the Papacy only." />
               </div>
               <SearchableSelect
-                value={f.aiLabel}
+                value={fWithMovies.aiLabel}
                 options={AI_LABELS}
                 onChange={v => set('aiLabel', v)}
                 infoMap={AI_LABEL_INFO}
@@ -154,7 +163,7 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
                 Economic AI <InfoTooltip text="Determines which building bonuses the AI prioritizes when constructing buildings." />
               </div>
               <SearchableSelect
-                value={f.economicAI}
+                value={fWithMovies.economicAI}
                 options={ECONOMIC_AI}
                 onChange={v => set('economicAI', v)}
                 infoMap={ECON_AI_INFO}
@@ -165,7 +174,7 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
                 Military AI <InfoTooltip text="Recruitment preferences. Only influence unit mix when units have similar combat values. Soldier count has the biggest impact on a unit's recruitment value." />
               </div>
               <SearchableSelect
-                value={f.militaryAI}
+                value={fWithMovies.militaryAI}
                 options={MILITARY_AI}
                 onChange={v => set('militaryAI', v)}
                 infoMap={MILITARY_AI_INFO}
@@ -177,12 +186,12 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
           <div className="grid grid-cols-2 gap-1.5">
             <div>
               <div className="text-[9px] text-slate-500 mb-0.5">Starting Money (denari)</div>
-              <input type="number" value={f.treasury || 0} onChange={e => set('treasury', parseInt(e.target.value) || 0)}
+              <input type="number" value={fWithMovies.treasury || 0} onChange={e => set('treasury', parseInt(e.target.value) || 0)}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
             </div>
             <div>
               <div className="text-[9px] text-slate-500 mb-0.5">King's Purse (denari_kings_purse)</div>
-              <input type="number" value={f.kingsPurse || 0} onChange={e => set('kingsPurse', parseInt(e.target.value) || 0)}
+              <input type="number" value={fWithMovies.kingsPurse || 0} onChange={e => set('kingsPurse', parseInt(e.target.value) || 0)}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
             </div>
           </div>
@@ -196,24 +205,24 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
             <div className="grid grid-cols-2 gap-1">
               {/* dead_until_resurrected and dead_until_emerged are mutually exclusive */}
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={!!f.deadUntilResurrected}
+                <input type="checkbox" checked={!!fWithMovies.deadUntilResurrected}
                   onChange={e => { set('deadUntilResurrected', e.target.checked); if (e.target.checked) set('deadUntilEmerged', false); }}
                   className="w-3 h-3 accent-amber-500" />
                 <span className="text-[10px] text-slate-400 font-mono">dead_until_resurrected</span>
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={!!f.deadUntilEmerged}
+                <input type="checkbox" checked={!!fWithMovies.deadUntilEmerged}
                   onChange={e => { set('deadUntilEmerged', e.target.checked); if (e.target.checked) set('deadUntilResurrected', false); }}
                   className="w-3 h-3 accent-amber-500" />
                 <span className="text-[10px] text-slate-400 font-mono">dead_until_emerged</span>
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={!!f.reEmergent} onChange={e => set('reEmergent', e.target.checked)}
+                <input type="checkbox" checked={!!fWithMovies.reEmergent} onChange={e => set('reEmergent', e.target.checked)}
                   className="w-3 h-3 accent-amber-500" />
                 <span className="text-[10px] text-slate-400 font-mono">re_emergent</span>
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={!!f.undiscovered} onChange={e => set('undiscovered', e.target.checked)}
+                <input type="checkbox" checked={!!fWithMovies.undiscovered} onChange={e => set('undiscovered', e.target.checked)}
                   className="w-3 h-3 accent-amber-500" />
                 <span className="text-[10px] text-slate-400 font-mono">undiscovered</span>
               </label>
@@ -228,8 +237,8 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
                 <InfoTooltip text="This faction shadows another (appears as rebels of the shadowed faction). Both must share the same culture and a general unit." />
               </div>
               <SearchableSelect
-                value={f.shadowing || ''}
-                options={['', ...allFactionNames.filter(n => n !== f.name)]}
+                value={fWithMovies.shadowing || ''}
+                options={['', ...allFactionNames.filter(n => n !== fWithMovies.name)]}
                 onChange={v => set('shadowing', v || undefined)}
               />
             </div>
@@ -239,10 +248,31 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate }) 
                 <InfoTooltip text="This faction is shadowed by another faction. Rebels of this faction belong to the shadowing faction." />
               </div>
               <SearchableSelect
-                value={f.shadowedBy || ''}
-                options={['', ...allFactionNames.filter(n => n !== f.name)]}
+                value={fWithMovies.shadowedBy || ''}
+                options={['', ...allFactionNames.filter(n => n !== fWithMovies.name)]}
                 onChange={v => set('shadowedBy', v || undefined)}
               />
+            </div>
+          </div>
+
+          {/* Faction Movies (descr_faction_movies.xml) */}
+          <div>
+            <div className="text-[9px] text-slate-500 uppercase font-semibold mb-1 flex items-center">
+              Faction Movies (data/fmv/)
+              <InfoTooltip text="Paths relative to data/fmv/. Missing .bik files can cause a crash. The game first checks the mod folder, then falls back to the base M2TW data/fmv/." />
+            </div>
+            <div className="space-y-1">
+              {['intro', 'victory', 'defeat', 'death'].map(field => (
+                <div key={field} className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-slate-500 w-12 shrink-0 font-mono">{field}</span>
+                  <input
+                    value={f.movies?.[field] || ''}
+                    onChange={e => set('movies', { ...(f.movies || {}), [field]: e.target.value })}
+                    placeholder={`faction/${f.name}_${field}.bik`}
+                    className="flex-1 h-5 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono placeholder-slate-700"
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
@@ -513,6 +543,7 @@ function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames
 export default function FactionsCampaignTab({
   stratData, factionColors, onStratDataChange,
   winConditions, onWinConditionsChange,
+  factionMovies, onFactionMoviesChange,
   regionNames, units,
 }) {
   const [subTab, setSubTab] = useState('factions');
@@ -528,6 +559,10 @@ export default function FactionsCampaignTab({
     if (!stratData) return;
     const factions = (stratData.factions || []).map(f => f.name === name ? updatedFaction : f);
     onStratDataChange({ ...stratData, factions });
+  };
+
+  const handleMoviesChange = (factionName, movies) => {
+    onFactionMoviesChange?.({ ...(factionMovies || {}), [factionName]: movies });
   };
 
   const filteredFactions = useMemo(() =>
@@ -565,6 +600,8 @@ export default function FactionsCampaignTab({
                   regionNames={regionNames}
                   units={units}
                   onUpdate={handleFactionUpdate}
+                  factionMovies={factionMovies}
+                  onMoviesChange={handleMoviesChange}
                 />
               ))}
             </div>
