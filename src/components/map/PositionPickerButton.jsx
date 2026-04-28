@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { MapPin } from 'lucide-react';
 
 /**
- * A small "📍" button next to position fields.
- * When onPickFromMap is provided, clicking it sets a pending pick mode in the parent
- * and the parent calls back with {x, y} when the user clicks the map.
- *
- * If no map pick is available, it just fills in the X/Y fields directly.
+ * X/Y coordinate input with optional map-pick button.
+ * Press Enter in either field or click the 📍 button to commit.
+ * No "+" button — Enter key or map pick is the commit action.
  */
 export default function PositionPickerButton({ onAdd, onPickFromMap }) {
   const [x, setX] = useState('');
@@ -20,17 +18,19 @@ export default function PositionPickerButton({ onAdd, onPickFromMap }) {
     }
   };
 
+  const onKey = (e) => { if (e.key === 'Enter') commit(); };
+
   return (
     <div className="flex gap-1 items-center">
       <input
-        type="number" value={x} onChange={e => setX(e.target.value)} placeholder="X"
+        type="number" value={x} onChange={e => setX(e.target.value)} onKeyDown={onKey} placeholder="X"
         className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono"
       />
       <input
-        type="number" value={y} onChange={e => setY(e.target.value)} placeholder="Y"
+        type="number" value={y} onChange={e => setY(e.target.value)} onKeyDown={onKey} placeholder="Y"
         className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono"
       />
-      {onPickFromMap && (
+      {onPickFromMap ? (
         <button
           onClick={() => onPickFromMap((px, py) => { onAdd(`${px}, ${py}`); })}
           title="Pick from map"
@@ -38,11 +38,13 @@ export default function PositionPickerButton({ onAdd, onPickFromMap }) {
         >
           <MapPin className="w-2.5 h-2.5" />
         </button>
+      ) : (
+        <button
+          onClick={commit}
+          title="Add position"
+          className="h-5 px-1.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100 text-[9px] shrink-0"
+        >↵</button>
       )}
-      <button
-        onClick={commit}
-        className="h-5 px-1.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100 text-[9px] shrink-0"
-      >+</button>
     </div>
   );
 }

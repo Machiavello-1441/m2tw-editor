@@ -27,11 +27,18 @@ function getHistoricEventStrings() {
         return { map, fname, entries: binData.entries || [] };
       }
     }
-    // Also try sessionStorage
-    const raw = sessionStorage.getItem('m2tw_historic_events_strings');
-    if (raw) return { map: JSON.parse(raw), fname: null, entries: [] };
   } catch {}
   return { map: {}, fname: null, entries: [] };
+}
+
+// Parse culture list from loaded descr_sm_factions.txt
+function getCultureList() {
+  try {
+    const raw = sessionStorage.getItem('m2tw_factions_raw') || localStorage.getItem('m2tw_factions_file') || '';
+    const cultures = [...raw.matchAll(/^culture\s+(\S+)/gim)].map(m => m[1]);
+    return [...new Set(cultures)].filter(Boolean);
+  } catch {}
+  return [];
 }
 
 function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
@@ -40,6 +47,8 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
   const [pendingDataUrl, setPendingDataUrl] = useState(null);
   const [imgW, setImgW] = useState(256);
   const [imgH, setImgH] = useState(256);
+  // Selected culture for image export ('all' means saved generically; specific culture saves to that culture's folder)
+  const [imgCulture, setImgCulture] = useState('all');
   const fileRef = useRef();
 
   const ev = event;
@@ -50,6 +59,8 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
 
   // Strings from bin store
   const { map: stringsMap } = useMemo(() => getHistoricEventStrings(), []);
+  const cultureList = useMemo(() => getCultureList(), []);
+
   const nameUpper = (ev.name || '').toUpperCase();
   const titleKey = `${nameUpper}_TITLE`;
   const bodyKey = `${nameUpper}_BODY`;
@@ -57,7 +68,6 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
   const titleFromBin = stringsMap[titleKey] || '';
   const bodyFromBin = stringsMap[bodyKey] || '';
 
-  // Title / body: stored on the event object for editing, fall back to bin store
   const titleValue = ev._title !== undefined ? ev._title : titleFromBin;
   const bodyValue = ev._body !== undefined ? ev._body : bodyFromBin;
 
@@ -76,7 +86,6 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
   const handleCropConfirm = (dataUrl, canvas) => {
     setCropOpen(false);
     setPendingDataUrl(null);
-    // Store the canvas pixel data as RGBA array for TGA export
     const ctx = canvas.getContext('2d');
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     set('_imageData', { data: Array.from(imgData.data), width: canvas.width, height: canvas.height, dataUrl });
@@ -87,9 +96,19 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
     if (!img) return;
     const clampedData = new Uint8ClampedArray(img.data);
     const blob = exportTGA(clampedData, img.width, img.height);
+    // Path hint: data/ui/[culture]/eventpics/[name].tga or data/ui/eventpics/[name].tga for all
     const fname = `${ev.name || 'event'}.tga`;
     downloadBlob(blob, fname);
   };
+
+  // Derive export path hint for display
+  const exportPathHint = useMemo(() => {
+    const name = ev.name || 'event_name';
+    if (imgCulture === 'all') {
+      return `data\\ui\\[culture]\\eventpics\\${name}.tga  (copy to ALL cultures)`;
+    }
+    return `data\\ui\\${imgCulture}\\eventpics\\${name}.tga`;
+  }, [imgCulture, ev.name]);
 
   return (
     <div className="rounded border border-slate-700/40 bg-slate-900/20">
@@ -98,7 +117,7 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
         <span className="text-base shrink-0">{EVENT_ICONS[ev.eventType] || '📌'}</span>
         <span className={`text-[9px] font-mono shrink-0 ${ev.eventType === 'historic' ? 'text-amber-500' : 'text-red-400'}`}>{ev.eventType}</span>
         <span className="text-[11px] font-mono flex-1 truncate text-slate-200">{ev.name || '—'}</span>
-        <span className="text-[9px] text-slate-500 font-mono shrink-0">yr {ev.date}</span>
+        <span className="text-[9px] text-slate-500 font-mono shrink-0">turn {ev.date}</span>
         <button onClick={e => { e.stopPropagation(); onDelete(idx); }}
           className="p-0.5 text-slate-600 hover:text-red-400 transition-colors">
           <Trash2 className="w-3 h-3" />
@@ -151,9 +170,9 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
             />
           </div>
 
-          {/* Date */}
+          {/* Turn number */}
           <div>
-            <span className="text-[9px] text-slate-500">Date (year offset, or range "128 144")</span>
+            <span className="text-[9px] text-slate-500">Turn number</span>
             <input value={ev.date} onChange={e => set('date', e.target.value)}
               placeholder="50"
               className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
@@ -168,45 +187,69 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
           </div>
 
           {/* Picture / Image */}
-          <div>
-            <div className="flex items-center gap-1 mb-1">
-              <span className="text-[9px] text-slate-500 uppercase font-semibold">Picture (.tga)</span>
-              <div className="flex gap-1 ml-auto">
-                {ev._imageData && (
-                  <button onClick={handleExportImage}
-                    className="flex items-center gap-0.5 h-5 px-1.5 rounded bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/40 text-[9px] transition-colors">
-                    <Download className="w-2.5 h-2.5" /> Export .tga
-                  </button>
-                )}
-                {ev._imageData && (
-                  <button onClick={() => set('_imageData', null)}
-                    className="h-5 px-1 rounded bg-red-800/20 border border-red-600/30 text-red-400 hover:bg-red-800/40 text-[9px]">
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                )}
-                <label className="cursor-pointer flex items-center gap-0.5 h-5 px-1.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100 text-[9px]">
-                  <Upload className="w-2.5 h-2.5" />
-                  {ev._imageData ? 'Replace' : 'Upload'}
-                  <input ref={fileRef} type="file" accept="image/*,.tga" className="hidden" onChange={handleImageFile} />
-                </label>
-              </div>
-            </div>
-            {/* Size inputs */}
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-[9px] text-slate-600">Size:</span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-slate-500 uppercase font-semibold flex-1">Picture (.tga)</span>
+              {/* Size inputs */}
               <input type="number" value={imgW} onChange={e => setImgW(parseInt(e.target.value) || 256)} min={1} max={1024}
-                className="w-14 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
+                className="w-12 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono text-center" title="Width" />
               <span className="text-[9px] text-slate-600">×</span>
               <input type="number" value={imgH} onChange={e => setImgH(parseInt(e.target.value) || 256)} min={1} max={1024}
-                className="w-14 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono" />
+                className="w-12 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono text-center" title="Height" />
               <span className="text-[8px] text-slate-700 font-mono">px</span>
             </div>
-            {ev._imageData ? (
-              <img src={ev._imageData.dataUrl} alt="event" className="w-full max-h-24 object-contain rounded border border-slate-600/40" />
-            ) : (
-              <div className="flex items-center justify-center h-12 rounded border border-dashed border-slate-700/40 bg-slate-800/20">
-                <Image className="w-4 h-4 text-slate-700" />
-              </div>
+
+            {/* Culture selector */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-slate-500 shrink-0">Visible to culture:</span>
+              <select value={imgCulture} onChange={e => setImgCulture(e.target.value)}
+                className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                <option value="all">all cultures (copy to each)</option>
+                {cultureList.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            {imgCulture !== 'all' && (
+              <p className="text-[8px] text-amber-400 font-mono leading-tight">
+                ⚠ Must also be placed in all other cultures or the game will crash.
+              </p>
+            )}
+
+            {/* Image area with upload inside */}
+            <div
+              className="relative rounded border border-dashed border-slate-600/50 bg-slate-800/20 overflow-hidden"
+              style={{ minHeight: '80px' }}
+            >
+              {ev._imageData ? (
+                <>
+                  <img src={ev._imageData.dataUrl} alt="event" className="w-full max-h-32 object-contain" />
+                  {/* Overlay buttons */}
+                  <div className="absolute top-1 right-1 flex gap-1">
+                    <button onClick={handleExportImage}
+                      className="flex items-center gap-0.5 h-5 px-1.5 rounded bg-amber-600/80 border border-amber-500/60 text-amber-100 hover:bg-amber-600 text-[9px] transition-colors shadow">
+                      <Download className="w-2.5 h-2.5" /> .tga
+                    </button>
+                    <label className="cursor-pointer flex items-center gap-0.5 h-5 px-1.5 rounded bg-slate-700/80 border border-slate-500/60 text-slate-200 hover:text-white text-[9px] shadow">
+                      <Upload className="w-2.5 h-2.5" /> Replace
+                      <input ref={fileRef} type="file" accept="image/*,.tga" className="hidden" onChange={handleImageFile} />
+                    </label>
+                    <button onClick={() => set('_imageData', null)}
+                      className="h-5 w-5 flex items-center justify-center rounded bg-red-800/80 border border-red-600/60 text-red-200 hover:bg-red-700 shadow">
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <label className="cursor-pointer flex flex-col items-center justify-center gap-1 h-20 w-full text-slate-600 hover:text-slate-400 transition-colors">
+                  <Image className="w-6 h-6" />
+                  <span className="text-[9px]">Click to upload image</span>
+                  <input ref={fileRef} type="file" accept="image/*,.tga" className="hidden" onChange={handleImageFile} />
+                </label>
+              )}
+            </div>
+
+            {/* Export path hint */}
+            {ev._imageData && (
+              <p className="text-[8px] text-slate-600 font-mono leading-tight break-all">{exportPathHint}</p>
             )}
           </div>
 
@@ -266,9 +309,8 @@ export default function CampaignEventsTab({ events, onEventsChange, onPickFromMa
     downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_events.txt');
   };
 
-  // Export updated strings.bin with any edited title/body fields
   const handleExportStringsBin = () => {
-    const { map: existing, entries: existingEntries, fname } = getHistoricEventStrings();
+    const { map: existing, fname } = getHistoricEventStrings();
     const updated = { ...existing };
     for (const ev of (events || [])) {
       const nameUpper = (ev.name || '').toUpperCase();
@@ -282,19 +324,14 @@ export default function CampaignEventsTab({ events, onEventsChange, onPickFromMa
 
   const hasStringsEdits = (events || []).some(ev => ev._title !== undefined || ev._body !== undefined);
 
-  // Sort by date for display (non-destructive)
-  const sorted = [...(events || [])].sort((a, b) => {
-    const da = parseInt(a.date) || 0;
-    const db = parseInt(b.date) || 0;
-    return da - db;
-  });
+  const sorted = [...(events || [])].sort((a, b) => (parseInt(a.date) || 0) - (parseInt(b.date) || 0));
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Events</p>
-          <p className="text-[9px] text-slate-600 mt-0.5">descr_events.txt — date-triggered events</p>
+          <p className="text-[9px] text-slate-600 mt-0.5">descr_events.txt — turn-triggered events</p>
         </div>
         <div className="flex gap-1 flex-wrap justify-end">
           {hasStringsEdits && (

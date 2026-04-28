@@ -1,14 +1,14 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Download, Upload, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Download, Upload, Trash2, Check, Edit2 } from 'lucide-react';
 import { parseStringsBin, encodeStringsBin } from '../strings/stringsBinCodec';
+import { getStringsBinStore } from '../../lib/stringsBinStore';
 import { downloadBlob } from './tgaExporter';
 
 /**
  * Reads / writes campaign_descriptions.txt.strings.bin
- * Shows:
- *  - [campaignName]_TITLE
- *  - [campaignName]_[FACTION]_TITLE  (for each playable/unlockable/nonplayable faction)
- *  - [campaignName]_[FACTION]_DESCR
+ * Keys follow the pattern: [CAMPAIGNNAME]_TITLE, [CAMPAIGNNAME]_[FACTION]_TITLE, [CAMPAIGNNAME]_[FACTION]_DESCR
+ *
+ * Auto-loads from the stringsBinStore when a matching file is present.
  */
 
 function getCampaignDescStrings() {
@@ -23,14 +23,77 @@ function setCampaignDescStrings(map) {
   try { sessionStorage.setItem('m2tw_campaign_desc_strings', JSON.stringify(map)); } catch {}
 }
 
-export default function CampaignDescriptionsStrings({ stratData }) {
+// Try to auto-load from the strings bin store (loaded via Home/folder import)
+function tryAutoLoadFromStore() {
+  try {
+    const store = getStringsBinStore();
+    for (const [fname, binData] of Object.entries(store)) {
+      if (fname.toLowerCase().includes('campaign_descriptions')) {
+        const map = {};
+        for (const { key, value } of (binData.entries || [])) {
+          if (key) map[key] = value;
+        }
+        return { map, meta: { magic1: binData.magic1 ?? 2, magic2: binData.magic2 ?? 2048 } };
+      }
+    }
+  } catch {}
+  return null;
+}
+
+export default function CampaignDescriptionsStrings({ stratData, onCampaignNameChange }) {
   const fileRef = useRef();
 
-  // The strings map: key -> value
-  const [stringsMap, setStringsMap] = useState(() => getCampaignDescStrings() || {});
-  const [binMeta, setBinMeta] = useState({ magic1: 2, magic2: 2048 });
+  const [stringsMap, setStringsMap] = useState(() => {
+    // Prefer manually loaded data from session, then auto-load from store
+    const session = getCampaignDescStrings();
+    if (session && Object.keys(session).length > 0) return session;
+    const auto = tryAutoLoadFromStore();
+    if (auto) {
+      setCampaignDescStrings(auto.map);
+      return auto.map;
+    }
+    return {};
+  });
 
-  const campaignName = (stratData?.campaignName || 'imperial_campaign').toUpperCase();
+  const [binMeta, setBinMeta] = useState(() => {
+    const auto = tryAutoLoadFromStore();
+    return auto?.meta ?? { magic1: 2, magic2: 2048 };
+  });
+
+  // Campaign name editing
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+
+  const rawCampaignName = stratData?.campaignName || 'imperial_campaign';
+  const campaignName = rawCampaignName.toUpperCase();
+
+  // Auto-load from store when it changes (e.g. after folder import)
+  useEffect(() => {
+    const auto = tryAutoLoadFromStore();
+    if (auto && Object.keys(auto.map).length > 0) {
+      // Only overwrite if session is empty (don't stomp manual edits)
+      const session = getCampaignDescStrings();
+      if (!session || Object.keys(session).length === 0) {
+        setStringsMap(auto.map);
+        setCampaignDescStrings(auto.map);
+        setBinMeta(auto.meta);
+      }
+    }
+  }, []);
+
+  // Listen for strings-bin-updated events (fired when folder is imported)
+  useEffect(() => {
+    const handler = () => {
+      const auto = tryAutoLoadFromStore();
+      if (auto && Object.keys(auto.map).length > 0) {
+        setStringsMap(auto.map);
+        setCampaignDescStrings(auto.map);
+        setBinMeta(auto.meta);
+      }
+    };
+    window.addEventListener('strings-bin-updated', handler);
+    return () => window.removeEventListener('strings-bin-updated', handler);
+  }, []);
 
   const allFactions = useMemo(() => {
     const from = (stratData?.factions || []).map(f => f.name).filter(Boolean);
@@ -42,23 +105,20 @@ export default function CampaignDescriptionsStrings({ stratData }) {
     return [...new Set([...from, ...fromLists])];
   }, [stratData]);
 
-  // Generate the expected keys
   const titleKey = `${campaignName}_TITLE`;
   const factionKeys = useMemo(() => {
-    const keys = [];
-    for (const f of allFactions) {
+    return allFactions.map(f => {
       const fu = f.toUpperCase();
-      keys.push({ faction: f, titleKey: `${campaignName}_${fu}_TITLE`, descrKey: `${campaignName}_${fu}_DESCR` });
-    }
-    return keys;
+      return { faction: f, titleKey: `${campaignName}_${fu}_TITLE`, descrKey: `${campaignName}_${fu}_DESCR` };
+    });
   }, [allFactions, campaignName]);
 
-  // Also show any extra keys from the bin not in the auto-generated list
   const autoKeySet = useMemo(() => {
     const s = new Set([titleKey]);
     for (const { titleKey: tk, descrKey: dk } of factionKeys) { s.add(tk); s.add(dk); }
     return s;
   }, [titleKey, factionKeys]);
+
   const extraKeys = useMemo(() => Object.keys(stringsMap).filter(k => !autoKeySet.has(k)), [stringsMap, autoKeySet]);
 
   const set = (key, value) => {
@@ -93,10 +153,55 @@ export default function CampaignDescriptionsStrings({ stratData }) {
     downloadBlob(new Blob([buf]), 'campaign_descriptions.txt.strings.bin');
   };
 
+  const startEditName = () => {
+    setNameDraft(rawCampaignName);
+    setEditingName(true);
+  };
+  const commitName = () => {
+    const trimmed = nameDraft.trim();
+    if (trimmed && onCampaignNameChange) onCampaignNameChange(trimmed);
+    setEditingName(false);
+  };
+
   const fieldClass = "w-full px-1.5 py-1 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono resize-none";
 
   return (
     <div className="space-y-2">
+      {/* Campaign internal name */}
+      <div className="rounded border border-amber-500/30 bg-amber-900/10 p-2 space-y-1">
+        <p className="text-[9px] text-amber-400 uppercase font-semibold">Campaign Internal Name</p>
+        <p className="text-[8px] text-slate-500 leading-tight">
+          Used as the key prefix for all descriptions strings. Changing it will break existing .bin keys — only change before creating new content.
+        </p>
+        {editingName ? (
+          <div className="flex gap-1 items-center">
+            <input
+              value={nameDraft}
+              onChange={e => setNameDraft(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && commitName()}
+              className="flex-1 h-6 px-1.5 text-[11px] bg-slate-800 border border-amber-500/50 rounded text-amber-200 font-mono"
+              autoFocus
+            />
+            <button onClick={commitName}
+              className="h-6 px-2 rounded bg-green-700/60 border border-green-600/40 text-green-300 hover:bg-green-700/80 text-[10px] flex items-center gap-0.5">
+              <Check className="w-3 h-3" /> Apply
+            </button>
+            <button onClick={() => setEditingName(false)}
+              className="h-6 px-1.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-400 hover:text-slate-200 text-[10px]">
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[12px] font-mono text-amber-300 flex-1">{rawCampaignName}</span>
+            <button onClick={startEditName}
+              className="h-5 px-1.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-400 hover:text-slate-200 text-[9px] flex items-center gap-0.5">
+              <Edit2 className="w-2.5 h-2.5" /> Edit
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <p className="text-[9px] text-slate-500 uppercase font-semibold flex-1">Campaign Descriptions (.strings.bin)</p>
@@ -109,6 +214,12 @@ export default function CampaignDescriptionsStrings({ stratData }) {
           <Download className="w-2.5 h-2.5" /> Export .bin
         </button>
       </div>
+
+      {Object.keys(stringsMap).length === 0 && (
+        <p className="text-[9px] text-slate-600 italic text-center py-1">
+          Auto-loaded when campaign folder is imported, or load manually above.
+        </p>
+      )}
 
       {/* Campaign title */}
       <div className="space-y-0.5">
@@ -157,7 +268,7 @@ export default function CampaignDescriptionsStrings({ stratData }) {
         </div>
       )}
 
-      {/* Extra keys from loaded .bin not covered by auto-generation */}
+      {/* Extra keys */}
       {extraKeys.length > 0 && (
         <div className="space-y-1 pt-1 border-t border-slate-700/40">
           <p className="text-[9px] text-slate-500 uppercase font-semibold">Other Keys ({extraKeys.length})</p>
@@ -177,12 +288,6 @@ export default function CampaignDescriptionsStrings({ stratData }) {
             ))}
           </div>
         </div>
-      )}
-
-      {allFactions.length === 0 && Object.keys(stringsMap).length === 0 && (
-        <p className="text-[9px] text-slate-600 italic text-center py-2">
-          Load descr_strat.txt to generate faction entries, or load campaign_descriptions.txt.strings.bin directly.
-        </p>
       )}
     </div>
   );

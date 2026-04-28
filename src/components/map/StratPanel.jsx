@@ -1216,7 +1216,10 @@ export default function StratPanel({
             <CampaignInfoEditor stratData={stratData} allFactions={allFactions} onStratDataChange={onStratDataChange} />
             {/* Campaign descriptions .strings.bin */}
             <div className="pt-1 border-t border-slate-700/40">
-              <CampaignDescriptionsStrings stratData={stratData} />
+              <CampaignDescriptionsStrings
+              stratData={stratData}
+              onCampaignNameChange={name => onStratDataChange({ ...stratData, campaignName: name })}
+            />
             </div>
           </div>}
 
