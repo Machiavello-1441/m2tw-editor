@@ -266,8 +266,8 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate, fa
                 <div key={field} className="flex items-center gap-1.5">
                   <span className="text-[9px] text-slate-500 w-12 shrink-0 font-mono">{field}</span>
                   <input
-                    value={f.movies?.[field] || ''}
-                    onChange={e => set('movies', { ...(f.movies || {}), [field]: e.target.value })}
+                    value={fWithMovies.movies?.[field] || ''}
+                    onChange={e => set('movies', { ...(fWithMovies.movies || {}), [field]: e.target.value })}
                     placeholder={`faction/${f.name}_${field}.bik`}
                     className="flex-1 h-5 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono placeholder-slate-700"
                   />

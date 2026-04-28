@@ -845,7 +845,8 @@ export default function StratPanel({
 
   const [factionMovies, setFactionMovies] = useState(() => {
     try {
-      const raw = sessionStorage.getItem('m2tw_faction_movies_raw');
+      const raw = sessionStorage.getItem('m2tw_faction_movies_raw')
+        || localStorage.getItem('m2tw_campaign_faction_movies');
       return raw ? parseFactionMovies(raw) : null;
     } catch { return null; }
   });
