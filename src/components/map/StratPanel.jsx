@@ -13,6 +13,10 @@ import NewRegionForm from './NewRegionForm';
 import FactionsCampaignTab from './FactionsCampaignTab';
 import CharactersTab from './CharactersTab';
 import { parseFactionMovies, serializeFactionMovies } from './factionMoviesParser';
+import { parseDisasters, serializeDisasters } from './disastersParser';
+import { parseCampaignEvents, serializeCampaignEvents } from './campaignEventsParser';
+import DisastersTab from './DisastersTab';
+import CampaignEventsTab from './CampaignEventsTab';
 
 // Ensure Windows line endings (CRLF) for all exported .txt files
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
@@ -851,6 +855,28 @@ export default function StratPanel({
     } catch { return null; }
   });
 
+  const [disasters, setDisasters] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_disasters_raw')
+        || localStorage.getItem('m2tw_campaign_disasters');
+      return raw ? parseDisasters(raw) : null;
+    } catch { return null; }
+  });
+
+  const [campaignEvents, setCampaignEvents] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('m2tw_campaign_events_raw')
+        || localStorage.getItem('m2tw_campaign_events');
+      return raw ? parseCampaignEvents(raw) : null;
+    } catch { return null; }
+  });
+
+  const [campaignDescription, setCampaignDescription] = useState(() => {
+    try { return sessionStorage.getItem('m2tw_campaign_description') || localStorage.getItem('m2tw_campaign_description') || ''; } catch { return ''; }
+  });
+
+  const [overviewTab, setOverviewTab] = useState('files');
+
   // Auto-switch to settlements tab when a settlement is selected
   useEffect(() => {
     if (selectedItem?.category === 'settlement') setTab('settlements');
@@ -884,6 +910,20 @@ export default function StratPanel({
       const parsed = parseFactionMovies(text);
       setFactionMovies(parsed);
       try { sessionStorage.setItem('m2tw_faction_movies_raw', text); } catch {}
+    }
+    else if (type === 'disasters') {
+      const parsed = parseDisasters(text);
+      setDisasters(parsed);
+      try { sessionStorage.setItem('m2tw_disasters_raw', text); } catch {}
+    }
+    else if (type === 'events') {
+      const parsed = parseCampaignEvents(text);
+      setCampaignEvents(parsed);
+      try { sessionStorage.setItem('m2tw_campaign_events_raw', text); } catch {}
+    }
+    else if (type === 'description') {
+      setCampaignDescription(text);
+      try { sessionStorage.setItem('m2tw_campaign_description', text); localStorage.setItem('m2tw_campaign_description', text); } catch {}
     }
     e.target.value = '';
   };
@@ -955,9 +995,23 @@ export default function StratPanel({
       const moviesRaw = sessionStorage.getItem('m2tw_faction_movies_raw');
       if (moviesRaw) zip.file(`${basePath}/descr_faction_movies.xml`, moviesRaw);
     }
+    // descr_disasters.txt (goes in maps/base, not campaign folder)
+    if (disasters?.length) {
+      zip.file(`data/world/maps/base/descr_disasters.txt`, toCRLF(serializeDisasters(disasters)));
+    } else {
+      const disastersRaw = sessionStorage.getItem('m2tw_disasters_raw') || localStorage.getItem('m2tw_campaign_disasters');
+      if (disastersRaw) zip.file(`data/world/maps/base/descr_disasters.txt`, toCRLF(disastersRaw));
+    }
+    // descr_events.txt
+    if (campaignEvents?.length) {
+      zip.file(`${basePath}/descr_events.txt`, toCRLF(serializeCampaignEvents(campaignEvents)));
+    }
+    // description.txt
+    if (campaignDescription) {
+      zip.file(`${basePath}/description.txt`, toCRLF(campaignDescription));
+    }
     // Other text files from sessionStorage if present
     const extraFiles = [
-      { key: 'm2tw_events_raw', name: 'descr_events.txt' },
       { key: 'm2tw_mercenaries_raw', name: 'descr_mercenaries.txt' },
       { key: 'm2tw_music_types_raw', name: 'descr_sounds_music_types.txt' },
       { key: 'm2tw_terrain_raw', name: 'descr_terrain.txt' },
@@ -1036,8 +1090,18 @@ export default function StratPanel({
 
         {/* ── Overview tab ── */}
         {tab === 'overview' && <>
-          {/* Campaign Files */}
-          <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
+          {/* Overview sub-tabs */}
+          <div className="flex rounded overflow-hidden border border-slate-700/50 shrink-0 flex-wrap">
+            {[['files','Files'],['settings','Settings'],['overlay','Overlay'],['disasters','Disasters'],['events','Events']].map(([id,label]) => (
+              <button key={id} onClick={() => setOverviewTab(id)}
+                className={`flex-1 py-1 text-[9px] font-semibold border-b-2 transition-colors ${overviewTab === id ? 'bg-amber-600/20 border-amber-500 text-amber-400' : 'bg-slate-800/40 border-transparent text-slate-500 hover:text-slate-300'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Campaign Files sub-tab */}
+          {overviewTab === 'files' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Files</p>
             {/* Text files — load + download inline */}
             {[
@@ -1046,6 +1110,9 @@ export default function StratPanel({
               { label: 'settlement_names', type: 'names', loaded: !!settlementNames, onDl: handleExportNames, ready: !!settlementNames && Object.keys(settlementNames).length > 0, accept: '.txt,.bin,.strings.bin' },
               { label: 'descr_sm_factions.txt', type: 'factions', loaded: !!factionColors, onDl: handleExportFactions, ready: !!factionColors },
               { label: 'descr_faction_movies.xml', type: 'movies', loaded: !!factionMovies, onDl: () => { if (factionMovies) downloadBlob(new Blob([serializeFactionMovies(factionMovies)], { type: 'text/xml' }), 'descr_faction_movies.xml'); }, ready: !!factionMovies, accept: '.xml' },
+              { label: 'descr_disasters.txt', type: 'disasters', loaded: !!disasters, onDl: () => { if (disasters) downloadBlob(new Blob([toCRLF(serializeDisasters(disasters))], { type: 'text/plain' }), 'descr_disasters.txt'); }, ready: !!disasters?.length },
+              { label: 'descr_events.txt', type: 'events', loaded: !!campaignEvents, onDl: () => { if (campaignEvents) downloadBlob(new Blob([toCRLF(serializeCampaignEvents(campaignEvents))], { type: 'text/plain' }), 'descr_events.txt'); }, ready: !!campaignEvents?.length },
+              { label: 'description.txt', type: 'description', loaded: !!campaignDescription, onDl: () => { if (campaignDescription) downloadBlob(new Blob([toCRLF(campaignDescription)], { type: 'text/plain' }), 'description.txt'); }, ready: !!campaignDescription },
             ].map(({ label, type, loaded, onDl, ready, accept }) => (
               <div key={type} className="flex items-center gap-1.5">
                 <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${loaded ? 'bg-green-400' : 'bg-slate-600'}`} />
@@ -1125,16 +1192,30 @@ export default function StratPanel({
               }`}>
               <FolderDown className="w-3.5 h-3.5" /> Download Campaign Folder (.zip)
             </button>
-          </div>
+          </div>}
 
-          {/* Campaign settings editor */}
-          <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-2">
+          {/* Campaign Settings sub-tab */}
+          {overviewTab === 'settings' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-2">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Settings</p>
+            {/* Description */}
+            <div className="space-y-1">
+              <p className="text-[9px] text-slate-500 uppercase font-semibold">Campaign Description (description.txt)</p>
+              <textarea
+                value={campaignDescription}
+                onChange={e => {
+                  setCampaignDescription(e.target.value);
+                  try { sessionStorage.setItem('m2tw_campaign_description', e.target.value); localStorage.setItem('m2tw_campaign_description', e.target.value); } catch {}
+                }}
+                placeholder="Enter the campaign description text…"
+                rows={4}
+                className="w-full px-2 py-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono resize-y placeholder-slate-600"
+              />
+            </div>
             <CampaignInfoEditor stratData={stratData} allFactions={allFactions} onStratDataChange={onStratDataChange} />
-          </div>
+          </div>}
 
-          {/* Category visibility */}
-          <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
+          {/* Map Overlay sub-tab */}
+          {overviewTab === 'overlay' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Map Overlay</p>
             {CATEGORIES.map(cat => {
               const visible = visibleCategories?.has(cat.id) ?? true;
@@ -1148,10 +1229,10 @@ export default function StratPanel({
                 </button>
               );
             })}
-          </div>
+          </div>}
 
           {/* Add item (resources + fortifications only; characters moved to Characters tab) */}
-          <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
+          {overviewTab === 'overlay' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Add to Map (click to place)</p>
             <div className="flex gap-1 flex-wrap">
               {CATEGORIES.filter(c => c.id !== 'settlement' && c.id !== 'character').map(cat => (
@@ -1219,10 +1300,34 @@ export default function StratPanel({
                 </button>
               </div>
             )}
-          </div>
+          </div>}
+
+          {/* Disasters sub-tab */}
+          {overviewTab === 'disasters' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5">
+            <DisastersTab
+              disasters={disasters}
+              onDisastersChange={d => {
+                setDisasters(d);
+                try { sessionStorage.setItem('m2tw_disasters_raw', serializeDisasters(d)); } catch {}
+              }}
+              regionNames={regionNames}
+            />
+          </div>}
+
+          {/* Events sub-tab */}
+          {overviewTab === 'events' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5">
+            <CampaignEventsTab
+              events={campaignEvents}
+              onEventsChange={ev => {
+                setCampaignEvents(ev);
+                try { sessionStorage.setItem('m2tw_campaign_events_raw', serializeCampaignEvents(ev)); } catch {}
+              }}
+              regionNames={regionNames}
+            />
+          </div>}
 
           {/* Selected item — with inline editor for forts and resources */}
-          {selectedItem && (
+          {overviewTab === 'overlay' && selectedItem && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-900/10 p-2.5 space-y-1.5">
               <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">Selected</p>
               <div className="flex items-center gap-2">
@@ -1250,6 +1355,7 @@ export default function StratPanel({
             </div>
           )}
         </>}
+
 
         {/* ── Factions tab ── */}
         {tab === 'factions' && (

@@ -323,6 +323,12 @@ export default function Home() {
         baseMapFiles.push(file);
         continue;
       }
+      // descr_disasters.txt lives in maps/base/
+      if (name === 'descr_disasters.txt' && pathLower.includes('/maps/base/')) {
+        const txt = await readText(file);
+        try { localStorage.setItem('m2tw_campaign_disasters', txt); sessionStorage.setItem('m2tw_disasters_raw', txt); } catch {}
+        continue;
+      }
 
       // Imperial campaign files (data\world\maps\campaign\imperial_campaign\*)
       const CAMPAIGN_MAP_TXTS = ['descr_strat.txt', 'descr_regions.txt', 'descr_mercenaries.txt', 'descr_win_conditions.txt', 'campaign_script.txt', 'descr_event.txt', 'descr_events.txt'];
@@ -334,7 +340,10 @@ export default function Home() {
           'campaign_script.txt': 'm2tw_campaign_script',
           'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
           'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
-          'descr_faction_movies.xml': 'm2tw_campaign_faction_movies'
+          'descr_faction_movies.xml': 'm2tw_campaign_faction_movies',
+          'descr_events.txt': 'm2tw_campaign_events',
+          'descr_event.txt': 'm2tw_campaign_events',
+          'description.txt': 'm2tw_campaign_description',
         };
         const csKey = CAMPAIGN_STORE_MAP[name];
         if (csKey) {
@@ -699,6 +708,19 @@ export default function Home() {
         if (name === 'descr_faction_movies.xml') {
           try {sessionStorage.setItem('m2tw_faction_movies_raw', txt);} catch {}
         }
+        if (name === 'descr_events.txt' || name === 'descr_event.txt') {
+          try {sessionStorage.setItem('m2tw_campaign_events_raw', txt);} catch {}
+        }
+        if (name === 'description.txt') {
+          try {sessionStorage.setItem('m2tw_campaign_description', txt);} catch {}
+        }
+      }
+
+      // descr_disasters.txt lives in maps/base/
+      if (name === 'descr_disasters.txt' && pathLower.includes('/maps/base/')) {
+        const txt = await readText(file);
+        try { localStorage.setItem('m2tw_campaign_disasters', txt); sessionStorage.setItem('m2tw_disasters_raw', txt); } catch {}
+        continue;
       }
 
       const extraKey = CAMPAIGN_EXTRA_STORE[name];
