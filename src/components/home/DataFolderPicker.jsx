@@ -120,8 +120,9 @@ export default function DataFolderPicker({ onLoad, loading }) {
     }
     setChecked(initChecked);
     setScanned({ byCategory, allFiles: files, directCampaigns, customCampaigns, uiFolders });
-    // All campaign folders (direct + custom) start checked
-    setSelectedCampaigns(new Set([...directCampaigns, ...customCampaigns]));
+    // Pre-select only the first detected campaign (radio: one at a time)
+    const allCampaigns = [...directCampaigns, ...customCampaigns];
+    setSelectedCampaigns(allCampaigns.length > 0 ? new Set([allCampaigns[0]]) : new Set());
     setSelectedUiFolders(new Set(uiFolders));
     setExpanded({});
     setExpandedCampaign(new Set());
@@ -131,10 +132,10 @@ export default function DataFolderPicker({ onLoad, loading }) {
   const toggleCat = (cat) => setChecked(prev => ({ ...prev, [cat]: !prev[cat] }));
   const toggleExpand = (cat) => setExpanded(prev => ({ ...prev, [cat]: !prev[cat] }));
 
+  // Only one campaign folder at a time (radio behaviour)
   const toggleCampaign = (name) => setSelectedCampaigns(prev => {
-    const next = new Set(prev);
-    if (next.has(name)) next.delete(name); else next.add(name);
-    return next;
+    if (prev.has(name)) return new Set(); // deselect
+    return new Set([name]);              // select only this one
   });
 
   const toggleUiFolder = (name) => setSelectedUiFolders(prev => {
@@ -339,7 +340,7 @@ export default function DataFolderPicker({ onLoad, loading }) {
                             );
                           })()}
 
-                          {/* Direct campaign folders (e.g. imperial_campaign) — checkboxes */}
+                          {/* Direct campaign folders (e.g. imperial_campaign) — radio */}
                           {scanned.directCampaigns.map(folder => {
                             const folderFiles = directCampaignFiles(folder);
                             const isExp = expandedCampaign.has(folder);
@@ -347,7 +348,8 @@ export default function DataFolderPicker({ onLoad, loading }) {
                               <div key={folder}>
                                 <div className="flex items-center gap-2">
                                   <input
-                                    type="checkbox"
+                                    type="radio"
+                                    name="campaign_select"
                                     checked={selectedCampaigns.has(folder)}
                                     onChange={() => toggleCampaign(folder)}
                                     className="accent-primary w-3 h-3 shrink-0"
@@ -367,10 +369,10 @@ export default function DataFolderPicker({ onLoad, loading }) {
                             );
                           })}
 
-                          {/* Custom sub-folders — individually selectable */}
+                          {/* Custom sub-folders — radio (one at a time) */}
                           {scanned.customCampaigns.length > 0 && (
                             <>
-                              <p className="text-[10px] text-muted-foreground pt-1 pb-0.5 border-t border-border mt-1">custom/ sub-folders — select to include:</p>
+                              <p className="text-[10px] text-muted-foreground pt-1 pb-0.5 border-t border-border mt-1">custom/ sub-folders — select one:</p>
                               {scanned.customCampaigns.map(folder => {
                                 const folderFiles = customCampaignFiles(folder);
                                 const isExp = expandedCampaign.has(`custom:${folder}`);
@@ -378,7 +380,8 @@ export default function DataFolderPicker({ onLoad, loading }) {
                                   <div key={folder}>
                                     <div className="flex items-center gap-2">
                                       <input
-                                        type="checkbox"
+                                        type="radio"
+                                        name="campaign_select"
                                         checked={selectedCampaigns.has(folder)}
                                         onChange={() => toggleCampaign(folder)}
                                         className="accent-primary w-3 h-3 shrink-0"
