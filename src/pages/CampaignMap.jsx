@@ -67,7 +67,7 @@ export default function CampaignMap() {
   const [stratData, setStratDataRaw] = useState(() => {
     try {
       const raw = sessionStorage.getItem('m2tw_strat_raw');
-      if (raw) {
+      if (raw && raw.length < 20_000_000) { // guard against absurdly large files
         const p = parseDescrStrat(raw);
         // Merge any persisted overlay items (includes newly added items from previous session)
         const savedOverlay = sessionStorage.getItem('m2tw_overlay_items_json');
@@ -82,7 +82,10 @@ export default function CampaignMap() {
         }
         return p;
       }
-    } catch {}
+    } catch (e) {
+      console.error('[CampaignMap] Failed to restore strat from sessionStorage:', e);
+      try { sessionStorage.removeItem('m2tw_strat_raw'); } catch {}
+    }
     return null;
   });
   const [regionsData, setRegionsDataRaw] = useState(() => {
@@ -91,8 +94,11 @@ export default function CampaignMap() {
       const savedJson = sessionStorage.getItem('m2tw_regions_data_json');
       if (savedJson) return JSON.parse(savedJson);
       const raw = sessionStorage.getItem('m2tw_regions_raw');
-      if (raw) return parseDescrRegions(raw);
-    } catch {}
+      if (raw && raw.length < 5_000_000) return parseDescrRegions(raw);
+    } catch (e) {
+      console.error('[CampaignMap] Failed to restore regions from sessionStorage:', e);
+      try { sessionStorage.removeItem('m2tw_regions_data_json'); sessionStorage.removeItem('m2tw_regions_raw'); } catch {}
+    }
     return null;
   });
   const [settlementNames, setSettlementNamesRaw] = useState(() => {
@@ -116,8 +122,11 @@ export default function CampaignMap() {
       if (savedOverlay) return JSON.parse(savedOverlay);
       // Fall back to parsing strat raw
       const raw = sessionStorage.getItem('m2tw_strat_raw');
-      if (raw) { const p = parseDescrStrat(raw); return p.items || []; }
-    } catch {}
+      if (raw && raw.length < 20_000_000) { const p = parseDescrStrat(raw); return p.items || []; }
+    } catch (e) {
+      console.error('[CampaignMap] Failed to restore overlayItems:', e);
+      try { sessionStorage.removeItem('m2tw_overlay_items_json'); } catch {}
+    }
     return [];
   });
   const [selectedItem, setSelectedItem] = useState(null);
