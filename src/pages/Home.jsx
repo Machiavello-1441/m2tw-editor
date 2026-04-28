@@ -574,15 +574,23 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, base_map: 'ok' }));
     }
 
-    // Auto-load portrait images from data\ui\[faction]\portraits\
+    // Auto-load portrait images from data\ui\custom_portraits\[portrait_name]\portrait_*.tga
     if (portraitTgaFiles.length > 0) {
       const portraits = { ...(window._m2tw_portraits || {}) };
       for (const file of portraitTgaFiles) {
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) {
+          const pathLower2 = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
           const baseName = file.name.replace(/\.tga$/i, '').toLowerCase();
-          portraits[baseName] = dataUrl;
+          // Extract portrait folder name from path: custom_portraits/[folder]/portrait_*.tga
+          const match = pathLower2.match(/custom_portraits\/([^/]+)\//);
+          if (match) {
+            // Key: "folderName/portrait_young" etc.
+            portraits[`${match[1]}/${baseName}`] = dataUrl;
+          } else {
+            portraits[baseName] = dataUrl;
+          }
         }
       }
       window._m2tw_portraits = portraits;
