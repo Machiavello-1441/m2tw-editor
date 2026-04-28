@@ -330,11 +330,12 @@ export default function Home() {
         continue;
       }
 
-      // Imperial campaign files (data\world\maps\campaign\imperial_campaign\*)
-      const CAMPAIGN_MAP_TXTS = ['descr_strat.txt', 'descr_regions.txt', 'descr_mercenaries.txt', 'descr_win_conditions.txt', 'campaign_script.txt', 'descr_event.txt', 'descr_events.txt'];
-      if (CAMPAIGN_MAP_TXTS.includes(name) && pathLower.includes('/maps/campaign/')) {
+      // Campaign map text + TGA files (base, imperial, or custom/* subfolders)
+      const CAMPAIGN_MAP_TXTS = ['descr_strat.txt', 'descr_regions.txt', 'descr_mercenaries.txt', 'descr_win_conditions.txt', 'campaign_script.txt', 'descr_event.txt', 'descr_events.txt', 'description.txt', 'descr_faction_movies.xml', 'descr_disasters.txt'];
+      const inCampaignPath = pathLower.includes('/maps/campaign/') || pathLower.includes('/maps/base/');
+      if ((CAMPAIGN_MAP_TXTS.includes(name) || name.endsWith('.tga')) && inCampaignPath) {
         baseMapFiles.push(file);
-        // Also store campaign text files in localStorage for map editor
+        // Store campaign text files in localStorage/sessionStorage for map editor
         const CAMPAIGN_STORE_MAP = {
           'descr_strat.txt': 'm2tw_campaign_strat',
           'campaign_script.txt': 'm2tw_campaign_script',
@@ -344,25 +345,32 @@ export default function Home() {
           'descr_events.txt': 'm2tw_campaign_events',
           'descr_event.txt': 'm2tw_campaign_events',
           'description.txt': 'm2tw_campaign_description',
+          'descr_disasters.txt': 'm2tw_campaign_disasters',
         };
         const csKey = CAMPAIGN_STORE_MAP[name];
-        if (csKey) {
+        if (csKey && !name.endsWith('.tga')) {
           const csTxt = await readText(file);
-          try {localStorage.setItem(csKey, csTxt);} catch {}
+          try { localStorage.setItem(csKey, csTxt); } catch {}
           if (name === 'campaign_script.txt') loadCampaignScript(csTxt);
-          // Mirror to sessionStorage so CampaignMap editor can pick them up immediately
           if (name === 'descr_win_conditions.txt') {
             try { sessionStorage.setItem('m2tw_win_conditions_raw', csTxt); } catch {}
           }
           if (name === 'descr_faction_movies.xml') {
             try { sessionStorage.setItem('m2tw_faction_movies_raw', csTxt); } catch {}
           }
+          if (name === 'descr_events.txt' || name === 'descr_event.txt') {
+            try { sessionStorage.setItem('m2tw_campaign_events_raw', csTxt); } catch {}
+          }
+          if (name === 'description.txt') {
+            try { sessionStorage.setItem('m2tw_campaign_description', csTxt); localStorage.setItem('m2tw_campaign_description', csTxt); } catch {}
+          }
+          if (name === 'descr_disasters.txt') {
+            try { sessionStorage.setItem('m2tw_disasters_raw', csTxt); } catch {}
+          }
+          if (name === 'descr_mercenaries.txt') {
+            try { sessionStorage.setItem('m2tw_mercenaries_raw', csTxt); } catch {}
+          }
         }
-        continue;
-      }
-      // Campaign TGA files
-      if (name.endsWith('.tga') && pathLower.includes('/maps/campaign/')) {
-        baseMapFiles.push(file);
         continue;
       }
 
@@ -668,7 +676,11 @@ export default function Home() {
       'campaign_script.txt': 'm2tw_campaign_script',
       'descr_mercenaries.txt': 'm2tw_campaign_mercenaries',
       'descr_win_conditions.txt': 'm2tw_campaign_win_conditions',
-      'descr_faction_movies.xml': 'm2tw_campaign_faction_movies'
+      'descr_faction_movies.xml': 'm2tw_campaign_faction_movies',
+      'descr_events.txt': 'm2tw_campaign_events',
+      'descr_event.txt': 'm2tw_campaign_events',
+      'description.txt': 'm2tw_campaign_description',
+      'descr_disasters.txt': 'm2tw_campaign_disasters',
     };
 
     // Also store rebel factions + EDB from this folder if present
@@ -699,28 +711,24 @@ export default function Home() {
         const txt = await readText(file);
         try {localStorage.setItem(csKey, txt);} catch {}
         if (name === 'descr_mercenaries.txt') {
-          try {sessionStorage.setItem('m2tw_mercenaries_raw', txt);} catch {}
+          try { sessionStorage.setItem('m2tw_mercenaries_raw', txt); } catch {}
         }
         if (name === 'campaign_script.txt') loadCampaignScript(txt);
         if (name === 'descr_win_conditions.txt') {
-          try {sessionStorage.setItem('m2tw_win_conditions_raw', txt);} catch {}
+          try { sessionStorage.setItem('m2tw_win_conditions_raw', txt); } catch {}
         }
         if (name === 'descr_faction_movies.xml') {
-          try {sessionStorage.setItem('m2tw_faction_movies_raw', txt);} catch {}
+          try { sessionStorage.setItem('m2tw_faction_movies_raw', txt); } catch {}
         }
         if (name === 'descr_events.txt' || name === 'descr_event.txt') {
-          try {sessionStorage.setItem('m2tw_campaign_events_raw', txt);} catch {}
+          try { sessionStorage.setItem('m2tw_campaign_events_raw', txt); } catch {}
         }
         if (name === 'description.txt') {
-          try {sessionStorage.setItem('m2tw_campaign_description', txt);} catch {}
+          try { sessionStorage.setItem('m2tw_campaign_description', txt); localStorage.setItem('m2tw_campaign_description', txt); } catch {}
         }
-      }
-
-      // descr_disasters.txt lives in maps/base/
-      if (name === 'descr_disasters.txt' && pathLower.includes('/maps/base/')) {
-        const txt = await readText(file);
-        try { localStorage.setItem('m2tw_campaign_disasters', txt); sessionStorage.setItem('m2tw_disasters_raw', txt); } catch {}
-        continue;
+        if (name === 'descr_disasters.txt') {
+          try { sessionStorage.setItem('m2tw_disasters_raw', txt); } catch {}
+        }
       }
 
       const extraKey = CAMPAIGN_EXTRA_STORE[name];
