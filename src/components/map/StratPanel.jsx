@@ -413,19 +413,6 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     setEditing(false);
   };
 
-  const addBuilding = (bldName) => {
-    if (!bldName) return;
-    // Store as "treeName levelName" so the serializer outputs "type tree level"
-    const fullName = selectedTree ? `${selectedTree} ${bldName}` : bldName;
-    if (draft.buildings.includes(fullName)) return;
-    setDraft((d) => ({ ...d, buildings: [...d.buildings, fullName] }));
-    setSelectedTree('');
-  };
-
-  const removeBuilding = (bldName) => {
-    setDraft((d) => ({ ...d, buildings: d.buildings.filter((b) => b !== bldName) }));
-  };
-
   // Find city (black pixel) and port (white pixel) positions adjacent to this region's color
   const cityPortPos = useMemo(() => {
     if (!regionInfo || !regionsLayer?.data) return { city: null, port: null };
@@ -598,28 +585,56 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                 </select>
               </div>
 
-              {/* Buildings editor — two-step dropdown */}
+              {/* Buildings editor — ordered list */}
               <div>
                 <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">Buildings</p>
                 {draft.buildings.length > 0 &&
-            <div className="space-y-0.5 mb-1 max-h-24 overflow-y-auto">
-                    {draft.buildings.map((b) =>
-              <div key={b} className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-800/60 rounded text-[10px]">
-                        <span className="text-slate-300 font-mono flex-1 truncate">{b}</span>
-                        <button onClick={() => removeBuilding(b)} className="text-slate-600 hover:text-red-400 shrink-0"><X className="w-2.5 h-2.5" /></button>
+                  <div className="space-y-0.5 mb-1 max-h-36 overflow-y-auto">
+                    {draft.buildings.map((b, idx) => (
+                      <div key={`${b}-${idx}`} className="flex items-center gap-1 px-1 py-0.5 bg-slate-800/60 rounded text-[10px]">
+                        <div className="flex flex-col gap-0 shrink-0">
+                          <button
+                            disabled={idx === 0}
+                            onClick={() => {
+                              const arr = [...draft.buildings];
+                              [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+                              setDraft(d => ({ ...d, buildings: arr }));
+                            }}
+                            className="leading-none text-slate-600 hover:text-slate-300 disabled:opacity-20 disabled:cursor-default">▲</button>
+                          <button
+                            disabled={idx === draft.buildings.length - 1}
+                            onClick={() => {
+                              const arr = [...draft.buildings];
+                              [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
+                              setDraft(d => ({ ...d, buildings: arr }));
+                            }}
+                            className="leading-none text-slate-600 hover:text-slate-300 disabled:opacity-20 disabled:cursor-default">▼</button>
+                        </div>
+                        <span className="text-slate-300 font-mono flex-1 truncate" title={b}>{b}</span>
+                        <button onClick={() => setDraft(d => ({ ...d, buildings: d.buildings.filter((_, j) => j !== idx) }))}
+                          className="text-slate-600 hover:text-red-400 shrink-0"><X className="w-2.5 h-2.5" /></button>
                       </div>
-              )}
+                    ))}
                   </div>
-            }
+                }
                 <div className="grid grid-cols-2 gap-1">
                   <select value={selectedTree} onChange={(e) => setSelectedTree(e.target.value)}
-              className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                     <option value="">{buildingTrees.length ? '— tree —' : 'Load EDB'}</option>
                     {buildingTrees.map(([tree]) => <option key={tree} value={tree}>{tree}</option>)}
                   </select>
-                  <select value="" onChange={(e) => addBuilding(e.target.value)}
-              disabled={!selectedTree}
-              className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 disabled:opacity-40">
+                  <select value="" onChange={(e) => {
+                    const level = e.target.value;
+                    if (!level || !selectedTree) return;
+                    const fullName = `${selectedTree} ${level}`;
+                    // Only add if not already present
+                    if (!draft.buildings.includes(fullName)) {
+                      setDraft(d => ({ ...d, buildings: [...d.buildings, fullName] }));
+                    }
+                    setSelectedTree('');
+                  }}
+                    disabled={!selectedTree}
+                    className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 disabled:opacity-40">
                     <option value="">— level —</option>
                     {treeLevels.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
                   </select>

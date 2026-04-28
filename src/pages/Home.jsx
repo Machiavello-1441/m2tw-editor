@@ -275,6 +275,7 @@ export default function Home() {
     const ancTgaFiles = [];
     const unitTgaFiles = [];
     const bldTgaFiles = [];
+    const portraitTgaFiles = [];
     const baseMapFiles = [];
     const groundTypeTgaFiles = [];
     const resourceTgaFiles = [];
@@ -308,6 +309,8 @@ export default function Home() {
           bldTgaFiles.push(file);
         } else if (pathLower.includes('/ui/') && pathLower.includes('/eventpics/')) {
           eventPicFiles.push(file);
+        } else if (pathLower.includes('/ui/') && (pathLower.includes('/portraits/') || pathLower.includes('/portrait/'))) {
+          portraitTgaFiles.push(file);
         } else if (pathLower.includes('/ui/resources/') || pathLower.includes('/ui/resource/')) {
           resourceTgaFiles.push(file);
         } else if (pathLower.includes('/pips/') || pathLower.includes('/religion/')) {
@@ -569,6 +572,21 @@ export default function Home() {
       window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: baseMapFiles, source: 'base' } }));
       setMapFileCount((prev) => prev + baseMapFiles.length);
       setFileStatus((prev) => ({ ...prev, base_map: 'ok' }));
+    }
+
+    // Auto-load portrait images from data\ui\[faction]\portraits\
+    if (portraitTgaFiles.length > 0) {
+      const portraits = { ...(window._m2tw_portraits || {}) };
+      for (const file of portraitTgaFiles) {
+        const buf = await file.arrayBuffer();
+        const dataUrl = decodeTgaToDataUrl(buf);
+        if (dataUrl) {
+          const baseName = file.name.replace(/\.tga$/i, '').toLowerCase();
+          portraits[baseName] = dataUrl;
+        }
+      }
+      window._m2tw_portraits = portraits;
+      window.dispatchEvent(new CustomEvent('load-portraits', { detail: portraits }));
     }
 
     // Auto-load event pics from data\ui\[culture]\eventpics\

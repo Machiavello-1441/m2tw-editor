@@ -3,6 +3,30 @@ import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, 
 import FamilyTreeTab from './FamilyTreeTab';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
+// Small component that shows a character portrait preview and reacts to hot-loaded portrait folders
+function PortraitPreview({ name }) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const h = () => setTick(t => t + 1);
+    window.addEventListener('load-portraits', h);
+    return () => window.removeEventListener('load-portraits', h);
+  }, []);
+  const key = name.toLowerCase().replace(/\.tga$/i, '');
+  const portraits = window._m2tw_portraits || {};
+  const src = portraits[key] || portraits[name] || null;
+  if (src) {
+    return (
+      <img src={src} alt={name}
+        className="mt-1 rounded border border-slate-700/40 max-h-24 object-contain bg-black/40 w-full" />
+    );
+  }
+  return (
+    <p className="text-[8px] text-slate-600 mt-0.5 italic">
+      No preview — load ui/portraits/ folder to see image
+    </p>
+  );
+}
+
 // Types that force female sex
 const FEMALE_ONLY_TYPES = new Set(['princess', 'witch']);
 // Types that force male sex
@@ -489,11 +513,12 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
 
               <div className="grid grid-cols-2 gap-1">
                 {/* Portrait */}
-                <div>
+                <div className="col-span-2">
                   <span className="text-[9px] text-slate-500">Portrait</span>
                   <input value={c.portrait || ''} onChange={e => set('portrait', e.target.value)}
                     placeholder="portrait name"
                     className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                  {c.portrait && <PortraitPreview name={c.portrait} />}
                 </div>
 
                 {/* Label */}
