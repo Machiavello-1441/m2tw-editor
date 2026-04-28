@@ -309,7 +309,7 @@ export default function Home() {
           bldTgaFiles.push(file);
         } else if (pathLower.includes('/ui/') && pathLower.includes('/eventpics/')) {
           eventPicFiles.push(file);
-        } else if (pathLower.includes('/ui/') && (pathLower.includes('/portraits/') || pathLower.includes('/portrait/'))) {
+        } else if (pathLower.includes('/ui/') && (pathLower.includes('/portraits/') || pathLower.includes('/portrait/') || pathLower.includes('/custom_portraits/'))) {
           portraitTgaFiles.push(file);
         } else if (pathLower.includes('/ui/resources/') || pathLower.includes('/ui/resource/')) {
           resourceTgaFiles.push(file);
