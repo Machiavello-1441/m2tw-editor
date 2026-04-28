@@ -945,10 +945,12 @@ export default function StratPanel({
     if (scriptRaw) {
       zip.file(`${basePath}/${scriptName}`, scriptRaw);
     }
-    // descr_sm_factions.txt — stored via sessionStorage raw
-    const factionsRaw = sessionStorage.getItem('m2tw_factions_raw');
-    if (factionsRaw) {
-      zip.file(`${basePath}/descr_sm_factions.txt`, factionsRaw);  
+    // descr_faction_movies.xml
+    if (factionMovies && Object.keys(factionMovies).length > 0) {
+      zip.file(`${basePath}/descr_faction_movies.xml`, serializeFactionMovies(factionMovies));
+    } else {
+      const moviesRaw = sessionStorage.getItem('m2tw_faction_movies_raw');
+      if (moviesRaw) zip.file(`${basePath}/descr_faction_movies.xml`, moviesRaw);
     }
     // Other text files from sessionStorage if present
     const extraFiles = [
@@ -962,13 +964,6 @@ export default function StratPanel({
       const raw = sessionStorage.getItem(key)
         || (key === 'm2tw_win_conditions_raw' ? localStorage.getItem('m2tw_campaign_win_conditions') : null);
       if (raw) zip.file(`${basePath}/${name}`, raw);
-    }
-    // descr_faction_movies.xml
-    if (factionMovies && Object.keys(factionMovies).length > 0) {
-      zip.file(`${basePath}/descr_faction_movies.xml`, serializeFactionMovies(factionMovies));
-    } else {
-      const moviesRaw = sessionStorage.getItem('m2tw_faction_movies_raw');
-      if (moviesRaw) zip.file(`${basePath}/descr_faction_movies.xml`, moviesRaw);
     }
     // TGA map layers
     const tgaLayerMap = {
