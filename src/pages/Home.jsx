@@ -279,6 +279,7 @@ export default function Home() {
     const groundTypeTgaFiles = [];
     const resourceTgaFiles = [];
     const religionPipFiles = [];
+    const eventPicFiles = [];
     const stringsBinFiles = {};
 
     for (const file of files) {
@@ -305,6 +306,8 @@ export default function Home() {
           unitTgaFiles.push(file);
         } else if (pathLower.includes('/ui/') && pathLower.includes('/buildings/')) {
           bldTgaFiles.push(file);
+        } else if (pathLower.includes('/ui/') && pathLower.includes('/eventpics/')) {
+          eventPicFiles.push(file);
         } else if (pathLower.includes('/ui/resources/') || pathLower.includes('/ui/resource/')) {
           resourceTgaFiles.push(file);
         } else if (pathLower.includes('/pips/') || pathLower.includes('/religion/')) {
@@ -566,6 +569,27 @@ export default function Home() {
       window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: baseMapFiles, source: 'base' } }));
       setMapFileCount((prev) => prev + baseMapFiles.length);
       setFileStatus((prev) => ({ ...prev, base_map: 'ok' }));
+    }
+
+    // Auto-load event pics from data\ui\[culture]\eventpics\
+    if (eventPicFiles.length > 0) {
+      const pics = { ...(window._m2tw_event_pics || {}) };
+      for (const file of eventPicFiles) {
+        const buf = await file.arrayBuffer();
+        const dataUrl = decodeTgaToDataUrl(buf);
+        if (dataUrl) {
+          const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
+          // Extract culture name from path: ui/[culture]/eventpics/name.tga
+          const match = pathLower.match(/\/ui\/([^/]+)\/eventpics\//);
+          const culture = match ? match[1] : 'unknown';
+          const baseName = file.name.replace(/\.tga$/i, '').toLowerCase();
+          pics[`${culture}/${baseName}`] = dataUrl;
+          // Also store without culture prefix (last-write wins) for fallback
+          pics[baseName] = dataUrl;
+        }
+      }
+      window._m2tw_event_pics = pics;
+      window.dispatchEvent(new CustomEvent('load-event-pics', { detail: pics }));
     }
 
     // Auto-load building images from data\ui\[culture]\buildings\

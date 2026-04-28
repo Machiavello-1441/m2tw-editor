@@ -1199,6 +1199,12 @@ export default function StratPanel({
           {/* Campaign Settings sub-tab */}
           {overviewTab === 'settings' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-2">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Settings</p>
+            {/* Campaign internal name + descriptions at the very top */}
+            <CampaignDescriptionsStrings
+              stratData={stratData}
+              onCampaignNameChange={name => onStratDataChange({ ...stratData, campaignName: name })}
+            />
+            <div className="border-t border-slate-700/40 pt-2" />
             {/* Description */}
             <div className="space-y-1">
               <p className="text-[9px] text-slate-500 uppercase font-semibold">Campaign Description (description.txt)</p>
@@ -1214,13 +1220,7 @@ export default function StratPanel({
               />
             </div>
             <CampaignInfoEditor stratData={stratData} allFactions={allFactions} onStratDataChange={onStratDataChange} />
-            {/* Campaign descriptions .strings.bin */}
-            <div className="pt-1 border-t border-slate-700/40">
-              <CampaignDescriptionsStrings
-              stratData={stratData}
-              onCampaignNameChange={name => onStratDataChange({ ...stratData, campaignName: name })}
-            />
-            </div>
+
           </div>}
 
           {/* Map Overlay sub-tab */}

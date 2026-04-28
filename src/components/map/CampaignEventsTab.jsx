@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Download, Upload, Image, X } from 'lucide-react';
 import { EVENT_TYPES, serializeCampaignEvents } from './campaignEventsParser';
 import { downloadBlob, exportTGA } from './tgaExporter';
@@ -41,14 +41,24 @@ function getCultureList() {
   return [];
 }
 
+// Get existing event pic data url for a given event name / culture from window store
+function getEventPic(eventName, culture) {
+  try {
+    const store = window._m2tw_event_pics || {};
+    const key = `${culture}/${eventName}`.toLowerCase();
+    return store[key] || store[eventName.toLowerCase()] || null;
+  } catch {}
+  return null;
+}
+
 function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
   const [expanded, setExpanded] = useState(false);
   const [cropOpen, setCropOpen] = useState(false);
   const [pendingDataUrl, setPendingDataUrl] = useState(null);
-  const [imgW, setImgW] = useState(256);
-  const [imgH, setImgH] = useState(256);
-  // Selected culture for image export ('all' means saved generically; specific culture saves to that culture's folder)
-  const [imgCulture, setImgCulture] = useState('all');
+  const [imgW, setImgW] = useState(367);
+  const [imgH, setImgH] = useState(148);
+  // Selected cultures for image visibility — empty set = all cultures
+  const [selectedCultures, setSelectedCultures] = useState(new Set());
   const fileRef = useRef();
 
   const ev = event;
@@ -60,6 +70,18 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
   // Strings from bin store
   const { map: stringsMap } = useMemo(() => getHistoricEventStrings(), []);
   const cultureList = useMemo(() => getCultureList(), []);
+
+  // Toggle a culture in the selectedCultures set
+  const toggleCulture = (culture) => {
+    setSelectedCultures(prev => {
+      const next = new Set(prev);
+      if (next.has(culture)) next.delete(culture); else next.add(culture);
+      return next;
+    });
+  };
+
+  // allCultures selected = empty set (means all); otherwise specific cultures
+  const effectiveCultures = selectedCultures.size === 0 ? ['all'] : [...selectedCultures];
 
   const nameUpper = (ev.name || '').toUpperCase();
   const titleKey = `${nameUpper}_TITLE`;
@@ -91,24 +113,33 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
     set('_imageData', { data: Array.from(imgData.data), width: canvas.width, height: canvas.height, dataUrl });
   };
 
-  const handleExportImage = () => {
+  const handleExportImage = (culture) => {
     const img = ev._imageData;
     if (!img) return;
     const clampedData = new Uint8ClampedArray(img.data);
     const blob = exportTGA(clampedData, img.width, img.height);
-    // Path hint: data/ui/[culture]/eventpics/[name].tga or data/ui/eventpics/[name].tga for all
     const fname = `${ev.name || 'event'}.tga`;
     downloadBlob(blob, fname);
   };
 
-  // Derive export path hint for display
+  // Existing pic from the imported eventpics store — refresh when pics are loaded
+  const [picTick, setPicTick] = useState(0);
+  useEffect(() => {
+    const h = () => setPicTick(t => t + 1);
+    window.addEventListener('load-event-pics', h);
+    return () => window.removeEventListener('load-event-pics', h);
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const existingPic = useMemo(() => getEventPic(ev.name || '', 'all'), [ev.name, picTick]);
+
+  // Derive export path hint
   const exportPathHint = useMemo(() => {
     const name = ev.name || 'event_name';
-    if (imgCulture === 'all') {
-      return `data\\ui\\[culture]\\eventpics\\${name}.tga  (copy to ALL cultures)`;
+    if (selectedCultures.size === 0) {
+      return `data\\ui\\[culture]\\eventpics\\${name}.tga  ← copy to each culture folder`;
     }
-    return `data\\ui\\${imgCulture}\\eventpics\\${name}.tga`;
-  }, [imgCulture, ev.name]);
+    return [...selectedCultures].map(c => `data\\ui\\${c}\\eventpics\\${name}.tga`).join('\n');
+  }, [selectedCultures, ev.name]);
 
   return (
     <div className="rounded border border-slate-700/40 bg-slate-900/20">
@@ -187,44 +218,45 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
           </div>
 
           {/* Picture / Image */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-1">
               <span className="text-[9px] text-slate-500 uppercase font-semibold flex-1">Picture (.tga)</span>
-              {/* Size inputs */}
-              <input type="number" value={imgW} onChange={e => setImgW(parseInt(e.target.value) || 256)} min={1} max={1024}
+              <input type="number" value={imgW} onChange={e => setImgW(parseInt(e.target.value) || 367)} min={1} max={1024}
                 className="w-12 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono text-center" title="Width" />
               <span className="text-[9px] text-slate-600">×</span>
-              <input type="number" value={imgH} onChange={e => setImgH(parseInt(e.target.value) || 256)} min={1} max={1024}
+              <input type="number" value={imgH} onChange={e => setImgH(parseInt(e.target.value) || 148)} min={1} max={1024}
                 className="w-12 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-300 font-mono text-center" title="Height" />
               <span className="text-[8px] text-slate-700 font-mono">px</span>
             </div>
 
-            {/* Culture selector */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] text-slate-500 shrink-0">Visible to culture:</span>
-              <select value={imgCulture} onChange={e => setImgCulture(e.target.value)}
-                className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                <option value="all">all cultures (copy to each)</option>
-                {cultureList.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            {imgCulture !== 'all' && (
-              <p className="text-[8px] text-amber-400 font-mono leading-tight">
-                ⚠ Must also be placed in all other cultures or the game will crash.
-              </p>
+            {/* Culture toggle buttons */}
+            {cultureList.length > 0 && (
+              <div className="space-y-0.5">
+                <span className="text-[9px] text-slate-500">Visible to cultures <span className="text-slate-700">(none selected = all)</span></span>
+                <div className="flex flex-wrap gap-1">
+                  {cultureList.map(c => {
+                    const active = selectedCultures.has(c);
+                    return (
+                      <button key={c} onClick={() => toggleCulture(c)}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono border transition-colors ${active ? 'bg-cyan-600/30 border-cyan-500/60 text-cyan-300' : 'bg-slate-800/60 border-slate-600/40 text-slate-500 hover:text-slate-300'}`}>
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedCultures.size > 0 && selectedCultures.size < cultureList.length && (
+                  <p className="text-[8px] text-amber-400 leading-tight">⚠ Image must exist in ALL culture folders or the game will crash.</p>
+                )}
+              </div>
             )}
 
             {/* Image area with upload inside */}
-            <div
-              className="relative rounded border border-dashed border-slate-600/50 bg-slate-800/20 overflow-hidden"
-              style={{ minHeight: '80px' }}
-            >
+            <div className="relative rounded border border-dashed border-slate-600/50 bg-slate-800/20 overflow-hidden" style={{ minHeight: '72px' }}>
               {ev._imageData ? (
                 <>
-                  <img src={ev._imageData.dataUrl} alt="event" className="w-full max-h-32 object-contain" />
-                  {/* Overlay buttons */}
+                  <img src={ev._imageData.dataUrl} alt="event" className="w-full object-contain" style={{ maxHeight: '100px' }} />
                   <div className="absolute top-1 right-1 flex gap-1">
-                    <button onClick={handleExportImage}
+                    <button onClick={() => handleExportImage()}
                       className="flex items-center gap-0.5 h-5 px-1.5 rounded bg-amber-600/80 border border-amber-500/60 text-amber-100 hover:bg-amber-600 text-[9px] transition-colors shadow">
                       <Download className="w-2.5 h-2.5" /> .tga
                     </button>
@@ -238,9 +270,20 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
                     </button>
                   </div>
                 </>
+              ) : existingPic ? (
+                <>
+                  <img src={existingPic} alt="event (imported)" className="w-full object-contain opacity-70" style={{ maxHeight: '100px' }} />
+                  <div className="absolute top-1 right-1 flex gap-1">
+                    <label className="cursor-pointer flex items-center gap-0.5 h-5 px-1.5 rounded bg-slate-700/80 border border-slate-500/60 text-slate-200 hover:text-white text-[9px] shadow">
+                      <Upload className="w-2.5 h-2.5" /> Replace
+                      <input ref={fileRef} type="file" accept="image/*,.tga" className="hidden" onChange={handleImageFile} />
+                    </label>
+                  </div>
+                  <p className="absolute bottom-0.5 left-1 text-[8px] text-slate-500 italic">from imported files</p>
+                </>
               ) : (
-                <label className="cursor-pointer flex flex-col items-center justify-center gap-1 h-20 w-full text-slate-600 hover:text-slate-400 transition-colors">
-                  <Image className="w-6 h-6" />
+                <label className="cursor-pointer flex flex-col items-center justify-center gap-1 h-[72px] w-full text-slate-600 hover:text-slate-400 transition-colors">
+                  <Image className="w-5 h-5" />
                   <span className="text-[9px]">Click to upload image</span>
                   <input ref={fileRef} type="file" accept="image/*,.tga" className="hidden" onChange={handleImageFile} />
                 </label>
@@ -248,8 +291,8 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
             </div>
 
             {/* Export path hint */}
-            {ev._imageData && (
-              <p className="text-[8px] text-slate-600 font-mono leading-tight break-all">{exportPathHint}</p>
+            {(ev._imageData || existingPic) && (
+              <p className="text-[8px] text-slate-600 font-mono leading-tight break-all whitespace-pre-line">{exportPathHint}</p>
             )}
           </div>
 
