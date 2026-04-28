@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Upload, Download } from 'lucide-react';
 import { DISASTER_TYPES, serializeDisasters } from './disastersParser';
 import { downloadBlob } from './tgaExporter';
+import PositionPickerButton from './PositionPickerButton';
 
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
 
@@ -12,7 +13,7 @@ const DISASTER_ICONS = {
 
 const KNOWN_CLIMATES = ['rocky_desert','desert','semi_arid','mediterranean','central_european','highland','northern_european','alpine','steppe','unused1','swamp'];
 
-function DisasterRow({ disaster, idx, regionNames, onChange, onDelete }) {
+function DisasterRow({ disaster, idx, regionNames, onChange, onDelete, onPickFromMap }) {
   const [expanded, setExpanded] = useState(false);
   const d = disaster;
   const set = (key, val) => onChange(idx, { ...d, [key]: val });
@@ -127,7 +128,7 @@ function DisasterRow({ disaster, idx, regionNames, onChange, onDelete }) {
                 </div>
               ))}
             </div>
-            <PositionInputAdd onAdd={v => addItem('positions', v)} />
+            <PositionPickerButton onAdd={v => addItem('positions', v)} onPickFromMap={onPickFromMap} />
           </div>
         </div>
       )}
@@ -147,22 +148,7 @@ function RegionInputAdd({ onAdd }) {
   );
 }
 
-function PositionInputAdd({ onAdd }) {
-  const [x, setX] = useState('');
-  const [y, setY] = useState('');
-  return (
-    <div className="flex gap-1">
-      <input type="number" value={x} onChange={e => setX(e.target.value)} placeholder="X"
-        className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-      <input type="number" value={y} onChange={e => setY(e.target.value)} placeholder="Y"
-        className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-      <button onClick={() => { if (x && y) { onAdd(`${x}, ${y}`); setX(''); setY(''); } }}
-        className="text-[9px] px-1.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
-    </div>
-  );
-}
-
-export default function DisastersTab({ disasters, onDisastersChange, regionNames }) {
+export default function DisastersTab({ disasters, onDisastersChange, regionNames, onPickFromMap }) {
   const handleChange = (idx, updated) => {
     const arr = [...disasters];
     arr[idx] = updated;
@@ -228,6 +214,7 @@ export default function DisastersTab({ disasters, onDisastersChange, regionNames
             regionNames={regionNames}
             onChange={handleChange}
             onDelete={handleDelete}
+            onPickFromMap={onPickFromMap}
           />
         ))}
       </div>

@@ -136,6 +136,7 @@ export default function CampaignMap() {
   const [regionWizard, setRegionWizard] = useState(null); // { draft, step: 'paint'|'city'|'port' }
   const [pendingRelocate, setPendingRelocate] = useState(null); // { type: 'city'|'port', regionInfo, settlement }
   const [stratPanelOpenItemId, setStratPanelOpenItemId] = useState(null); // double-click to open char
+  const [pendingCoordPick, setPendingCoordPick] = useState(null); // callback(x, y) waiting for map click
 
   // ── Extra data sources for region editor ──────────────────────────────────
   const [rebelFactions, setRebelFactions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_rebel_factions_raw'); return r ? parseDescrRebelFactions(r) : []; } catch { return []; } });
@@ -651,6 +652,14 @@ export default function CampaignMap() {
 
   // ── Canvas click — place strat item OR select region ──────────────────────
   const handleCanvasClick = useCallback((rx, ry) => {
+    // Coordinate pick mode (from disasters/events position picker)
+    if (pendingCoordPick) {
+      const stratY = mapH > 0 ? mapH - 1 - ry : ry;
+      pendingCoordPick(rx, stratY);
+      setPendingCoordPick(null);
+      return;
+    }
+
     // Region wizard: place city or port pixel
     if (regionWizard) {
       if (regionWizard.step === 'city') {
@@ -779,7 +788,7 @@ export default function CampaignMap() {
         }
       });
     }
-  }, [pendingPlace, pendingRelocate, mapH, regionsData, layers, regionWizard, placePixelOnRegions, finalizeNewRegion, overlayItems]);
+  }, [pendingCoordPick, pendingPlace, pendingRelocate, mapH, regionsData, layers, regionWizard, placePixelOnRegions, finalizeNewRegion, overlayItems]);
 
   // Handle relocate pixel request from SettlementRow
   const handleRelocatePixel = useCallback((settlement, type, regionInfo) => {
@@ -989,6 +998,14 @@ export default function CampaignMap() {
           </span>
         )}
 
+        {/* Coordinate pick indicator */}
+        {pendingCoordPick && (
+          <span className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-[10px] font-semibold animate-pulse">
+            📍 Click map to pick coordinate
+            <button onClick={() => setPendingCoordPick(null)} className="ml-1 text-cyan-600 hover:text-cyan-400">✕</button>
+          </span>
+        )}
+
         {/* Pending place indicator */}
         {pendingPlace && (
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-semibold animate-pulse">
@@ -1190,6 +1207,7 @@ export default function CampaignMap() {
                     onReorderSettlements={handleReorderSettlements}
                     openItemId={stratPanelOpenItemId}
                     onOpenItemHandled={() => setStratPanelOpenItemId(null)}
+                    onPickFromMap={(cb) => setPendingCoordPick(() => cb)}
                     />
               </div>
             )}

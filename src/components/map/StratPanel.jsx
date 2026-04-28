@@ -17,6 +17,7 @@ import { parseDisasters, serializeDisasters } from './disastersParser';
 import { parseCampaignEvents, serializeCampaignEvents } from './campaignEventsParser';
 import DisastersTab from './DisastersTab';
 import CampaignEventsTab from './CampaignEventsTab';
+import CampaignDescriptionsStrings from './CampaignDescriptionsStrings';
 
 // Ensure Windows line endings (CRLF) for all exported .txt files
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
@@ -828,6 +829,7 @@ export default function StratPanel({
   onLoadTgaLayer,
   descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onPinCharacter,
   openItemId, onOpenItemHandled,
+  onPickFromMap,
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -1212,6 +1214,10 @@ export default function StratPanel({
               />
             </div>
             <CampaignInfoEditor stratData={stratData} allFactions={allFactions} onStratDataChange={onStratDataChange} />
+            {/* Campaign descriptions .strings.bin */}
+            <div className="pt-1 border-t border-slate-700/40">
+              <CampaignDescriptionsStrings stratData={stratData} />
+            </div>
           </div>}
 
           {/* Map Overlay sub-tab */}
@@ -1311,6 +1317,7 @@ export default function StratPanel({
                 try { sessionStorage.setItem('m2tw_disasters_raw', serializeDisasters(d)); } catch {}
               }}
               regionNames={regionNames}
+              onPickFromMap={onPickFromMap}
             />
           </div>}
 
@@ -1322,7 +1329,7 @@ export default function StratPanel({
                 setCampaignEvents(ev);
                 try { sessionStorage.setItem('m2tw_campaign_events_raw', serializeCampaignEvents(ev)); } catch {}
               }}
-              regionNames={regionNames}
+              onPickFromMap={onPickFromMap}
             />
           </div>}
 
