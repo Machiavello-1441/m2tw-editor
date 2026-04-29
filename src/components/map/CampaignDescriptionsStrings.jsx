@@ -159,7 +159,26 @@ export default function CampaignDescriptionsStrings({ stratData, onCampaignNameC
   };
   const commitName = () => {
     const trimmed = nameDraft.trim();
-    if (trimmed && onCampaignNameChange) onCampaignNameChange(trimmed);
+    if (!trimmed) { setEditingName(false); return; }
+
+    // Duplicate existing keys with old prefix → new prefix (content preserved)
+    if (trimmed !== rawCampaignName && Object.keys(stringsMap).length > 0) {
+      const oldPrefix = rawCampaignName.toUpperCase();
+      const newPrefix = trimmed.toUpperCase();
+      const next = { ...stringsMap };
+      for (const [key, value] of Object.entries(stringsMap)) {
+        if (key.startsWith(oldPrefix + '_') || key === oldPrefix) {
+          const newKey = key.startsWith(oldPrefix + '_')
+            ? newPrefix + '_' + key.slice(oldPrefix.length + 1)
+            : newPrefix;
+          if (!next[newKey]) next[newKey] = value; // only create if not already present
+        }
+      }
+      setStringsMap(next);
+      setCampaignDescStrings(next);
+    }
+
+    if (onCampaignNameChange) onCampaignNameChange(trimmed);
     setEditingName(false);
   };
 
