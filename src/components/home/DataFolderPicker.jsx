@@ -189,21 +189,31 @@ export default function DataFolderPicker({ onLoad, loading }) {
     for (const [cat, files] of Object.entries(scanned.byCategory)) {
       if (!checked[cat]) continue;
       if (cat === 'campaign') {
+        // Separate into base files, selected campaign files
+        const baseFiles = [];
+        const campaignFiles = [];
         for (const file of files) {
           const path = (file.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
           const customMatch = path.match(/\/maps\/campaign\/custom\/([^/]+)\//);
           if (customMatch) {
-            if (selectedCampaigns.has(customMatch[1])) toLoad.push(file);
+            if (selectedCampaigns.has(customMatch[1])) campaignFiles.push(file);
             continue;
           }
           const directMatch = path.match(/\/maps\/campaign\/([^/]+)\//);
           if (directMatch && directMatch[1] !== 'custom') {
-            if (selectedCampaigns.has(directMatch[1])) toLoad.push(file);
+            if (selectedCampaigns.has(directMatch[1])) campaignFiles.push(file);
             continue;
           }
-          // base/ files always included
-          toLoad.push(file);
+          // base/ files
+          baseFiles.push(file);
         }
+        // Custom/direct campaign files supersede base files with the same name
+        const campaignFileNames = new Set(campaignFiles.map(f => f.name.toLowerCase()));
+        for (const f of baseFiles) {
+          if (!campaignFileNames.has(f.name.toLowerCase())) toLoad.push(f);
+        }
+        // Campaign files come after (last-write-wins in processDataFiles, but duplicates already removed above)
+        toLoad.push(...campaignFiles);
       } else if (cat === 'images_ui') {
         for (const file of files) {
           const path = (file.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
