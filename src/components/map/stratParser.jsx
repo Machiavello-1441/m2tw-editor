@@ -717,7 +717,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
         newDiploLines.push(`faction_standings\t${s.faction},\t\t${val}\t${s.targets.join(', ')}`);
       }
       for (const r of (stratData.factionRelationships || [])) {
-        newDiploLines.push(`faction_relationships\t${r.faction}, ${r.relation}\t${r.targets.join(', ')}`);
+        newDiploLines.push(`faction_relationships \t${r.faction}, ${r.relation}\t${r.targets.join(', ')}`);
       }
       lines.splice(firstStandingsIdx, endStandingsIdx - firstStandingsIdx + 1, ...newDiploLines);
     }
@@ -846,10 +846,10 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
         if (char.traits?.length) blockLines.push(`traits\t${char.traits.map(t => `${t.name} ${t.level}`).join(' , ')}`);
         if (char.ancillaries?.length) blockLines.push(`ancillaries\t${char.ancillaries.join(', ')}`);
         if (char.army?.length) {
-          blockLines.push('army');
-          for (const u of char.army) {
-            if (u.unit) blockLines.push(`unit\t${u.unit} exp ${u.exp ?? 0} armour ${u.armour ?? 0} weapon_lvl ${u.weaponLvl ?? 0}`);
-          }
+        blockLines.push('army');
+        for (const u of char.army) {
+          if (u.unit) blockLines.push(`unit\t\t${u.unit}\t\t\texp ${u.exp ?? 0} armour ${u.armour ?? 0} weapon_lvl ${u.weaponLvl ?? 0}`);
+        }
         }
         blockLines.push(''); // blank line after character
       }
