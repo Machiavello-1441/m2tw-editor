@@ -1012,12 +1012,12 @@ export default function StratPanel({
       const moviesRaw = sessionStorage.getItem('m2tw_faction_movies_raw');
       if (moviesRaw) zip.file(`${basePath}/descr_faction_movies.xml`, moviesRaw);
     }
-    // descr_disasters.txt (goes in maps/base, not campaign folder)
+    // descr_disasters.txt (in campaign folder)
     if (disasters?.length) {
-      zip.file(`data/world/maps/base/descr_disasters.txt`, toCRLF(serializeDisasters(disasters)));
+      zip.file(`${basePath}/descr_disasters.txt`, toCRLF(serializeDisasters(disasters)));
     } else {
       const disastersRaw = sessionStorage.getItem('m2tw_disasters_raw') || localStorage.getItem('m2tw_campaign_disasters');
-      if (disastersRaw) zip.file(`data/world/maps/base/descr_disasters.txt`, toCRLF(disastersRaw));
+      if (disastersRaw) zip.file(`${basePath}/descr_disasters.txt`, toCRLF(disastersRaw));
     }
     // descr_events.txt
     if (campaignEvents?.length) {
@@ -1061,6 +1061,18 @@ export default function StratPanel({
       const binBuf = encodeStringsBin(entries);
       zip.file(`data/text/${campaignName}_regions_and_settlement_names.txt.strings.bin`, binBuf);
     }
+    // Campaign descriptions as .strings.bin
+    try {
+      const descStringsRaw = sessionStorage.getItem('m2tw_campaign_desc_strings');
+      if (descStringsRaw) {
+        const descMap = JSON.parse(descStringsRaw);
+        if (descMap && Object.keys(descMap).length > 0) {
+          const descEntries = Object.entries(descMap).map(([k, v]) => ({ key: k, value: v }));
+          const descBinBuf = encodeStringsBin(descEntries);
+          zip.file(`data/text/campaign_descriptions.txt.strings.bin`, descBinBuf);
+        }
+      }
+    } catch (e) { console.warn('campaign_descriptions export failed', e); }
 
     const content = await zip.generateAsync({ type: 'blob' });
     downloadBlob(content, `${campaignName}_campaign.zip`);
