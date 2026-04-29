@@ -872,6 +872,18 @@ export default function StratPanel({
     } catch {return null;}
   });
 
+  // Re-sync factionMovies when folder import stores the raw XML to sessionStorage
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const raw = sessionStorage.getItem('m2tw_faction_movies_raw');
+        if (raw) setFactionMovies(parseFactionMovies(raw));
+      } catch {}
+    };
+    window.addEventListener('m2tw-faction-movies-loaded', handler);
+    return () => window.removeEventListener('m2tw-faction-movies-loaded', handler);
+  }, []);
+
   const [disasters, setDisasters] = useState(() => {
     try {
       const raw = sessionStorage.getItem('m2tw_disasters_raw') ||

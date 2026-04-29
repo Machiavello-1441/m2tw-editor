@@ -464,7 +464,10 @@ export default function CampaignMap() {
       // Parse descr_faction_movies.xml
       if (name === 'descr_faction_movies.xml') {
         const text = await file.text();
-        try { sessionStorage.setItem('m2tw_faction_movies_raw', text); } catch {}
+        try {
+          sessionStorage.setItem('m2tw_faction_movies_raw', text);
+          window.dispatchEvent(new Event('m2tw-faction-movies-loaded'));
+        } catch {}
       }
     }
 
