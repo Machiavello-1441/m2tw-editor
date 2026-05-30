@@ -17,6 +17,7 @@ import AssetsConverter from './pages/AssetsConverter';
 import AnimationEditor from './pages/AnimationEditor';
 import GoatTools from './pages/GoatTools';
 import ScriptEditor from './pages/ScriptEditor';
+import CulturesEditor from './pages/CulturesEditor';
 import FactionsEditor from './pages/FactionsEditor';
 import CampaignSettings from './pages/CampaignSettings';
 import MinorFiles from './pages/MinorFiles';
@@ -87,6 +88,7 @@ const AuthenticatedApp = () => {
       <Route path="/AnimationEditor" element={<LayoutWrapper currentPageName="AnimationEditor"><AnimationEditor /></LayoutWrapper>} />
       <Route path="/GoatTools" element={<LayoutWrapper currentPageName="GoatTools"><GoatTools /></LayoutWrapper>} />
       <Route path="/ScriptEditor" element={<LayoutWrapper currentPageName="ScriptEditor"><ScriptEditor /></LayoutWrapper>} />
+      <Route path="/CulturesEditor" element={<LayoutWrapper currentPageName="CulturesEditor"><CulturesEditor /></LayoutWrapper>} />
       <Route path="/FactionsEditor" element={<LayoutWrapper currentPageName="FactionsEditor"><FactionsEditor /></LayoutWrapper>} />
       <Route path="/CampaignSettings" element={<LayoutWrapper currentPageName="CampaignSettings"><CampaignSettings /></LayoutWrapper>} />
       <Route path="/MinorFiles" element={<LayoutWrapper currentPageName="MinorFiles"><MinorFiles /></LayoutWrapper>} />
