@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { encodeStringsBin } from '../components/strings/stringsBinCodec';
 import { Globe, FolderOpen, Download, Plus, Trash2, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseDescrCulturesFull, serializeDescrCulturesFull, SETTLEMENT_TYPES, AGENT_TYPES } from '../components/cultures/culturesParser';
@@ -176,6 +177,157 @@ function AgentsTab({ culture, onChange }) {
   );
 }
 
+// ── Extras tab ───────────────────────────────────────────────────────────────
+const OFFMAP_SETTLEMENT_LEVELS = ['village','town','large_town','city','large_city','huge_city'];
+const OFFMAP_PORT_LEVELS = ['fishing_village','sea_port','shipwright','dockyard'];
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function generateOffmapSettlement(culture) {
+  const om = culture.offmapSettlement || {};
+  const levels = OFFMAP_SETTLEMENT_LEVELS.map(lv => {
+    const e = om[lv] || { path: 'data/models_building/offmap_village_dummy.cas', dist: 200, num: 0 };
+    return `\t\tlevel ${lv}\n\t\t{\n\t\t\t${e.path}\t${e.dist}\t\t\t${e.num}\n\t\t}`;
+  }).join('\n\n');
+  return `settlement\n{\n\tculture ${culture.name}\n\t{\n${levels}\n\t}\n}`;
+}
+
+function generateOffmapPort(culture) {
+  const om = culture.offmapPort || {};
+  const levels = OFFMAP_PORT_LEVELS.map(lv => {
+    const e = om[lv] || { path: 'data/models_building/offmap_fishing_village_roman.CAS', dist: 200, num: 0 };
+    return `\t\tlevel ${lv}\n\t\t{\n\t\t\t${e.path}\t${e.dist}\t\t\t${e.num}\n\t\t}`;
+  }).join('\n\n');
+  return `port\n{\n\tculture ${culture.name}\n\t{\n${levels}\n\t}\n}`;
+}
+
+function generateExpandedStrings(culture) {
+  const key = culture.name.toUpperCase();
+  const display = culture.name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return `{${key}}${display}\n{EMT_${key}_PRIEST}Priest\n{EMT_${key}_PRIEST_1}Bishop\n{EMT_${key}_PRIEST_2}Cardinal`;
+}
+
+function CopyBlock({ label, text, onDownload }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    copyText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] text-slate-400 uppercase font-semibold">{label}</p>
+        <div className="flex gap-1">
+          {onDownload && (
+            <button onClick={onDownload} className="text-[9px] px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors">
+              Download .bin
+            </button>
+          )}
+          <button onClick={handleCopy} className="text-[9px] px-1.5 py-0.5 rounded border border-slate-600/40 bg-slate-800 text-slate-300 hover:text-white transition-colors">
+            {copied ? '✓ Copied' : 'Copy'}
+          </button>
+        </div>
+      </div>
+      <pre className="text-[10px] font-mono bg-slate-900 border border-slate-700/40 rounded p-2 text-slate-300 whitespace-pre-wrap break-all leading-relaxed">{text}</pre>
+    </div>
+  );
+}
+
+function ExtrasTab({ culture, onChange }) {
+  const setOffmapS = (level, field, val) => {
+    const om = { ...(culture.offmapSettlement || {}) };
+    om[level] = { ...(om[level] || {}), [field]: field === 'path' ? val : (parseInt(val) || 0) };
+    onChange({ ...culture, offmapSettlement: om });
+  };
+  const setOffmapP = (level, field, val) => {
+    const om = { ...(culture.offmapPort || {}) };
+    om[level] = { ...(om[level] || {}), [field]: field === 'path' ? val : (parseInt(val) || 0) };
+    onChange({ ...culture, offmapPort: om });
+  };
+
+  const expandedText = generateExpandedStrings(culture);
+  const settlementText = generateOffmapSettlement(culture);
+  const portText = generateOffmapPort(culture);
+
+  const handleDownloadBin = () => {
+    const key = culture.name.toUpperCase();
+    const display = culture.name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const entries = [
+      { key, value: display },
+      { key: `EMT_${key}_PRIEST`,   value: 'Priest' },
+      { key: `EMT_${key}_PRIEST_1`, value: 'Bishop' },
+      { key: `EMT_${key}_PRIEST_2`, value: 'Cardinal' },
+    ];
+    try {
+      const buf = encodeStringsBin(entries);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buf]));
+      a.download = `${culture.name}_expanded.txt.strings.bin`;
+      a.click();
+    } catch(e) { alert('Could not generate .strings.bin: ' + e.message); }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* expanded.txt */}
+      <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-2">
+        <p className="text-[10px] font-semibold text-amber-400">1. expanded.txt string entries</p>
+        <p className="text-[9px] text-slate-500">Add these to <code className="font-mono text-[9px] bg-slate-800 px-1 rounded">data/text/expanded.txt</code> (or merge into its <code className="font-mono text-[9px]">.strings.bin</code>). Without them the game crashes when clicking a settlement.</p>
+        <CopyBlock label="expanded.txt" text={expandedText} onDownload={handleDownloadBin} />
+      </div>
+
+      {/* descr_offmap_models — settlement */}
+      <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-2">
+        <p className="text-[10px] font-semibold text-amber-400">2. descr_offmap_models.txt — settlement block</p>
+        <p className="text-[9px] text-slate-500">Paste this block inside the <code className="font-mono text-[9px]">settlement {'{'} ... {'}'}</code> section of <code className="font-mono text-[9px]">data/descr_offmap_models.txt</code>.</p>
+        <div className="space-y-1.5 mb-2">
+          {OFFMAP_SETTLEMENT_LEVELS.map(lv => {
+            const e = (culture.offmapSettlement || {})[lv] || { path: '', dist: 200, num: 0 };
+            return (
+              <div key={lv} className="flex items-center gap-1.5">
+                <span className="text-[9px] font-mono text-slate-400 w-20 shrink-0">{lv}</span>
+                <input value={e.path} onChange={ev => setOffmapS(lv, 'path', ev.target.value)}
+                  className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                <input type="number" value={e.dist} onChange={ev => setOffmapS(lv, 'dist', ev.target.value)}
+                  className="w-12 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
+                <input type="number" value={e.num} onChange={ev => setOffmapS(lv, 'num', ev.target.value)}
+                  className="w-10 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
+              </div>
+            );
+          })}
+        </div>
+        <CopyBlock label="settlement block" text={settlementText} />
+      </div>
+
+      {/* descr_offmap_models — port */}
+      <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-2">
+        <p className="text-[10px] font-semibold text-amber-400">3. descr_offmap_models.txt — port block</p>
+        <p className="text-[9px] text-slate-500">Paste this block inside the <code className="font-mono text-[9px]">port {'{'} ... {'}'}</code> section.</p>
+        <div className="space-y-1.5 mb-2">
+          {OFFMAP_PORT_LEVELS.map(lv => {
+            const e = (culture.offmapPort || {})[lv] || { path: '', dist: 200, num: 0 };
+            return (
+              <div key={lv} className="flex items-center gap-1.5">
+                <span className="text-[9px] font-mono text-slate-400 w-20 shrink-0">{lv}</span>
+                <input value={e.path} onChange={ev => setOffmapP(lv, 'path', ev.target.value)}
+                  className="flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                <input type="number" value={e.dist} onChange={ev => setOffmapP(lv, 'dist', ev.target.value)}
+                  className="w-12 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
+                <input type="number" value={e.num} onChange={ev => setOffmapP(lv, 'num', ev.target.value)}
+                  className="w-10 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
+              </div>
+            );
+          })}
+        </div>
+        <CopyBlock label="port block" text={portText} />
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CulturesEditor() {
   const [cultures, setCultures] = useState(() => {
@@ -302,7 +454,7 @@ export default function CulturesEditor() {
           <div className="flex-1 flex flex-col min-h-0">
             {/* Tabs */}
             <div className="flex border-b border-slate-800 shrink-0">
-              {[['general', 'General'], ['settlements', 'Settlements'], ['infrastructure', 'Infrastructure'], ['agents', 'Agents']].map(([id, label]) => (
+              {[['general', 'General'], ['settlements', 'Settlements'], ['infrastructure', 'Infrastructure'], ['agents', 'Agents'], ['extras', 'Extras ⚡']].map(([id, label]) => (
                 <button key={id} onClick={() => setTab(id)}
                   className={`px-4 py-1.5 text-[10px] font-semibold border-b-2 transition-colors ${tab === id ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
                   {label}
@@ -350,6 +502,9 @@ export default function CulturesEditor() {
               )}
               {tab === 'agents' && (
                 <AgentsTab culture={selected} onChange={updateSelected} />
+              )}
+              {tab === 'extras' && (
+                <ExtrasTab culture={selected} onChange={updateSelected} />
               )}
             </div>
           </div>

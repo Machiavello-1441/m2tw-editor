@@ -53,6 +53,20 @@ export function parseDescrCulturesFull(text) {
       watchtower: { path: '', anim: '' },
       watchtowerCost: 200,
       agents: {},
+      offmapSettlement: {
+        village:    { path: 'data/models_building/offmap_village_dummy.cas', dist: 200, num: 0 },
+        town:       { path: 'data/models_building/offmap_town_roman.cas',    dist: 200, num: 0 },
+        large_town: { path: 'data/models_building/offmap_town_roman.cas',    dist: 200, num: 0 },
+        city:       { path: 'data/models_building/offmap_city_roman.cas',    dist: 200, num: 0 },
+        large_city: { path: 'data/models_building/offmap_city_roman.cas',    dist: 200, num: 0 },
+        huge_city:  { path: 'data/models_building/offmap_city_roman.cas',    dist: 200, num: 0 },
+      },
+      offmapPort: {
+        fishing_village: { path: 'data/models_building/offmap_fishing_village_roman.CAS', dist: 200, num: 0 },
+        sea_port:        { path: 'data/models_building/offmap_port_roman.cas',            dist: 200, num: 0 },
+        shipwright:      { path: 'data/models_building/offmap_port_roman.cas',            dist: 200, num: 0 },
+        dockyard:        { path: 'data/models_building/offmap_port_roman.cas',            dist: 200, num: 0 },
+      },
     };
 
     // Init all settlement types
