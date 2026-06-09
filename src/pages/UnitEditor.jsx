@@ -288,6 +288,7 @@ export default function UnitEditorPage() {
       setActiveIndex(0);
       // Persist so Unit Card Generator (and other tools) can read it
       try { localStorage.setItem(EDU_FILE_KEY, text); } catch {}
+      window.dispatchEvent(new CustomEvent('load-export-units'));
     };
     reader.readAsText(file);
     e.target.value = '';

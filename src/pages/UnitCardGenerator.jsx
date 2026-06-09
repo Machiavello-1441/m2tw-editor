@@ -496,15 +496,22 @@ export default function UnitCardGenerator() {
   const [importMsg, setImportMsg]   = useState('');
 
   const factions  = useMemo(() => parseFactionList(), []);
-  const eduUnits  = useMemo(() => loadEduUnits(), []);
 
-  // Re-load EDU units when the Unit Editor loads a file
-  const [eduUnitsLive, setEduUnitsLive] = useState(eduUnits);
+  const [eduUnitsLive, setEduUnitsLive] = useState(() => loadEduUnits());
+
+  // Re-load whenever EDU is saved to localStorage (same tab or other tab)
   useEffect(() => {
-    const handler = () => setEduUnitsLive(loadEduUnits());
-    // The Unit Editor dispatches this key, or we can poll storage
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
+    const reload = () => setEduUnitsLive(loadEduUnits());
+    // cross-tab
+    window.addEventListener('storage', reload);
+    // same-tab: Unit Editor dispatches this after saving to localStorage
+    window.addEventListener('load-export-units', reload);
+    // also fire once when picker opens in case data was loaded before this page mounted
+    reload();
+    return () => {
+      window.removeEventListener('storage', reload);
+      window.removeEventListener('load-export-units', reload);
+    };
   }, []);
 
   useEffect(() => {
