@@ -282,9 +282,12 @@ export default function UnitEditorPage() {
     setFilename(file.name);
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const parsed = parseEDU(ev.target.result);
+      const text = ev.target.result;
+      const parsed = parseEDU(text);
       update(parsed);
       setActiveIndex(0);
+      // Persist so Unit Card Generator (and other tools) can read it
+      try { localStorage.setItem(EDU_FILE_KEY, text); } catch {}
     };
     reader.readAsText(file);
     e.target.value = '';
