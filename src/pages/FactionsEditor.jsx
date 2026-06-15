@@ -362,7 +362,7 @@ function FactionDetail({ faction, onChange, cultures, religions, eduUnits }) {
             <Input className="h-6 text-[11px] px-2 flex-1 font-mono bg-slate-700 border-slate-600 text-slate-100" value={faction.name ?? ''} onChange={e => set('name', e.target.value)} />
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-[10px] text-slate-300 w-40 shrink-0">Spawn Type</label>
+            <label className="text-[10px] text-slate-300 w-40 shrink-0">Type</label>
             <select value={faction.spawn_type || 'default'} onChange={e => set('spawn_type', e.target.value)}
               className="flex-1 h-6 text-[11px] px-2 rounded border border-slate-600 bg-slate-700 text-slate-100 font-mono">
               <option value="default">default</option>
