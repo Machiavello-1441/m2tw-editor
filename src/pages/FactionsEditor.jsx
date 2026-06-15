@@ -858,6 +858,8 @@ export default function FactionsEditor() {
         magic1,
         magic2
       }));
+      console.log('Duplicated strings for', newFactionName, '- created', newEntries.length, 'entries');
+      console.log('Sample entries:', newEntries.slice(0, 3));
       window.dispatchEvent(new CustomEvent('strings-bin-updated'));
     } catch (err) {
       console.error('Failed to duplicate strings:', err);

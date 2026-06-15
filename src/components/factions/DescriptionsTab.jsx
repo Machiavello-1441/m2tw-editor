@@ -71,8 +71,11 @@ export default function DescriptionsTab({ factionName }) {
             entry.key && entry.key.toUpperCase().includes(factionUpper)
           );
           setStringsBinEntries(filtered);
+          console.log('DescriptionsTab loaded', filtered.length, 'entries for', factionName, '- first entry:', filtered[0]);
         }
-      } catch {}
+      } catch (err) {
+        console.error('Failed to load strings:', err);
+      }
     };
     
     loadStrings();
