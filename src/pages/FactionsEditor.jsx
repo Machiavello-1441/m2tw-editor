@@ -625,13 +625,13 @@ export default function FactionsEditor() {
           </Button>
 
           <input ref={relRef} type="file" accept=".txt" className="hidden" onChange={loadReligions} />
-          <Button variant="outline" size="sm" className={`text-[10px] h-7 bg-[hsl(var(--foreground))] ${religions.length ? 'text-green-300 border-green-700' : ''}`} onClick={() => relRef.current?.click()}>
+          <Button variant="outline" size="sm" className={`text-[10px] h-7 bg-[hsl(var(--background))] text-[hsl(var(--foreground))] ${religions.length ? 'text-green-300 border-green-700' : ''}`} onClick={() => relRef.current?.click()}>
             <Upload className="w-3 h-3 mr-1" />
             {religions.length ? `${religions.length} religions` : 'descr_religions.txt'}
           </Button>
 
           <input ref={eduRef} type="file" accept=".txt" className="hidden" onChange={loadEdu} />
-          <Button variant="outline" size="sm" className={`text-[10px] h-7 ${eduUnits.length ? 'text-green-300 border-green-700' : ''}`} onClick={() => eduRef.current?.click()}>
+          <Button variant="outline" size="sm" className={`text-[10px] h-7 text-[hsl(var(--foreground))] ${eduUnits.length ? 'text-green-300 border-green-700' : ''}`} onClick={() => eduRef.current?.click()}>
             <Upload className="w-3 h-3 mr-1" />
             {eduUnits.length ? `${eduUnits.length} units` : 'export_descr_unit.txt'}
           </Button>
