@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Shield, Sparkles, Gem, Users, LayoutTemplate } from 'lucide-react';
+import { FileText, Shield, Sparkles, Gem, Users, LayoutTemplate, Flag } from 'lucide-react';
 import RebelFactionsTab from '../components/minorfiles/RebelFactionsTab';
 import ReligionsTab from '../components/minorfiles/ReligionsTab';
 import ResourcesTab from '../components/minorfiles/ResourcesTab';
 import CharacterNamesTab from '../components/minorfiles/CharacterNamesTab';
 import SpriteSheetsTab from '../components/minorfiles/spritesheet/SpriteSheetsTab';
+import BannersTab from '../components/minorfiles/banners/BannersTab';
 
 const TABS = [
   { id: 'rebels', label: 'Rebel Factions', Icon: Shield, description: 'descr_rebel_factions.txt + rebel_faction_descr.txt.strings.bin' },
@@ -13,6 +14,7 @@ const TABS = [
   { id: 'resources', label: 'Resources', Icon: Gem, description: 'descr_sm_resources.txt + strat.txt.strings.bin' },
   { id: 'names', label: 'Character Names', Icon: Users, description: 'descr_names.txt + names.txt.bin' },
   { id: 'spritesheets', label: 'UI Sprites', Icon: LayoutTemplate, description: 'strategy.sd.xml / battle.sd.xml / shared.sd.xml — \\data\\ui\\' },
+  { id: 'banners', label: 'Banners', Icon: Flag, description: 'descr_banners_new.xml — faction / unit / holy / royal banners' },
 ];
 
 export default function MinorFiles() {
@@ -48,9 +50,10 @@ export default function MinorFiles() {
         </p>
       </div>
 
-      {activeTab === 'spritesheets' ? (
+      {(activeTab === 'spritesheets' || activeTab === 'banners') ? (
         <div className="flex-1 min-h-0 overflow-hidden p-3">
-          <SpriteSheetsTab />
+          {activeTab === 'spritesheets' && <SpriteSheetsTab />}
+          {activeTab === 'banners' && <BannersTab />}
         </div>
       ) : (
         <ScrollArea className="flex-1">
