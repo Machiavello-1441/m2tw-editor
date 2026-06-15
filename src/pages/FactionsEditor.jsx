@@ -666,34 +666,110 @@ export default function FactionsEditor() {
       if (srcBannersData) {
         const parsed = parseBannersXml(srcBannersData);
         const newFactionName = duplicateName.trim();
+        const srcNameLower = src.name.toLowerCase();
+        const newFactionLower = newFactionName.toLowerCase();
         
-        parsed.factionBanners = parsed.factionBanners.map((banner) => {
-          const sourceTextures = banner.textures.filter(t => 
-            t.faction.toLowerCase() === src.name.toLowerCase()
-          );
-          
-          if (sourceTextures.length === 0) return banner;
-          
-          const existingTextureIndices = banner.textures
-            .map((t, i) => t.faction.toLowerCase() === newFactionName.toLowerCase() ? i : -1)
-            .filter(i => i !== -1);
-          
-          let newTextures = [...banner.textures];
-          existingTextureIndices.forEach(idx => {
-            newTextures[idx] = null;
-          });
-          newTextures = newTextures.filter(t => t !== null);
-          
-          sourceTextures.forEach(sourceTex => {
-            newTextures.push({
-              faction: newFactionName,
-              diffuseMap: sourceTex.diffuseMap,
-              translucencyMap: sourceTex.translucencyMap
+        // Helper to copy textures from a section
+        const copySectionTextures = (section, isMeshSection) => {
+          const sectionData = parsed[section];
+          if (isMeshSection) {
+            // For sections with meshesAndTextures (holyBanners, unitBanners, royalBanner)
+            if (Array.isArray(sectionData)) {
+              sectionData.forEach((banner) => {
+                const sourceTextures = banner.meshesAndTextures.filter(t => 
+                  t.faction.toLowerCase() === srcNameLower
+                );
+                
+                if (sourceTextures.length === 0) return;
+                
+                const existingTextureIndices = banner.meshesAndTextures
+                  .map((t, i) => t.faction.toLowerCase() === newFactionLower ? i : -1)
+                  .filter(i => i !== -1);
+                
+                let newTextures = [...banner.meshesAndTextures];
+                existingTextureIndices.forEach(idx => {
+                  newTextures[idx] = null;
+                });
+                newTextures = newTextures.filter(t => t !== null);
+                
+                sourceTextures.forEach(sourceTex => {
+                  newTextures.push({
+                    faction: newFactionName,
+                    mesh: sourceTex.mesh || '',
+                    diffuseMap: sourceTex.diffuseMap,
+                    translucencyMap: sourceTex.translucencyMap
+                  });
+                });
+                
+                banner.meshesAndTextures = newTextures;
+              });
+            } else if (sectionData) {
+              // For royalBanner (single object, not array)
+              const banner = sectionData;
+              const sourceTextures = banner.meshesAndTextures.filter(t => 
+                t.faction.toLowerCase() === srcNameLower
+              );
+              
+              if (sourceTextures.length === 0) return;
+              
+              const existingTextureIndices = banner.meshesAndTextures
+                .map((t, i) => t.faction.toLowerCase() === newFactionLower ? i : -1)
+                .filter(i => i !== -1);
+              
+              let newTextures = [...banner.meshesAndTextures];
+              existingTextureIndices.forEach(idx => {
+                newTextures[idx] = null;
+              });
+              newTextures = newTextures.filter(t => t !== null);
+              
+              sourceTextures.forEach(sourceTex => {
+                newTextures.push({
+                  faction: newFactionName,
+                  mesh: sourceTex.mesh || '',
+                  diffuseMap: sourceTex.diffuseMap,
+                  translucencyMap: sourceTex.translucencyMap
+                });
+              });
+              
+              banner.meshesAndTextures = newTextures;
+            }
+          } else {
+            // For factionBanners (textures array)
+            sectionData.forEach((banner) => {
+              const sourceTextures = banner.textures.filter(t => 
+                t.faction.toLowerCase() === srcNameLower
+              );
+              
+              if (sourceTextures.length === 0) return;
+              
+              const existingTextureIndices = banner.textures
+                .map((t, i) => t.faction.toLowerCase() === newFactionLower ? i : -1)
+                .filter(i => i !== -1);
+              
+              let newTextures = [...banner.textures];
+              existingTextureIndices.forEach(idx => {
+                newTextures[idx] = null;
+              });
+              newTextures = newTextures.filter(t => t !== null);
+              
+              sourceTextures.forEach(sourceTex => {
+                newTextures.push({
+                  faction: newFactionName,
+                  diffuseMap: sourceTex.diffuseMap,
+                  translucencyMap: sourceTex.translucencyMap
+                });
+              });
+              
+              banner.textures = newTextures;
             });
-          });
-          
-          return { ...banner, textures: newTextures };
-        });
+          }
+        };
+        
+        // Copy from all sections
+        copySectionTextures('factionBanners', false);
+        copySectionTextures('holyBanners', true);
+        copySectionTextures('unitBanners', true);
+        copySectionTextures('royalBanner', true);
         
         const newText = serialiseBannersXml(parsed);
         localStorage.setItem(`m2tw_banners_${newFactionName}`, newText);
