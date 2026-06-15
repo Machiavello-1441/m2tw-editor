@@ -401,7 +401,8 @@ function StratModelCard({ model, onChange, onDelete, texCount, factions }) {
 // ── Bulk Duplicate Faction Panel ──────────────────────────────────────────────
 function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onClose }) {
   const [srcFaction, setSrcFaction] = useState(factions[0] || '');
-  const [dstFaction, setDstFaction] = useState('');
+  const [dstFaction, setDstFaction] = useState(factions[1] || factions[0] || '');
+  const [textureName, setTextureName] = useState('');  // custom texture name token for strat models
   const [mode, setMode] = useState('both'); // 'characters' | 'strat_models' | 'both'
 
   // Preview what will be duplicated
@@ -413,8 +414,10 @@ function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onC
     : [];
 
   const handleApply = () => {
-    if (!dstFaction.trim()) return;
-    const dst = dstFaction.trim();
+    if (!dstFaction) return;
+    const dst = dstFaction;
+    // For texture paths: use textureName if provided, otherwise fall back to dstFaction
+    const texToken = textureName.trim() || dst;
 
     let newCharData = charData;
     let newStratData = stratData;
@@ -440,8 +443,8 @@ function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onC
         if (!srcTex) return m;
         const alreadyExists = m.textures.some(t => t.faction === dst);
         if (alreadyExists) return m;
-        // Auto-rename texture path: replace srcFaction with dstFaction in filename
-        const newPath = srcTex.path.replace(new RegExp(srcFaction, 'g'), dst);
+        // Replace srcFaction token in path with texToken (custom texture name or dst faction)
+        const newPath = srcTex.path.replace(new RegExp(srcFaction, 'g'), texToken);
         return { ...m, textures: [...m.textures, { faction: dst, path: newPath }] };
       });
     }
@@ -451,7 +454,7 @@ function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onC
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-600 rounded-xl shadow-2xl p-5 w-[480px] max-w-[95vw]"
+      <div className="bg-slate-900 border border-slate-600 rounded-xl shadow-2xl p-5 w-[520px] max-w-[95vw]"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 mb-4">
           <Layers className="w-4 h-4 text-amber-400" />
@@ -461,19 +464,32 @@ function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onC
 
         <div className="space-y-3 text-[11px]">
           <div className="flex items-center gap-3">
-            <label className="text-slate-400 w-28 shrink-0">Source faction</label>
+            <label className="text-slate-400 w-32 shrink-0">Source faction</label>
             <select className="flex-1 h-7 px-2 rounded border border-input bg-background text-foreground text-[11px]"
               value={srcFaction} onChange={e => setSrcFaction(e.target.value)}>
               {factions.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-slate-400 w-28 shrink-0">New faction name</label>
-            <Input className="flex-1 h-7 text-[11px] px-2" value={dstFaction}
-              onChange={e => setDstFaction(e.target.value)} placeholder="e.g. my_new_faction" />
+            <label className="text-slate-400 w-32 shrink-0">Target faction</label>
+            <select className="flex-1 h-7 px-2 rounded border border-input bg-background text-foreground text-[11px]"
+              value={dstFaction} onChange={e => setDstFaction(e.target.value)}>
+              {factions.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
           </div>
+          {(mode === 'strat_models' || mode === 'both') && (
+            <div className="flex items-center gap-3">
+              <label className="text-slate-400 w-32 shrink-0 leading-tight">
+                Texture name token
+                <span className="block text-[9px] text-slate-600 font-normal">replaces "{srcFaction}" in paths</span>
+              </label>
+              <Input className="flex-1 h-7 text-[11px] px-2" value={textureName}
+                onChange={e => setTextureName(e.target.value)}
+                placeholder={`default: ${dstFaction || '(target faction)'}`} />
+            </div>
+          )}
           <div className="flex items-center gap-3">
-            <label className="text-slate-400 w-28 shrink-0">Apply to</label>
+            <label className="text-slate-400 w-32 shrink-0">Apply to</label>
             <div className="flex gap-2">
               {[['both', 'Both'], ['characters', 'Characters only'], ['strat_models', 'Strat models only']].map(([v, l]) => (
                 <button key={v} onClick={() => setMode(v)}
@@ -497,7 +513,7 @@ function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onC
             )}
             {(mode === 'strat_models' || mode === 'both') && stratMatches.length > 0 && (
               <div>
-                <p className="text-teal-400 text-[9px] mb-1">Strat model textures ({stratMatches.length})</p>
+                <p className="text-teal-400 text-[9px] mb-1">Strat model textures ({stratMatches.length}) — token: <span className="text-violet-300">{textureName.trim() || dstFaction || '…'}</span></p>
                 <div className="flex flex-wrap gap-1">
                   {stratMatches.map((n, i) => <span key={i} className="bg-teal-900/40 border border-teal-800 rounded px-1 text-[8px] font-mono text-teal-300">{n}</span>)}
                 </div>
@@ -511,7 +527,7 @@ function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onC
 
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onClose} className="px-3 py-1.5 text-[11px] rounded border border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors">Cancel</button>
-          <button onClick={handleApply} disabled={!dstFaction.trim() || (charMatches.length === 0 && stratMatches.length === 0)}
+          <button onClick={handleApply} disabled={!dstFaction || srcFaction === dstFaction || (charMatches.length === 0 && stratMatches.length === 0)}
             className="px-4 py-1.5 text-[11px] rounded bg-amber-700 hover:bg-amber-600 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             Duplicate → {dstFaction || '…'}
           </button>
