@@ -827,7 +827,7 @@ export default function FactionsEditor() {
             .replace(new RegExp(srcNameLower, 'gi'), displayName.toLowerCase());
         }
         
-        // Apply user's custom edits for specific fields
+        // Apply user's custom edits for specific fields - these override any previous replacements
         if (newKey === `{${nameUpper}}` && displayName.trim()) {
           newValue = displayName.trim();
         }
@@ -843,14 +843,17 @@ export default function FactionsEditor() {
         else if (newKey === `{EMT_${nameUpper}_FACTION_HEIR_NAME}` && heirTitle.trim()) {
           newValue = `${heirTitle.trim()} %S`;
         }
-        else if (newKey === `{${nameUpper}_STRENGTH}` && strengths.trim()) {
-          newValue = strengths.trim();
+        else if (newKey === `{${nameUpper}_STRENGTH}`) {
+          // Use custom strengths text if provided, otherwise keep the replaced value
+          newValue = strengths.trim() || newValue;
         }
-        else if (newKey === `{${nameUpper}_WEAKNESS}` && weaknesses.trim()) {
-          newValue = weaknesses.trim();
+        else if (newKey === `{${nameUpper}_WEAKNESS}`) {
+          // Use custom weaknesses text if provided, otherwise keep the replaced value
+          newValue = weaknesses.trim() || newValue;
         }
-        else if (newKey === `{${nameUpper}_UNIT}` && customUnit.trim()) {
-          newValue = customUnit.trim();
+        else if (newKey === `{${nameUpper}_UNIT}`) {
+          // Use custom unit text if provided, otherwise keep the replaced value
+          newValue = customUnit.trim() || newValue;
         }
         
         return { key: newKey, value: newValue };
