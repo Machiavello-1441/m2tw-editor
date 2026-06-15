@@ -7,6 +7,7 @@ import ResourcesTab from '../components/minorfiles/ResourcesTab';
 import CharacterNamesTab from '../components/minorfiles/CharacterNamesTab';
 import SpriteSheetsTab from '../components/minorfiles/spritesheet/SpriteSheetsTab';
 import BannersTab from '../components/minorfiles/banners/BannersTab';
+import StratMapCharTab from '../components/minorfiles/stratmap/StratMapCharTab';
 
 const TABS = [
   { id: 'rebels', label: 'Rebel Factions', Icon: Shield, description: 'descr_rebel_factions.txt + rebel_faction_descr.txt.strings.bin' },
@@ -15,6 +16,7 @@ const TABS = [
   { id: 'names', label: 'Character Names', Icon: Users, description: 'descr_names.txt + names.txt.bin' },
   { id: 'spritesheets', label: 'UI Sprites', Icon: LayoutTemplate, description: 'strategy.sd.xml / battle.sd.xml / shared.sd.xml — \\data\\ui\\' },
   { id: 'banners', label: 'Banners', Icon: Flag, description: 'descr_banners_new.xml — faction / unit / holy / royal banners' },
+  { id: 'stratmap', label: 'Strat Characters', Icon: Users, description: 'descr_character.txt + descr_model_strat.txt — stratmap character types & models' },
 ];
 
 export default function MinorFiles() {
@@ -50,10 +52,11 @@ export default function MinorFiles() {
         </p>
       </div>
 
-      {(activeTab === 'spritesheets' || activeTab === 'banners') ? (
+      {(activeTab === 'spritesheets' || activeTab === 'banners' || activeTab === 'stratmap') ? (
         <div className="flex-1 min-h-0 overflow-hidden p-3">
           {activeTab === 'spritesheets' && <SpriteSheetsTab />}
           {activeTab === 'banners' && <BannersTab />}
+          {activeTab === 'stratmap' && <StratMapCharTab />}
         </div>
       ) : (
         <ScrollArea className="flex-1">
