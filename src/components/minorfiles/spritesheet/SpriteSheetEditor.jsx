@@ -37,6 +37,7 @@ export default function SpriteSheetEditor({ label, storageKey }) {
   const [newPageW, setNewPageW] = useState(512);
   const [newPageH, setNewPageH] = useState(512);
   const [imageError, setImageError] = useState({});
+  const [xmlError, setXmlError] = useState(null);
   const xmlInputRef = useRef();
 
   // --- Load XML ---
@@ -44,13 +45,19 @@ export default function SpriteSheetEditor({ label, storageKey }) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-    const text = await file.text();
-    const parsed = parseSdXml(text);
-    setData(parsed);
-    setActivePageIdx(0);
-    setPendingRect(null);
-    setSelectionMode(false);
-    setSelectedIdx(null);
+    try {
+      const text = await file.text();
+      const parsed = parseSdXml(text);
+      setData(parsed);
+      setXmlError(null);
+      setActivePageIdx(0);
+      setPendingRect(null);
+      setSelectionMode(false);
+      setSelectedIdx(null);
+    } catch (err) {
+      setXmlError(err.message || 'Failed to parse XML');
+      console.error('XML parse error:', err);
+    }
   }, []);
 
   // --- Load TGA image for a page ---
@@ -167,6 +174,9 @@ export default function SpriteSheetEditor({ label, storageKey }) {
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <Upload className="w-10 h-10 text-slate-500" />
         <p className="text-sm text-slate-400">Load a <span className="font-mono text-amber-400">{label}</span> file</p>
+        {xmlError && (
+          <p className="text-red-400 text-sm">⚠ {xmlError}</p>
+        )}
         <Button variant="outline" size="sm" onClick={() => xmlInputRef.current?.click()}>
           Load {label}
         </Button>
@@ -183,6 +193,9 @@ export default function SpriteSheetEditor({ label, storageKey }) {
           <Upload className="w-3.5 h-3.5 mr-1" /> Reload XML
         </Button>
         <input ref={xmlInputRef} type="file" accept=".xml,.txt" className="hidden" onChange={handleXmlFile} />
+        {xmlError && (
+          <span className="text-red-400 text-[10px]">⚠ {xmlError}</span>
+        )}
         <span className="text-[10px] font-mono text-slate-500">{data.enumName}</span>
         <span className="text-[10px] text-slate-600">•</span>
         <span className="text-[10px] text-slate-500">{data.sprites.length} sprites / {data.pages.length} pages</span>
