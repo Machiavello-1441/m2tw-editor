@@ -1,18 +1,40 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Download, Plus, Trash2, Copy, ChevronDown, ChevronRight } from 'lucide-react';
+import { Upload, Download, Plus, Trash2, Copy, ChevronDown, ChevronRight, Images } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { parseBannersXml, serialiseBannersXml } from './bannersParser';
+import { loadTextureFiles, getTexturePreview, getStoreSize } from './TextureStore';
 
 const STORAGE_KEY = 'm2tw_banners_file';
 
 // ── Small helpers ────────────────────────────────────────────────────────────
 
-function TexRow({ t, onChange, onDelete, onDuplicate, showMesh }) {
+function TextureThumb({ path }) {
+  const url = getTexturePreview(path);
+  const [ok, setOk] = useState(true);
+  if (!url) return <span className="w-5 h-5 shrink-0" />;
+  return ok ? (
+    <img src={url} alt="" title={path}
+      onError={() => setOk(false)}
+      className="w-5 h-5 object-contain rounded shrink-0 border border-slate-600 bg-slate-800 cursor-pointer"
+      onClick={() => window.open(url, '_blank')} />
+  ) : (
+    <span className="w-5 h-5 shrink-0 rounded border border-slate-700 bg-slate-800 flex items-center justify-center text-[7px] text-slate-500" title="No preview">?</span>
+  );
+}
+
+function TexRow({ t, onChange, onDelete, onDuplicate, showMesh, texCount }) {
+  const diffUrl = getTexturePreview(t.diffuseMap);
+  const transUrl = getTexturePreview(t.translucencyMap);
+  const cols = showMesh
+    ? `20px 1fr 1fr 1fr 1fr 20px 20px auto auto`
+    : `20px 1fr 1fr 1fr 20px 20px auto auto`;
   return (
-    <div className="grid gap-1 py-0.5 border-b border-slate-800 last:border-0 text-[10px] group"
-      style={{ gridTemplateColumns: showMesh ? '1fr 1fr 1fr 1fr auto auto' : '1fr 1fr 1fr auto auto' }}>
+    <div className="grid items-center gap-1 py-0.5 border-b border-slate-800 last:border-0 text-[10px] group"
+      style={{ gridTemplateColumns: cols }}>
+      {/* faction colour swatch placeholder */}
+      <span />
       <Input className="h-5 text-[9px] px-1" value={t.faction}
         onChange={e => onChange('faction', e.target.value)} placeholder="Faction" />
       {showMesh && (
@@ -23,6 +45,8 @@ function TexRow({ t, onChange, onDelete, onDuplicate, showMesh }) {
         onChange={e => onChange('diffuseMap', e.target.value)} placeholder="DiffuseMap" />
       <Input className="h-5 text-[9px] px-1" value={t.translucencyMap}
         onChange={e => onChange('translucencyMap', e.target.value)} placeholder="TranslucencyMap" />
+      <TextureThumb path={t.diffuseMap} key={`d-${t.diffuseMap}-${texCount}`} />
+      <TextureThumb path={t.translucencyMap} key={`tr-${t.translucencyMap}-${texCount}`} />
       <button onClick={onDuplicate} title="Duplicate"
         className="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-300 transition-opacity px-0.5">
         <Copy className="w-3 h-3" />
@@ -36,13 +60,19 @@ function TexRow({ t, onChange, onDelete, onDuplicate, showMesh }) {
 }
 
 function TexHeader({ showMesh }) {
+  const cols = showMesh
+    ? `20px 1fr 1fr 1fr 1fr 20px 20px auto auto`
+    : `20px 1fr 1fr 1fr 20px 20px auto auto`;
   return (
     <div className="grid gap-1 pb-0.5 mb-1 border-b border-slate-700 text-[9px] text-slate-500 font-mono"
-      style={{ gridTemplateColumns: showMesh ? '1fr 1fr 1fr 1fr auto auto' : '1fr 1fr 1fr auto auto' }}>
+      style={{ gridTemplateColumns: cols }}>
+      <span />
       <span>Faction</span>
       {showMesh && <span>Mesh</span>}
       <span>DiffuseMap</span>
       <span>TranslucencyMap</span>
+      <span title="Diffuse preview" className="text-[8px] text-center">D</span>
+      <span title="Translucency preview" className="text-[8px] text-center">T</span>
       <span className="w-3" /><span className="w-3" />
     </div>
   );
@@ -50,7 +80,7 @@ function TexHeader({ showMesh }) {
 
 // ── Banner card ──────────────────────────────────────────────────────────────
 
-function FactionBannerCard({ banner, onChange, onDelete, onDuplicate }) {
+function FactionBannerCard({ banner, onChange, onDelete, onDuplicate, texCount }) {
   const [open, setOpen] = useState(false);
 
   const updateField = (field, val) => onChange({ ...banner, [field]: val });
@@ -100,7 +130,7 @@ function FactionBannerCard({ banner, onChange, onDelete, onDuplicate }) {
           <div className="mt-2">
             <TexHeader showMesh={false} />
             {banner.textures.map((t, i) => (
-              <TexRow key={i} t={t} showMesh={false}
+              <TexRow key={i} t={t} showMesh={false} texCount={texCount}
                 onChange={(field, val) => updateTex(i, field, val)}
                 onDuplicate={() => dupTex(i)}
                 onDelete={() => delTex(i)} />
@@ -116,7 +146,7 @@ function FactionBannerCard({ banner, onChange, onDelete, onDuplicate }) {
   );
 }
 
-function MeshBannerCard({ banner, onChange, onDelete, onDuplicate }) {
+function MeshBannerCard({ banner, onChange, onDelete, onDuplicate, texCount }) {
   const [open, setOpen] = useState(false);
 
   const updateMT = (i, field, val) => {
@@ -156,7 +186,7 @@ function MeshBannerCard({ banner, onChange, onDelete, onDuplicate }) {
           </div>
           <TexHeader showMesh={true} />
           {banner.meshesAndTextures.map((t, i) => (
-            <TexRow key={i} t={t} showMesh={true}
+            <TexRow key={i} t={t} showMesh={true} texCount={texCount}
               onChange={(field, val) => updateMT(i, field, val)}
               onDuplicate={() => dupMT(i)}
               onDelete={() => delMT(i)} />
@@ -191,7 +221,9 @@ function SectionPanel({ title, children }) {
 
 export default function BannersTab() {
   const [data, setData] = useState(null);
+  const [texCount, setTexCount] = useState(0); // bumped after texture upload to force re-render
   const fileRef = useRef();
+  const texRef = useRef();
 
   // Load from file
   const handleFile = useCallback(async (e) => {
@@ -209,6 +241,14 @@ export default function BannersTab() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved && !data) setData(parseBannersXml(saved));
     } catch {}
+  }, []);
+
+  const handleTextures = useCallback(async (e) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    await loadTextureFiles(files);
+    setTexCount(getStoreSize());
+    e.target.value = '';
   }, []);
 
   const exportXml = () => {
@@ -284,6 +324,12 @@ export default function BannersTab() {
           <Upload className="w-3.5 h-3.5 mr-1" /> Reload
         </Button>
         <input ref={fileRef} type="file" accept=".xml,.txt" className="hidden" onChange={handleFile} />
+        <Button variant="outline" size="sm" onClick={() => texRef.current?.click()}
+          className="text-violet-400 border-violet-700 hover:bg-violet-900/30">
+          <Images className="w-3.5 h-3.5 mr-1" />
+          {texCount > 0 ? `${texCount} textures loaded` : 'Upload Textures'}
+        </Button>
+        <input ref={texRef} type="file" multiple accept=".texture,.dds,.png,.tga" className="hidden" onChange={handleTextures} />
         <span className="text-[10px] text-slate-500 font-mono">
           {data.factionBanners.length} faction · {data.unitBanners.length} unit · {data.holyBanners.length} holy banners
         </span>
@@ -297,7 +343,7 @@ export default function BannersTab() {
         {/* ── Faction Banners ─────────────────────────────────────────────── */}
         <SectionPanel title="Faction Banners">
           {data.factionBanners.map((b, i) => (
-            <FactionBannerCard key={i} banner={b}
+            <FactionBannerCard key={i} banner={b} texCount={texCount}
               onChange={(nb) => updateFB(i, nb)}
               onDelete={() => deleteFB(i)}
               onDuplicate={() => dupFB(i)} />
@@ -310,7 +356,7 @@ export default function BannersTab() {
         {/* ── Unit-Specific Banners ────────────────────────────────────────── */}
         <SectionPanel title="Unit-Specific Banners">
           {data.unitBanners.map((b, i) => (
-            <MeshBannerCard key={i} banner={b}
+            <MeshBannerCard key={i} banner={b} texCount={texCount}
               onChange={(nb) => ub.update(i, nb)}
               onDelete={() => ub.delete(i)}
               onDuplicate={() => ub.dup(i)} />
@@ -323,7 +369,7 @@ export default function BannersTab() {
         {/* ── Holy Banners ─────────────────────────────────────────────────── */}
         <SectionPanel title="Holy Banners">
           {data.holyBanners.map((b, i) => (
-            <MeshBannerCard key={i} banner={b}
+            <MeshBannerCard key={i} banner={b} texCount={texCount}
               onChange={(nb) => hb.update(i, nb)}
               onDelete={() => hb.delete(i)}
               onDuplicate={() => hb.dup(i)} />
@@ -344,7 +390,7 @@ export default function BannersTab() {
             </div>
             <TexHeader showMesh={true} />
             {data.royalBanner.meshesAndTextures.map((t, i) => (
-              <TexRow key={i} t={t} showMesh={true}
+              <TexRow key={i} t={t} showMesh={true} texCount={texCount}
                 onChange={(field, val) => updateRoyalMT(i, field, val)}
                 onDuplicate={() => dupRoyalMT(i)}
                 onDelete={() => delRoyalMT(i)} />
