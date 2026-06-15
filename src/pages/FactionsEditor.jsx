@@ -6,6 +6,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import BannersTab from '@/components/factions/BannersTab';
+import DescriptionsTab from '@/components/factions/DescriptionsTab';
+import MiscTab from '@/components/factions/MiscTab';
 
 const VANILLA_FACTION_LIMIT = 31;
 const LS_KEY = 'm2tw_sm_factions_raw';
@@ -342,6 +345,7 @@ function HordeUnitsEditor({ units, onChange, eduUnits }) {
 function FactionDetail({ faction, onChange, cultures, religions, eduUnits, onSave, onCancel }) {
   const [draft, setDraft] = useState({ ...faction });
   const [activeTab, setActiveTab] = useState('stratmap');
+  const [tertiaryEnabled, setTertiaryEnabled] = useState(!!faction.tertiary_colour);
   const set = (key, val) => setDraft({ ...draft, [key]: val });
   const handleSave = () => { onChange(draft); onSave?.(); };
   const handleCancel = () => { setDraft({ ...faction }); onCancel?.(); };
@@ -409,7 +413,18 @@ function FactionDetail({ faction, onChange, cultures, religions, eduUnits, onSav
           <h3 className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-600 pb-1">Colours</h3>
           <ColourPickerField label="Primary Colour" colour={draft.primary_colour} onChange={(v) => set('primary_colour', v)} />
           <ColourPickerField label="Secondary Colour" colour={draft.secondary_colour} onChange={(v) => set('secondary_colour', v)} />
-          <ColourPickerField label="Tertiary Colour (M2EX only)" colour={draft.tertiary_colour || { r: 0, g: 0, b: 0 }} onChange={(v) => set('tertiary_colour', v)} />
+          <div className="flex items-center gap-2 py-0.5">
+            <span className="text-[10px] text-slate-300 w-40 shrink-0">Tertiary Colour (M2EX only)</span>
+            <button
+              onClick={() => setTertiaryEnabled(!tertiaryEnabled)}
+              className={`px-2 py-0.5 text-[9px] rounded border ${tertiaryEnabled ? 'bg-green-700 border-green-600 text-white' : 'bg-slate-700 border-slate-600 text-slate-400'}`}
+            >
+              {tertiaryEnabled ? 'Enabled' : 'Disabled'}
+            </button>
+          </div>
+          {tertiaryEnabled && (
+            <ColourPickerField label="Tertiary Colour" colour={draft.tertiary_colour || { r: 0, g: 0, b: 0 }} onChange={(v) => set('tertiary_colour', v)} />
+          )}
           <p className="text-[9px] text-amber-300 mt-1">⚠ Tertiary colour only works with M2EX</p>
         </section>
 
@@ -480,41 +495,15 @@ function FactionDetail({ faction, onChange, cultures, religions, eduUnits, onSav
           </TabsContent>
 
           <TabsContent value="banners" className="space-y-4">
-            <div className="text-center py-8 text-slate-400">
-              <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-semibold">Banners Configuration</p>
-              <p className="text-xs mt-1">Upload and edit descr_banners_new.xml for this faction</p>
-              <Button variant="outline" size="sm" className="mt-4 text-[10px]">
-                <Upload className="w-3 h-3 mr-1" /> Load Banners File
-              </Button>
-            </div>
+            <BannersTab factionName={draft.name} />
           </TabsContent>
 
           <TabsContent value="descriptions" className="space-y-4">
-            <div className="text-center py-8 text-slate-400">
-              <ScrollText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-semibold">Faction Descriptions</p>
-              <p className="text-xs mt-1">Edit expanded.txt and campaign_descriptions.txt</p>
-              <div className="flex gap-2 mt-4 justify-center">
-                <Button variant="outline" size="sm" className="text-[10px]">
-                  <Upload className="w-3 h-3 mr-1" /> Load expanded.txt
-                </Button>
-                <Button variant="outline" size="sm" className="text-[10px]">
-                  <Upload className="w-3 h-3 mr-1" /> Load campaign_descriptions.txt
-                </Button>
-              </div>
-            </div>
+            <DescriptionsTab factionName={draft.name} />
           </TabsContent>
 
           <TabsContent value="misc" className="space-y-4">
-            <div className="text-center py-8 text-slate-400">
-              <Settings className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-semibold">Miscellaneous Files</p>
-              <p className="text-xs mt-1">Edit descr_offmap_models.txt and other minor files</p>
-              <Button variant="outline" size="sm" className="mt-4 text-[10px]">
-                <Upload className="w-3 h-3 mr-1" /> Load descr_offmap_models.txt
-              </Button>
-            </div>
+            <MiscTab factionName={draft.name} />
           </TabsContent>
         </Tabs>
 
