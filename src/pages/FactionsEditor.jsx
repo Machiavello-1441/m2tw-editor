@@ -679,7 +679,7 @@ export default function FactionsEditor() {
                 <Plus className="w-3 h-3 mr-1" /> Add Faction
               </Button>
             </div>
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 max-h-[calc(100vh-120px)]">
               {filtered.map(({ f, i }) =>
             <div key={i} className={`w-full flex items-center gap-2 px-3 py-2 border-b border-border/60 ${selectedIdx === i ? 'bg-accent' : 'hover:bg-accent'}`}>
                   <button onClick={() => setSelectedIdx(i)} className="flex items-center gap-2 flex-1 text-left">
