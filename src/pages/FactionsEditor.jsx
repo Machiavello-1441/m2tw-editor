@@ -62,11 +62,13 @@ function parseDescrSmFactions(text) {
     const line = rawLine.replace(/;.*$/, '').trim();
     if (!line) continue;
 
-    const factionMatch = line.match(/^faction\s+(\S+)/i);
+    const factionMatch = line.match(/^faction\s+(\S+)(?:\s*,\s*(spawned_on_event|shadowing|shadowed_by)\s+(\S+))?/i);
     if (factionMatch) {
       if (current) factions.push(current);
       current = {
         name: factionMatch[1],
+        spawn_type: factionMatch[2] || 'default',
+        shadow_faction: factionMatch[3] || '',
         culture: '',
         religion: '',
         symbol: '',
@@ -92,7 +94,6 @@ function parseDescrSmFactions(text) {
         horde_max_percent_army_stack: 0,
         horde_disband_percent_on_settlement_capture: 0,
         horde_units: [],
-        extras: [],
       };
       continue;
     }
@@ -132,7 +133,6 @@ function parseDescrSmFactions(text) {
       case 'horde_disband_percent_on_settlement_capture':    current.horde_disband_percent_on_settlement_capture = +val || 0; break;
       case 'horde_unit':                                     current.horde_units.push(val); break;
       default:
-        current.extras.push(line);
         break;
     }
   }
@@ -157,18 +157,33 @@ function serialiseDescrSmFactions(factions) {
   const fmtC = (c) => `red ${c.r}, green ${c.g}, blue ${c.b}`;
 
   const lines = (f) => {
+    const nameUpper = f.name.toUpperCase();
+    const symbolVal = f.symbol || `models_strat/symbol_${f.name}.CAS`;
+    const loadingLogoVal = f.loading_logo || `loading_screen/symbols/symbol128_${f.name}.tga`;
+    const logoIndexVal = f.logo_index || `FACTION_LOGO_${nameUpper}`;
+    const smallLogoIndexVal = f.small_logo_index || `SMALL_FACTION_LOGO_${nameUpper}`;
+
+    let factionLine = `faction${T}${f.name}`;
+    if (f.spawn_type === 'spawned_on_event') {
+      factionLine += ', spawned_on_event';
+    } else if (f.spawn_type === 'shadowing' && f.shadow_faction) {
+      factionLine += `, shadowing ${f.shadow_faction}`;
+    } else if (f.spawn_type === 'shadowed_by' && f.shadow_faction) {
+      factionLine += `, shadowed_by ${f.shadow_faction}`;
+    }
+
     const rows = [
-      `faction${T}${f.name}`,
+      factionLine,
       `culture${T}${f.culture}`,
       `religion${T5}${f.religion}`,
-      f.symbol          ? `symbol${T}${f.symbol}` : null,
+      `symbol${T}${symbolVal}`,
       f.rebel_symbol    ? `rebel_symbol${T4}${f.rebel_symbol}` : null,
       `primary_colour${T4}${fmtC(f.primary_colour)}`,
       `secondary_colour${T3}${fmtC(f.secondary_colour)}`,
-      f.loading_logo    ? `loading_logo${T4}${f.loading_logo}` : null,
+      `loading_logo${T4}${loadingLogoVal}`,
       f.standard_index !== 0 ? `standard_index${T4}${f.standard_index}` : null,
-      f.logo_index      ? `logo_index${T5}${f.logo_index}` : null,
-      f.small_logo_index? `small_logo_index${T3}${f.small_logo_index}` : null,
+      `logo_index${T5}${logoIndexVal}`,
+      `small_logo_index${T3}${smallLogoIndexVal}`,
       f.triumph_value   ? `triumph_value${T4}${f.triumph_value}` : null,
       `custom_battle_availability\t${f.custom_battle_availability}`,
       ...(f.can_horde ? [
@@ -179,13 +194,12 @@ function serialiseDescrSmFactions(factions) {
         `horde_min_named_characters${T3}${f.horde_min_named_characters}`,
         `horde_max_percent_army_stack${T}${f.horde_max_percent_army_stack}`,
         `horde_disband_percent_on_settlement_capture\t${f.horde_disband_percent_on_settlement_capture}`,
-        ...(f.horde_units || []).map(u => `horde_unit${T4}${u}`),
+        ...(f.horde_units || []).map((u, idx) => `horde_unit${T4}${u}${idx === 0 && f.can_horde ? ' ; general_unit required' : ''}`),
       ] : []),
       `can_sap${T}${f.can_sap}`,
       `prefers_naval_invasions\t\t${f.prefers_naval_invasions}`,
       `can_have_princess${T3}${f.can_have_princess}`,
       `has_family_tree${T4}${f.has_family_tree}`,
-      ...(f.extras || []),
     ].filter(r => r !== null);
     return rows.join('\n');
   };
@@ -347,6 +361,22 @@ function FactionDetail({ faction, onChange, cultures, religions, eduUnits }) {
             <label className="text-[10px] text-slate-400 w-40 shrink-0">Internal Name</label>
             <Input className="h-6 text-[11px] px-2 flex-1 font-mono bg-slate-800 border-slate-700 text-slate-100" value={faction.name ?? ''} onChange={e => set('name', e.target.value)} />
           </div>
+          <div className="flex items-center gap-3">
+            <label className="text-[10px] text-slate-400 w-40 shrink-0">Spawn Type</label>
+            <select value={faction.spawn_type || 'default'} onChange={e => set('spawn_type', e.target.value)}
+              className="flex-1 h-6 text-[11px] px-2 rounded border border-slate-700 bg-slate-800 text-slate-100 font-mono">
+              <option value="default">default</option>
+              <option value="spawned_on_event">spawned_on_event</option>
+              <option value="shadowing">shadowing</option>
+              <option value="shadowed_by">shadowed_by</option>
+            </select>
+          </div>
+          {(faction.spawn_type === 'shadowing' || faction.spawn_type === 'shadowed_by') && (
+            <div className="flex items-center gap-3">
+              <label className="text-[10px] text-slate-400 w-40 shrink-0">Shadow Faction</label>
+              <Input className="h-6 text-[11px] px-2 flex-1 font-mono bg-slate-800 border-slate-700 text-slate-100" value={faction.shadow_faction ?? ''} onChange={e => set('shadow_faction', e.target.value)} placeholder="e.g. england" />
+            </div>
+          )}
           <SelectOrInput label="Culture" value={faction.culture} onChange={v => set('culture', v)} options={cultures} placeholder="e.g. northern_european" />
           <SelectOrInput label="Religion" value={faction.religion} onChange={v => set('religion', v)} options={religions} placeholder="e.g. catholic" />
         </section>
@@ -360,30 +390,17 @@ function FactionDetail({ faction, onChange, cultures, religions, eduUnits }) {
         <section className="space-y-2">
           <h3 className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-700 pb-1">Files & Indices</h3>
           {[
-            ['symbol', 'Symbol (.CAS)'],
-            ['rebel_symbol', 'Rebel Symbol (.CAS)'],
-            ['loading_logo', 'Loading Logo (.tga)'],
-            ['standard_index', 'Standard Index'],
-            ['triumph_value', 'Triumph Value'],
-          ].map(([k, l]) => (
-            <div key={k} className="flex items-center gap-3">
-              <label className="text-[10px] text-slate-400 w-40 shrink-0">{l}</label>
-              <Input className="h-6 text-[11px] px-2 flex-1 font-mono bg-slate-800 border-slate-700 text-slate-100" value={faction[k] ?? ''} onChange={e => set(k, e.target.value)} />
-            </div>
-          ))}
-          {[
+            ['symbol', 'Symbol (.CAS)', `models_strat/symbol_${faction.name}.CAS`],
+            ['rebel_symbol', 'Rebel Symbol (.CAS)', ''],
+            ['loading_logo', 'Loading Logo (.tga)', `loading_screen/symbols/symbol128_${faction.name}.tga`],
+            ['standard_index', 'Standard Index', ''],
+            ['triumph_value', 'Triumph Value', ''],
             ['logo_index', 'Logo Index', defaultLogo],
             ['small_logo_index', 'Small Logo Index', defaultSmallLogo],
           ].map(([k, l, def]) => (
             <div key={k} className="flex items-center gap-3">
               <label className="text-[10px] text-slate-400 w-40 shrink-0">{l}</label>
-              <div className="flex-1 relative">
-                <Input className="h-6 text-[11px] px-2 w-full font-mono pr-14 bg-slate-800 border-slate-700 text-slate-100" value={faction[k] ?? ''} onChange={e => set(k, e.target.value)} placeholder={def} />
-                {!faction[k] && (
-                  <button onClick={() => set(k, def)}
-                    className="absolute right-1 top-0.5 text-[8px] px-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">auto</button>
-                )}
-              </div>
+              <Input className="h-6 text-[11px] px-2 flex-1 font-mono bg-slate-800 border-slate-700 text-slate-100" value={faction[k] ?? ''} onChange={e => set(k, e.target.value)} placeholder={def || undefined} />
             </div>
           ))}
         </section>
@@ -428,23 +445,13 @@ function FactionDetail({ faction, onChange, cultures, religions, eduUnits }) {
               <div className="space-y-1">
                 <label className="text-[10px] text-slate-400">horde_unit entries <span className="text-red-400">*</span></label>
                 <HordeUnitsEditor units={faction.horde_units || []} onChange={v => set('horde_units', v)} eduUnits={eduUnits} />
+                <p className="text-[9px] text-amber-400 mt-1">⚠ First unit must have general_unit attribute in export_descr_unit.txt</p>
               </div>
             </div>
           )}
         </section>
 
-        <section className="space-y-1">
-          <h3 className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-700 pb-1">Comment Lines</h3>
-          <textarea
-            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-[10px] font-mono text-slate-100 resize-y"
-            rows={Math.min((faction.extras || []).length + 1, 6)}
-            value={(faction.extras || []).map(l => l.startsWith(';;;') ? l : `;;; ${l}`).join('\n')}
-            onChange={e => {
-              const lines = e.target.value.split('\n').map(l => l.replace(/^;;;\s*/, ''));
-              set('extras', lines);
-            }}
-          />
-        </section>
+
       </div>
     </ScrollArea>
   );
@@ -529,6 +536,8 @@ export default function FactionsEditor() {
       name: 'new_faction',
       culture: cultures[0] || '',
       religion: religions[0] || '',
+      spawn_type: 'default',
+      shadow_faction: '',
       symbol: '',
       rebel_symbol: 'models_strat/symbol_rebels.CAS',
       primary_colour: { r: 128, g: 128, b: 128 },
@@ -552,7 +561,6 @@ export default function FactionsEditor() {
       horde_max_percent_army_stack: 0,
       horde_disband_percent_on_settlement_capture: 0,
       horde_units: [],
-      extras: [],
     };
     const updated = [...(factions || []), newF];
     setFactions(updated);
@@ -567,15 +575,18 @@ export default function FactionsEditor() {
     while (factions.some(f => f.name === newName)) {
       newName = `${baseName}_copy${++counter}`;
     }
+    const nameUpper = newName.toUpperCase();
     const dup = {
       ...src,
       name: newName,
-      logo_index: '',
-      small_logo_index: '',
-      symbol: '',
-      loading_logo: '',
+      spawn_type: 'default',
+      shadow_faction: '',
+      symbol: `models_strat/symbol_${newName}.CAS`,
+      loading_logo: `loading_screen/symbols/symbol128_${newName}.tga`,
+      logo_index: `FACTION_LOGO_${nameUpper}`,
+      small_logo_index: `SMALL_FACTION_LOGO_${nameUpper}`,
       standard_index: 0,
-      extras: [...(src.extras || [])],
+      horde_units: [],
     };
     const updated = [...factions, dup];
     setFactions(updated);
