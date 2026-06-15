@@ -784,49 +784,44 @@ export default function FactionsEditor() {
       }
       
       const srcNameUpper = src.name.toUpperCase();
-      const adj = adjective.trim() || newFactionName;
-      const leaderT = leaderTitle.trim() || 'Faction Leader';
-      const heirT = heirTitle.trim() || 'Faction Heir';
-      const displayN = displayName.trim() || newFactionName;
+      const srcNameLower = src.name.toLowerCase();
+      const newFactionLower = newFactionName.toLowerCase();
       
-      // Find and duplicate source faction's string entries
+      // Find all source faction's string entries
       const srcEntries = allStrings.filter(entry => {
         const keyUpper = entry.key.toUpperCase();
         return keyUpper.includes(srcNameUpper);
       });
       
-      // Create new entries by replacing source faction name with new faction name
+      // Create new entries by replacing source faction name with new faction name in keys
       const newEntries = srcEntries.map(entry => {
+        // Replace faction name in the KEY (e.g., {BYZANTIUM} -> {BULGARIA})
         const newKey = entry.key.replace(new RegExp(srcNameUpper, 'g'), nameUpper);
+        
+        // Start with the original value
         let newValue = entry.value;
         
-        // Apply user's custom edits to specific keys
-        const keySuffix = newKey.replace(`{EMT_${nameUpper}_`, '').replace('{', '').replace('}', '');
+        // Replace faction name references in the VALUE
+        newValue = newValue
+          .replace(new RegExp(src.name, 'g'), newFactionName)
+          .replace(new RegExp(srcNameLower, 'g'), newFactionLower);
         
-        // Replace faction display name
-        if (newKey === `{${nameUpper}}`) {
-          newValue = displayN;
+        // Apply user's custom edits for specific fields
+        if (newKey === `{${nameUpper}}` && displayName.trim()) {
+          newValue = displayName.trim();
         }
-        // Replace adjective-based values (character types, settlements, etc.)
-        else if (newValue.includes(src.name) || newValue.includes(srcNameUpper.toLowerCase())) {
-          newValue = newValue
-            .replace(new RegExp(src.name, 'gi'), newFactionName)
-            .replace(new RegExp(srcNameUpper.toLowerCase(), 'gi'), adj.toLowerCase());
-        }
-        // Replace leader/heir titles if user provided custom ones
         else if (newKey === `{EMT_${nameUpper}_FACTION_LEADER_TITLE}` && leaderTitle.trim()) {
-          newValue = leaderT;
+          newValue = leaderTitle.trim();
         }
         else if (newKey === `{EMT_${nameUpper}_FACTION_HEIR_TITLE}` && heirTitle.trim()) {
-          newValue = heirT;
+          newValue = heirTitle.trim();
         }
         else if (newKey === `{EMT_${nameUpper}_FACTION_LEADER_NAME}` && leaderTitle.trim()) {
-          newValue = `${leaderT} %S`;
+          newValue = `${leaderTitle.trim()} %S`;
         }
         else if (newKey === `{EMT_${nameUpper}_FACTION_HEIR_NAME}` && heirTitle.trim()) {
-          newValue = `${heirT} %S`;
+          newValue = `${heirTitle.trim()} %S`;
         }
-        // Replace strengths/weaknesses/custom unit if provided
         else if (newKey === `{${nameUpper}_STRENGTH}` && strengths.trim()) {
           newValue = strengths.trim();
         }
