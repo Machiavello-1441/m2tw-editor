@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Download, Plus, Trash2, Copy, ChevronDown, ChevronRight, Eye, X } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Upload, Download, Plus, Trash2, Copy, ChevronDown, ChevronRight, Eye, X, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -317,11 +317,15 @@ function StratModelCard({ model, onChange, onDelete, texCount, factions }) {
         <span className="text-[11px] font-mono text-teal-400 flex-1">{model.name || '(unnamed)'}</span>
         <span className="text-[9px] text-slate-500">{model.textures.length} textures</span>
         <button onClick={e => { e.stopPropagation(); setPreview(allTextures); }} title="Preview textures"
-          className="text-violet-400 hover:text-violet-300 p-0.5"><Eye className="w-3 h-3" /></button>
+          className="text-violet-400 hover:text-violet-300 p-1 rounded hover:bg-violet-900/30 transition-colors">
+          <Eye className="w-4 h-4" />
+        </button>
         <button onClick={e => { e.stopPropagation(); setShowModelPreview(true); }} title="3D model preview"
-          className="text-teal-400 hover:text-teal-300 p-0.5" style={{fontSize:'9px', lineHeight:1}}>3D</button>
+          className="text-teal-400 hover:text-teal-300 p-1 rounded hover:bg-teal-900/30 transition-colors text-[10px] font-bold border border-teal-800 hover:border-teal-600 px-1.5">
+          3D
+        </button>
         <button onClick={e => { e.stopPropagation(); onDelete(); }}
-          className="text-red-500 hover:text-red-400 p-0.5"><Trash2 className="w-3 h-3" /></button>
+          className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-900/20 transition-colors"><Trash2 className="w-4 h-4" /></button>
       </div>
       {open && (
         <div className="px-3 pb-3 pt-1 space-y-2">
@@ -387,10 +391,132 @@ function StratModelCard({ model, onChange, onDelete, texCount, factions }) {
       {showModelPreview && (
         <StratModelPreview
           modelEntry={model}
-          factionHint={model.textures?.[0]?.faction || ''}
           onClose={() => setShowModelPreview(false)}
         />
       )}
+    </div>
+  );
+}
+
+// ── Bulk Duplicate Faction Panel ──────────────────────────────────────────────
+function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onClose }) {
+  const [srcFaction, setSrcFaction] = useState(factions[0] || '');
+  const [dstFaction, setDstFaction] = useState('');
+  const [mode, setMode] = useState('both'); // 'characters' | 'strat_models' | 'both'
+
+  // Preview what will be duplicated
+  const charMatches = charData
+    ? charData.types.flatMap(t => t.factions.filter(f => f.faction === srcFaction).map(() => t.type))
+    : [];
+  const stratMatches = stratData
+    ? stratData.filter(m => m.textures.some(t => t.faction === srcFaction)).map(m => m.name)
+    : [];
+
+  const handleApply = () => {
+    if (!dstFaction.trim()) return;
+    const dst = dstFaction.trim();
+
+    let newCharData = charData;
+    let newStratData = stratData;
+
+    // Duplicate faction rows in character types
+    if (charData && (mode === 'characters' || mode === 'both')) {
+      newCharData = {
+        ...charData,
+        types: charData.types.map(t => {
+          const srcRow = t.factions.find(f => f.faction === srcFaction);
+          if (!srcRow) return t;
+          const alreadyExists = t.factions.some(f => f.faction === dst);
+          if (alreadyExists) return t;
+          return { ...t, factions: [...t.factions, { ...srcRow, faction: dst }] };
+        }),
+      };
+    }
+
+    // Duplicate texture entries in strat models
+    if (stratData && (mode === 'strat_models' || mode === 'both')) {
+      newStratData = stratData.map(m => {
+        const srcTex = m.textures.find(t => t.faction === srcFaction);
+        if (!srcTex) return m;
+        const alreadyExists = m.textures.some(t => t.faction === dst);
+        if (alreadyExists) return m;
+        // Auto-rename texture path: replace srcFaction with dstFaction in filename
+        const newPath = srcTex.path.replace(new RegExp(srcFaction, 'g'), dst);
+        return { ...m, textures: [...m.textures, { faction: dst, path: newPath }] };
+      });
+    }
+
+    onApply(newCharData, newStratData);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-600 rounded-xl shadow-2xl p-5 w-[480px] max-w-[95vw]"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 mb-4">
+          <Layers className="w-4 h-4 text-amber-400" />
+          <span className="text-sm font-semibold text-amber-300">Bulk Duplicate Faction</span>
+          <button onClick={onClose} className="ml-auto text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="space-y-3 text-[11px]">
+          <div className="flex items-center gap-3">
+            <label className="text-slate-400 w-28 shrink-0">Source faction</label>
+            <select className="flex-1 h-7 px-2 rounded border border-input bg-background text-foreground text-[11px]"
+              value={srcFaction} onChange={e => setSrcFaction(e.target.value)}>
+              {factions.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-slate-400 w-28 shrink-0">New faction name</label>
+            <Input className="flex-1 h-7 text-[11px] px-2" value={dstFaction}
+              onChange={e => setDstFaction(e.target.value)} placeholder="e.g. my_new_faction" />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-slate-400 w-28 shrink-0">Apply to</label>
+            <div className="flex gap-2">
+              {[['both', 'Both'], ['characters', 'Characters only'], ['strat_models', 'Strat models only']].map(([v, l]) => (
+                <button key={v} onClick={() => setMode(v)}
+                  className={`px-2 py-1 rounded border text-[10px] transition-colors ${mode === v ? 'border-amber-600 bg-amber-900/30 text-amber-300' : 'border-slate-600 text-slate-400 hover:border-slate-400'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="rounded border border-slate-700 bg-slate-950/50 p-3 space-y-2">
+            <p className="text-slate-500 text-[10px] font-mono">Preview — entries that will be duplicated:</p>
+            {(mode === 'characters' || mode === 'both') && charMatches.length > 0 && (
+              <div>
+                <p className="text-amber-400 text-[9px] mb-1">Character types ({charMatches.length})</p>
+                <div className="flex flex-wrap gap-1">
+                  {charMatches.map((n, i) => <span key={i} className="bg-amber-900/40 border border-amber-800 rounded px-1 text-[8px] font-mono text-amber-300">{n}</span>)}
+                </div>
+              </div>
+            )}
+            {(mode === 'strat_models' || mode === 'both') && stratMatches.length > 0 && (
+              <div>
+                <p className="text-teal-400 text-[9px] mb-1">Strat model textures ({stratMatches.length})</p>
+                <div className="flex flex-wrap gap-1">
+                  {stratMatches.map((n, i) => <span key={i} className="bg-teal-900/40 border border-teal-800 rounded px-1 text-[8px] font-mono text-teal-300">{n}</span>)}
+                </div>
+              </div>
+            )}
+            {charMatches.length === 0 && stratMatches.length === 0 && (
+              <p className="text-slate-600 text-[10px] italic">No entries found for "{srcFaction}"</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="px-3 py-1.5 text-[11px] rounded border border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors">Cancel</button>
+          <button onClick={handleApply} disabled={!dstFaction.trim() || (charMatches.length === 0 && stratMatches.length === 0)}
+            className="px-4 py-1.5 text-[11px] rounded bg-amber-700 hover:bg-amber-600 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            Duplicate → {dstFaction || '…'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -403,6 +529,7 @@ export default function StratMapCharTab() {
   const [factions, setFactions] = useState([]);
   const [texCount, setTexCount] = useState(0);
   const [activeView, setActiveView] = useState('characters');
+  const [showBulkPanel, setShowBulkPanel] = useState(false);
 
   const charRef = useRef();
   const stratRef = useRef();
@@ -515,10 +642,25 @@ export default function StratMapCharTab() {
     setStratData(updated); setStratModelMap(buildModelMap(updated));
   };
 
+  const handleBulkApply = useCallback((newCharData, newStratData) => {
+    if (newCharData) setCharData(newCharData);
+    if (newStratData) { setStratData(newStratData); setStratModelMap(buildModelMap(newStratData)); }
+    setShowBulkPanel(false);
+  }, []);
+
   const filesLoaded = charData || stratData;
 
   return (
     <div className="flex flex-col h-full gap-2">
+      {showBulkPanel && (
+        <BulkDuplicateFactionPanel
+          factions={factions}
+          charData={charData}
+          stratData={stratData}
+          onApply={handleBulkApply}
+          onClose={() => setShowBulkPanel(false)}
+        />
+      )}
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap shrink-0">
         <Button variant="outline" size="sm" className={`text-[10px] h-7 ${charData ? 'text-green-400 border-green-700' : ''}`}
@@ -550,6 +692,13 @@ export default function StratMapCharTab() {
         <input ref={texRef} type="file" multiple accept=".tga,.texture,.dds,.png" className="hidden" onChange={handleTextures} />
 
         <div className="flex-1" />
+
+        {(charData || stratData) && factions.length > 0 && (
+          <Button size="sm" variant="outline" className="text-[10px] h-7 text-amber-400 border-amber-700 hover:bg-amber-900/30"
+            onClick={() => setShowBulkPanel(true)}>
+            <Layers className="w-3 h-3 mr-1" /> Bulk Duplicate Faction
+          </Button>
+        )}
 
         {charData && (
           <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={exportChar}>
