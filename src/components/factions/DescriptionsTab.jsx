@@ -41,12 +41,12 @@ export default function DescriptionsTab({ factionName }) {
 
   const updateStringValue = (key, newValue) => {
     // Update the filtered entry
-    setStringsBinEntries(prev => 
-      prev.map(entry => entry.key === key ? { ...entry, value: newValue } : entry)
+    setStringsBinEntries((prev) =>
+    prev.map((entry) => entry.key === key ? { ...entry, value: newValue } : entry)
     );
     // Also update the full stored data
-    const updatedEntries = allEntries.map(entry => 
-      entry.key === key ? { ...entry, value: newValue } : entry
+    const updatedEntries = allEntries.map((entry) =>
+    entry.key === key ? { ...entry, value: newValue } : entry
     );
     setAllEntries(updatedEntries);
     localStorage.setItem(GLOBAL_STRINGS_KEY, JSON.stringify({
@@ -67,16 +67,16 @@ export default function DescriptionsTab({ factionName }) {
           setMagicValues({ magic1, magic2 });
           // Filter entries for current faction
           const factionUpper = factionName.toUpperCase();
-          const filtered = entries.filter(entry => 
-            entry.key && entry.key.toUpperCase().includes(factionUpper)
+          const filtered = entries.filter((entry) =>
+          entry.key && entry.key.toUpperCase().includes(factionUpper)
           );
           setStringsBinEntries(filtered);
         }
       } catch {}
     };
-    
+
     loadStrings();
-    
+
     // Listen for updates from other editors
     window.addEventListener('strings-bin-updated', loadStrings);
     return () => window.removeEventListener('strings-bin-updated', loadStrings);
@@ -85,7 +85,7 @@ export default function DescriptionsTab({ factionName }) {
   return (
     <div className="space-y-4">
       <div className="border-b border-slate-600 pb-2">
-        <p className="text-sm font-semibold text-slate-200">Strings.bin Editor</p>
+        <p className="text-sm font-semibold text-slate-200">expanded.txt.strings.bin Editor</p>
         <p className="text-xs text-slate-400">Edit strings.bin entries for {factionName}</p>
       </div>
 
@@ -96,35 +96,35 @@ export default function DescriptionsTab({ factionName }) {
           <Button variant="outline" size="sm" className="text-[10px]" onClick={() => stringsBinRef.current?.click()}>
             <Upload className="w-3 h-3 mr-1" /> Load
           </Button>
-          {allEntries.length > 0 && (
-            <Button variant="outline" size="sm" className="text-[10px]" onClick={exportStringsBin}>
+          {allEntries.length > 0 &&
+          <Button variant="outline" size="sm" className="text-[10px]" onClick={exportStringsBin}>
               <Download className="w-3 h-3 mr-1" /> Export
             </Button>
-          )}
+          }
         </div>
       </div>
 
-      {stringsBinEntries.length > 0 ? (
-        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-          {stringsBinEntries.map((entry, idx) => (
-            <div key={idx} className="bg-slate-800 border border-slate-600 rounded p-3">
+      {stringsBinEntries.length > 0 ?
+      <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+          {stringsBinEntries.map((entry, idx) =>
+        <div key={idx} className="bg-slate-800 border border-slate-600 rounded p-3">
               <div className="text-[9px] font-mono text-slate-500 mb-2 select-all">
                 {'{'}{entry.key}{'}'}
               </div>
               <textarea
-                className="w-full bg-slate-700 border border-slate-600 rounded p-2 text-[10px] text-slate-100 resize-none"
-                rows={2}
-                value={entry.value}
-                onChange={(e) => updateStringValue(entry.key, e.target.value)}
-              />
+            className="w-full bg-slate-700 border border-slate-600 rounded p-2 text-[10px] text-slate-100 resize-none"
+            rows={2}
+            value={entry.value}
+            onChange={(e) => updateStringValue(entry.key, e.target.value)} />
+          
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-6 text-slate-500 border border-dashed border-slate-700 rounded">
+        )}
+        </div> :
+
+      <div className="text-center py-6 text-slate-500 border border-dashed border-slate-700 rounded">
           <p className="text-xs">No strings.bin loaded - upload to see entries for {factionName}</p>
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 }
