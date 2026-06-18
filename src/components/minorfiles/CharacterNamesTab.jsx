@@ -38,7 +38,7 @@ function parseDescrNames(text) {
     if (/^females?$/i.test(trimmed))   { currentSection = 'females';    continue; }
     if (/^male$/i.test(trimmed))       { currentSection = 'characters'; continue; }
 
-    if (currentSection && !/\s/.test(trimmed)) {
+    if (currentSection) {
       factions[currentFaction][currentSection].push(trimmed);
     }
   }
