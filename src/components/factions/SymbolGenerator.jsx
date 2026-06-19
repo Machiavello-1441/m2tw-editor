@@ -213,20 +213,35 @@ function MaskUploader({ label, maskImg, onLoad, onClear }) {
 }
 
 function SetConfig({ set, config, onChange }) {
+  const aspectW = set.minW;
+  const aspectH = set.minH;
+
+  const handleW = (val) => {
+    const w = Math.max(set.minW, Number(val));
+    const h = Math.max(set.minH, Math.round(w * aspectH / aspectW));
+    onChange({ w, h });
+  };
+
+  const handleH = (val) => {
+    const h = Math.max(set.minH, Number(val));
+    const w = Math.max(set.minW, Math.round(h * aspectW / aspectH));
+    onChange({ w, h });
+  };
+
   return (
     <div className="flex items-center gap-3 text-[10px] text-slate-400">
       <span className="font-semibold text-slate-300 w-20">{set.label}</span>
       <label className="flex items-center gap-1">
         W <input
           type="number" min={set.minW} value={config.w}
-          onChange={e => onChange({ ...config, w: Math.max(set.minW, Number(e.target.value)) })}
+          onChange={e => handleW(e.target.value)}
           className="w-14 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
         />
       </label>
       <label className="flex items-center gap-1">
         H <input
           type="number" min={set.minH} value={config.h}
-          onChange={e => onChange({ ...config, h: Math.max(set.minH, Number(e.target.value)) })}
+          onChange={e => handleH(e.target.value)}
           className="w-14 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-slate-200"
         />
       </label>
