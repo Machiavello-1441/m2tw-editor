@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, Image } from 'lucide-react';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
+import SymbolGenerator from './SymbolGenerator';
 
 const SYMBOL_GROUPS = [
   {
@@ -112,6 +113,8 @@ export default function FactionSymbolsTab({ factionName }) {
       <p className="text-[10px] text-slate-600 italic pt-1">
         Click any slot to load the corresponding .tga file. Previews are view-only and not saved to disk.
       </p>
+
+      <SymbolGenerator factionName={factionName} />
     </div>
   );
 }
