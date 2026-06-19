@@ -90,6 +90,8 @@ export default function FactionSymbolsTab({ factionName }) {
         <p className="text-xs text-slate-400">Preview and load .tga symbol files for <span className="font-mono text-amber-400">{factionName}</span></p>
       </div>
 
+      <SymbolGenerator factionName={factionName} />
+
       {SYMBOL_GROUPS.map((group) => (
         <div key={group.label} className="space-y-2">
           <div>
@@ -113,8 +115,6 @@ export default function FactionSymbolsTab({ factionName }) {
       <p className="text-[10px] text-slate-600 italic pt-1">
         Click any slot to load the corresponding .tga file. Previews are view-only and not saved to disk.
       </p>
-
-      <SymbolGenerator factionName={factionName} />
     </div>
   );
 }
