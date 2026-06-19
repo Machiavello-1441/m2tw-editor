@@ -499,6 +499,15 @@ export default function UnitEditorPage() {
               {copied ? 'Copied!' : 'Copy unit'}
             </button>
           )}
+          {modeldb && (
+            <button
+              onClick={handleDownloadModeldb}
+              className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Download className="w-3 h-3" />
+              Download ModelDB
+            </button>
+          )}
           <Button size="sm" className="h-7 text-[11px] gap-1.5" onClick={handleDownload} disabled={units.length === 0}>
             <Download className="w-3.5 h-3.5" />
             Download EDU
