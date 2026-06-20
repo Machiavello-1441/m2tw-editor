@@ -1,8 +1,56 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Download, FileText, Trash2 } from 'lucide-react';
+import { Upload, Download, FileText, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { parseBannersXml, serialiseBannersXml } from '@/components/minorfiles/banners/bannersParser';
+
+function EmptyFactionEntries({ factionName, parsedData, onCopy }) {
+  const [selectedSource, setSelectedSource] = useState('');
+
+  // Collect all unique factions present in the parsed data
+  const availableFactions = React.useMemo(() => {
+    if (!parsedData) return [];
+    const set = new Set();
+    parsedData.factionBanners.forEach(b => b.textures.forEach(t => { if (t.faction) set.add(t.faction); }));
+    parsedData.unitBanners.forEach(b => b.meshesAndTextures.forEach(t => { if (t.faction) set.add(t.faction); }));
+    parsedData.holyBanners.forEach(b => b.meshesAndTextures.forEach(t => { if (t.faction) set.add(t.faction); }));
+    parsedData.royalBanner.meshesAndTextures.forEach(t => { if (t.faction) set.add(t.faction); });
+    return [...set].filter(f => f.toLowerCase() !== factionName.toLowerCase()).sort();
+  }, [parsedData, factionName]);
+
+  return (
+    <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg space-y-4">
+      <FileText className="w-12 h-12 mx-auto mb-1 opacity-30" />
+      <p className="text-sm">No texture entries for <span className="font-mono text-slate-300">{factionName}</span></p>
+      {availableFactions.length > 0 ? (
+        <div className="flex flex-col items-center gap-2 mt-2">
+          <p className="text-xs text-slate-400">Copy entries from another faction:</p>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedSource}
+              onChange={e => setSelectedSource(e.target.value)}
+              className="h-7 px-2 text-[11px] font-mono bg-slate-800 border border-slate-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-200"
+            >
+              <option value="">(choose source faction)</option>
+              {availableFactions.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!selectedSource}
+              onClick={() => onCopy(selectedSource)}
+              className="h-7 text-[10px] gap-1"
+            >
+              <Copy className="w-3 h-3" /> Copy
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs mt-1">Load a banners XML file that contains entries for this faction</p>
+      )}
+    </div>
+  );
+}
 
 export default function BannersTab({ factionName }) {
   const [bannersData, setBannersData] = useState(null);
@@ -219,11 +267,77 @@ export default function BannersTab({ factionName }) {
       {parsedData ? (
         <div className="space-y-3">
           {textureEntries.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg">
-              <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No texture entries for {factionName}</p>
-              <p className="text-xs mt-1">Load a banners XML file that contains entries for this faction</p>
-            </div>
+            <EmptyFactionEntries
+              factionName={factionName}
+              parsedData={parsedData}
+              onCopy={(srcFaction) => {
+                // Copy all entries from srcFaction, remapping faction name to factionName
+                const updated = {
+                  ...parsedData,
+                  factionBanners: parsedData.factionBanners.map(b => ({
+                    ...b,
+                    textures: [
+                      ...b.textures,
+                      ...b.textures
+                        .filter(t => t.faction.toLowerCase() === srcFaction.toLowerCase())
+                        .map(t => ({ ...t, faction: factionName }))
+                    ].filter((t, i, arr) => {
+                      // Remove any pre-existing entry for factionName before adding the copy
+                      if (t.faction.toLowerCase() === factionName.toLowerCase()) {
+                        return arr.findIndex(x => x.faction.toLowerCase() === factionName.toLowerCase()) === i;
+                      }
+                      return true;
+                    })
+                  })),
+                  unitBanners: parsedData.unitBanners.map(b => ({
+                    ...b,
+                    meshesAndTextures: [
+                      ...b.meshesAndTextures,
+                      ...b.meshesAndTextures
+                        .filter(t => t.faction.toLowerCase() === srcFaction.toLowerCase())
+                        .map(t => ({ ...t, faction: factionName }))
+                    ].filter((t, i, arr) => {
+                      if (t.faction.toLowerCase() === factionName.toLowerCase()) {
+                        return arr.findIndex(x => x.faction.toLowerCase() === factionName.toLowerCase()) === i;
+                      }
+                      return true;
+                    })
+                  })),
+                  holyBanners: parsedData.holyBanners.map(b => ({
+                    ...b,
+                    meshesAndTextures: [
+                      ...b.meshesAndTextures,
+                      ...b.meshesAndTextures
+                        .filter(t => t.faction.toLowerCase() === srcFaction.toLowerCase())
+                        .map(t => ({ ...t, faction: factionName }))
+                    ].filter((t, i, arr) => {
+                      if (t.faction.toLowerCase() === factionName.toLowerCase()) {
+                        return arr.findIndex(x => x.faction.toLowerCase() === factionName.toLowerCase()) === i;
+                      }
+                      return true;
+                    })
+                  })),
+                  royalBanner: {
+                    ...parsedData.royalBanner,
+                    meshesAndTextures: [
+                      ...parsedData.royalBanner.meshesAndTextures,
+                      ...parsedData.royalBanner.meshesAndTextures
+                        .filter(t => t.faction.toLowerCase() === srcFaction.toLowerCase())
+                        .map(t => ({ ...t, faction: factionName }))
+                    ].filter((t, i, arr) => {
+                      if (t.faction.toLowerCase() === factionName.toLowerCase()) {
+                        return arr.findIndex(x => x.faction.toLowerCase() === factionName.toLowerCase()) === i;
+                      }
+                      return true;
+                    })
+                  }
+                };
+                const text = serialiseBannersXml(updated);
+                setParsedData(updated);
+                setBannersData(text);
+                localStorage.setItem(`m2tw_banners_${factionName}`, text);
+              }}
+            />
           ) : (
             textureEntries.map((entry, idx) => (
               <div key={idx} className="border border-slate-600 rounded p-3 bg-slate-800/50">
