@@ -1,25 +1,24 @@
-import React, { useState } from 'react';
-import { ExternalLink, RefreshCw, Check, Download } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ExternalLink, RefreshCw, Check, Download, AlertCircle } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { rasterizeTiles } from './TileRasterizer';
 
 // Tile URL templates to rasterize
 const RASTER_SOURCES = [
   {
-    id: 'heights',           // matches LAYER_DEFS id
+    id: 'heights',
     label: 'Heightmap (Terrarium)',
     url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
     grayscale: true,
   },
   {
-    id: 'topo_ref',          // visual reference only, not a M2TW layer
+    id: 'topo_ref',
     label: 'Topographic (OpenTopoMap)',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
   },
 ];
 
 function getRasterSize(layerId, mapWidth, mapHeight) {
-  // heights and topo_ref use the ×2+1 resolution
   if (layerId === 'heights' || layerId === 'topo_ref') {
     return { width: mapWidth * 2 + 1, height: mapHeight * 2 + 1 };
   }
@@ -27,7 +26,13 @@ function getRasterSize(layerId, mapWidth, mapHeight) {
 }
 
 const OSM_OVERPASS = 'https://overpass-api.de/api/interpreter';
-const OHM_OVERPASS = 'https://overpass.openhistoricalmap.org/api/interpreter';
+
+// River detail levels: what waterway types to include
+const RIVER_DETAIL_LEVELS = [
+  { id: 'major',  label: 'Major rivers only',      filter: 'river' },
+  { id: 'medium', label: 'Rivers + canals',         filter: 'river|canal' },
+  { id: 'all',    label: 'Rivers, streams & canals', filter: 'river|stream|canal' },
+];
 
 async function fetchOverpass(query, endpoint) {
   const res = await fetch(endpoint, {
@@ -52,58 +57,114 @@ function makeBboxCanvas(bbox, width, height) {
   return { canvas, ctx, toXY };
 }
 
+/**
+ * Post-process river ImageData:
+ * - All river pixels become pure blue (0, 0, 255)
+ * - Remove any river pixel that has more than 2 river neighbors (8-directional)
+ *   by iterating until stable (max 5 passes)
+ */
+function postProcessRivers(imageData) {
+  const { width, height, data } = imageData;
+
+  const isRiver = (i) => data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 255 && data[i + 3] > 0;
+
+  // First: set starting pixel (top-left-most river pixel) to white (255,255,255)
+  // and ensure all river pixels are pure blue
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+    // Any blue-dominant pixel → pure blue river
+    if (a > 0 && b > 100 && b > r + 20 && b > g + 20) {
+      data[i] = 0; data[i + 1] = 0; data[i + 2] = 255; data[i + 3] = 255;
+    }
+  }
+
+  // Find the first river pixel (top-to-bottom, left-to-right) → mark as white (origin)
+  let originSet = false;
+  for (let y = 0; y < height && !originSet; y++) {
+    for (let x = 0; x < width && !originSet; x++) {
+      const i = (y * width + x) * 4;
+      if (isRiver(i)) {
+        data[i] = 255; data[i + 1] = 255; data[i + 2] = 255; data[i + 3] = 255;
+        originSet = true;
+      }
+    }
+  }
+
+  // Thin rivers: remove pixels with > 2 river neighbors, up to 5 passes
+  for (let pass = 0; pass < 5; pass++) {
+    let changed = false;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        if (!isRiver(i)) continue;
+        let count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+            const ni = (ny * width + nx) * 4;
+            if (isRiver(ni)) count++;
+          }
+        }
+        if (count > 2) {
+          data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 0;
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
+
+  return imageData;
+}
+
 export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, onDone }) {
   const [status, setStatus] = useState('');
   const [generating, setGenerating] = useState(false);
   const [rasterProgress, setRasterProgress] = useState({});
-  const [ohmYear, setOhmYear] = useState(1095);
-  const ohmDate = `${ohmYear}-01-01`;
   const [generated, setGenerated] = useState({});
+  const [riverDetail, setRiverDetail] = useState('major');
+  const [seaThreshold, setSeaThreshold] = useState(10); // grayscale brightness ≤ this = sea on heightmap
 
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
-  const ohmDateParam = `[date:"${ohmDate}"]`;
 
   const generateRivers = async () => {
-    setStatus('Fetching rivers from OpenHistoricalMap…');
+    const detail = RIVER_DETAIL_LEVELS.find(d => d.id === riverDetail) ?? RIVER_DETAIL_LEVELS[0];
+    setStatus(`Fetching rivers from OpenStreetMap (${detail.label})…`);
 
-    const ohmQuery = `[out:json]${ohmDateParam}[bbox:${bboxStr}][timeout:60];
+    const osmQuery = `[out:json][bbox:${bboxStr}][timeout:90];
 (
-  way["waterway"~"^(river|stream|canal)$"];
+  way["waterway"~"^(${detail.filter})$"];
 );
 out geom qt;`;
 
-    // OSM fallback query
-    const osmQuery = `[out:json][bbox:${bboxStr}][timeout:60];
-(
-  way["waterway"~"^(river|stream|canal)$"];
-);
-out geom qt;`;
-
-    const def = LAYER_DEFS.find(d => d.id === 'map_features');
-    const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
+    const def = LAYER_DEFS.find(d => d.id === 'features') ?? LAYER_DEFS.find(d => d.id === 'map_features');
+    const { width, height } = def
+      ? getLayerDimensions(def, mapWidth, mapHeight)
+      : { width: mapWidth, height: mapHeight };
     const { canvas, ctx, toXY } = makeBboxCanvas(bbox, width, height);
-    ctx.strokeStyle = '#0000ff';
-    ctx.lineWidth = 1;
+
+    // Start background transparent
+    ctx.clearRect(0, 0, width, height);
 
     let elements = [];
-    let sourceLabel = 'OHM';
-
     try {
-      const data = await fetchOverpass(ohmQuery, OHM_OVERPASS);
+      const data = await fetchOverpass(osmQuery, OSM_OVERPASS);
       elements = (data.elements || []).filter(e => e.geometry?.length > 1);
-      if (elements.length === 0) throw new Error('No rivers in OHM');
     } catch (e) {
-      setStatus('OHM unavailable — fetching OSM fallback…');
-      sourceLabel = 'OSM';
-      try {
-        const data = await fetchOverpass(osmQuery, OSM_OVERPASS);
-        elements = (data.elements || []).filter(e => e.geometry?.length > 1);
-      } catch (e2) {
-        setStatus(`Error fetching rivers: ${e2.message}`);
-        return;
-      }
+      setStatus(`Error fetching rivers: ${e.message}`);
+      return;
     }
 
+    if (elements.length === 0) {
+      setStatus('No waterways found in this area for the selected detail level.');
+      return;
+    }
+
+    // Draw rivers as 1px pure blue lines
+    ctx.strokeStyle = 'rgb(0,0,255)';
+    ctx.lineWidth = 1;
     elements.forEach(el => {
       ctx.beginPath();
       el.geometry.forEach(({ lat, lon }, i) => {
@@ -113,8 +174,11 @@ out geom qt;`;
       ctx.stroke();
     });
 
-    setStatus(`Rivers generated (${elements.length} waterways from ${sourceLabel}).`);
+    // Post-process: enforce 1px constraint and set origin pixel to white
     const imageData = ctx.getImageData(0, 0, width, height);
+    postProcessRivers(imageData);
+
+    setStatus(`Rivers generated (${elements.length} waterways, ${detail.label}).`);
     onLayerUpdate('features', { imageData, visible: true, opacity: 0.9, dirty: true });
     setGenerated(p => ({ ...p, features: true }));
   };
@@ -124,7 +188,9 @@ out geom qt;`;
     const img = new Image();
     img.onload = () => {
       const def = LAYER_DEFS.find(d => d.id === layerId);
-      const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
+      const { width, height } = def
+        ? getLayerDimensions(def, mapWidth, mapHeight)
+        : { width: mapWidth, height: mapHeight };
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       const ctx = canvas.getContext('2d');
@@ -147,6 +213,18 @@ out geom qt;`;
         (done, total) => setRasterProgress(p => ({ ...p, [source.id]: { done, total } })),
         { grayscale: source.grayscale }
       );
+
+      // For heightmap: apply sea threshold — pixels with grayscale ≤ threshold become blue sea
+      if (source.id === 'heights' && seaThreshold > 0) {
+        const d = imageData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const gray = (d[i] + d[i + 1] + d[i + 2]) / 3;
+          if (gray <= seaThreshold && !(d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 255)) {
+            d[i] = 0; d[i + 1] = 0; d[i + 2] = 255; d[i + 3] = 255;
+          }
+        }
+      }
+
       onLayerUpdate(source.id, { imageData, visible: true, opacity: 0.8, dirty: true });
       setGenerated(p => ({ ...p, [source.id]: true }));
       setStatus(`${source.label} rasterized at ${width}×${height} px.`);
@@ -154,21 +232,6 @@ out geom qt;`;
       setStatus(`Error rasterizing ${source.label}: ${e.message}`);
     }
     setRasterProgress(p => ({ ...p, [source.id]: null }));
-  };
-
-  const rasterizeAll = async () => {
-    setGenerating(true);
-    for (const src of RASTER_SOURCES) {
-      await rasterizeLayer(src);
-    }
-    setGenerating(false);
-  };
-
-  const generateAll = async () => {
-    setGenerating(true);
-    await generateRivers();
-    setGenerating(false);
-    setStatus('Done. Import climates/ground types manually, then proceed to edit.');
   };
 
   return (
@@ -181,46 +244,28 @@ out geom qt;`;
         <p>Output: <span className="text-amber-300 font-mono">{mapWidth}×{mapHeight}</span> (×2+1: <span className="text-amber-300 font-mono">{mapWidth*2+1}×{mapHeight*2+1}</span>)</p>
       </div>
 
-      {/* OHM Date selector */}
+      {/* Heightmap + coastline threshold */}
       <div>
-        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Historical Date (OHM)</p>
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[9px] text-slate-500">500 AD</span>
-          <span className="text-[11px] text-amber-300 font-mono font-semibold">{ohmYear} AD</span>
-          <span className="text-[9px] text-slate-500">1600 AD</span>
-        </div>
-        <input
-          type="range" min="500" max="1600" step="1"
-          value={ohmYear}
-          onChange={e => setOhmYear(Number(e.target.value))}
-          className="w-full h-1.5 accent-amber-400 mb-1"
-        />
-        <div className="flex justify-between text-[8px] text-slate-600 px-0.5 mb-2">
-          {[500,800,1000,1095,1200,1350,1500].map(y => (
-            <button key={y} onClick={() => setOhmYear(y)}
-              className={`transition-colors ${ohmYear === y ? 'text-amber-400' : 'hover:text-slate-400'}`}>
-              {y}
-            </button>
-          ))}
-        </div>
-        <a href="https://www.openhistoricalmap.org/" target="_blank" rel="noreferrer"
-          className="flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-slate-800 border border-slate-600/50 text-amber-300 hover:bg-slate-700">
-          <ExternalLink className="w-3 h-3" /> OpenHistoricalMap ↗
-        </a>
-      </div>
-
-      {/* Rasterize from tile servers */}
-      <div>
-        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Rasterize from Tiles</p>
+        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Heightmap (Terrarium)</p>
         <p className="text-[9px] text-slate-500 mb-2">
-          Heightmap: sea → RGB(0,0,255), land → grayscale 1–255. Perfectly aligned to your bbox.
+          Sea pixels → RGB(0,0,255). Land → grayscale 1–255. Adjust the sea level threshold to refine coastlines.
         </p>
+
+        <div className="bg-slate-800 border border-slate-700 rounded p-2 mb-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] text-slate-400">Sea threshold (grayscale ≤ value = sea)</p>
+            <span className="text-[10px] font-mono text-amber-400">{seaThreshold}</span>
+          </div>
+          <input type="range" min="0" max="40" step="1" value={seaThreshold}
+            onChange={e => setSeaThreshold(Number(e.target.value))}
+            className="w-full h-1.5 accent-amber-400" />
+          <div className="flex justify-between text-[8px] text-slate-600">
+            <span>0 (strict)</span><span>10 (default)</span><span>40 (generous)</span>
+          </div>
+          <p className="text-[9px] text-slate-500">Higher = more sea, lower = more land near coasts.</p>
+        </div>
+
         <div className="space-y-1.5">
-          <button onClick={rasterizeAll} disabled={generating}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[11px] bg-slate-700 border border-slate-600 text-slate-200 hover:bg-slate-600 disabled:opacity-50 transition-colors font-semibold">
-            <Download className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
-            Rasterize All Tile Layers
-          </button>
           {RASTER_SOURCES.map(src => {
             const prog = rasterProgress[src.id];
             const done = generated[src.id];
@@ -241,37 +286,51 @@ out geom qt;`;
             );
           })}
         </div>
+        <p className="text-[9px] text-slate-500 mt-1">
+          The OpenTopoMap is useful as a reference for ground type generation.
+        </p>
       </div>
 
-      {/* Auto-generate rivers */}
+      {/* Rivers from OSM */}
       <div>
-        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Auto-Generate Rivers</p>
-        <p className="text-[9px] text-slate-500 mb-2">Fetches waterways from OHM (historical), falls back to OSM if unavailable.</p>
-        <div className="space-y-1.5">
-          <button onClick={generateAll} disabled={generating}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[11px] bg-amber-600 border border-amber-500 text-white hover:bg-amber-500 disabled:opacity-50 transition-colors font-semibold">
-            <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
-            Generate Rivers (OHM → OSM fallback)
-          </button>
-          {generated.features && (
-            <p className="text-[10px] text-green-400 flex items-center gap-1"><Check className="w-3 h-3" /> Rivers generated</p>
-          )}
+        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Generate Rivers (OSM)</p>
+        <p className="text-[9px] text-slate-500 mb-2">
+          Rivers are rendered as 1-pixel pure blue (0,0,255) lines. The origin point is set to white (255,255,255). Each river pixel has at most 2 contiguous neighbors.
+        </p>
+
+        <div className="bg-slate-800 border border-slate-700 rounded p-2 mb-2 space-y-1.5">
+          <p className="text-[9px] text-slate-400 font-semibold">Level of detail</p>
+          {RIVER_DETAIL_LEVELS.map(d => (
+            <label key={d.id} className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="riverDetail" value={d.id}
+                checked={riverDetail === d.id}
+                onChange={() => setRiverDetail(d.id)}
+                className="accent-amber-400" />
+              <span className={`text-[10px] ${riverDetail === d.id ? 'text-amber-300' : 'text-slate-400'}`}>{d.label}</span>
+            </label>
+          ))}
+          <p className="text-[9px] text-slate-500 pt-1">
+            Start with Major only. Add streams only if you need fine detail — they can be very dense.
+          </p>
         </div>
+
+        <button onClick={async () => { setGenerating(true); await generateRivers(); setGenerating(false); }} disabled={generating}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[11px] bg-blue-700 border border-blue-600 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors font-semibold">
+          <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
+          Fetch Rivers from OSM
+        </button>
+        {generated.features && (
+          <p className="text-[10px] text-green-400 flex items-center gap-1 mt-1"><Check className="w-3 h-3" /> Rivers generated</p>
+        )}
       </div>
 
       {/* Manual imports */}
       <div>
         <p className="text-[10px] text-slate-400 font-semibold mb-1 uppercase tracking-wider">Import Manually</p>
-        <div className="space-y-1">
-          <a href="https://soilexplorer.net/" target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-slate-800 border border-slate-600 text-amber-300 hover:bg-slate-700">
-            <ExternalLink className="w-3 h-3" /> SoilExplorer → Ground Types
-          </a>
-        </div>
-        <div className="space-y-1 mt-1.5">
+        <div className="space-y-1.5">
           {[
             { id: 'climates', label: 'Climates (PNG)' },
-            { id: 'ground', label: 'Ground Types (PNG)' },
+            { id: 'ground',   label: 'Ground Types (PNG)' },
           ].map(({ id, label }) => (
             <label key={id}
               className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] border cursor-pointer transition-colors ${
