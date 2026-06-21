@@ -105,8 +105,8 @@ export default function RegionsWorkshop({ bbox, layers, onLayerUpdate, mapWidth,
     const layer = layers.regions;
     if (!layer?.imageData) return;
     const w = layer.imageData.width, h = layer.imageData.height;
-    // Start from black canvas
-    const fresh = new ImageData(w, h);
+    // Start fully transparent — sea stays see-through
+    const fresh = new ImageData(w, h); // all zeros = transparent
     list.forEach(s => paintRegionPixels(fresh, s.px, s.py, s.rgb));
     onLayerUpdate('regions', { imageData: fresh, visible: true, opacity: 1, dirty: true });
   };
@@ -126,11 +126,8 @@ export default function RegionsWorkshop({ bbox, layers, onLayerUpdate, mapWidth,
 
   const initBlankRegions = () => {
     const w = mapWidth, h = mapHeight;
-    const blank = new ImageData(w, h);
-    // Fill with sea color (41,140,233) so we can paint over
-    for (let i = 0; i < blank.data.length; i += 4) {
-      blank.data[i] = 41; blank.data[i+1] = 140; blank.data[i+2] = 233; blank.data[i+3] = 255;
-    }
+    // Sea = fully transparent so the underlying reference map shows through
+    const blank = new ImageData(w, h); // all zeros = transparent by default
     onLayerUpdate('regions', { imageData: blank, visible: true, opacity: 1, dirty: true });
   };
 
