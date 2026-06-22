@@ -156,7 +156,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
   const [rules, setRules] = useState([]);
   const [showPicker, setShowPicker] = useState(false);
   const [search, setSearch] = useState('');
-  const [running, setRunning] = useState(false);
+  const [runningIdx, setRunningIdx] = useState(null); // index of currently running rule, or null
   const [statusByRule, setStatusByRule] = useState({});
   const [expanded, setExpanded] = useState(true);
 
@@ -174,44 +174,31 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
 
   const updateGt = (idx, gtId) => setRules(prev => prev.map((r, i) => i === idx ? { ...r, gtId } : r));
 
-  const applyAll = async () => {
-    if (!hasLayer || !bbox || rules.length === 0) return;
-    setRunning(true);
-    setStatusByRule({});
-
-    // Mark all rules as fetching
-    const initStatus = {};
-    rules.forEach((_, i) => { initStatus[i] = 'fetching…'; });
-    setStatusByRule(initStatus);
-
-    // Work on a copy of the current ground layer
-    const src = groundLayer.imageData;
-    const copy = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
+  // Apply a single rule onto the CURRENT ground layer (so rules stack on each other)
+  const applyRule = async (idx) => {
+    if (!hasLayer || !bbox) return;
+    const rule = rules[idx];
+    setRunningIdx(idx);
+    setStatusByRule(s => ({ ...s, [idx]: 'fetching…' }));
 
     try {
-      const byRule = await fetchAllPolygons(rules, bboxStr);
+      const byRule = await fetchAllPolygons([rule], bboxStr);
+      const elements = byRule.get(`${rule.key}=${rule.value}`) ?? [];
+      setStatusByRule(s => ({ ...s, [idx]: `painting (${elements.length})` }));
+      await new Promise(r => setTimeout(r, 0));
 
-      for (let i = 0; i < rules.length; i++) {
-        const rule = rules[i];
-        const elements = byRule.get(`${rule.key}=${rule.value}`) ?? [];
-        setStatusByRule(s => ({ ...s, [i]: `painting (${elements.length})` }));
-        await new Promise(r => setTimeout(r, 0)); // yield to UI
-        const color = GT[rule.gtId] ?? [96, 160, 64];
-        paintPolygonsOntoImageData(copy, elements, bbox, color);
-        setStatusByRule(s => ({ ...s, [i]: `done (${elements.length})` }));
-      }
-
+      // Always paint on top of the CURRENT live layer (not a stale copy)
+      const src = groundLayer.imageData;
+      const copy = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
+      const color = GT[rule.gtId] ?? [96, 160, 64];
+      paintPolygonsOntoImageData(copy, elements, bbox, color);
       onLayerUpdate('ground', { imageData: copy, visible: true, opacity: 1, dirty: true });
+      setStatusByRule(s => ({ ...s, [idx]: `done (${elements.length} features)` }));
     } catch (e) {
-      // Mark all still-pending rules as failed
-      setStatusByRule(s => {
-        const next = { ...s };
-        rules.forEach((_, i) => { if (!next[i]?.startsWith('done')) next[i] = `error: ${e.message}`; });
-        return next;
-      });
+      setStatusByRule(s => ({ ...s, [idx]: `error: ${e.message}` }));
     }
 
-    setRunning(false);
+    setRunningIdx(null);
   };
 
   const filtered = OSM_TAG_OPTIONS.filter(t =>
@@ -247,6 +234,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
                 const st = statusByRule[idx];
                 const isDone = st?.startsWith('done');
                 const isErr  = st?.startsWith('error');
+                const isRunning = runningIdx === idx;
                 return (
                   <div key={idx} className="rounded border border-slate-700 bg-slate-900 p-1.5 space-y-1.5">
                     <div className="flex items-center gap-1.5">
@@ -273,6 +261,19 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
                         </button>
                       ))}
                     </div>
+
+                    {/* Per-rule apply button */}
+                    <button
+                      onClick={() => applyRule(idx)}
+                      disabled={runningIdx !== null || !hasLayer || !bbox}
+                      className={`w-full flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[9px] font-semibold transition-colors disabled:opacity-40 ${
+                        isDone ? 'bg-green-800/40 border border-green-600/40 text-green-300 hover:bg-green-700/40' :
+                        isErr  ? 'bg-red-800/40 border border-red-600/40 text-red-300 hover:bg-red-700/40' :
+                                 'bg-blue-800/40 border border-blue-600/40 text-blue-300 hover:bg-blue-700/40'
+                      }`}>
+                      <Download className={`w-2.5 h-2.5 ${isRunning ? 'animate-spin' : ''}`} />
+                      {isRunning ? 'Applying…' : isDone ? '✓ Re-apply' : isErr ? '✕ Retry' : 'Apply to Ground Layer'}
+                    </button>
 
                     {st && (
                       <p className={`text-[8px] font-mono ${isDone ? 'text-green-400' : isErr ? 'text-red-400' : 'text-amber-400'}`}>
@@ -325,15 +326,6 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
               <Plus className="w-3 h-3" /> Add OSM Tag Rule
             </button>
           )}
-
-          {/* Apply */}
-          <button
-            onClick={applyAll}
-            disabled={running || rules.length === 0 || !hasLayer || !bbox}
-            className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-blue-700 border border-blue-600 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors font-semibold">
-            <Download className={`w-3 h-3 ${running ? 'animate-spin' : ''}`} />
-            {running ? 'Fetching & Painting…' : 'Apply All Rules to Ground Layer'}
-          </button>
 
           {!hasLayer && (
             <p className="text-[9px] text-slate-600 italic">Generate the ground layer first using Auto-generate above.</p>

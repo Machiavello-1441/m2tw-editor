@@ -133,9 +133,11 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     const detail = RIVER_DETAIL_LEVELS.find(d => d.id === riverDetail) ?? RIVER_DETAIL_LEVELS[0];
     setStatus(`Fetching rivers from OpenStreetMap (${detail.label})…`);
 
+    // Fetch both ways AND relations (river relations group ways into continuous rivers)
     const osmQuery = `[out:json][timeout:90];
 (
   way["waterway"~"^(${detail.filter})$"](${bboxStr});
+  relation["waterway"~"^(${detail.filter})$"](${bboxStr});
 );
 out geom;`;
 
@@ -145,13 +147,15 @@ out geom;`;
       : { width: mapWidth, height: mapHeight };
     const { canvas, ctx, toXY } = makeBboxCanvas(bbox, width, height);
 
-    // Start background transparent
     ctx.clearRect(0, 0, width, height);
 
     let elements = [];
     try {
       const data = await fetchOverpass(osmQuery, OSM_OVERPASS);
-      elements = (data.elements || []).filter(e => e.geometry?.length > 1);
+      elements = (data.elements || []).filter(e =>
+        (e.type === 'way' && e.geometry?.length > 1) ||
+        (e.type === 'relation' && e.members?.some(m => m.geometry?.length > 1))
+      );
     } catch (e) {
       setStatus(`Error fetching rivers: ${e.message}`);
       return;
@@ -162,26 +166,127 @@ out geom;`;
       return;
     }
 
-    // Draw rivers as 1px pure blue lines
+    // Collect all polylines (each is an array of {lat,lon} points)
+    const polylines = [];
+    for (const el of elements) {
+      if (el.type === 'way' && el.geometry?.length > 1) {
+        polylines.push(el.geometry);
+      } else if (el.type === 'relation' && el.members) {
+        for (const m of el.members) {
+          if (m.type === 'way' && m.geometry?.length > 1) {
+            polylines.push(m.geometry);
+          }
+        }
+      }
+    }
+
+    // Chain polylines: connect segments that share an endpoint (within 1 coordinate unit)
+    // This merges disconnected OSM ways belonging to the same river into continuous strokes.
+    const key = (pt) => `${pt.lat.toFixed(5)},${pt.lon.toFixed(5)}`;
+    const chains = chainPolylines(polylines);
+
+    // Draw chains with round caps/joins for continuous coverage
     ctx.strokeStyle = 'rgb(0,0,255)';
     ctx.lineWidth = 1;
-    elements.forEach(el => {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (const chain of chains) {
+      if (chain.length < 2) continue;
       ctx.beginPath();
-      el.geometry.forEach(({ lat, lon }, i) => {
+      chain.forEach(({ lat, lon }, i) => {
+        // Snap to pixel centers to avoid sub-pixel gaps
         const [x, y] = toXY(lat, lon);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        i === 0 ? ctx.moveTo(x + 0.5, y + 0.5) : ctx.lineTo(x + 0.5, y + 0.5);
       });
       ctx.stroke();
-    });
+    }
 
     // Post-process: enforce 1px constraint and set origin pixel to white
     const imageData = ctx.getImageData(0, 0, width, height);
     postProcessRivers(imageData);
 
-    setStatus(`Rivers generated (${elements.length} waterways, ${detail.label}).`);
+    setStatus(`Rivers generated (${chains.length} chains from ${polylines.length} segments, ${detail.label}).`);
     onLayerUpdate('features', { imageData, visible: true, opacity: 0.9, dirty: true });
     setGenerated(p => ({ ...p, features: true }));
   };
+
+  /**
+   * Greedily chain polylines that share endpoints into longer continuous strokes.
+   * Returns an array of chained point arrays.
+   */
+  function chainPolylines(polylines) {
+    if (polylines.length === 0) return [];
+    const KEY_PREC = 4; // decimal places for endpoint matching
+    const k = (pt) => `${pt.lat.toFixed(KEY_PREC)},${pt.lon.toFixed(KEY_PREC)}`;
+
+    // Index: endpoint key → [polyline index, isStart]
+    const endpointMap = new Map();
+    const used = new Array(polylines.length).fill(false);
+
+    const register = (idx) => {
+      const pl = polylines[idx];
+      const sk = k(pl[0]), ek = k(pl[pl.length - 1]);
+      if (!endpointMap.has(sk)) endpointMap.set(sk, []);
+      if (!endpointMap.has(ek)) endpointMap.set(ek, []);
+      endpointMap.get(sk).push({ idx, isStart: true });
+      endpointMap.get(ek).push({ idx, isStart: false });
+    };
+    polylines.forEach((_, i) => register(i));
+
+    const chains = [];
+
+    for (let start = 0; start < polylines.length; start++) {
+      if (used[start]) continue;
+      used[start] = true;
+      let chain = [...polylines[start]];
+
+      // Extend forward from chain's tail
+      let extended = true;
+      while (extended) {
+        extended = false;
+        const tail = k(chain[chain.length - 1]);
+        const candidates = endpointMap.get(tail) ?? [];
+        for (const { idx, isStart } of candidates) {
+          if (used[idx]) continue;
+          used[idx] = true;
+          // Append, reversing if needed so the connection point aligns
+          const seg = polylines[idx];
+          if (isStart) {
+            chain = chain.concat(seg.slice(1));
+          } else {
+            chain = chain.concat([...seg].reverse().slice(1));
+          }
+          extended = true;
+          break;
+        }
+      }
+
+      // Extend backward from chain's head
+      extended = true;
+      while (extended) {
+        extended = false;
+        const head = k(chain[0]);
+        const candidates = endpointMap.get(head) ?? [];
+        for (const { idx, isStart } of candidates) {
+          if (used[idx]) continue;
+          used[idx] = true;
+          const seg = polylines[idx];
+          if (isStart) {
+            chain = [...seg].reverse().concat(chain.slice(1));
+          } else {
+            chain = seg.concat(chain.slice(1));
+          }
+          extended = true;
+          break;
+        }
+      }
+
+      chains.push(chain);
+    }
+
+    return chains;
+  }
 
   const handleImportFile = (layerId, file) => {
     if (!file) return;
