@@ -35,39 +35,6 @@ function makeBboxCanvas(bbox, width, height) {
   return { canvas, ctx, toXY };
 }
 
-/** Flood-fill from all 4 border edges. Non-land (transparent) pixels become sea (0,0,255). */
-function floodFillSea(imageData) {
-  const { width, height, data } = imageData;
-  const isSea = (idx) => data[idx + 3] === 0; // transparent = sea-eligible
-  const visited = new Uint8Array(width * height);
-  const queue = [];
-  const enqueue = (x, y) => {
-    const idx = y * width + x;
-    if (visited[idx]) return;
-    const i = idx * 4;
-    if (!isSea(i)) return;
-    visited[idx] = 1;
-    queue.push(x, y);
-  };
-  for (let x = 0; x < width; x++) { enqueue(x, 0); enqueue(x, height - 1); }
-  for (let y = 0; y < height; y++) { enqueue(0, y); enqueue(width - 1, y); }
-  let qi = 0;
-  while (qi < queue.length) {
-    const x = queue[qi++], y = queue[qi++];
-    const i = (y * width + x) * 4;
-    data[i] = 0; data[i + 1] = 0; data[i + 2] = 255; data[i + 3] = 255;
-    if (x > 0) enqueue(x - 1, y);
-    if (x < width - 1) enqueue(x + 1, y);
-    if (y > 0) enqueue(x, y - 1);
-    if (y < height - 1) enqueue(x, y + 1);
-  }
-  // Any remaining transparent pixels (enclosed inland) → land (1,1,1)
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] === 0) {
-      data[i] = 1; data[i + 1] = 1; data[i + 2] = 1; data[i + 3] = 255;
-    }
-  }
-}
 
 /** Draw OSM polygon ways/relations onto a canvas context, filled with given color. */
 function drawPolygons(ctx, toXY, elements, fillColor) {
@@ -196,7 +163,9 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
   const { width: W, height: H } = getHeightmapSize(mapWidth, mapHeight);
 
   // ── STEP 1: Coastline base ────────────────────────────────────────────────
-  // Produces a heightmap where inland = (1,1,1) flat, sea = (0,0,255)
+  // Strategy: fill entire canvas as land (1,1,1), draw coastline as 1px black barrier,
+  // flood-fill sea from all 4 edges (black pixels block the fill), then convert all
+  // remaining black coastline pixels back to (1,1,1) so only land/sea remain.
   const generateCoastlineBase = async () => {
     setStatus('Fetching coastline from OpenStreetMap…');
     const osmQuery = `[out:json][timeout:120];
@@ -218,34 +187,66 @@ out geom;`;
       Math.round(((bbox.north - lat) / (bbox.north - bbox.south)) * (H - 1)),
     ];
 
+    // Start: fill everything as land (1,1,1)
+    ctx.fillStyle = 'rgb(1,1,1)';
+    ctx.fillRect(0, 0, W, H);
+
     if (elements.length > 0) {
-      // Draw coastline chains as filled land polygons (gray = land marker)
-      ctx.clearRect(0, 0, W, H); // start transparent = sea-eligible
       const polylines = elements.map(e => e.geometry);
       const chains = chainPolylines(polylines);
-      ctx.fillStyle = 'rgba(1,1,1,1)'; // land = (1,1,1) — dark but opaque
-      ctx.strokeStyle = 'rgba(1,1,1,1)';
-      ctx.lineWidth = 2;
+      // Draw coastline as 1px pure black barrier lines
+      ctx.strokeStyle = 'rgb(0,0,0)';
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       for (const chain of chains) {
         if (chain.length < 2) continue;
         ctx.beginPath();
         chain.forEach(({ lat, lon }, i) => {
           const [x, y] = toXY(lat, lon);
-          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          i === 0 ? ctx.moveTo(x + 0.5, y + 0.5) : ctx.lineTo(x + 0.5, y + 0.5);
         });
-        ctx.closePath();
-        ctx.fill('evenodd');
         ctx.stroke();
       }
-    } else {
-      // No coastline — fully inland map: fill everything as land (1,1,1)
-      ctx.fillStyle = 'rgba(1,1,1,1)';
-      ctx.fillRect(0, 0, W, H);
-      setStatus('No coastline found — treating entire area as land.');
     }
 
     const imageData = ctx.getImageData(0, 0, W, H);
-    floodFillSea(imageData); // fills border-reachable transparent → (0,0,255); remaining transparent → (1,1,1)
+    const { data } = imageData;
+
+    // Flood-fill sea from all 4 border edges.
+    // A pixel is passable (sea-eligible) if it is NOT black (0,0,0) and NOT already sea-blue.
+    // Black pixels = coastline barrier that blocks the fill.
+    const isBarrier = (i) => data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0;
+    const isSea = (i) => data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 255;
+    const visited = new Uint8Array(W * H);
+    const queue = [];
+    const enqueue = (x, y) => {
+      const idx = y * W + x;
+      if (visited[idx]) return;
+      const i = idx * 4;
+      if (isBarrier(i) || isSea(i)) return;
+      visited[idx] = 1;
+      queue.push(x, y);
+    };
+    for (let x = 0; x < W; x++) { enqueue(x, 0); enqueue(x, H - 1); }
+    for (let y = 0; y < H; y++) { enqueue(0, y); enqueue(W - 1, y); }
+    let qi = 0;
+    while (qi < queue.length) {
+      const x = queue[qi++], y = queue[qi++];
+      const i = (y * W + x) * 4;
+      data[i] = 0; data[i + 1] = 0; data[i + 2] = 255; data[i + 3] = 255;
+      if (x > 0) enqueue(x - 1, y);
+      if (x < W - 1) enqueue(x + 1, y);
+      if (y > 0) enqueue(x, y - 1);
+      if (y < H - 1) enqueue(x, y + 1);
+    }
+
+    // Convert any remaining black coastline barrier pixels → land (1,1,1)
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) {
+        data[i] = 1; data[i + 1] = 1; data[i + 2] = 1; data[i + 3] = 255;
+      }
+    }
 
     setStatus(`Coastline base ready — ${elements.length} ways. Land = (1,1,1), sea = (0,0,255).`);
     onLayerUpdate('heights', { imageData, visible: true, opacity: 0.8, dirty: true });
@@ -293,45 +294,40 @@ out geom;`;
       elements = (data.elements || []).filter(e => e.geometry?.length > 1);
     } catch (e) { /* ignore — proceed without sea mask */ }
 
-    // Build sea mask canvas
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = W; maskCanvas.height = H;
-    const mctx = maskCanvas.getContext('2d');
-    mctx.imageSmoothingEnabled = false;
     const toXY = (lat, lon) => [
       Math.round(((lon - bbox.west) / (bbox.east - bbox.west)) * (W - 1)),
       Math.round(((bbox.north - lat) / (bbox.north - bbox.south)) * (H - 1)),
     ];
+    const ed = elevData.data;
 
-    if (elements.length > 0) {
-      mctx.clearRect(0, 0, W, H);
-      const chains = chainPolylines(elements.map(e => e.geometry));
-      mctx.fillStyle = 'rgba(255,255,255,1)';
-      mctx.strokeStyle = 'rgba(255,255,255,1)';
-      mctx.lineWidth = 2;
-      for (const chain of chains) {
-        if (chain.length < 2) continue;
-        mctx.beginPath();
-        chain.forEach(({ lat, lon }, i) => {
-          const [x, y] = toXY(lat, lon);
-          i === 0 ? mctx.moveTo(x, y) : mctx.lineTo(x, y);
-        });
-        mctx.closePath();
-        mctx.fill('evenodd');
-        mctx.stroke();
+    // Build sea mask using the same barrier-line approach as Step 1
+    const applySeaMask = (coastEls) => {
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = W; maskCanvas.height = H;
+      const mctx = maskCanvas.getContext('2d');
+      mctx.imageSmoothingEnabled = false;
+      // Fill all land (white), draw coastline as black barrier, flood-fill sea from edges
+      mctx.fillStyle = 'rgb(255,255,255)';
+      mctx.fillRect(0, 0, W, H);
+      if (coastEls.length > 0) {
+        const chains = chainPolylines(coastEls.map(e => e.geometry));
+        mctx.strokeStyle = 'rgb(0,0,0)'; mctx.lineWidth = 1; mctx.lineCap = 'round'; mctx.lineJoin = 'round';
+        for (const chain of chains) {
+          if (chain.length < 2) continue;
+          mctx.beginPath();
+          chain.forEach(({ lat, lon }, i) => { const [x, y] = toXY(lat, lon); i === 0 ? mctx.moveTo(x + 0.5, y + 0.5) : mctx.lineTo(x + 0.5, y + 0.5); });
+          mctx.stroke();
+        }
       }
-      const maskData = mctx.getImageData(0, 0, W, H);
-      // flood-fill mask: land = white (opaque), sea = transparent → then fill sea → black
-      const md = maskData.data;
-      // Any border-reachable transparent pixel = sea → mark black
+      const md = mctx.getImageData(0, 0, W, H).data;
+      // flood-fill from border: white non-barrier pixels → mark as sea (black)
       const visited = new Uint8Array(W * H);
       const queue = [];
       const enq = (x, y) => {
-        const idx = y * W + x;
-        if (visited[idx]) return;
-        if (md[idx * 4 + 3] !== 0) return; // opaque = land
-        visited[idx] = 1;
-        queue.push(x, y);
+        const idx = y * W + x; if (visited[idx]) return;
+        const i = idx * 4;
+        if (md[i] === 0 && md[i + 1] === 0 && md[i + 2] === 0) return; // black barrier
+        visited[idx] = 1; queue.push(x, y);
       };
       for (let x = 0; x < W; x++) { enq(x, 0); enq(x, H - 1); }
       for (let y = 0; y < H; y++) { enq(0, y); enq(W - 1, y); }
@@ -339,33 +335,24 @@ out geom;`;
       while (qi < queue.length) {
         const x = queue[qi++], y = queue[qi++];
         const i = (y * W + x) * 4;
-        md[i] = 0; md[i + 1] = 0; md[i + 2] = 0; md[i + 3] = 255; // sea = black opaque
+        md[i] = 0; md[i + 1] = 0; md[i + 2] = 0; md[i + 3] = 255;
         if (x > 0) enq(x - 1, y); if (x < W - 1) enq(x + 1, y);
         if (y > 0) enq(x, y - 1); if (y < H - 1) enq(x, y + 1);
       }
-
-      // Now blend: where maskData pixel is black (sea) → set elevData pixel to (0,0,255)
-      // where maskData pixel is white or other (land) → keep elevData grayscale (min 1,1,1)
-      const ed = elevData.data;
+      // Apply mask to elevData: sea (black in mask) → (0,0,255); land → clamp to min (1,1,1)
       for (let i = 0; i < ed.length; i += 4) {
-        const isSea = md[i] === 0 && md[i + 1] === 0 && md[i + 2] === 0 && md[i + 3] === 255;
-        if (isSea) {
-          ed[i] = 0; ed[i + 1] = 0; ed[i + 2] = 255; ed[i + 3] = 255;
-        } else {
-          // Land: clamp to at least (1,1,1)
-          if (ed[i] === 0 && ed[i + 1] === 0 && ed[i + 2] === 0) {
-            ed[i] = 1; ed[i + 1] = 1; ed[i + 2] = 1;
-          }
-          ed[i + 3] = 255;
-        }
+        const seaPx = md[i] === 0 && md[i + 1] === 0 && md[i + 2] === 0;
+        if (seaPx) { ed[i] = 0; ed[i + 1] = 0; ed[i + 2] = 255; ed[i + 3] = 255; }
+        else { if (ed[i] === 0 && ed[i + 1] === 0 && ed[i + 2] === 0) { ed[i] = 1; ed[i + 1] = 1; ed[i + 2] = 1; } ed[i + 3] = 255; }
       }
+    };
+
+    if (elements.length > 0) {
+      applySeaMask(elements);
     } else {
       // No coastline — just clamp all land pixels
-      const ed = elevData.data;
       for (let i = 0; i < ed.length; i += 4) {
-        if (ed[i] === 0 && ed[i + 1] === 0 && ed[i + 2] === 0 && ed[i + 3] > 0) {
-          ed[i] = 1; ed[i + 1] = 1; ed[i + 2] = 1;
-        }
+        if (ed[i] === 0 && ed[i + 1] === 0 && ed[i + 2] === 0 && ed[i + 3] > 0) { ed[i] = 1; ed[i + 1] = 1; ed[i + 2] = 1; }
       }
     }
 
@@ -468,34 +455,33 @@ out geom;`;
     ];
     const ed = elevData.data;
 
-    // Apply sea mask from coastline
+    // Apply sea mask from coastline using barrier-line approach
     if (coastElements.length > 0) {
       const maskCanvas = document.createElement('canvas');
       maskCanvas.width = W; maskCanvas.height = H;
       const mctx = maskCanvas.getContext('2d');
       mctx.imageSmoothingEnabled = false;
-      mctx.clearRect(0, 0, W, H);
+      mctx.fillStyle = 'rgb(255,255,255)'; mctx.fillRect(0, 0, W, H);
       const chains = chainPolylines(coastElements.map(e => e.geometry));
-      mctx.fillStyle = 'rgba(255,255,255,1)'; mctx.strokeStyle = 'rgba(255,255,255,1)'; mctx.lineWidth = 2;
+      mctx.strokeStyle = 'rgb(0,0,0)'; mctx.lineWidth = 1; mctx.lineCap = 'round'; mctx.lineJoin = 'round';
       for (const chain of chains) {
         if (chain.length < 2) continue;
         mctx.beginPath();
-        chain.forEach(({ lat, lon }, i) => { const [x, y] = toXY(lat, lon); i === 0 ? mctx.moveTo(x, y) : mctx.lineTo(x, y); });
-        mctx.closePath(); mctx.fill('evenodd'); mctx.stroke();
+        chain.forEach(({ lat, lon }, i) => { const [x, y] = toXY(lat, lon); i === 0 ? mctx.moveTo(x + 0.5, y + 0.5) : mctx.lineTo(x + 0.5, y + 0.5); });
+        mctx.stroke();
       }
       const md = mctx.getImageData(0, 0, W, H).data;
-      // flood fill sea mask
-      const visited2 = new Uint8Array(W * H);
+      const vis2 = new Uint8Array(W * H);
       const q2 = [];
-      const enq2 = (x, y) => { const idx = y * W + x; if (visited2[idx] || md[idx * 4 + 3] !== 0) return; visited2[idx] = 1; q2.push(x, y); };
+      const enq2 = (x, y) => { const idx = y * W + x; if (vis2[idx]) return; const i = idx * 4; if (md[i] === 0 && md[i+1] === 0 && md[i+2] === 0) return; vis2[idx] = 1; q2.push(x, y); };
       for (let x = 0; x < W; x++) { enq2(x, 0); enq2(x, H - 1); }
       for (let y = 0; y < H; y++) { enq2(0, y); enq2(W - 1, y); }
       let qi = 0;
-      while (qi < q2.length) { const x = q2[qi++], y = q2[qi++]; const i = (y * W + x) * 4; md[i] = 0; md[i + 1] = 0; md[i + 2] = 0; md[i + 3] = 255; if (x > 0) enq2(x - 1, y); if (x < W - 1) enq2(x + 1, y); if (y > 0) enq2(x, y - 1); if (y < H - 1) enq2(x, y + 1); }
+      while (qi < q2.length) { const x = q2[qi++], y = q2[qi++]; const i = (y * W + x) * 4; md[i] = 0; md[i+1] = 0; md[i+2] = 0; md[i+3] = 255; if (x > 0) enq2(x-1,y); if (x < W-1) enq2(x+1,y); if (y > 0) enq2(x,y-1); if (y < H-1) enq2(x,y+1); }
       for (let i = 0; i < ed.length; i += 4) {
-        const sea = md[i] === 0 && md[i + 1] === 0 && md[i + 2] === 0 && md[i + 3] === 255;
-        if (sea) { ed[i] = 0; ed[i + 1] = 0; ed[i + 2] = 255; ed[i + 3] = 255; }
-        else { if (ed[i] === 0 && ed[i + 1] === 0 && ed[i + 2] === 0) { ed[i] = 1; ed[i + 1] = 1; ed[i + 2] = 1; } ed[i + 3] = 255; }
+        const sea = md[i] === 0 && md[i+1] === 0 && md[i+2] === 0;
+        if (sea) { ed[i] = 0; ed[i+1] = 0; ed[i+2] = 255; ed[i+3] = 255; }
+        else { if (ed[i] === 0 && ed[i+1] === 0 && ed[i+2] === 0) { ed[i] = 1; ed[i+1] = 1; ed[i+2] = 1; } ed[i+3] = 255; }
       }
     }
 
