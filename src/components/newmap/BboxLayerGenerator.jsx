@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, Check, Download, AlertCircle, Waves } from 'lucide-react';
+import { RefreshCw, Check, Download, Waves, Droplets } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { rasterizeTiles } from './TileRasterizer';
 
@@ -29,24 +29,21 @@ const OSM_OVERPASS = 'https://overpass-api.de/api/interpreter';
 
 /**
  * Flood-fill from all 4 border edges outward, marking "sea" pixels.
- * A pixel is sea-eligible if it has NOT been painted as land (i.e. it's still black/transparent or very dark).
+ * Pixels that are transparent or pure-black (alpha=0 or land=false) are sea candidates.
  * After flood fill, all visited pixels become blue (0,0,255).
- * All remaining land pixels are clamped to minimum brightness 1,1,1.
+ * All remaining non-sea pixels are clamped to minimum 1,1,1.
  */
 function applyCoastlineFill(imageData) {
   const { width, height, data } = imageData;
 
   const isLand = (i) => {
-    // A pixel drawn by the coastline polygon fill or the grayscale heightmap is "land" if it's not sea-blue
-    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
-    if (a === 0) return false; // transparent = not yet determined
-    // Pure blue = already sea
-    if (r === 0 && g === 0 && b === 255) return false;
-    // Anything else with alpha > 0 = land
+    const a = data[i + 3];
+    if (a === 0) return false;
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    if (r === 0 && g === 0 && b === 255) return false; // already sea
     return true;
   };
 
-  // Flood-fill from all border pixels that are NOT land
   const visited = new Uint8Array(width * height);
   const queue = [];
 
@@ -73,12 +70,10 @@ function applyCoastlineFill(imageData) {
     if (y < height - 1) enqueue(x, y + 1);
   }
 
-  // Clamp all remaining non-sea pixels to minimum 1,1,1 (M2TW land requirement)
+  // Clamp all remaining non-sea pixels to minimum 1,1,1
   for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
-    if (a > 0 && !(r === 0 && g === 0 && b === 255)) {
-      // Land pixel — ensure at least (1,1,1)
-      if (r === 0 && g === 0 && b === 0) {
+    if (data[i + 3] > 0 && !(data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 255)) {
+      if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) {
         data[i] = 1; data[i + 1] = 1; data[i + 2] = 1; data[i + 3] = 255;
       }
     }
@@ -87,15 +82,15 @@ function applyCoastlineFill(imageData) {
   return imageData;
 }
 
-// River detail levels: what waterway types to include
+// River detail levels
 const RIVER_DETAIL_LEVELS = [
-  { id: 'major',  label: 'Major rivers only',      filter: 'river' },
-  { id: 'medium', label: 'Rivers + canals',         filter: 'river|canal' },
+  { id: 'major',  label: 'Major rivers only',       filter: 'river' },
+  { id: 'medium', label: 'Rivers + canals',          filter: 'river|canal' },
   { id: 'all',    label: 'Rivers, streams & canals', filter: 'river|stream|canal' },
 ];
 
-async function fetchOverpass(query, endpoint) {
-  const res = await fetch(endpoint, {
+async function fetchOverpass(query) {
+  const res = await fetch(OSM_OVERPASS, {
     method: 'POST',
     body: 'data=' + encodeURIComponent(query),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -104,79 +99,139 @@ async function fetchOverpass(query, endpoint) {
   return res.json();
 }
 
+/**
+ * Convert lat/lon to canvas pixel coordinates (NO rounding — sub-pixel accuracy for smooth polygon fills).
+ */
 function makeBboxCanvas(bbox, width, height) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
+  // Sub-pixel coords for smooth polygon boundaries
   const toXY = (lat, lon) => [
-    Math.round(((lon - bbox.west) / (bbox.east - bbox.west)) * (width - 1)),
-    Math.round(((bbox.north - lat) / (bbox.north - bbox.south)) * (height - 1)),
+    ((lon - bbox.west) / (bbox.east - bbox.west)) * width,
+    ((bbox.north - lat) / (bbox.north - bbox.south)) * height,
   ];
   return { canvas, ctx, toXY };
 }
 
 /**
- * Post-process river ImageData:
- * - All river pixels become pure blue (0, 0, 255)
- * - Remove any river pixel that has more than 2 river neighbors (8-directional)
- *   by iterating until stable (max 5 passes)
+ * Normalize river pixels to pure blue and set the topmost-leftmost to white (origin).
+ * No thinning — the canvas stroke already produces correct 1px lines.
  */
 function postProcessRivers(imageData) {
   const { width, height, data } = imageData;
 
-  const isRiver = (i) => data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 255 && data[i + 3] > 0;
-
-  // First: set starting pixel (top-left-most river pixel) to white (255,255,255)
-  // and ensure all river pixels are pure blue
+  // Normalize: any blue-dominant pixel → pure blue
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
-    // Any blue-dominant pixel → pure blue river
     if (a > 0 && b > 100 && b > r + 20 && b > g + 20) {
       data[i] = 0; data[i + 1] = 0; data[i + 2] = 255; data[i + 3] = 255;
     }
   }
 
-  // Find the first river pixel (top-to-bottom, left-to-right) → mark as white (origin)
-  let originSet = false;
-  for (let y = 0; y < height && !originSet; y++) {
-    for (let x = 0; x < width && !originSet; x++) {
+  // Set the topmost-leftmost river pixel as white (M2TW origin requirement)
+  const isRiver = (i) => data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 255 && data[i + 3] === 255;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
       if (isRiver(i)) {
         data[i] = 255; data[i + 1] = 255; data[i + 2] = 255; data[i + 3] = 255;
-        originSet = true;
+        return imageData;
       }
     }
   }
-
-  // Thin rivers: remove pixels with > 2 river neighbors, up to 5 passes
-  for (let pass = 0; pass < 5; pass++) {
-    let changed = false;
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const i = (y * width + x) * 4;
-        if (!isRiver(i)) continue;
-        let count = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = x + dx, ny = y + dy;
-            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-            const ni = (ny * width + nx) * 4;
-            if (isRiver(ni)) count++;
-          }
-        }
-        if (count > 2) {
-          data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 0;
-          changed = true;
-        }
-      }
-    }
-    if (!changed) break;
-  }
-
   return imageData;
+}
+
+/**
+ * Greedily chain polylines that share endpoints into longer continuous strokes.
+ */
+function chainPolylines(polylines) {
+  if (polylines.length === 0) return [];
+  const KEY_PREC = 4;
+  const k = (pt) => `${pt.lat.toFixed(KEY_PREC)},${pt.lon.toFixed(KEY_PREC)}`;
+
+  const endpointMap = new Map();
+  const used = new Array(polylines.length).fill(false);
+
+  polylines.forEach((pl, idx) => {
+    const sk = k(pl[0]), ek = k(pl[pl.length - 1]);
+    if (!endpointMap.has(sk)) endpointMap.set(sk, []);
+    if (!endpointMap.has(ek)) endpointMap.set(ek, []);
+    endpointMap.get(sk).push({ idx, isStart: true });
+    endpointMap.get(ek).push({ idx, isStart: false });
+  });
+
+  const chains = [];
+
+  for (let start = 0; start < polylines.length; start++) {
+    if (used[start]) continue;
+    used[start] = true;
+    let chain = [...polylines[start]];
+
+    // Extend forward
+    let extended = true;
+    while (extended) {
+      extended = false;
+      for (const { idx, isStart } of (endpointMap.get(k(chain[chain.length - 1])) ?? [])) {
+        if (used[idx]) continue;
+        used[idx] = true;
+        chain = isStart
+          ? chain.concat(polylines[idx].slice(1))
+          : chain.concat([...polylines[idx]].reverse().slice(1));
+        extended = true;
+        break;
+      }
+    }
+
+    // Extend backward
+    extended = true;
+    while (extended) {
+      extended = false;
+      for (const { idx, isStart } of (endpointMap.get(k(chain[0])) ?? [])) {
+        if (used[idx]) continue;
+        used[idx] = true;
+        chain = isStart
+          ? [...polylines[idx]].reverse().concat(chain.slice(1))
+          : polylines[idx].concat(chain.slice(1));
+        extended = true;
+        break;
+      }
+    }
+
+    chains.push(chain);
+  }
+
+  return chains;
+}
+
+/**
+ * Draw filled polygons (from OSM way/relation geometry) onto a canvas context as blue sea pixels.
+ * Handles both ways (array of {lat,lon}) and relations with member ways.
+ */
+function drawWaterPolygons(ctx, toXY, elements) {
+  ctx.fillStyle = 'rgb(0,0,255)';
+  for (const el of elements) {
+    const rings = [];
+    if (el.type === 'way' && el.geometry?.length > 2) {
+      rings.push(el.geometry);
+    } else if (el.type === 'relation' && el.members) {
+      for (const m of el.members) {
+        if (m.type === 'way' && m.geometry?.length > 2) rings.push(m.geometry);
+      }
+    }
+    for (const ring of rings) {
+      ctx.beginPath();
+      ring.forEach(({ lat, lon }, i) => {
+        const [x, y] = toXY(lat, lon);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.fill('evenodd');
+    }
+  }
 }
 
 export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, onDone }) {
@@ -185,6 +240,8 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
   const [rasterProgress, setRasterProgress] = useState({});
   const [generated, setGenerated] = useState({});
   const [riverDetail, setRiverDetail] = useState('major');
+  const [includeLakes, setIncludeLakes] = useState(true);
+  const [includeWaterRiver, setIncludeWaterRiver] = useState(false);
 
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
 
@@ -192,7 +249,6 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     const detail = RIVER_DETAIL_LEVELS.find(d => d.id === riverDetail) ?? RIVER_DETAIL_LEVELS[0];
     setStatus(`Fetching rivers from OpenStreetMap (${detail.label})…`);
 
-    // Fetch both ways AND relations (river relations group ways into continuous rivers)
     const osmQuery = `[out:json][timeout:90];
 (
   way["waterway"~"^(${detail.filter})$"](${bboxStr});
@@ -205,12 +261,11 @@ out geom;`;
       ? getLayerDimensions(def, mapWidth, mapHeight)
       : { width: mapWidth, height: mapHeight };
     const { canvas, ctx, toXY } = makeBboxCanvas(bbox, width, height);
-
     ctx.clearRect(0, 0, width, height);
 
     let elements = [];
     try {
-      const data = await fetchOverpass(osmQuery, OSM_OVERPASS);
+      const data = await fetchOverpass(osmQuery);
       elements = (data.elements || []).filter(e =>
         (e.type === 'way' && e.geometry?.length > 1) ||
         (e.type === 'relation' && e.members?.some(m => m.geometry?.length > 1))
@@ -225,26 +280,21 @@ out geom;`;
       return;
     }
 
-    // Collect all polylines (each is an array of {lat,lon} points)
+    // Collect all polylines
     const polylines = [];
     for (const el of elements) {
       if (el.type === 'way' && el.geometry?.length > 1) {
         polylines.push(el.geometry);
       } else if (el.type === 'relation' && el.members) {
         for (const m of el.members) {
-          if (m.type === 'way' && m.geometry?.length > 1) {
-            polylines.push(m.geometry);
-          }
+          if (m.type === 'way' && m.geometry?.length > 1) polylines.push(m.geometry);
         }
       }
     }
 
-    // Chain polylines: connect segments that share an endpoint (within 1 coordinate unit)
-    // This merges disconnected OSM ways belonging to the same river into continuous strokes.
-    const key = (pt) => `${pt.lat.toFixed(5)},${pt.lon.toFixed(5)}`;
     const chains = chainPolylines(polylines);
 
-    // Draw chains with round caps/joins for continuous coverage
+    // Draw with round caps/joins — produces continuous 1px lines without gaps
     ctx.strokeStyle = 'rgb(0,0,255)';
     ctx.lineWidth = 1;
     ctx.lineCap = 'round';
@@ -254,98 +304,20 @@ out geom;`;
       if (chain.length < 2) continue;
       ctx.beginPath();
       chain.forEach(({ lat, lon }, i) => {
-        // Snap to pixel centers to avoid sub-pixel gaps
         const [x, y] = toXY(lat, lon);
+        // Use sub-pixel coords + 0.5 offset to center on pixel grid
         i === 0 ? ctx.moveTo(x + 0.5, y + 0.5) : ctx.lineTo(x + 0.5, y + 0.5);
       });
       ctx.stroke();
     }
 
-    // Post-process: enforce 1px constraint and set origin pixel to white
     const imageData = ctx.getImageData(0, 0, width, height);
     postProcessRivers(imageData);
 
-    setStatus(`Rivers generated (${chains.length} chains from ${polylines.length} segments, ${detail.label}).`);
+    setStatus(`Rivers generated (${chains.length} chains from ${polylines.length} segments).`);
     onLayerUpdate('features', { imageData, visible: true, opacity: 0.9, dirty: true });
     setGenerated(p => ({ ...p, features: true }));
   };
-
-  /**
-   * Greedily chain polylines that share endpoints into longer continuous strokes.
-   * Returns an array of chained point arrays.
-   */
-  function chainPolylines(polylines) {
-    if (polylines.length === 0) return [];
-    const KEY_PREC = 4; // decimal places for endpoint matching
-    const k = (pt) => `${pt.lat.toFixed(KEY_PREC)},${pt.lon.toFixed(KEY_PREC)}`;
-
-    // Index: endpoint key → [polyline index, isStart]
-    const endpointMap = new Map();
-    const used = new Array(polylines.length).fill(false);
-
-    const register = (idx) => {
-      const pl = polylines[idx];
-      const sk = k(pl[0]), ek = k(pl[pl.length - 1]);
-      if (!endpointMap.has(sk)) endpointMap.set(sk, []);
-      if (!endpointMap.has(ek)) endpointMap.set(ek, []);
-      endpointMap.get(sk).push({ idx, isStart: true });
-      endpointMap.get(ek).push({ idx, isStart: false });
-    };
-    polylines.forEach((_, i) => register(i));
-
-    const chains = [];
-
-    for (let start = 0; start < polylines.length; start++) {
-      if (used[start]) continue;
-      used[start] = true;
-      let chain = [...polylines[start]];
-
-      // Extend forward from chain's tail
-      let extended = true;
-      while (extended) {
-        extended = false;
-        const tail = k(chain[chain.length - 1]);
-        const candidates = endpointMap.get(tail) ?? [];
-        for (const { idx, isStart } of candidates) {
-          if (used[idx]) continue;
-          used[idx] = true;
-          // Append, reversing if needed so the connection point aligns
-          const seg = polylines[idx];
-          if (isStart) {
-            chain = chain.concat(seg.slice(1));
-          } else {
-            chain = chain.concat([...seg].reverse().slice(1));
-          }
-          extended = true;
-          break;
-        }
-      }
-
-      // Extend backward from chain's head
-      extended = true;
-      while (extended) {
-        extended = false;
-        const head = k(chain[0]);
-        const candidates = endpointMap.get(head) ?? [];
-        for (const { idx, isStart } of candidates) {
-          if (used[idx]) continue;
-          used[idx] = true;
-          const seg = polylines[idx];
-          if (isStart) {
-            chain = [...seg].reverse().concat(chain.slice(1));
-          } else {
-            chain = seg.concat(chain.slice(1));
-          }
-          extended = true;
-          break;
-        }
-      }
-
-      chains.push(chain);
-    }
-
-    return chains;
-  }
 
   const handleImportFile = (layerId, file) => {
     if (!file) return;
@@ -368,32 +340,51 @@ out geom;`;
   };
 
   const generateCoastline = async () => {
-    const heightsLayer = LAYER_DEFS.find(d => d.id === 'heights');
-    if (!heightsLayer) { setStatus('Generate the heightmap first.'); return; }
-
     setStatus('Fetching coastline from OpenStreetMap…');
 
-    // natural=coastline ways define the land/sea boundary; ways run with land on the left
     const osmQuery = `[out:json][timeout:120];
 (
   way["natural"="coastline"](${bboxStr});
 );
 out geom;`;
 
-    let elements = [];
+    let coastElements = [];
     try {
-      const data = await fetchOverpass(osmQuery, OSM_OVERPASS);
-      elements = (data.elements || []).filter(e => e.geometry?.length > 1);
+      const data = await fetchOverpass(osmQuery);
+      coastElements = (data.elements || []).filter(e => e.geometry?.length > 1);
     } catch (e) {
       setStatus(`Error fetching coastline: ${e.message}`);
       return;
     }
 
-    // Get the current heightmap imageData to work on
-    // We need to access it via a fresh canvas — retrieve from onLayerUpdate callback
-    // Instead, we rasterize a fresh grayscale heightmap and then apply coastline on top
+    // Fetch optional water bodies
+    let waterElements = [];
+    if (includeLakes || includeWaterRiver) {
+      setStatus('Fetching water bodies from OpenStreetMap…');
+      const waterTypes = [
+        includeLakes && 'lake',
+        includeWaterRiver && 'river',
+      ].filter(Boolean).join('|');
+      const waterQuery = `[out:json][timeout:120];
+(
+  way["natural"="water"]["water"~"^(${waterTypes})$"](${bboxStr});
+  relation["natural"="water"]["water"~"^(${waterTypes})$"](${bboxStr});
+);
+out geom;`;
+      try {
+        const wdata = await fetchOverpass(waterQuery);
+        waterElements = (wdata.elements || []).filter(e =>
+          (e.type === 'way' && e.geometry?.length > 2) ||
+          (e.type === 'relation' && e.members?.some(m => m.geometry?.length > 2))
+        );
+      } catch (e) {
+        // non-fatal — continue without water bodies
+        console.warn('Water bodies fetch failed:', e.message);
+      }
+    }
+
     const { width, height } = getRasterSize('heights', mapWidth, mapHeight);
-    setStatus('Re-rasterizing heightmap for coastline processing…');
+    setStatus('Re-rasterizing heightmap…');
     setRasterProgress(p => ({ ...p, heights: { done: 0, total: 1 } }));
 
     let imageData;
@@ -410,42 +401,39 @@ out geom;`;
     }
     setRasterProgress(p => ({ ...p, heights: null }));
 
+    // Sub-pixel canvas for smooth fills
     const { canvas, ctx, toXY } = makeBboxCanvas(bbox, width, height);
-    // Draw the grayscale heightmap first
     ctx.putImageData(imageData, 0, 0);
 
-    if (elements.length > 0) {
-      // Chain coastline ways into continuous rings/lines
-      const polylines = elements.map(e => e.geometry);
-      const chains = chainPolylines(polylines);
-
-      // Draw coastline as filled polygons: OSM coastline has land on the LEFT of the way direction.
-      // Strategy: draw each chain as a closed path and fill with a non-sea color to mark land,
-      // then flood-fill from borders to find sea. We paint the coastline boundary itself as opaque.
-      // First pass: paint coastline strokes as a "barrier" on a separate canvas
+    if (coastElements.length > 0) {
+      // Build barrier canvas using sub-pixel coords for smooth coastline polygon fills
       const barrierCanvas = document.createElement('canvas');
       barrierCanvas.width = width; barrierCanvas.height = height;
       const bctx = barrierCanvas.getContext('2d');
       bctx.imageSmoothingEnabled = false;
-      // Fill the whole barrier canvas transparent (sea by default)
       bctx.clearRect(0, 0, width, height);
-      // Draw each coastline chain; OSM coastline: land is LEFT of direction.
-      // We'll fill with white to mark land, using a winding rule approach.
-      // Simple approach: draw all chains as closed paths with fill.
+
+      const polylines = coastElements.map(e => e.geometry);
+      const chains = chainPolylines(polylines);
+
+      // Fill land polygons — sub-pixel toXY gives smooth edges
       bctx.fillStyle = 'rgba(128,128,128,1)';
       for (const chain of chains) {
         if (chain.length < 2) continue;
         bctx.beginPath();
         chain.forEach(({ lat, lon }, i) => {
-          const [x, y] = toXY(lat, lon);
+          const [x, y] = toXY(lat, lon); // sub-pixel, no rounding
           i === 0 ? bctx.moveTo(x, y) : bctx.lineTo(x, y);
         });
         bctx.closePath();
         bctx.fill('evenodd');
       }
-      // Also stroke barrier lines so gaps in coastline don't let sea bleed through
+
+      // Stroke coastline barrier thick enough to seal any polygon gaps
       bctx.strokeStyle = 'rgba(128,128,128,1)';
-      bctx.lineWidth = 2;
+      bctx.lineWidth = 3;
+      bctx.lineCap = 'round';
+      bctx.lineJoin = 'round';
       for (const chain of chains) {
         if (chain.length < 2) continue;
         bctx.beginPath();
@@ -456,16 +444,14 @@ out geom;`;
         bctx.stroke();
       }
 
-      // Merge: wherever barrier has a non-transparent pixel, keep the heightmap land pixel;
-      // everywhere else, mark as potential sea (transparent = sea-eligible for flood fill)
+      // Merge barrier with heightmap
       const barrierData = bctx.getImageData(0, 0, width, height);
       const hd = imageData.data;
       for (let i = 0; i < hd.length; i += 4) {
         if (barrierData.data[i + 3] === 0) {
-          // Not inside coastline polygon — mark as transparent so flood fill will reach it
+          // Outside coastline polygon → potential sea (transparent for flood fill)
           hd[i] = 0; hd[i + 1] = 0; hd[i + 2] = 0; hd[i + 3] = 0;
         } else {
-          // Inside land — ensure at least (1,1,1)
           if (hd[i] === 0 && hd[i + 1] === 0 && hd[i + 2] === 0) {
             hd[i] = 1; hd[i + 1] = 1; hd[i + 2] = 1;
           }
@@ -473,13 +459,30 @@ out geom;`;
         }
       }
     } else {
-      setStatus('No coastline found in this bbox — the area may be fully inland. Heightmap saved as-is with land clamping.');
+      setStatus('No coastline found — area may be fully inland. Applying land clamping only.');
     }
 
-    // Apply flood-fill sea detection and land clamping
+    // Flood-fill sea from edges
     applyCoastlineFill(imageData);
 
-    setStatus(`Coastline applied — ${elements.length} ways, land clamped to ≥(1,1,1).`);
+    // Paint water bodies (lakes / water=river) as blue sea pixels on top
+    if (waterElements.length > 0) {
+      const wc = document.createElement('canvas');
+      wc.width = width; wc.height = height;
+      const wctx = wc.getContext('2d');
+      wctx.imageSmoothingEnabled = false;
+      drawWaterPolygons(wctx, toXY, waterElements);
+      const wd = wctx.getImageData(0, 0, width, height);
+      const hd = imageData.data;
+      for (let i = 0; i < wd.data.length; i += 4) {
+        if (wd.data[i + 3] > 0 && wd.data[i] === 0 && wd.data[i + 2] === 255) {
+          hd[i] = 0; hd[i + 1] = 0; hd[i + 2] = 255; hd[i + 3] = 255;
+        }
+      }
+    }
+
+    const wbDesc = waterElements.length > 0 ? `, ${waterElements.length} water bodies` : '';
+    setStatus(`Coastline applied — ${coastElements.length} ways${wbDesc}, land clamped to ≥(1,1,1).`);
     onLayerUpdate('heights', { imageData, visible: true, opacity: 0.8, dirty: true });
     setGenerated(p => ({ ...p, heights: true, coastline: true }));
   };
@@ -517,7 +520,7 @@ out geom;`;
       <div>
         <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Heightmap (Terrarium)</p>
         <p className="text-[9px] text-slate-500 mb-2">
-          Fetch raw elevation tiles. Land → grayscale. Then use "Apply OSM Coastline" below to correctly mark sea pixels.
+          Fetch raw elevation tiles. Land → grayscale. Use "Apply OSM Coastline" below to correctly mark sea/water pixels.
         </p>
         <div className="space-y-1.5">
           {RASTER_SOURCES.map(src => {
@@ -540,17 +543,33 @@ out geom;`;
             );
           })}
         </div>
-        <p className="text-[9px] text-slate-500 mt-1">
-          The OpenTopoMap is useful as a reference for ground type generation.
-        </p>
+        <p className="text-[9px] text-slate-500 mt-1">OpenTopoMap is useful as a reference for ground type generation.</p>
       </div>
 
-      {/* Coastline from OSM */}
+      {/* Coastline + water bodies from OSM */}
       <div>
-        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Apply OSM Coastline</p>
+        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Apply OSM Coastline & Water</p>
         <p className="text-[9px] text-slate-500 mb-2">
-          Fetches <code className="text-amber-300">natural=coastline</code> from OpenStreetMap, draws the coastline boundary, flood-fills sea outward from map edges, and clamps all inland pixels to at least <code className="text-amber-300">RGB(1,1,1)</code>. Replaces the heightmap with the corrected version.
+          Fetches <code className="text-amber-300">natural=coastline</code>, flood-fills sea from map edges, and optionally paints inland water bodies as sea pixels <code className="text-amber-300">(0,0,255)</code>.
         </p>
+
+        {/* Water body options */}
+        <div className="bg-slate-800 border border-slate-700 rounded p-2 mb-2 space-y-1.5">
+          <p className="text-[9px] text-slate-400 font-semibold flex items-center gap-1"><Droplets className="w-3 h-3" /> Include inland water bodies</p>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={includeLakes} onChange={e => setIncludeLakes(e.target.checked)} className="accent-cyan-400" />
+            <span className={`text-[10px] ${includeLakes ? 'text-cyan-300' : 'text-slate-400'}`}>
+              <code className="text-amber-300">water=lake</code> → sea pixels
+            </span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={includeWaterRiver} onChange={e => setIncludeWaterRiver(e.target.checked)} className="accent-cyan-400" />
+            <span className={`text-[10px] ${includeWaterRiver ? 'text-cyan-300' : 'text-slate-400'}`}>
+              <code className="text-amber-300">water=river</code> → sea pixels <span className="text-slate-500">(wide riverbeds)</span>
+            </span>
+          </label>
+        </div>
+
         <button
           onClick={async () => { setGenerating(true); await generateCoastline(); setGenerating(false); }}
           disabled={generating}
@@ -560,10 +579,10 @@ out geom;`;
               : 'bg-cyan-800 border-cyan-600 text-white hover:bg-cyan-700'
           }`}>
           <Waves className={`w-3.5 h-3.5 ${generating ? 'animate-pulse' : ''}`} />
-          {generated.coastline ? '✓ Re-apply Coastline' : 'Fetch & Apply OSM Coastline'}
+          {generated.coastline ? '✓ Re-apply Coastline & Water' : 'Fetch & Apply OSM Coastline'}
         </button>
         <p className="text-[9px] text-slate-500 mt-1">
-          For inland-only maps (no coast), skip this step — land pixels are already ≥(1,1,1) from the heightmap.
+          For inland-only maps, skip this — land pixels are already ≥(1,1,1) from the heightmap.
         </p>
       </div>
 
@@ -571,7 +590,7 @@ out geom;`;
       <div>
         <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Generate Rivers (OSM)</p>
         <p className="text-[9px] text-slate-500 mb-2">
-          Fetches connected river basin ways from OpenStreetMap (same dataset as WaterwayMap.org). Ways are chained into continuous strokes. Rendered as 1-pixel pure blue <code className="text-amber-300">(0,0,255)</code> lines; origin pixel set to white <code className="text-amber-300">(255,255,255)</code>.
+          Fetches waterway ways, chains them into continuous strokes, renders as 1-pixel pure blue <code className="text-amber-300">(0,0,255)</code> lines with origin pixel white <code className="text-amber-300">(255,255,255)</code>.
         </p>
 
         <div className="bg-slate-800 border border-slate-700 rounded p-2 mb-2 space-y-1.5">
@@ -585,9 +604,7 @@ out geom;`;
               <span className={`text-[10px] ${riverDetail === d.id ? 'text-amber-300' : 'text-slate-400'}`}>{d.label}</span>
             </label>
           ))}
-          <p className="text-[9px] text-slate-500 pt-1">
-            Start with Major only. Add streams only if you need fine detail — they can be very dense.
-          </p>
+          <p className="text-[9px] text-slate-500 pt-1">Start with Major only. Streams can be very dense.</p>
         </div>
 
         <button onClick={async () => { setGenerating(true); await generateRivers(); setGenerating(false); }} disabled={generating}
