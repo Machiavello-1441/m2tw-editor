@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { ExternalLink, RefreshCw, Check, Download, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { RefreshCw, Check, Download, AlertCircle, Waves } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { rasterizeTiles } from './TileRasterizer';
 
@@ -26,6 +26,66 @@ function getRasterSize(layerId, mapWidth, mapHeight) {
 }
 
 const OSM_OVERPASS = 'https://overpass-api.de/api/interpreter';
+
+/**
+ * Flood-fill from all 4 border edges outward, marking "sea" pixels.
+ * A pixel is sea-eligible if it has NOT been painted as land (i.e. it's still black/transparent or very dark).
+ * After flood fill, all visited pixels become blue (0,0,255).
+ * All remaining land pixels are clamped to minimum brightness 1,1,1.
+ */
+function applyCoastlineFill(imageData) {
+  const { width, height, data } = imageData;
+
+  const isLand = (i) => {
+    // A pixel drawn by the coastline polygon fill or the grayscale heightmap is "land" if it's not sea-blue
+    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+    if (a === 0) return false; // transparent = not yet determined
+    // Pure blue = already sea
+    if (r === 0 && g === 0 && b === 255) return false;
+    // Anything else with alpha > 0 = land
+    return true;
+  };
+
+  // Flood-fill from all border pixels that are NOT land
+  const visited = new Uint8Array(width * height);
+  const queue = [];
+
+  const enqueue = (x, y) => {
+    const idx = y * width + x;
+    if (visited[idx]) return;
+    const i = idx * 4;
+    if (isLand(i)) return;
+    visited[idx] = 1;
+    queue.push(x, y);
+  };
+
+  for (let x = 0; x < width; x++) { enqueue(x, 0); enqueue(x, height - 1); }
+  for (let y = 0; y < height; y++) { enqueue(0, y); enqueue(width - 1, y); }
+
+  let qi = 0;
+  while (qi < queue.length) {
+    const x = queue[qi++], y = queue[qi++];
+    const i = (y * width + x) * 4;
+    data[i] = 0; data[i + 1] = 0; data[i + 2] = 255; data[i + 3] = 255;
+    if (x > 0) enqueue(x - 1, y);
+    if (x < width - 1) enqueue(x + 1, y);
+    if (y > 0) enqueue(x, y - 1);
+    if (y < height - 1) enqueue(x, y + 1);
+  }
+
+  // Clamp all remaining non-sea pixels to minimum 1,1,1 (M2TW land requirement)
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+    if (a > 0 && !(r === 0 && g === 0 && b === 255)) {
+      // Land pixel — ensure at least (1,1,1)
+      if (r === 0 && g === 0 && b === 0) {
+        data[i] = 1; data[i + 1] = 1; data[i + 2] = 1; data[i + 3] = 255;
+      }
+    }
+  }
+
+  return imageData;
+}
 
 // River detail levels: what waterway types to include
 const RIVER_DETAIL_LEVELS = [
@@ -125,7 +185,6 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
   const [rasterProgress, setRasterProgress] = useState({});
   const [generated, setGenerated] = useState({});
   const [riverDetail, setRiverDetail] = useState('major');
-  const [seaThreshold, setSeaThreshold] = useState(10); // grayscale brightness ≤ this = sea on heightmap
 
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
 
@@ -308,6 +367,123 @@ out geom;`;
     img.src = URL.createObjectURL(file);
   };
 
+  const generateCoastline = async () => {
+    const heightsLayer = LAYER_DEFS.find(d => d.id === 'heights');
+    if (!heightsLayer) { setStatus('Generate the heightmap first.'); return; }
+
+    setStatus('Fetching coastline from OpenStreetMap…');
+
+    // natural=coastline ways define the land/sea boundary; ways run with land on the left
+    const osmQuery = `[out:json][timeout:120];
+(
+  way["natural"="coastline"](${bboxStr});
+);
+out geom;`;
+
+    let elements = [];
+    try {
+      const data = await fetchOverpass(osmQuery, OSM_OVERPASS);
+      elements = (data.elements || []).filter(e => e.geometry?.length > 1);
+    } catch (e) {
+      setStatus(`Error fetching coastline: ${e.message}`);
+      return;
+    }
+
+    // Get the current heightmap imageData to work on
+    // We need to access it via a fresh canvas — retrieve from onLayerUpdate callback
+    // Instead, we rasterize a fresh grayscale heightmap and then apply coastline on top
+    const { width, height } = getRasterSize('heights', mapWidth, mapHeight);
+    setStatus('Re-rasterizing heightmap for coastline processing…');
+    setRasterProgress(p => ({ ...p, heights: { done: 0, total: 1 } }));
+
+    let imageData;
+    try {
+      imageData = await rasterizeTiles(
+        RASTER_SOURCES[0].url, bbox, width, height,
+        (done, total) => setRasterProgress(p => ({ ...p, heights: { done, total } })),
+        { grayscale: true }
+      );
+    } catch (e) {
+      setStatus(`Error rasterizing heightmap: ${e.message}`);
+      setRasterProgress(p => ({ ...p, heights: null }));
+      return;
+    }
+    setRasterProgress(p => ({ ...p, heights: null }));
+
+    const { canvas, ctx, toXY } = makeBboxCanvas(bbox, width, height);
+    // Draw the grayscale heightmap first
+    ctx.putImageData(imageData, 0, 0);
+
+    if (elements.length > 0) {
+      // Chain coastline ways into continuous rings/lines
+      const polylines = elements.map(e => e.geometry);
+      const chains = chainPolylines(polylines);
+
+      // Draw coastline as filled polygons: OSM coastline has land on the LEFT of the way direction.
+      // Strategy: draw each chain as a closed path and fill with a non-sea color to mark land,
+      // then flood-fill from borders to find sea. We paint the coastline boundary itself as opaque.
+      // First pass: paint coastline strokes as a "barrier" on a separate canvas
+      const barrierCanvas = document.createElement('canvas');
+      barrierCanvas.width = width; barrierCanvas.height = height;
+      const bctx = barrierCanvas.getContext('2d');
+      bctx.imageSmoothingEnabled = false;
+      // Fill the whole barrier canvas transparent (sea by default)
+      bctx.clearRect(0, 0, width, height);
+      // Draw each coastline chain; OSM coastline: land is LEFT of direction.
+      // We'll fill with white to mark land, using a winding rule approach.
+      // Simple approach: draw all chains as closed paths with fill.
+      bctx.fillStyle = 'rgba(128,128,128,1)';
+      for (const chain of chains) {
+        if (chain.length < 2) continue;
+        bctx.beginPath();
+        chain.forEach(({ lat, lon }, i) => {
+          const [x, y] = toXY(lat, lon);
+          i === 0 ? bctx.moveTo(x, y) : bctx.lineTo(x, y);
+        });
+        bctx.closePath();
+        bctx.fill('evenodd');
+      }
+      // Also stroke barrier lines so gaps in coastline don't let sea bleed through
+      bctx.strokeStyle = 'rgba(128,128,128,1)';
+      bctx.lineWidth = 2;
+      for (const chain of chains) {
+        if (chain.length < 2) continue;
+        bctx.beginPath();
+        chain.forEach(({ lat, lon }, i) => {
+          const [x, y] = toXY(lat, lon);
+          i === 0 ? bctx.moveTo(x, y) : bctx.lineTo(x, y);
+        });
+        bctx.stroke();
+      }
+
+      // Merge: wherever barrier has a non-transparent pixel, keep the heightmap land pixel;
+      // everywhere else, mark as potential sea (transparent = sea-eligible for flood fill)
+      const barrierData = bctx.getImageData(0, 0, width, height);
+      const hd = imageData.data;
+      for (let i = 0; i < hd.length; i += 4) {
+        if (barrierData.data[i + 3] === 0) {
+          // Not inside coastline polygon — mark as transparent so flood fill will reach it
+          hd[i] = 0; hd[i + 1] = 0; hd[i + 2] = 0; hd[i + 3] = 0;
+        } else {
+          // Inside land — ensure at least (1,1,1)
+          if (hd[i] === 0 && hd[i + 1] === 0 && hd[i + 2] === 0) {
+            hd[i] = 1; hd[i + 1] = 1; hd[i + 2] = 1;
+          }
+          hd[i + 3] = 255;
+        }
+      }
+    } else {
+      setStatus('No coastline found in this bbox — the area may be fully inland. Heightmap saved as-is with land clamping.');
+    }
+
+    // Apply flood-fill sea detection and land clamping
+    applyCoastlineFill(imageData);
+
+    setStatus(`Coastline applied — ${elements.length} ways, land clamped to ≥(1,1,1).`);
+    onLayerUpdate('heights', { imageData, visible: true, opacity: 0.8, dirty: true });
+    setGenerated(p => ({ ...p, heights: true, coastline: true }));
+  };
+
   const rasterizeLayer = async (source) => {
     const { width, height } = getRasterSize(source.id, mapWidth, mapHeight);
     setStatus(`Rasterizing ${source.label} (${width}×${height} px)…`);
@@ -318,18 +494,6 @@ out geom;`;
         (done, total) => setRasterProgress(p => ({ ...p, [source.id]: { done, total } })),
         { grayscale: source.grayscale }
       );
-
-      // For heightmap: apply sea threshold — pixels with grayscale ≤ threshold become blue sea
-      if (source.id === 'heights' && seaThreshold > 0) {
-        const d = imageData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const gray = (d[i] + d[i + 1] + d[i + 2]) / 3;
-          if (gray <= seaThreshold && !(d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 255)) {
-            d[i] = 0; d[i + 1] = 0; d[i + 2] = 255; d[i + 3] = 255;
-          }
-        }
-      }
-
       onLayerUpdate(source.id, { imageData, visible: true, opacity: 0.8, dirty: true });
       setGenerated(p => ({ ...p, [source.id]: true }));
       setStatus(`${source.label} rasterized at ${width}×${height} px.`);
@@ -349,27 +513,12 @@ out geom;`;
         <p>Output: <span className="text-amber-300 font-mono">{mapWidth}×{mapHeight}</span> (×2+1: <span className="text-amber-300 font-mono">{mapWidth*2+1}×{mapHeight*2+1}</span>)</p>
       </div>
 
-      {/* Heightmap + coastline threshold */}
+      {/* Heightmap */}
       <div>
         <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Heightmap (Terrarium)</p>
         <p className="text-[9px] text-slate-500 mb-2">
-          Sea pixels → RGB(0,0,255). Land → grayscale 1–255. Adjust the sea level threshold to refine coastlines.
+          Fetch raw elevation tiles. Land → grayscale. Then use "Apply OSM Coastline" below to correctly mark sea pixels.
         </p>
-
-        <div className="bg-slate-800 border border-slate-700 rounded p-2 mb-2 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-[9px] text-slate-400">Sea threshold (grayscale ≤ value = sea)</p>
-            <span className="text-[10px] font-mono text-amber-400">{seaThreshold}</span>
-          </div>
-          <input type="range" min="0" max="40" step="1" value={seaThreshold}
-            onChange={e => setSeaThreshold(Number(e.target.value))}
-            className="w-full h-1.5 accent-amber-400" />
-          <div className="flex justify-between text-[8px] text-slate-600">
-            <span>0 (strict)</span><span>10 (default)</span><span>40 (generous)</span>
-          </div>
-          <p className="text-[9px] text-slate-500">Higher = more sea, lower = more land near coasts.</p>
-        </div>
-
         <div className="space-y-1.5">
           {RASTER_SOURCES.map(src => {
             const prog = rasterProgress[src.id];
@@ -396,11 +545,33 @@ out geom;`;
         </p>
       </div>
 
+      {/* Coastline from OSM */}
+      <div>
+        <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Apply OSM Coastline</p>
+        <p className="text-[9px] text-slate-500 mb-2">
+          Fetches <code className="text-amber-300">natural=coastline</code> from OpenStreetMap, draws the coastline boundary, flood-fills sea outward from map edges, and clamps all inland pixels to at least <code className="text-amber-300">RGB(1,1,1)</code>. Replaces the heightmap with the corrected version.
+        </p>
+        <button
+          onClick={async () => { setGenerating(true); await generateCoastline(); setGenerating(false); }}
+          disabled={generating}
+          className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[11px] border transition-colors disabled:opacity-50 font-semibold ${
+            generated.coastline
+              ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40'
+              : 'bg-cyan-800 border-cyan-600 text-white hover:bg-cyan-700'
+          }`}>
+          <Waves className={`w-3.5 h-3.5 ${generating ? 'animate-pulse' : ''}`} />
+          {generated.coastline ? '✓ Re-apply Coastline' : 'Fetch & Apply OSM Coastline'}
+        </button>
+        <p className="text-[9px] text-slate-500 mt-1">
+          For inland-only maps (no coast), skip this step — land pixels are already ≥(1,1,1) from the heightmap.
+        </p>
+      </div>
+
       {/* Rivers from OSM */}
       <div>
         <p className="text-[10px] text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Generate Rivers (OSM)</p>
         <p className="text-[9px] text-slate-500 mb-2">
-          Rivers are rendered as 1-pixel pure blue (0,0,255) lines. The origin point is set to white (255,255,255). Each river pixel has at most 2 contiguous neighbors.
+          Fetches connected river basin ways from OpenStreetMap (same dataset as WaterwayMap.org). Ways are chained into continuous strokes. Rendered as 1-pixel pure blue <code className="text-amber-300">(0,0,255)</code> lines; origin pixel set to white <code className="text-amber-300">(255,255,255)</code>.
         </p>
 
         <div className="bg-slate-800 border border-slate-700 rounded p-2 mb-2 space-y-1.5">
