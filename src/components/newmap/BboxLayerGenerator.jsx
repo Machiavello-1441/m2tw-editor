@@ -113,20 +113,7 @@ function paintPolygonsBlue(imageData, elements, toXY, W, H) {
  * Draws coastline as 1px black lines on a white canvas, then flood-fills from edges.
  * Border-reachable non-black pixels = sea → painted blue on imageData.
  */
-/**
- * Paint sea using OSM coastline barrier-line + inverse flood-fill.
- * 
- * Strategy (matches OSM coastline convention — sea is to the right of way direction):
- *  - Start mask canvas as ALL BLACK (= sea)
- *  - Draw coastline ways as WHITE 1px lines (barrier)
- *  - Flood-fill LAND from all 4 edges (white-passable, black-blocked)
- *  - After fill: white pixels = land, black pixels = sea
- *  - Paint remaining black pixels as (0,0,255) on imageData
- * 
- * If no coastline crosses the bbox edges, all edge-reachable area becomes land
- * and nothing (or very little) gets painted blue — correct for inland maps.
- */
-function paintSeaFromCoastline(imageData, coastElements, toXY, W, H) {
+function paintSeaFromCoastline_UNUSED(imageData, coastElements, toXY, W, H) {
   if (coastElements.length === 0) return;
 
   const maskCanvas = document.createElement('canvas');
@@ -250,14 +237,93 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     setGenerated(p => ({ ...p, ...extraGenerated }));
   };
 
-  // ── STEP 1: Heightmap ─────────────────────────────────────────────────────
-  // Fetch Terrarium elevation tiles, clamp all pixels to min (1,1,1). Pure grayscale, no blue.
+  // ── STEP 1: Coastline Base ────────────────────────────────────────────────
+  // Fetch OSM coastline, barrier-line flood-fill to mark sea vs land.
+  // Result: land = (1,1,1), sea = (0,0,255). No elevation yet.
+  const generateCoastlineBase = async () => {
+    setStatus('Fetching coastline from OpenStreetMap…');
+
+    let elements = [];
+    try {
+      const data = await fetchOverpass(`[out:json][timeout:120];(way["natural"="coastline"](${bboxStr}););out geom;`);
+      elements = (data.elements || []).filter(e => e.geometry?.length > 1);
+    } catch (e) { setStatus(`Error: ${e.message}`); return; }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    if (elements.length === 0) {
+      // No coastline — entire bbox is land
+      ctx.fillStyle = 'rgb(1,1,1)';
+      ctx.fillRect(0, 0, W, H);
+      const imageData = ctx.getImageData(0, 0, W, H);
+      setStatus('No coastline found — entire area treated as land (1,1,1).');
+      pushHeightmap(imageData, { coastline: true, heightmap: false, sea: false, lakes: false });
+      return;
+    }
+
+    // Fill entire canvas as land (1,1,1), draw coastline as 1px black barrier
+    ctx.fillStyle = 'rgb(1,1,1)';
+    ctx.fillRect(0, 0, W, H);
+    const chains = chainPolylines(elements.map(e => e.geometry));
+    ctx.strokeStyle = 'rgb(0,0,0)'; ctx.lineWidth = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const chain of chains) {
+      if (chain.length < 2) continue;
+      ctx.beginPath();
+      chain.forEach(({ lat, lon }, i) => {
+        const [x, y] = toXY(lat, lon);
+        i === 0 ? ctx.moveTo(x + 0.5, y + 0.5) : ctx.lineTo(x + 0.5, y + 0.5);
+      });
+      ctx.stroke();
+    }
+
+    const imageData = ctx.getImageData(0, 0, W, H);
+    const d = imageData.data;
+
+    // Flood-fill sea from all 4 edges. Black barrier pixels block propagation.
+    // Edge-reachable non-black pixels = sea → painted (0,0,255).
+    const visited = new Uint8Array(W * H);
+    const queue = [];
+    const enq = (x, y) => {
+      const idx = y * W + x; if (visited[idx]) return;
+      const i = idx * 4;
+      if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) return; // coastline barrier
+      visited[idx] = 1; queue.push(x, y);
+    };
+    for (let x = 0; x < W; x++) { enq(x, 0); enq(x, H - 1); }
+    for (let y = 0; y < H; y++) { enq(0, y); enq(W - 1, y); }
+    let qi = 0;
+    while (qi < queue.length) {
+      const x = queue[qi++], y = queue[qi++];
+      const i = (y * W + x) * 4;
+      d[i] = 0; d[i + 1] = 0; d[i + 2] = 255; d[i + 3] = 255; // sea blue
+      if (x > 0) enq(x - 1, y); if (x < W - 1) enq(x + 1, y);
+      if (y > 0) enq(x, y - 1); if (y < H - 1) enq(x, y + 1);
+    }
+    // Convert remaining black coastline barrier pixels → land (1,1,1)
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) {
+        d[i] = 1; d[i + 1] = 1; d[i + 2] = 1; d[i + 3] = 255;
+      }
+    }
+
+    setStatus(`Coastline base ready — ${elements.length} ways. Land=(1,1,1), sea=(0,0,255).`);
+    pushHeightmap(imageData, { coastline: true, heightmap: false, sea: false, lakes: false });
+  };
+
+  // ── STEP 2: Heightmap Relief ──────────────────────────────────────────────
+  // Fetch Terrarium elevation tiles. Apply grayscale elevation ONLY to land pixels
+  // (non-blue). Sea pixels (0,0,255) from Step 1 are preserved untouched.
   const generateHeightmap = async () => {
+    if (!heightmapRef.current) { setStatus('Generate the coastline base first (Step 1).'); return; }
     setStatus('Fetching elevation tiles (Terrarium)…');
     setRasterProgress({ heights: { done: 0, total: 1 } });
-    let imageData;
+
+    let elevData;
     try {
-      imageData = await rasterizeTiles(
+      elevData = await rasterizeTiles(
         HEIGHTMAP_URL, bbox, W, H,
         (done, total) => setRasterProgress({ heights: { done, total } }),
         { grayscale: true }
@@ -269,44 +335,26 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     }
     setRasterProgress({});
 
-    // Clamp all pixels to min (1,1,1) — black is reserved for sea in M2TW
-    const d = imageData.data;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3] === 0) { d[i] = 1; d[i + 1] = 1; d[i + 2] = 1; d[i + 3] = 255; }
-      else if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) { d[i] = 1; d[i + 1] = 1; d[i + 2] = 1; }
-    }
-
-    setStatus(`Heightmap ready — ${W}×${H} px, land clamped to ≥(1,1,1).`);
-    pushHeightmap(imageData, { heightmap: true, sea: false, lakes: false, waterRiver: false });
-  };
-
-  // ── STEP 2: Sea (OSM coastline) ───────────────────────────────────────────
-  // Uses barrier-line flood-fill on the existing heightmap. No re-fetch of elevation.
-  const paintSea = async () => {
-    if (!heightmapRef.current) { setStatus('Generate the heightmap first (Step 1).'); return; }
-    setStatus('Fetching coastline from OpenStreetMap…');
-
-    let elements = [];
-    try {
-      const data = await fetchOverpass(`[out:json][timeout:120];(way["natural"="coastline"](${bboxStr}););out geom;`);
-      elements = (data.elements || []).filter(e => e.geometry?.length > 1);
-    } catch (e) { setStatus(`Error: ${e.message}`); return; }
-
-    if (elements.length === 0) {
-      setStatus('No coastline found in this bbox — area may be fully inland. Skip this step.');
-      return;
-    }
-
-    // Clone the current heightmap so we don't mutate the stored ref
+    // Clone current coastline base to preserve sea mask
     const imageData = new ImageData(
       new Uint8ClampedArray(heightmapRef.current.data),
       heightmapRef.current.width, heightmapRef.current.height
     );
+    const d = imageData.data;
+    const ed = elevData.data;
 
-    paintSeaFromCoastline(imageData, elements, toXY, W, H);
+    // For every land pixel (not blue), replace with elevation grayscale
+    for (let i = 0; i < d.length; i += 4) {
+      const isSea = d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 255;
+      if (!isSea) {
+        // Apply elevation value, clamped to min 1
+        d[i] = ed[i]; d[i + 1] = ed[i + 1]; d[i + 2] = ed[i + 2]; d[i + 3] = 255;
+        if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) { d[i] = 1; d[i + 1] = 1; d[i + 2] = 1; }
+      }
+    }
 
-    setStatus(`Sea painted — ${elements.length} coastline ways.`);
-    pushHeightmap(imageData, { sea: true });
+    setStatus(`Heightmap relief applied to land pixels — sea preserved.`);
+    pushHeightmap(imageData, { heightmap: true });
   };
 
   // ── STEP 3: Lakes ─────────────────────────────────────────────────────────
@@ -421,40 +469,40 @@ out geom;`;
         <p>Output: <span className="text-amber-300 font-mono">{mapWidth}×{mapHeight}</span> (×2+1: <span className="text-amber-300 font-mono">{W}×{H}</span>)</p>
       </div>
 
-      {/* Step 1: Heightmap */}
+      {/* Step 1: Coastline Base */}
       <div className="border border-slate-700 rounded p-2.5 space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-bold bg-amber-600 text-white rounded-full w-4 h-4 flex items-center justify-center shrink-0">1</span>
-          <p className="text-[10px] text-slate-300 font-semibold">Heightmap</p>
-          {generated.heightmap && <Check className="w-3 h-3 text-green-400 ml-auto" />}
+          <span className="text-[9px] font-bold bg-cyan-700 text-white rounded-full w-4 h-4 flex items-center justify-center shrink-0">1</span>
+          <p className="text-[10px] text-slate-300 font-semibold">Coastline Base</p>
+          {generated.coastline && <Check className="w-3 h-3 text-green-400 ml-auto" />}
         </div>
         <p className="text-[9px] text-slate-500">
-          Fetches Terrarium elevation tiles as grayscale. All pixels clamped to min <code className="text-amber-300">(1,1,1)</code>. No sea pixels yet.
+          Fetches <code className="text-amber-300">natural=coastline</code>, draws a 1px barrier, flood-fills sea from edges. Result: land = <code className="text-amber-300">(1,1,1)</code>, sea = <code className="text-amber-300">(0,0,255)</code>. Skip for fully inland maps.
         </p>
-        <button onClick={async () => { setGenerating(true); await generateHeightmap(); setGenerating(false); }} disabled={generating}
-          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.heightmap ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-amber-700 border-amber-600 text-white hover:bg-amber-600'}`}>
-          <Mountain className={`w-3 h-3 ${generating && rasterPct !== null ? 'animate-pulse' : ''}`} />
-          {generated.heightmap ? '✓ Re-fetch Heightmap' : 'Fetch Heightmap'}
-          {rasterPct !== null && <span className="ml-auto font-mono text-amber-200">{rasterPct}%</span>}
+        <button onClick={async () => { setGenerating(true); await generateCoastlineBase(); setGenerating(false); }} disabled={generating}
+          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.coastline ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-cyan-800 border-cyan-600 text-white hover:bg-cyan-700'}`}>
+          <Waves className={`w-3 h-3 ${generating ? 'animate-pulse' : ''}`} />
+          {generated.coastline ? '✓ Re-generate Coastline Base' : 'Generate Coastline Base'}
         </button>
       </div>
 
-      {/* Step 2: Sea */}
+      {/* Step 2: Heightmap Relief */}
       <div className="border border-slate-700 rounded p-2.5 space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-bold bg-cyan-700 text-white rounded-full w-4 h-4 flex items-center justify-center shrink-0">2</span>
-          <p className="text-[10px] text-slate-300 font-semibold">Sea (OSM Coastline)</p>
-          {generated.sea && <Check className="w-3 h-3 text-green-400 ml-auto" />}
+          <span className="text-[9px] font-bold bg-amber-600 text-white rounded-full w-4 h-4 flex items-center justify-center shrink-0">2</span>
+          <p className="text-[10px] text-slate-300 font-semibold">Heightmap Relief</p>
+          {generated.heightmap && <Check className="w-3 h-3 text-green-400 ml-auto" />}
         </div>
         <p className="text-[9px] text-slate-500">
-          Fetches <code className="text-amber-300">natural=coastline</code>, draws a 1px black barrier line, then flood-fills sea from map edges as <code className="text-amber-300">(0,0,255)</code>. Applied on top of the heightmap. Skip for inland-only maps.
+          Fetches Terrarium elevation tiles and applies grayscale relief <strong>only to land pixels</strong>. Sea pixels <code className="text-amber-300">(0,0,255)</code> from Step 1 are preserved exactly.
         </p>
-        <button onClick={async () => { setGenerating(true); await paintSea(); setGenerating(false); }} disabled={generating || !generated.heightmap}
-          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.sea ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-cyan-800 border-cyan-600 text-white hover:bg-cyan-700'}`}>
-          <Waves className={`w-3 h-3 ${generating ? 'animate-pulse' : ''}`} />
-          {generated.sea ? '✓ Re-paint Sea' : 'Paint Sea from Coastline'}
+        <button onClick={async () => { setGenerating(true); await generateHeightmap(); setGenerating(false); }} disabled={generating || !generated.coastline}
+          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.heightmap ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-amber-700 border-amber-600 text-white hover:bg-amber-600'}`}>
+          <Mountain className={`w-3 h-3 ${generating && rasterPct !== null ? 'animate-pulse' : ''}`} />
+          {generated.heightmap ? '✓ Re-fetch Relief' : 'Fetch Elevation Relief'}
+          {rasterPct !== null && <span className="ml-auto font-mono text-amber-200">{rasterPct}%</span>}
         </button>
-        {!generated.heightmap && <p className="text-[9px] text-amber-500">⚠ Complete Step 1 first</p>}
+        {!generated.coastline && <p className="text-[9px] text-amber-500">⚠ Complete Step 1 first</p>}
       </div>
 
       {/* Step 3: Lakes / Water bodies */}
@@ -477,12 +525,12 @@ out geom;`;
             <span className="text-[10px] text-slate-300"><code className="text-amber-300">water=river</code> <span className="text-slate-500">(wide river areas)</span></span>
           </label>
         </div>
-        <button onClick={async () => { setGenerating(true); await paintLakes(); setGenerating(false); }} disabled={generating || !generated.heightmap}
+        <button onClick={async () => { setGenerating(true); await paintLakes(); setGenerating(false); }} disabled={generating || !generated.coastline}
           className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.lakes ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-blue-800 border-blue-600 text-white hover:bg-blue-700'}`}>
           <Droplets className={`w-3 h-3 ${generating ? 'animate-pulse' : ''}`} />
           {generated.lakes ? '✓ Re-paint Water Bodies' : 'Paint Water Bodies'}
         </button>
-        {!generated.heightmap && <p className="text-[9px] text-amber-500">⚠ Complete Step 1 first</p>}
+        {!generated.coastline && <p className="text-[9px] text-amber-500">⚠ Complete Step 1 first</p>}
       </div>
 
       {/* Step 4: Rivers (features layer) */}
