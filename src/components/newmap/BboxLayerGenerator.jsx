@@ -78,35 +78,62 @@ function chainPolylines(polylines) {
   return chains;
 }
 
-/** Paint OSM polygon elements as solid blue (0,0,255) onto an existing ImageData. */
-function paintPolygonsBlue(imageData, elements, toXY, W, H) {
+/** Compute approximate pixel area of a polygon (Shoelace, integer pixel coords). */
+function pixelArea(pts, toXY) {
+  if (pts.length < 3) return 0;
+  let area = 0;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = toXY(pts[i].lat, pts[i].lon);
+    const [xj, yj] = toXY(pts[j].lat, pts[j].lon);
+    area += (xj + xi) * (yj - yi);
+  }
+  return Math.abs(area) / 2;
+}
+
+/** Paint OSM polygon elements as solid blue (0,0,255) onto an existing ImageData.
+ *  Relations are assembled by chaining their outer-ring members into one closed path
+ *  (nonzero fill), so large multipolygon lakes render solid rather than as rings. */
+function paintPolygonsBlue(imageData, elements, toXY, W, H, minPixelArea = 4) {
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(0,0,255,1)';
-  ctx.strokeStyle = 'rgba(0,0,255,1)';
-  ctx.lineWidth = 2;
+  ctx.fillStyle = 'rgb(0,0,255)';
+
+  const drawRing = (pts) => {
+    if (pts.length < 3) return;
+    // Skip tiny features (ponds, ditches, noise)
+    if (pixelArea(pts, toXY) < minPixelArea) return;
+    ctx.beginPath();
+    pts.forEach(({ lat, lon }, i) => {
+      const [x, y] = toXY(lat, lon);
+      i === 0 ? ctx.moveTo(x + 0.5, y + 0.5) : ctx.lineTo(x + 0.5, y + 0.5);
+    });
+    ctx.closePath();
+    ctx.fill('nonzero'); // solid fill — no evenodd holes
+  };
+
   for (const el of elements) {
-    const draw = (pts) => {
-      if (pts.length < 2) return;
-      ctx.beginPath();
-      pts.forEach(({ lat, lon }, i) => {
-        const [x, y] = toXY(lat, lon);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-      ctx.closePath(); ctx.fill('evenodd'); ctx.stroke();
-    };
-    if (el.type === 'way' && el.geometry?.length > 1) draw(el.geometry);
-    else if (el.type === 'relation' && el.members) {
-      for (const m of el.members) if (m.type === 'way' && m.geometry?.length > 1) draw(m.geometry);
+    if (el.type === 'way' && el.geometry?.length > 2) {
+      drawRing(el.geometry);
+    } else if (el.type === 'relation' && el.members) {
+      // Collect outer-ring member ways and chain them into one or more closed rings
+      const outerWays = el.members
+        .filter(m => m.type === 'way' && m.geometry?.length > 1 && (m.role === 'outer' || m.role === ''))
+        .map(m => m.geometry);
+      // If no roles specified, use all way members
+      const ways = outerWays.length > 0 ? outerWays
+        : el.members.filter(m => m.type === 'way' && m.geometry?.length > 1).map(m => m.geometry);
+      const rings = chainPolylines(ways);
+      for (const ring of rings) drawRing(ring);
     }
   }
+
   const overlay = ctx.getImageData(0, 0, W, H).data;
   const d = imageData.data;
   for (let i = 0; i < d.length; i += 4) {
-    if (overlay[i + 3] > 0) { d[i] = 0; d[i + 1] = 0; d[i + 2] = 255; d[i + 3] = 255; }
+    if (overlay[i + 3] > 128) { d[i] = 0; d[i + 1] = 0; d[i + 2] = 255; d[i + 3] = 255; }
   }
 }
 
@@ -188,6 +215,7 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
   // ── STEP 2: Water Bodies ──────────────────────────────────────────────────
   // Options: A = place=sea/ocean, B = water=lagoon, C = water=lake
   const [waterOpts, setWaterOpts] = useState({ sea: true, lagoon: false, lake: false });
+  const [minWaterPixels, setMinWaterPixels] = useState(16);
 
   const paintWaterBodies = async () => {
     if (!heightmapRef.current) { setStatus('Generate the heightmap first (Step 1).'); return; }
@@ -224,7 +252,7 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
       new Uint8ClampedArray(heightmapRef.current.data),
       heightmapRef.current.width, heightmapRef.current.height
     );
-    paintPolygonsBlue(imageData, elements, toXY, W, H);
+    paintPolygonsBlue(imageData, elements, toXY, W, H, minWaterPixels);
     setStatus(`Water bodies painted — ${elements.length} features.`);
     pushHeightmap(imageData, { lakes: true });
   };
@@ -352,7 +380,7 @@ out geom;`;
           {[
             { key: 'sea',    label: 'Seas & Oceans',  desc: 'place=sea / place=ocean' },
             { key: 'lagoon', label: 'Lagoons',         desc: 'water=lagoon' },
-            { key: 'lake',   label: 'Lakes',           desc: 'water=lake (not reservoirs/ponds/basins)' },
+            { key: 'lake',   label: 'Lakes',           desc: 'water=lake' },
           ].map(opt => (
             <label key={opt.key} className="flex items-start gap-2 cursor-pointer group">
               <input type="checkbox" checked={waterOpts[opt.key]}
@@ -364,6 +392,16 @@ out geom;`;
               </span>
             </label>
           ))}
+        </div>
+        <div className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] text-slate-400">Min size (px²)</span>
+            <span className="text-[9px] font-mono text-amber-300">{minWaterPixels}</span>
+          </div>
+          <input type="range" min={1} max={200} value={minWaterPixels}
+            onChange={e => setMinWaterPixels(Number(e.target.value))}
+            className="w-full accent-blue-400 h-1" />
+          <p className="text-[9px] text-slate-600">Water bodies smaller than this pixel area are skipped (removes tiny ponds).</p>
         </div>
         <button onClick={async () => { setGenerating(true); await paintWaterBodies(); setGenerating(false); }} disabled={generating || !generated.heightmap}
           className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.lakes ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-blue-800 border-blue-600 text-white hover:bg-blue-700'}`}>
