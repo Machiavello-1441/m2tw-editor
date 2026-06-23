@@ -88,8 +88,8 @@ const TAG_GROUPS = [
 const ALL_TAGS = TAG_GROUPS.flatMap(g => g.tags);
 
 const OSM_OVERPASS_MIRRORS = [
-  'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 
@@ -100,6 +100,7 @@ async function fetchPolygons(key, value, bboxStr) {
     try {
       const res = await fetch(mirror, {
         method: 'POST',
+        mode: 'cors',
         body: 'data=' + encodeURIComponent(query),
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
