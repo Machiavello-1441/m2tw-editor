@@ -172,12 +172,25 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
     setTagStates(s => ({ ...s, [k]: { ...s[k], gtId } }));
   };
 
+  const [fetchProgress, setFetchProgress] = useState({}); // k → 0-100
+
   const applyTag = async (tag) => {
     if (!hasLayer || !bbox) return;
     const k = getTagKey(tag);
     setTagStates(s => ({ ...s, [k]: { ...s[k], status: 'running' } }));
+    setFetchProgress(p => ({ ...p, [k]: 0 }));
+
+    // Animate progress up to 90% while waiting (OSM gives no real progress signal)
+    let pct = 0;
+    const interval = setInterval(() => {
+      pct = Math.min(pct + Math.random() * 8 + 2, 90);
+      setFetchProgress(p => ({ ...p, [k]: pct }));
+    }, 300);
+
     try {
       const elements = await fetchPolygons(tag.key, tag.value, bboxStr);
+      clearInterval(interval);
+      setFetchProgress(p => ({ ...p, [k]: 100 }));
       const src = groundLayer.imageData;
       const copy = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
       const gtId = tagStates[k]?.gtId ?? tag.defaultGt;
@@ -186,6 +199,8 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
       onLayerUpdate('ground', { imageData: copy, visible: true, opacity: 1, dirty: true });
       setTagStates(s => ({ ...s, [k]: { ...s[k], status: `done ${elements.length}` } }));
     } catch (e) {
+      clearInterval(interval);
+      setFetchProgress(p => ({ ...p, [k]: 0 }));
       setTagStates(s => ({ ...s, [k]: { ...s[k], status: `error: ${e.message}` } }));
     }
   };
@@ -267,6 +282,18 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
 
                       return (
                         <div key={k} className="bg-slate-900">
+                          {/* Fetch progress bar */}
+                          {isRunning && (
+                            <div className="mx-1.5 mt-1">
+                              <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                                  style={{ width: `${fetchProgress[k] ?? 0}%` }}
+                                />
+                              </div>
+                              <p className="text-[8px] text-blue-400 mt-0.5">Fetching from OpenStreetMap… {Math.round(fetchProgress[k] ?? 0)}%</p>
+                            </div>
+                          )}
                           {/* Tag row */}
                           <div className="flex items-center gap-1.5 px-1.5 py-1">
                             {/* GT color swatch + picker toggle */}

@@ -174,6 +174,24 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
   const { width: W, height: H } = getHeightmapSize(mapWidth, mapHeight);
   const toXY = makeToXY(bbox, W, H);
 
+  // ── STEP 1b: Paint sea-level pixels blue ─────────────────────────────────
+  const paintSeaLevel = () => {
+    if (!heightmapRef.current) return;
+    setHeightmapStatus('Painting sea-level pixels (elevation 0) as sea…');
+    const src = heightmapRef.current;
+    const copy = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
+    const d = copy.data;
+    let count = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) {
+        d[i] = 0; d[i + 1] = 0; d[i + 2] = 255; d[i + 3] = 255;
+        count++;
+      }
+    }
+    setHeightmapStatus(`✓ Painted ${count} sea-level pixels as sea (0,0,255).`);
+    pushHeightmap(copy, { seaLevel: true });
+  };
+
   const pushHeightmap = (imageData, extraGenerated = {}) => {
     heightmapRef.current = imageData;
     onLayerUpdate('heights', { imageData, visible: true, opacity: 0.8, dirty: true });
@@ -210,7 +228,7 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     }
 
     setHeightmapStatus('✓ Heightmap ready — sea level marked (0,0,255).');
-    pushHeightmap(elevData, { heightmap: true, lakes: false });
+    pushHeightmap(elevData, { heightmap: true, lakes: false, seaLevel: false });
   };
 
   // ── STEP 2: Water Bodies ──────────────────────────────────────────────────
@@ -491,6 +509,21 @@ out geom;`;
           {generated.heightmap ? '✓ Re-fetch Heightmap' : 'Fetch Heightmap'}
           {rasterPct !== null && <span className="ml-auto font-mono text-amber-200">{rasterPct}%</span>}
         </button>
+        {/* 1b: sea-level flood fill */}
+        {generated.heightmap && (
+          <div className="border border-slate-600 rounded p-2 space-y-1.5 bg-slate-800/40">
+            <p className="text-[9px] text-slate-400 font-semibold">1b — Paint Sea-Level Pixels</p>
+            <p className="text-[9px] text-slate-500 leading-snug">
+              Converts every remaining pure-black pixel <code className="text-amber-300">(0,0,0)</code> in the heightmap to sea <code className="text-amber-300">(0,0,255)</code>. Useful for seas like the Tyrrhenian or Adriatic that aren't tagged as OSM polygons but have elevation 0 in Terrarium data.
+            </p>
+            {generated.seaLevel && <p className="text-[9px] text-green-400">✓ Sea-level pixels already painted.</p>}
+            <button onClick={paintSeaLevel} disabled={generating}
+              className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold bg-blue-900/40 border-blue-600/50 text-blue-300 hover:bg-blue-800/50">
+              <Droplets className="w-3 h-3" />
+              {generated.seaLevel ? 'Re-paint Sea Level' : 'Paint Sea Level (elevation 0)'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Step 2: Water Bodies */}
