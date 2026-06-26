@@ -2,10 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { getLayerDimensions, LAYER_DEFS, CLIMATE_PALETTE, hexToRgb } from '@/lib/mapLayerStore';
 import {
   Map, Download, Crop, Edit3, MousePointer, Layers,
-  Settings, Paintbrush, GitBranch, Package
+  GitBranch
 } from 'lucide-react';
 import LayerSidebar from '../components/newmap/LayerSidebar';
-import ToolSettings from '../components/newmap/ToolSettings';
 import MapStatusBar from '../components/newmap/MapStatusBar';
 import ExportPanel from '../components/newmap/ExportPanel';
 import SelectionPanel from '../components/newmap/SelectionPanel';
@@ -35,14 +34,13 @@ const SIDEBAR_TABS = {
   resolution: ['area', 'layers'],
   generate:   ['area', 'layers'],
   preview:    ['area', 'layers'],
-  edit:       ['workflow', 'paint', 'layers', 'export'],
+  edit:       ['workflow', 'layers', 'export'],
 };
 
 const TAB_META = {
   area:     { label: 'Area',     icon: Crop },
   layers:   { label: 'Layers',   icon: Layers },
   workflow: { label: 'Workflow', icon: GitBranch },
-  paint:    { label: 'Paint',    icon: Paintbrush },
   export:   { label: 'Export',   icon: Download },
 };
 
@@ -464,22 +462,6 @@ export default function NewMapEditor() {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* ── PAINT tab (edit phase) ── */}
-            {currentTab === 'paint' && phase === 'edit' && (
-              <ToolSettings
-                activeTool={activeTool}
-                onSetTool={setActiveTool}
-                brushSize={brushSize}
-                onBrushSize={setBrushSize}
-                color={color}
-                onColor={setColor}
-                activeLayerId={activeLayerId}
-                regionName={regionName}
-                onRegionName={setRegionName}
-                inline
-              />
             )}
 
             {/* ── EXPORT tab (edit phase) ── */}
