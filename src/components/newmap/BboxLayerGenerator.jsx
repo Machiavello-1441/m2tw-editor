@@ -97,7 +97,7 @@ function paintPolygonsBlue(imageData, elements, toXY, W, H, minPixelArea = 4) {
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgb(0,0,255)';
 
@@ -174,29 +174,6 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
   const { width: W, height: H } = getHeightmapSize(mapWidth, mapHeight);
   const toXY = makeToXY(bbox, W, H);
 
-  // ── STEP 1b: Paint sea-level pixels blue ─────────────────────────────────
-  const paintSeaLevel = () => {
-    if (!heightmapRef.current) return;
-    setHeightmapStatus('Painting sea-level pixels (elevation 0) as sea…');
-    const src = heightmapRef.current;
-    const copy = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
-    const d = copy.data;
-    let count = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) {
-        d[i] = 0; d[i + 1] = 0; d[i + 2] = 255; d[i + 3] = 255;
-        count++;
-      }
-    }
-    setHeightmapStatus(`✓ Painted ${count} sea-level pixels as sea (0,0,255).`);
-    pushHeightmap(copy, { seaLevel: true });
-  };
-
-  const pushHeightmap = (imageData, extraGenerated = {}) => {
-    heightmapRef.current = imageData;
-    onLayerUpdate('heights', { imageData, visible: true, opacity: 0.8, dirty: true });
-    setGenerated(p => ({ ...p, ...extraGenerated }));
-  };
 
   // ── STEP 1: Heightmap ─────────────────────────────────────────────────────
   // Fetch Terrarium elevation tiles (grayscale). Pixels with value 0 = sea level → (0,0,255).
@@ -232,7 +209,7 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     }
 
     setHeightmapStatus(`✓ Heightmap ready — ${seaCount} sea-level pixels marked (0,0,255).`);
-    pushHeightmap(elevData, { heightmap: true, lakes: false, seaLevel: true });
+    pushHeightmap(elevData, { heightmap: true, lakes: true, seaLevel: true });
   };
 
   // ── STEP 2: Water Bodies ──────────────────────────────────────────────────
