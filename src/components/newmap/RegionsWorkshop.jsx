@@ -42,9 +42,16 @@ function paintRegionPixels(imageData, cx, cy, rgb) {
   set(cx, cy, 0, 0, 0);
 }
 
+function latToMercN(lat) {
+  const latRad = lat * Math.PI / 180;
+  return Math.log(Math.tan(Math.PI / 4 + latRad / 2));
+}
+
 function latLngToPixel(lat, lng, bbox, width, height) {
+  const mercNorth = latToMercN(bbox.north);
+  const mercSouth = latToMercN(bbox.south);
   const px = Math.round(((lng - bbox.west) / (bbox.east - bbox.west)) * (width - 1));
-  const py = Math.round(((bbox.north - lat) / (bbox.north - bbox.south)) * (height - 1));
+  const py = Math.round(((mercNorth - latToMercN(lat)) / (mercNorth - mercSouth)) * (height - 1));
   return { px, py };
 }
 

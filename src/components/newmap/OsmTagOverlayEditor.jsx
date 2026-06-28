@@ -94,7 +94,8 @@ const OSM_OVERPASS_MIRRORS = [
 ];
 
 async function fetchPolygons(key, value, bboxStr) {
-  const query = `[out:json][timeout:90];\n(\n  way["${key}"="${value}"](${bboxStr});\n  relation["${key}"="${value}"](${bboxStr});\n);\nout geom;`;
+  // Fetch ways with geometry directly; for relations use `(._;>>;)` to resolve member ways
+  const query = `[out:json][timeout:180][maxsize:536870912];\n(\n  way["${key}"="${value}"](${bboxStr});\n  relation["${key}"="${value}"](${bboxStr});\n);\n(._;>>; );\nout geom;`;
   let lastErr;
   for (const mirror of OSM_OVERPASS_MIRRORS) {
     try {

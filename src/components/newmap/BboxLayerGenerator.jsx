@@ -343,7 +343,7 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     setRiverStatus(`Fetching rivers (${detail.label})…`);
     // Use [out:json] with way geometry included via `out geom` — works for ways.
     // For relations we also need member geometry, so we split into two queries.
-    const osmQuery = `[out:json][timeout:90];
+    const osmQuery = `[out:json][timeout:180][maxsize:536870912];
 (
   way["waterway"~"^(${detail.filter})$"](${bboxStr});
 );
