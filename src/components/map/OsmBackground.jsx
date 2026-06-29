@@ -1,61 +1,84 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * OsmBackground — renders OpenStreetMap tiles behind the TGA layers in CampaignMap.
+ * OsmBackground — renders OSM Humanitarian tiles behind TGA layers.
  *
- * The TGA map uses a simple pixel coordinate system where (0,0) = top-left,
- * matching Web Mercator tile rendering. We compute which tiles cover the bbox,
- * fetch them, and draw them clipped to the exact bbox at the correct sub-pixel
- * offset driven by the current pan/zoom transform.
+ * Key design decisions:
+ *  - CSS `opacity` on the container div drives the opacity slider (instant, no redraw).
+ *  - Tiles loaded via HTMLImageElement with crossOrigin="anonymous" (works for OSM/HOT servers).
+ *  - Zoom is picked dynamically from transform.scale so tiles sharpen on zoom-in.
+ *  - Rendered inside MapCanvas container, below the TGA <canvas> in DOM order.
  */
 
-const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_SIZE = 256;
+// OSM Humanitarian (HOT) — great river/coastline visibility
+// Falls back to standard OSM if HOT has CORS issues
+const TILE_SOURCES = [
+  'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+];
 
 function latToMercY(lat) {
   const r = lat * Math.PI / 180;
   return Math.log(Math.tan(Math.PI / 4 + r / 2));
 }
-
 function latToTileY(lat, zoom) {
   const n = Math.pow(2, zoom);
   const r = lat * Math.PI / 180;
   return (n * (1 - Math.log(Math.tan(Math.PI / 4 + r / 2)) / Math.PI)) / 2;
 }
-
 function lonToTileX(lon, zoom) {
   return ((lon + 180) / 360) * Math.pow(2, zoom);
 }
 
-function chooseBestZoom(bbox, mapW, mapH) {
-  // Pick zoom so ~2–6 tiles cover the map dimension
-  for (let z = 10; z >= 0; z--) {
-    const x0 = lonToTileX(bbox.west, z);
-    const x1 = lonToTileX(bbox.east, z);
-    if (Math.ceil(x1) - Math.floor(x0) <= 8) return z;
+function chooseBestZoom(bbox, mapW, scale) {
+  const screenW = mapW * Math.max(scale, 0.05);
+  for (let z = 13; z >= 1; z--) {
+    const tileCount = lonToTileX(bbox.east, z) - lonToTileX(bbox.west, z);
+    const pxPerTile = screenW / tileCount;
+    if (pxPerTile >= 80 && pxPerTile <= 800) return z;
   }
-  return 3;
+  return 5;
 }
 
-const tileCache = new Map(); // url → ImageBitmap | 'loading' | 'error'
+// Global tile image cache: url → HTMLImageElement | Promise<HTMLImageElement|null>
+const tileCache = new Map();
 
-function fetchTile(url) {
-  if (tileCache.has(url)) return tileCache.get(url);
-  const p = fetch(url)
-    .then(r => r.blob())
-    .then(b => createImageBitmap(b))
-    .then(bmp => { tileCache.set(url, bmp); return bmp; })
-    .catch(() => { tileCache.set(url, 'error'); return null; });
+function loadTileImage(url) {
+  const cached = tileCache.get(url);
+  if (cached instanceof HTMLImageElement) return Promise.resolve(cached);
+  if (cached instanceof Promise)          return cached;
+
+  const p = new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => { tileCache.set(url, img); resolve(img); };
+    img.onerror = () => {
+      // Try fallback source if first fails
+      if (url.includes('hot')) {
+        const fallback = url.replace('tile.openstreetmap.fr/hot', 'tile.openstreetmap.org');
+        const img2 = new Image();
+        img2.crossOrigin = 'anonymous';
+        img2.onload  = () => { tileCache.set(url, img2); resolve(img2); };
+        img2.onerror = () => { tileCache.set(url, null); resolve(null); };
+        img2.src = fallback;
+      } else {
+        tileCache.set(url, null);
+        resolve(null);
+      }
+    };
+    img.src = url;
+  });
   tileCache.set(url, p);
   return p;
 }
 
 export default function OsmBackground({ bbox, mapW, mapH, transform, opacity = 0.6 }) {
-  const canvasRef    = useRef(null);
   const containerRef = useRef(null);
-  const abortRef     = useRef(false);
+  const canvasRef    = useRef(null);
+  const renderIdRef  = useRef(0);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
+  // Track container dimensions
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -69,121 +92,107 @@ export default function OsmBackground({ bbox, mapW, mapH, transform, opacity = 0
     return () => ro.disconnect();
   }, []);
 
-  const canvasW = size.w || 1;
-  const canvasH = size.h || 1;
-
+  // Redraw whenever transform/bbox/size change
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !bbox || mapW === 0) return;
-    canvas.width  = canvasW;
-    canvas.height = canvasH;
+    if (!canvas || !bbox || size.w <= 0) return;
+
+    const W = size.w;
+    const H = size.h;
+    canvas.width  = W;
+    canvas.height = H;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvasW, canvasH);
-    if (opacity <= 0) return;
+    ctx.clearRect(0, 0, W, H);
 
-    const zoom = chooseBestZoom(bbox, mapW, mapH);
+    const effectiveMapW = mapW > 0 ? mapW : W;
+    const effectiveMapH = mapH > 0 ? mapH : H;
 
-    // Tile indices covering the bbox
-    const txMin = Math.floor(lonToTileX(bbox.west, zoom));
-    const txMax = Math.ceil(lonToTileX(bbox.east, zoom));
+    const zoom = chooseBestZoom(bbox, effectiveMapW, transform.scale);
+    const n    = Math.pow(2, zoom);
+
+    const txMin = Math.floor(lonToTileX(bbox.west,  zoom));
+    const txMax = Math.ceil( lonToTileX(bbox.east,  zoom));
     const tyMin = Math.floor(latToTileY(bbox.north, zoom));
-    const tyMax = Math.ceil(latToTileY(bbox.south, zoom));
+    const tyMax = Math.ceil( latToTileY(bbox.south, zoom));
 
-    // Mercator extents for the entire tile grid covering our bbox
-    const totalTilesX = Math.pow(2, zoom);
-    const totalTilesY = Math.pow(2, zoom);
-
-    // Convert a tile pixel position to map pixel position
-    // Map pixel (0,0) = bbox top-left in Mercator space
     const mercNorth = latToMercY(bbox.north);
     const mercSouth = latToMercY(bbox.south);
-    const mercWest  = bbox.west  * Math.PI / 180; // lon in radians (linear)
-    const mercEast  = bbox.east  * Math.PI / 180;
+    const mercRange = mercNorth - mercSouth;
+    const lonWest   = bbox.west * Math.PI / 180;
+    const lonRange  = (bbox.east - bbox.west) * Math.PI / 180;
 
-    // Full Mercator range at this zoom (tile 0 = merN=PI, tile 2^z = merN=-PI)
-    const mercRange = Math.PI; // log(tan(pi/2)) = log(inf) capped; use standard -π to π
-    // Standard Web Mercator: y tile = (1 - mercN/π) / 2 * 2^z
-    // So mercN from tile y: mercN = π * (1 - 2*ty/2^z)
-    const tileToMercN = (ty) => Math.PI * (1 - 2 * ty / totalTilesY);
-    const tileToLonRad = (tx) => (tx / totalTilesX) * 2 * Math.PI - Math.PI;
+    const tileToMercN  = ty => Math.PI * (1 - 2 * ty / n);
+    const tileToLonRad = tx => (tx / n) * 2 * Math.PI - Math.PI;
 
-    // Map pixel coordinate from geographic point (Mercator Y, lon in radians)
-    const mercRangeMap = mercNorth - mercSouth;
-    const lonRangeMap  = mercEast  - mercWest;
-
-    const geoToMapPx = (mercN, lonRad) => ({
-      x: ((lonRad - mercWest) / lonRangeMap) * mapW,
-      y: ((mercNorth - mercN) / mercRangeMap) * mapH,
+    const geoToScreen = (mercN, lonRad) => ({
+      x: ((lonRad - lonWest) / lonRange) * effectiveMapW * transform.scale + transform.x,
+      y: ((mercNorth - mercN) / mercRange) * effectiveMapH * transform.scale + transform.y,
     });
 
-    // Map px → screen px
-    const mapToScreen = (mx, my) => ({
-      sx: mx * transform.scale + transform.x,
-      sy: my * transform.scale + transform.y,
-    });
+    const renderId = ++renderIdRef.current;
 
-    abortRef.current = false;
+    const jobs = [];
+    for (let tx = txMin; tx < txMax; tx++) {
+      for (let ty = tyMin; ty < tyMax; ty++) {
+        const url = TILE_SOURCES[0].replace('{z}', zoom).replace('{x}', tx).replace('{y}', ty);
+        jobs.push(loadTileImage(url).then(img => ({ img, tx, ty })));
+      }
+    }
 
-    const draw = async () => {
-      ctx.clearRect(0, 0, canvasW, canvasH);
-      ctx.globalAlpha = opacity;
+    // Draw immediately with whatever is already cached
+    const drawAll = (tiles) => {
+      if (renderIdRef.current !== renderId) return;
+      ctx.clearRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
-      const promises = [];
-      for (let tx = txMin; tx < txMax; tx++) {
-        for (let ty = tyMin; ty < tyMax; ty++) {
-          const url = OSM_URL
-            .replace('{z}', zoom)
-            .replace('{x}', tx)
-            .replace('{y}', ty);
-          const p = fetchTile(url);
-          const result = p instanceof Promise ? p : Promise.resolve(p instanceof ImageBitmap ? p : null);
-          promises.push(result.then(bmp => ({ bmp, tx, ty })));
-        }
-      }
-
-      const tiles = await Promise.all(promises);
-      if (abortRef.current) return;
-
-      ctx.clearRect(0, 0, canvasW, canvasH);
-      ctx.globalAlpha = opacity;
-      ctx.imageSmoothingEnabled = true;
-
-      for (const { bmp, tx, ty } of tiles) {
-        if (!bmp) continue;
-
-        // Geographic corners of this tile
-        const mercTop    = tileToMercN(ty);
-        const mercBottom = tileToMercN(ty + 1);
-        const lonLeft    = tileToLonRad(tx);
-        const lonRight   = tileToLonRad(tx + 1);
-
-        // Map pixel corners
-        const topLeft     = geoToMapPx(mercTop, lonLeft);
-        const bottomRight = geoToMapPx(mercBottom, lonRight);
-
-        const screenTL = mapToScreen(topLeft.x, topLeft.y);
-        const screenBR = mapToScreen(bottomRight.x, bottomRight.y);
-
-        const drawW = screenBR.sx - screenTL.sx;
-        const drawH = screenBR.sy - screenTL.sy;
-        if (drawW <= 0 || drawH <= 0) continue;
-
-        ctx.drawImage(bmp, screenTL.sx, screenTL.sy, drawW, drawH);
+      for (const { img, tx, ty } of tiles) {
+        if (!img) continue;
+        const tl = geoToScreen(tileToMercN(ty),     tileToLonRad(tx));
+        const br = geoToScreen(tileToMercN(ty + 1), tileToLonRad(tx + 1));
+        const dw = br.x - tl.x;
+        const dh = br.y - tl.y;
+        if (dw <= 0 || dh <= 0) continue;
+        try { ctx.drawImage(img, tl.x, tl.y, dw, dh); } catch {}
       }
     };
 
-    draw();
+    // Do an optimistic draw with already-cached tiles, then again when all load
+    const cachedTiles = [];
+    const pendingJobs = [];
+    for (let tx = txMin; tx < txMax; tx++) {
+      for (let ty = tyMin; ty < tyMax; ty++) {
+        const url = TILE_SOURCES[0].replace('{z}', zoom).replace('{x}', tx).replace('{y}', ty);
+        const cached = tileCache.get(url);
+        if (cached instanceof HTMLImageElement) {
+          cachedTiles.push({ img: cached, tx, ty });
+        }
+        pendingJobs.push(loadTileImage(url).then(img => ({ img, tx, ty })));
+      }
+    }
 
-    return () => { abortRef.current = true; };
-  }, [bbox, mapW, mapH, transform, canvasW, canvasH, opacity]);
+    if (cachedTiles.length > 0) drawAll(cachedTiles);
+
+    Promise.all(pendingJobs).then(tiles => drawAll(tiles));
+
+    return () => { renderIdRef.current++; };
+  }, [bbox, mapW, mapH, transform, size]);
 
   return (
-    <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 0,
+        opacity,
+        transition: 'opacity 0.15s',
+      }}
+    >
       <canvas
         ref={canvasRef}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', imageRendering: 'auto' }}
+        style={{ display: 'block', width: '100%', height: '100%' }}
       />
     </div>
   );

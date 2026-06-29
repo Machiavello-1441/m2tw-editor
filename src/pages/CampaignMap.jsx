@@ -1115,16 +1115,16 @@ export default function CampaignMap() {
       <div className="flex-1 flex min-h-0">
         {/* Canvas */}
         <div className="flex-1 relative min-w-0">
-          {osmBbox && mapW2 > 0 && (
-            <OsmBackground
-              bbox={osmBbox}
-              mapW={mapW2}
-              mapH={mapH}
-              transform={transform}
-              opacity={osmOpacity}
-            />
-          )}
           <MapCanvas
+            osmBackground={osmBbox ? (
+              <OsmBackground
+                bbox={osmBbox}
+                mapW={mapW2 || 256}
+                mapH={mapH || 256}
+                transform={transform}
+                opacity={osmOpacity}
+              />
+            ) : null}
             layers={layers}
             regionsMode={regionsMode}
             onRegionClick={handleCanvasClick}
