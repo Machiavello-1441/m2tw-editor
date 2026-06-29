@@ -37,7 +37,7 @@ function chooseBestZoom(bbox, mapW, scale) {
   for (let z = 1; z >= 1; z--) {
     const tileCount = lonToTileX(bbox.east, z) - lonToTileX(bbox.west, z);
     const pxPerTile = screenW / tileCount;
-    if (pxPerTile >= 200) return z;
+    if (pxPerTile >= 1) return z;
   }
   return 1;
 }
