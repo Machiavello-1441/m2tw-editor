@@ -161,7 +161,7 @@ function downloadText(text, filename) {
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
+export default function OsmHistoricTagFetcher({ bbox, mapW, mapH, onAssetReady }) {
   // tagStates: key → { status, count, imageData, points, color }
   const [tagStates, setTagStates] = useState({});
   const [fetchProgress, setFetchProgress] = useState({});
@@ -192,10 +192,35 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
       clearInterval(interval);
       setFetchProgress(p => ({ ...p, [k]: 100 }));
       const { imageData, points } = renderToImageData(elements, bbox, mapW, mapH, color);
-      setTagStates(s => ({
-        ...s,
-        [k]: { status: 'done', count: elements.length, imageData, points, color, label: tag.label }
-      }));
+      const newState = { status: 'done', count: elements.length, imageData, points, color, label: tag.label };
+      setTagStates(s => {
+        const next = { ...s, [k]: newState };
+        // Register individual PNG asset
+        if (onAssetReady) {
+          onAssetReady({
+            filename: `${k.replace('=', '_')}.png`,
+            type: 'png',
+            getData: () => imageDataToDataUrl(imageData),
+          });
+          // Re-register bulk TXT with all done states so far
+          const allDone = Object.entries(next).filter(([, st]) => st?.status === 'done');
+          const lines = ['; OSM Historic Features — Bulk Export', `; Map size: ${mapW}x${mapH}`, ''];
+          allDone.forEach(([dk, ds]) => {
+            lines.push(`; === ${ds.label} (${dk}) — ${ds.count} features ===`);
+            (ds.points || []).forEach(p => {
+              const name = p.name ? `"${p.name}"` : '"(no name)"';
+              lines.push(`${ds.label}; x${p.px}; y${p.py}; name: ${name}`);
+            });
+            lines.push('');
+          });
+          onAssetReady({
+            filename: 'historic_features.txt',
+            type: 'txt',
+            getData: () => lines.join('\n'),
+          });
+        }
+        return next;
+      });
     } catch (e) {
       clearInterval(interval);
       setFetchProgress(p => ({ ...p, [k]: 0 }));

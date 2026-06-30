@@ -68,6 +68,18 @@ export default function NewMapEditor() {
 
   const { refLayers, toggleRef, setRefOpacity } = useReferenceLayers();
 
+  // Extra downloadable assets accumulated during the workflow (historic PNGs, TXTs, etc.)
+  // Each entry: { filename: string, getData: () => Blob | string (dataUrl) | Uint8Array, type: 'png'|'txt' }
+  const [extraAssets, setExtraAssets] = useState([]);
+
+  const registerExtraAsset = useCallback((asset) => {
+    setExtraAssets(prev => {
+      // Replace if same filename already registered
+      const filtered = prev.filter(a => a.filename !== asset.filename);
+      return [...filtered, asset];
+    });
+  }, []);
+
 
   // bbox derived from box (preferred) or legacy selection
   const bbox = box
@@ -466,6 +478,7 @@ export default function NewMapEditor() {
                       bbox={bbox}
                       mapW={mapWidth}
                       mapH={mapHeight}
+                      onAssetReady={registerExtraAsset}
                     />
                   </div>
                 )}
@@ -475,7 +488,7 @@ export default function NewMapEditor() {
             {/* ── EXPORT tab (edit phase) ── */}
             {currentTab === 'export' && phase === 'edit' && (
               <div className="p-3">
-                <ExportPanel layers={layers} mapWidth={mapWidth} mapHeight={mapHeight} />
+                <ExportPanel layers={layers} mapWidth={mapWidth} mapHeight={mapHeight} extraAssets={extraAssets} />
               </div>
             )}
           </div>

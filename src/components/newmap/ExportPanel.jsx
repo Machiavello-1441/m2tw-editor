@@ -4,7 +4,7 @@ import { LAYER_DEFS } from '@/lib/mapLayerStore';
 import { downloadTGA, validateRegionMap } from '@/lib/tgaEncoder';
 import JSZip from 'jszip';
 
-export default function ExportPanel({ layers, mapWidth, mapHeight }) {
+export default function ExportPanel({ layers, mapWidth, mapHeight, extraAssets = [] }) {
   const [results, setResults] = useState([]);
   const [exporting, setExporting] = useState(false);
 
@@ -42,6 +42,19 @@ export default function ExportPanel({ layers, mapWidth, mapHeight }) {
       const buf = encodeTGA(layer.imageData, def.mode);
       zip.file(def.filename, buf);
     }
+    // Include extra assets (historic PNGs, TXTs, etc.)
+    for (const asset of extraAssets) {
+      const data = asset.getData();
+      if (asset.type === 'png') {
+        // dataUrl → binary
+        const res = await fetch(data);
+        const buf = await res.arrayBuffer();
+        zip.file(`reference/${asset.filename}`, buf);
+      } else {
+        zip.file(`reference/${asset.filename}`, data);
+      }
+    }
+
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'm2tw_map_layers.zip'; a.click();
@@ -77,6 +90,31 @@ export default function ExportPanel({ layers, mapWidth, mapHeight }) {
                   <Download className="w-3 h-3" />
                 </button>
               )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {extraAssets.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] text-slate-500 font-semibold">Reference Assets (included in bundle)</p>
+          {extraAssets.map(asset => (
+            <div key={asset.filename} className="flex items-center gap-2">
+              <span className={`text-[9px] font-mono px-1 rounded shrink-0 ${asset.type === 'png' ? 'bg-blue-900/40 text-blue-400' : 'bg-amber-900/40 text-amber-400'}`}>{asset.type}</span>
+              <span className="text-[10px] text-slate-400 flex-1 font-mono truncate">{asset.filename}</span>
+              <button
+                onClick={() => {
+                  const data = asset.getData();
+                  if (asset.type === 'png') {
+                    const a = document.createElement('a'); a.href = data; a.download = asset.filename; a.click();
+                  } else {
+                    const blob = new Blob([data], { type: 'text/plain' });
+                    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = asset.filename; a.click();
+                  }
+                }}
+                className="text-slate-500 hover:text-amber-400 transition-colors shrink-0">
+                <Download className="w-3 h-3" />
+              </button>
             </div>
           ))}
         </div>
