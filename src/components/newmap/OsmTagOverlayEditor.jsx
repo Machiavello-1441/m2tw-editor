@@ -78,8 +78,6 @@ const TAG_GROUPS = [
     tags: [
       { key: 'leisure', value: 'park',          label: 'Park',            defaultGt: 'fertile_low' },
       { key: 'leisure', value: 'garden',        label: 'Garden',          defaultGt: 'fertile_high' },
-      { key: 'leisure', value: 'nature_reserve',label: 'Nature Reserve',  defaultGt: 'forest_sparse' },
-      { key: 'leisure', value: 'golf_course',   label: 'Golf Course',     defaultGt: 'fertile_medium' },
     ],
   },
 ];
@@ -206,12 +204,32 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
       const color = GT[gtId] ?? [96, 160, 64];
       paintPolygonsOntoImageData(copy, elements, bbox, color);
       onLayerUpdate('ground', { imageData: copy, visible: true, opacity: 1, dirty: true });
-      setTagStates(s => ({ ...s, [k]: { ...s[k], status: `done ${elements.length}` } }));
+      setTagStates(s => ({ ...s, [k]: { ...s[k], status: `done ${elements.length}`, elements } }));
     } catch (e) {
       clearInterval(interval);
       setFetchProgress(p => ({ ...p, [k]: 0 }));
       setTagStates(s => ({ ...s, [k]: { ...s[k], status: `error: ${e.message}` } }));
     }
+  };
+
+  const downloadTagPng = (tag) => {
+    const k = getTagKey(tag);
+    const state = tagStates[k];
+    if (!state?.elements || !groundLayer?.imageData) return;
+    const { width, height } = groundLayer.imageData;
+    const gtId = getGt(tag);
+    const color = GT[gtId] ?? [96, 160, 64];
+    // Create transparent canvas, paint only this tag's pixels
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    const imageData = new ImageData(new Uint8ClampedArray(width * height * 4), width, height);
+    paintPolygonsOntoImageData(imageData, state.elements, bbox, color);
+    ctx.putImageData(imageData, 0, 0);
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `${k.replace('=', '_')}.png`;
+    a.click();
   };
 
   const toggleGroup = (g) => setOpenGroups(s => ({ ...s, [g]: !s[g] }));
@@ -320,6 +338,15 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
                               <span className={`text-[8px] font-mono shrink-0 ${isDone ? 'text-green-400' : isErr ? 'text-red-400' : 'text-amber-400'}`}>
                                 {isDone ? `✓${st.replace('done ', '')}` : '✕'}
                               </span>
+                            )}
+                            {/* Download PNG button — only when fetched */}
+                            {isDone && (
+                              <button
+                                onClick={() => downloadTagPng(tag)}
+                                title={`Download ${getTagKey(tag)} as PNG`}
+                                className="shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors bg-slate-700/60 text-slate-400 hover:bg-slate-600 hover:text-white">
+                                <Download className="w-2.5 h-2.5" />
+                              </button>
                             )}
                             {/* Apply button */}
                             <button
