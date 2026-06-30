@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, Eye, EyeOff } from 'lucide-react';
 
 // ── Historic tags to fetch ───────────────────────────────────────────────────
 const HISTORIC_TAGS = [
@@ -161,7 +161,7 @@ function downloadText(text, filename) {
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function OsmHistoricTagFetcher({ bbox, mapW, mapH, onAssetReady }) {
+export default function OsmHistoricTagFetcher({ bbox, mapW, mapH, onAssetReady, onToggleOverlay, visibleOverlays = {} }) {
   // tagStates: key → { status, count, imageData, points, color }
   const [tagStates, setTagStates] = useState({});
   const [fetchProgress, setFetchProgress] = useState({});
@@ -368,14 +368,28 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH, onAssetReady }
                               <p className="text-[8px] text-slate-500 leading-relaxed mt-0.5 line-clamp-2">{tag.desc}</p>
                             </div>
 
+                            {/* Show/hide on map */}
+                            {isDone && onToggleOverlay && (
+                             <button
+                               onClick={() => onToggleOverlay(k, st.imageData)}
+                               title={visibleOverlays[k] ? 'Hide on map' : 'Show on map'}
+                               className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors ${
+                                 visibleOverlays[k]
+                                   ? 'bg-amber-700/60 text-amber-300 hover:bg-amber-600/60'
+                                   : 'bg-slate-700/60 text-slate-400 hover:bg-slate-600 hover:text-white'
+                               }`}>
+                               {visibleOverlays[k] ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
+                             </button>
+                            )}
+
                             {/* Download PNG */}
                             {isDone && (
-                              <button
-                                onClick={() => downloadTag(k, tag.label)}
-                                title={`Download ${k} as PNG`}
-                                className="shrink-0 flex items-center justify-center w-5 h-5 rounded bg-slate-700/60 text-slate-400 hover:bg-slate-600 hover:text-white transition-colors">
-                                <Download className="w-2.5 h-2.5" />
-                              </button>
+                             <button
+                               onClick={() => downloadTag(k, tag.label)}
+                               title={`Download ${k} as PNG`}
+                               className="shrink-0 flex items-center justify-center w-5 h-5 rounded bg-slate-700/60 text-slate-400 hover:bg-slate-600 hover:text-white transition-colors">
+                               <Download className="w-2.5 h-2.5" />
+                             </button>
                             )}
 
                             {/* Fetch button */}

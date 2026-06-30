@@ -72,6 +72,20 @@ export default function NewMapEditor() {
   // Each entry: { filename: string, getData: () => Blob | string (dataUrl) | Uint8Array, type: 'png'|'txt' }
   const [extraAssets, setExtraAssets] = useState([]);
 
+  // Historic tag overlays shown on the map: key → imageData
+  const [historicOverlays, setHistoricOverlays] = useState({});
+
+  const handleToggleHistoricOverlay = useCallback((key, imageData) => {
+    setHistoricOverlays(prev => {
+      if (prev[key]) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: imageData };
+    });
+  }, []);
+
   const registerExtraAsset = useCallback((asset) => {
     setExtraAssets(prev => {
       // Replace if same filename already registered
@@ -479,6 +493,8 @@ export default function NewMapEditor() {
                       mapW={mapWidth}
                       mapH={mapHeight}
                       onAssetReady={registerExtraAsset}
+                      onToggleOverlay={handleToggleHistoricOverlay}
+                      visibleOverlays={historicOverlays}
                     />
                   </div>
                 )}
@@ -512,6 +528,7 @@ export default function NewMapEditor() {
             refLayers={refLayers}
             box={box}
             onBoxChange={setBox}
+            historicOverlays={historicOverlays}
           />
           <MapStatusBar
             coords={coords}
