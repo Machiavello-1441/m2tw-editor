@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { RefreshCw, Check, Waves, Droplets, Mountain, AlertTriangle, Download } from 'lucide-react';
+import { Check, Droplets, Mountain, AlertTriangle, Download } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { rasterizeTiles } from './TileRasterizer';
 import SvgMapDownloader from './SvgMapDownloader';
@@ -169,22 +169,13 @@ function bresenhamLine(data, width, height, x0, y0, x1, y1, r, g, b) {
   }
 }
 
-const RIVER_DETAIL_LEVELS = [
-  { id: 'major',  label: 'Major rivers only',       filter: 'river' },
-  { id: 'medium', label: 'Rivers + canals',          filter: 'river|canal' },
-  { id: 'all',    label: 'Rivers, streams & canals', filter: 'river|stream|canal' },
-];
-
 export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, onDone }) {
   const [generating, setGenerating] = useState(false);
   const [rasterProgress, setRasterProgress] = useState({});
   const [generated, setGenerated] = useState({});
-  const [riverDetail, setRiverDetail] = useState('major');
 
   const heightmapRef = useRef(null);
-  const featuresImageDataRef = useRef(null);
   // Separate water layer image datas for individual downloads (transparent bg)
-  const riversImageDataRef = useRef(null);
   const lakesImageDataRef = useRef(null);
   const lagoonsImageDataRef = useRef(null);
   const [heightmapStatus, setHeightmapStatus] = useState('');
@@ -333,191 +324,6 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     paintPolygonsBlue(imageData, allElements, toXY, W, H, minWaterPixels);
     setWaterStatus(`✓ Painted ${allElements.length} features.`);
     pushHeightmap(imageData, { lakes: true });
-  };
-
-  // ── STEP 3: Rivers (features layer) ──────────────────────────────────────
-  const [riverStatus, setRiverStatus] = useState('');
-
-  const generateRivers = async () => {
-    const detail = RIVER_DETAIL_LEVELS.find(d => d.id === riverDetail) ?? RIVER_DETAIL_LEVELS[0];
-    setRiverStatus(`Fetching rivers (${detail.label})…`);
-    // Use [out:json] with way geometry included via `out geom` — works for ways.
-    // For relations we also need member geometry, so we split into two queries.
-    const osmQuery = `[out:json][timeout:180][maxsize:536870912];
-(
-  way["waterway"~"^(${detail.filter})$"](${bboxStr});
-);
-out geom;`;
-
-    const def = LAYER_DEFS.find(d => d.id === 'features') ?? LAYER_DEFS.find(d => d.id === 'map_features');
-    const { width, height } = def ? getLayerDimensions(def, mapWidth, mapHeight) : { width: mapWidth, height: mapHeight };
-    const rToXY = makeToXY(bbox, width, height);
-
-    let elements = [];
-    try {
-      const data = await fetchOverpass(osmQuery);
-      elements = (data.elements || []).filter(e => e.type === 'way' && e.geometry?.length > 1);
-    } catch (e) { setRiverStatus(`Error: ${e.message}`); return; }
-
-    if (!elements.length) { setRiverStatus('No waterways found.'); return; }
-
-    const polylines = elements.map(el => el.geometry);
-    const chains = chainPolylines(polylines);
-
-    // Separate canvas for rivers-only download (transparent bg)
-    const riverCanvas = document.createElement('canvas'); riverCanvas.width = width; riverCanvas.height = height;
-    const riverCtx = riverCanvas.getContext('2d'); riverCtx.imageSmoothingEnabled = false;
-    riverCtx.clearRect(0, 0, width, height);
-    const riverImageData = riverCtx.getImageData(0, 0, width, height);
-    const rd = riverImageData.data;
-
-    for (const chain of chains) {
-      if (chain.length < 2) continue;
-      for (let s = 0; s < chain.length - 1; s++) {
-        const [x0, y0] = rToXY(chain[s].lat, chain[s].lon);
-        const [x1, y1] = rToXY(chain[s + 1].lat, chain[s + 1].lon);
-        bresenhamLine(rd, width, height, x0, y0, x1, y1, 0, 0, 255);
-      }
-      const [ox, oy] = rToXY(chain[0].lat, chain[0].lon);
-      if (ox >= 0 && ox < width && oy >= 0 && oy < height) {
-        const oi = (oy * width + ox) * 4;
-        rd[oi] = 255; rd[oi + 1] = 255; rd[oi + 2] = 255; rd[oi + 3] = 255;
-      }
-    }
-    riversImageDataRef.current = riverImageData;
-
-    // Merge rivers onto features layer (on top of existing data)
-    const featCanvas = document.createElement('canvas'); featCanvas.width = width; featCanvas.height = height;
-    const featCtx = featCanvas.getContext('2d');
-    if (featuresImageDataRef.current) featCtx.putImageData(featuresImageDataRef.current, 0, 0);
-    const imageData = featCtx.getImageData(0, 0, width, height);
-    const d = imageData.data;
-    for (let i = 0; i < rd.length; i += 4) {
-      if (rd[i + 3] > 0) { d[i] = rd[i]; d[i+1] = rd[i+1]; d[i+2] = rd[i+2]; d[i+3] = 255; }
-    }
-
-    setRiverStatus(`✓ ${chains.length} river chains painted.`);
-    featuresImageDataRef.current = imageData;
-    onLayerUpdate('features', { imageData, visible: true, opacity: 0.9, dirty: true });
-    setGenerated(p => ({ ...p, features: true }));
-  };
-
-  // ── STEP 4: Cliffs (features layer) ───────────────────────────────────────
-  const [cliffStatus, setCliffStatus] = useState('');
-
-  const generateCliffs = async () => {
-    setCliffStatus('Fetching cliffs from OpenStreetMap…');
-    const osmQuery = `[out:json][timeout:90];\n(\n  way["natural"="cliff"](${bboxStr});\n  relation["natural"="cliff"](${bboxStr});\n);\nout geom;`;
-
-    const def = LAYER_DEFS.find(d => d.id === 'features') ?? LAYER_DEFS.find(d => d.id === 'map_features');
-    const { width, height } = def ? getLayerDimensions(def, mapWidth, mapHeight) : { width: mapWidth, height: mapHeight };
-
-    let elements = [];
-    try {
-      const data = await fetchOverpass(osmQuery);
-      elements = (data.elements || []).filter(e =>
-        (e.type === 'way' && e.geometry?.length > 1) ||
-        (e.type === 'relation' && e.members?.some(m => m.geometry?.length > 1))
-      );
-    } catch (e) { setCliffStatus(`Error: ${e.message}`); return; }
-
-    if (!elements.length) { setCliffStatus('No cliffs found in this area.'); return; }
-
-    // Get current features imageData or create blank
-    const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
-    const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
-    const rToXY = makeToXY(bbox, width, height);
-
-    // We paint cliffs as yellow (255,255,0) lines on the features layer
-    // Fetch current features layer data from onLayerUpdate callback isn't available,
-    // so we track it in a ref
-    const featCanvas = document.createElement('canvas'); featCanvas.width = width; featCanvas.height = height;
-    const featCtx = featCanvas.getContext('2d');
-    if (featuresImageDataRef.current) {
-      featCtx.putImageData(featuresImageDataRef.current, 0, 0);
-    }
-    const imageData = featCtx.getImageData(0, 0, width, height);
-    const d = imageData.data;
-
-    for (const el of elements) {
-      const segs = [];
-      if (el.type === 'way') segs.push(el.geometry);
-      else if (el.type === 'relation') for (const m of el.members) if (m.type === 'way' && m.geometry?.length > 1) segs.push(m.geometry);
-      for (const seg of segs) {
-        for (let s = 0; s < seg.length - 1; s++) {
-          const [x0, y0] = rToXY(seg[s].lat, seg[s].lon);
-          const [x1, y1] = rToXY(seg[s + 1].lat, seg[s + 1].lon);
-          bresenhamLine(d, width, height, x0, y0, x1, y1, 255, 255, 0);
-        }
-      }
-    }
-
-    setCliffStatus(`✓ ${elements.length} cliff features painted (yellow).`);
-    featuresImageDataRef.current = imageData;
-    onLayerUpdate('features', { imageData, visible: true, opacity: 0.9, dirty: true });
-    setGenerated(p => ({ ...p, cliffs: true }));
-  };
-
-  // ── STEP 5: Volcanoes (features layer) ────────────────────────────────────
-  const [volcanoStatus, setVolcanoStatus] = useState('');
-
-  const generateVolcanoes = async () => {
-    setVolcanoStatus('Fetching volcanoes from OpenStreetMap…');
-    const osmQuery = `[out:json][timeout:60];\n(\n  node["natural"="volcano"](${bboxStr});\n  way["natural"="volcano"](${bboxStr});\n  relation["natural"="volcano"](${bboxStr});\n);\nout geom;`;
-
-    const def = LAYER_DEFS.find(d => d.id === 'features') ?? LAYER_DEFS.find(d => d.id === 'map_features');
-    const { width, height } = def ? getLayerDimensions(def, mapWidth, mapHeight) : { width: mapWidth, height: mapHeight };
-    const rToXY = makeToXY(bbox, width, height);
-
-    let elements = [];
-    try {
-      const data = await fetchOverpass(osmQuery);
-      elements = data.elements || [];
-    } catch (e) { setVolcanoStatus(`Error: ${e.message}`); return; }
-
-    if (!elements.length) { setVolcanoStatus('No volcanoes found in this area.'); return; }
-
-    const featCanvas = document.createElement('canvas'); featCanvas.width = width; featCanvas.height = height;
-    const featCtx = featCanvas.getContext('2d');
-    if (featuresImageDataRef.current) {
-      featCtx.putImageData(featuresImageDataRef.current, 0, 0);
-    }
-    const imageData = featCtx.getImageData(0, 0, width, height);
-    const d = imageData.data;
-
-    let count = 0;
-    for (const el of elements) {
-      let cx = null, cy = null;
-      if (el.type === 'node') {
-        [cx, cy] = rToXY(el.lat, el.lon);
-      } else if (el.type === 'way' && el.geometry?.length > 0) {
-        const lats = el.geometry.map(p => p.lat);
-        const lons = el.geometry.map(p => p.lon);
-        [cx, cy] = rToXY(
-          (Math.min(...lats) + Math.max(...lats)) / 2,
-          (Math.min(...lons) + Math.max(...lons)) / 2
-        );
-      } else if (el.type === 'relation' && el.members) {
-        const pts = el.members.flatMap(m => m.geometry || []);
-        if (pts.length) {
-          const lats = pts.map(p => p.lat); const lons = pts.map(p => p.lon);
-          [cx, cy] = rToXY(
-            (Math.min(...lats) + Math.max(...lats)) / 2,
-            (Math.min(...lons) + Math.max(...lons)) / 2
-          );
-        }
-      }
-      if (cx !== null && cx >= 0 && cx < width && cy >= 0 && cy < height) {
-        const i = (cy * width + cx) * 4;
-        d[i] = 255; d[i + 1] = 0; d[i + 2] = 0; d[i + 3] = 255;
-        count++;
-      }
-    }
-
-    setVolcanoStatus(`✓ ${count} volcano(es) marked (red pixel).`);
-    featuresImageDataRef.current = imageData;
-    onLayerUpdate('features', { imageData, visible: true, opacity: 0.9, dirty: true });
-    setGenerated(p => ({ ...p, volcanoes: true }));
   };
 
   const handleImportFile = (layerId, file) => {
@@ -684,104 +490,6 @@ out geom;`;
               </button>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Step 3: Rivers (features layer) */}
-      <div className="border border-slate-700 rounded p-2.5 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-bold bg-indigo-700 text-white rounded-full w-4 h-4 flex items-center justify-center shrink-0">3</span>
-          <p className="text-[10px] text-slate-300 font-semibold">Rivers (Features Layer)</p>
-          {generated.features && <Check className="w-3 h-3 text-green-400 ml-auto" />}
-        </div>
-        {riverStatus && (
-          <p className={`text-[9px] px-2 py-1 rounded border ${riverStatus.startsWith('✓') ? 'bg-green-900/20 border-green-600/30 text-green-400' : riverStatus.startsWith('Error') ? 'bg-red-900/20 border-red-600/30 text-red-400' : 'bg-indigo-900/20 border-indigo-600/30 text-indigo-300'}`}>{riverStatus}</p>
-        )}
-        <p className="text-[9px] text-slate-500">
-          Fetches <code className="text-amber-300">waterway</code> lines, chains into continuous strokes, renders 1px blue on the features layer. River sources are marked white <code className="text-amber-300">(255,255,255)</code>.
-        </p>
-        <div className="flex items-start gap-1.5 bg-amber-900/25 border border-amber-600/30 rounded px-2 py-1.5">
-          <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-[9px] text-amber-300 leading-snug">
-            OSM river data may produce duplicate pixels, branching artefacts, or incorrect source placements. Always review and correct the features layer by hand before exporting.
-          </p>
-        </div>
-        <div className="bg-slate-800 border border-slate-700 rounded p-2 space-y-1">
-          {RIVER_DETAIL_LEVELS.map(d => (
-            <label key={d.id} className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="riverDetail" value={d.id} checked={riverDetail === d.id} onChange={() => setRiverDetail(d.id)} className="accent-indigo-400" />
-              <span className={`text-[10px] ${riverDetail === d.id ? 'text-indigo-300' : 'text-slate-400'}`}>{d.label}</span>
-            </label>
-          ))}
-        </div>
-        <button onClick={async () => { setGenerating(true); await generateRivers(); setGenerating(false); }} disabled={generating}
-          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.features ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-indigo-800 border-indigo-600 text-white hover:bg-indigo-700'}`}>
-          <RefreshCw className={`w-3 h-3 ${generating ? 'animate-spin' : ''}`} />
-          {generated.features ? '✓ Re-fetch Rivers' : 'Fetch Rivers'}
-        </button>
-        {featuresImageDataRef.current && (
-          <button onClick={() => downloadImageData(featuresImageDataRef.current, 'map_features.png')}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors font-semibold bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600">
-            <Download className="w-3 h-3" /> Download Features Layer (PNG)
-          </button>
-        )}
-        {riversImageDataRef.current && (
-          <button onClick={() => downloadLayerTransparent(riversImageDataRef.current, 'rivers.png')}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors font-semibold bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600">
-            <Download className="w-3 h-3" /> Download Rivers only (PNG, transparent)
-          </button>
-        )}
-      </div>
-
-      {/* Step 4: Cliffs (features layer) */}
-      <div className="border border-slate-700 rounded p-2.5 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-bold bg-yellow-700 text-white rounded-full w-4 h-4 flex items-center justify-center shrink-0">4</span>
-          <p className="text-[10px] text-slate-300 font-semibold">Cliffs (Features Layer)</p>
-          {generated.cliffs && <Check className="w-3 h-3 text-green-400 ml-auto" />}
-        </div>
-        {cliffStatus && (
-          <p className={`text-[9px] px-2 py-1 rounded border ${cliffStatus.startsWith('✓') ? 'bg-green-900/20 border-green-600/30 text-green-400' : cliffStatus.startsWith('Error') ? 'bg-red-900/20 border-red-600/30 text-red-400' : 'bg-yellow-900/20 border-yellow-600/30 text-yellow-300'}`}>{cliffStatus}</p>
-        )}
-        <p className="text-[9px] text-slate-500">
-          Fetches <code className="text-amber-300">natural=cliff</code> lines and paints them as pure yellow <code className="text-amber-300">(255,255,0)</code> on the features layer. Adds onto existing features data.
-        </p>
-        <button onClick={async () => { setGenerating(true); await generateCliffs(); setGenerating(false); }} disabled={generating}
-          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.cliffs ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-yellow-800 border-yellow-600 text-white hover:bg-yellow-700'}`}>
-          <Mountain className={`w-3 h-3 ${generating ? 'animate-pulse' : ''}`} />
-          {generated.cliffs ? '✓ Re-fetch Cliffs' : 'Fetch Cliffs'}
-        </button>
-        {generated.cliffs && (
-          <button onClick={() => downloadImageData(featuresImageDataRef.current, 'map_features.png')}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors font-semibold bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600">
-            <Download className="w-3 h-3" /> Download Features Layer (PNG)
-          </button>
-        )}
-      </div>
-
-      {/* Step 5: Volcanoes (features layer) */}
-      <div className="border border-slate-700 rounded p-2.5 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-bold bg-red-700 text-white rounded-full w-4 h-4 flex items-center justify-center shrink-0">5</span>
-          <p className="text-[10px] text-slate-300 font-semibold">Volcanoes (Features Layer)</p>
-          {generated.volcanoes && <Check className="w-3 h-3 text-green-400 ml-auto" />}
-        </div>
-        {volcanoStatus && (
-          <p className={`text-[9px] px-2 py-1 rounded border ${volcanoStatus.startsWith('✓') ? 'bg-green-900/20 border-green-600/30 text-green-400' : volcanoStatus.startsWith('Error') ? 'bg-red-900/20 border-red-600/30 text-red-400' : 'bg-red-900/20 border-red-600/30 text-red-300'}`}>{volcanoStatus}</p>
-        )}
-        <p className="text-[9px] text-slate-500">
-          Fetches <code className="text-amber-300">natural=volcano</code> nodes/areas and marks the centre of each with a single red pixel <code className="text-amber-300">(255,0,0)</code> on the features layer. Adds onto existing features data.
-        </p>
-        <button onClick={async () => { setGenerating(true); await generateVolcanoes(); setGenerating(false); }} disabled={generating}
-          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.volcanoes ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-red-800 border-red-600 text-white hover:bg-red-700'}`}>
-          <Waves className={`w-3 h-3 ${generating ? 'animate-pulse' : ''}`} />
-          {generated.volcanoes ? '✓ Re-fetch Volcanoes' : 'Fetch Volcanoes'}
-        </button>
-        {generated.volcanoes && (
-          <button onClick={() => downloadImageData(featuresImageDataRef.current, 'map_features.png')}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors font-semibold bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600">
-            <Download className="w-3 h-3" /> Download Features Layer (PNG)
-          </button>
         )}
       </div>
 

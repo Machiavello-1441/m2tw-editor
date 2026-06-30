@@ -5,6 +5,7 @@ import GroundTypeRangeEditor, { DEFAULT_GROUND_RANGES } from '@/components/newma
 import RiverChecker from '@/components/newmap/RiverChecker';
 import OsmTagOverlayEditor from '@/components/newmap/OsmTagOverlayEditor';
 import OsmHistoricTagFetcher from '@/components/newmap/OsmHistoricTagFetcher';
+import FeaturesLayerGenerator from '@/components/newmap/FeaturesLayerGenerator';
 
 /**
  * WorkflowPanel — drives the step-by-step layer editing flow.
@@ -162,15 +163,21 @@ export default function WorkflowPanel({
                   />
                 )}
 
-                {/* Features: river checker + hints */}
+                {/* Features: OSM fetcher + river checker + hints */}
                 {step.id === 'features' && (
                   <>
+                    <FeaturesLayerGenerator
+                      bbox={bbox}
+                      mapWidth={mapWidth}
+                      mapHeight={mapHeight}
+                      onLayerUpdate={onLayerUpdate}
+                      featuresLayer={layers.features}
+                    />
                     <RiverChecker
                       featuresLayer={layers.features}
                       onLayerUpdate={onLayerUpdate}
                     />
                     <div className="text-[9px] text-slate-500 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5 space-y-1">
-                      <p>Use the <strong className="text-slate-300">Generate Layers</strong> step to auto-fetch rivers from OSM, or paint them manually in the <strong className="text-slate-300">Paint</strong> tab.</p>
                       <p>Paint with pure blue <span className="font-mono">(0,0,255)</span> — 1px brush recommended. Run the checker after painting.</p>
                     </div>
                   </>
