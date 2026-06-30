@@ -13,6 +13,7 @@ import BboxLayerGenerator from '../components/newmap/BboxLayerGenerator';
 import LayerPreviewPanel from '../components/newmap/LayerPreviewPanel';
 import WorkflowPanel from '../components/newmap/WorkflowPanel';
 import RegionsWorkshop from '../components/newmap/RegionsWorkshop';
+import OsmHistoricTagFetcher from '../components/newmap/OsmHistoricTagFetcher';
 import { useReferenceLayers, ReferenceLayerControls } from '../components/newmap/ReferenceLayers';
 
 import { autoGenerateGroundTypesAsync, autoGenerateClimates, fillSolidColor } from '@/lib/autoGroundTypes';
@@ -453,13 +454,18 @@ export default function NewMapEditor() {
                   mapHeight={mapHeight}
                 />
                 {workflowStep === 'regions' && (
-                  <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2">
+                  <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2 space-y-3">
                     <RegionsWorkshop
                       bbox={bbox}
                       layers={layers}
                       onLayerUpdate={handleLayerUpdate}
                       mapWidth={mapWidth}
                       mapHeight={mapHeight}
+                    />
+                    <OsmHistoricTagFetcher
+                      bbox={bbox}
+                      mapW={mapWidth}
+                      mapH={mapHeight}
                     />
                   </div>
                 )}
@@ -480,7 +486,7 @@ export default function NewMapEditor() {
           <MapCanvas
             layers={layers}
             activeLayerId={activeLayerId}
-            activeTool={phase === 'edit' ? activeTool : 'none'}
+            activeTool={phase === 'edit' && currentTab === 'layers' ? activeTool : 'none'}
             brushSize={brushSize}
             color={color}
             onLayerUpdate={handleLayerUpdate}

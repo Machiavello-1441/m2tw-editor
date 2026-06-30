@@ -4,7 +4,6 @@ import { CLIMATE_PALETTE } from '@/lib/mapLayerStore';
 import GroundTypeRangeEditor, { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import RiverChecker from '@/components/newmap/RiverChecker';
 import OsmTagOverlayEditor from '@/components/newmap/OsmTagOverlayEditor';
-import OsmHistoricTagFetcher from '@/components/newmap/OsmHistoricTagFetcher';
 import FeaturesLayerGenerator from '@/components/newmap/FeaturesLayerGenerator';
 
 /**
@@ -154,14 +153,8 @@ export default function WorkflowPanel({
                   </>
                 )}
 
-                {/* Regions: historic OSM reference fetcher */}
-                {step.id === 'regions' && (
-                  <OsmHistoricTagFetcher
-                    bbox={bbox}
-                    mapW={mapWidth}
-                    mapH={mapHeight}
-                  />
-                )}
+                {/* Regions: no extra tools here — RegionsWorkshop + OsmHistoricTagFetcher
+                    are rendered below the workflow panel in NewMapEditor */}
 
                 {/* Features: OSM fetcher + river checker + hints */}
                 {step.id === 'features' && (

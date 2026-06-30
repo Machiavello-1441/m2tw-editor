@@ -2,89 +2,43 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Download } from 'lucide-react';
 
 // ── Historic tags to fetch ───────────────────────────────────────────────────
-// Each entry: OSM key, value, human label, OSM wiki description
 const HISTORIC_TAGS = [
-  {
-    key: 'historic', value: 'castle',
-    label: 'Castle',
-    desc: 'A (former) castle, fortress or palace. Castles are (often fortified) palaces and political centers.',
-  },
-  {
-    key: 'historic', value: 'caravanserai',
-    label: 'Caravanserai',
-    desc: 'A roadside inn where travellers could rest and recover along trade routes (Silk Road, etc.).',
-  },
-  {
-    key: 'historic', value: 'church',
-    label: 'Historic Church',
-    desc: 'A church building of historic importance, typically pre-modern.',
-  },
-  {
-    key: 'historic', value: 'city_wall',
-    label: 'City Walls',
-    desc: 'Walls (often medieval) encircling a settlement for defensive purposes.',
-  },
-  {
-    key: 'historic', value: 'fort',
-    label: 'Fort',
-    desc: 'A military fortification, smaller than a castle, often built for a specific defensive purpose.',
-  },
-  {
-    key: 'historic', value: 'mine',
-    label: 'Historic Mine',
-    desc: 'A historic mine — no longer active, preserved as a heritage site.',
-  },
-  {
-    key: 'historic', value: 'monastery',
-    label: 'Monastery',
-    desc: 'A historic monastery, convent or abbey — a community of monks or nuns.',
-  },
-  {
-    key: 'historic', value: 'mosque',
-    label: 'Historic Mosque',
-    desc: 'A mosque of historic significance, typically pre-modern.',
-  },
-  {
-    key: 'historic', value: 'road',
-    label: 'Historic Road',
-    desc: 'A historic road or track, often of Roman or medieval origin.',
-  },
-  {
-    key: 'historic', value: 'temple',
-    label: 'Temple',
-    desc: 'A historic temple — used for pre-Christian/Islamic religious worship.',
-  },
-  {
-    key: 'historic', value: 'tower',
-    label: 'Historic Tower',
-    desc: 'A (detached) tower that is predominantly of historic interest, such as a watchtower or signal tower.',
-  },
+  { key: 'historic', value: 'castle',      label: 'Castle',         desc: 'A (former) castle, fortress or palace.' },
+  { key: 'historic', value: 'caravanserai',label: 'Caravanserai',   desc: 'Roadside inn along trade routes.' },
+  { key: 'historic', value: 'church',      label: 'Historic Church',desc: 'A church building of historic importance.' },
+  { key: 'historic', value: 'city_wall',   label: 'City Walls',     desc: 'Walls encircling a settlement for defence.' },
+  { key: 'historic', value: 'fort',        label: 'Fort',           desc: 'A military fortification.' },
+  { key: 'historic', value: 'mine',        label: 'Historic Mine',  desc: 'A historic mine.' },
+  { key: 'historic', value: 'monastery',   label: 'Monastery',      desc: 'A historic monastery, convent or abbey.' },
+  { key: 'historic', value: 'mosque',      label: 'Historic Mosque',desc: 'A mosque of historic significance.' },
+  { key: 'historic', value: 'road',        label: 'Historic Road',  desc: 'A historic road or track.' },
+  { key: 'historic', value: 'temple',      label: 'Temple',         desc: 'A historic temple.' },
+  { key: 'historic', value: 'tower',       label: 'Historic Tower', desc: 'A tower of historic interest.' },
 ];
 
-// castle_type=* subtypes per OSM wiki
 const CASTLE_TYPE_TAGS = [
-  { key: 'castle_type', value: 'defensive',    label: 'Defensive Castle',   desc: 'A castle built primarily for military defence.' },
-  { key: 'castle_type', value: 'palace',        label: 'Palace',             desc: 'A castle that is also a palace — a representative royal residence.' },
-  { key: 'castle_type', value: 'stately',       label: 'Stately Home',       desc: 'A large country house of historic significance, seat of landed gentry.' },
-  { key: 'castle_type', value: 'manor',         label: 'Manor House',        desc: 'A manor house — the principal residence of a lord of the manor.' },
-  { key: 'castle_type', value: 'kremlin',       label: 'Kremlin',            desc: 'A Russian fortified complex, typically a citadel within a city.' },
-  { key: 'castle_type', value: 'fortress',      label: 'Fortress',           desc: 'A large fortified military complex.' },
-  { key: 'castle_type', value: 'castrum',       label: 'Castrum',            desc: 'A Roman military camp or fort.' },
-  { key: 'castle_type', value: 'hill_fort',     label: 'Hill Fort',          desc: 'An Iron Age or earlier fortified settlement on a hilltop.' },
-  { key: 'castle_type', value: 'ringfort',      label: 'Ringfort',           desc: 'An early medieval ringfort (rath/dún/lios) typical of Ireland.' },
-  { key: 'castle_type', value: 'shiro',         label: 'Shiro (Japanese)',   desc: 'A Japanese castle (shiro/jo).' },
-  { key: 'castle_type', value: 'citadel',       label: 'Citadel',            desc: 'A citadel — a fortified core of a city, often on high ground.' },
-  { key: 'castle_type', value: 'watchtower',    label: 'Watchtower',         desc: 'A tower used for observation and signalling, often along borders.' },
+  { key: 'castle_type', value: 'defensive', label: 'Defensive Castle', desc: 'Built primarily for military defence.' },
+  { key: 'castle_type', value: 'palace',    label: 'Palace',           desc: 'A castle that is also a palace.' },
+  { key: 'castle_type', value: 'stately',   label: 'Stately Home',     desc: 'A large country house of historic significance.' },
+  { key: 'castle_type', value: 'manor',     label: 'Manor House',      desc: 'A manor house.' },
+  { key: 'castle_type', value: 'kremlin',   label: 'Kremlin',          desc: 'A Russian fortified complex.' },
+  { key: 'castle_type', value: 'fortress',  label: 'Fortress',         desc: 'A large fortified military complex.' },
+  { key: 'castle_type', value: 'castrum',   label: 'Castrum',          desc: 'A Roman military camp or fort.' },
+  { key: 'castle_type', value: 'hill_fort', label: 'Hill Fort',        desc: 'An Iron Age fortified settlement on a hilltop.' },
+  { key: 'castle_type', value: 'citadel',   label: 'Citadel',          desc: 'A fortified core of a city.' },
+  { key: 'castle_type', value: 'watchtower',label: 'Watchtower',       desc: 'A tower used for observation.' },
 ];
 
-const ALL_TAGS = [...HISTORIC_TAGS, ...CASTLE_TYPE_TAGS];
+const ALL_TAG_GROUPS = [
+  { group: 'Historic', tags: HISTORIC_TAGS },
+  { group: 'Castle Types (castle_type=*)', tags: CASTLE_TYPE_TAGS },
+];
 
-// Generate a stable random pastel colour from a tag key string
+// Generate a stable deterministic RGB from tag key+value
 function tagColor(key, value) {
   let hash = 0;
   for (const c of `${key}=${value}`) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
   const h = hash % 360;
-  // Convert HSL pastel to hex
   const s = 65, l = 60;
   const a = s * Math.min(l, 100 - l) / 100;
   const f = n => {
@@ -101,7 +55,6 @@ const OSM_OVERPASS_MIRRORS = [
 ];
 
 async function fetchElements(key, value, bboxStr) {
-  // For castle_type=*, fetch nodes+ways+relations that have that tag on historic=castle objects too
   const query = `[out:json][timeout:180][maxsize:536870912];\n(\n  node["${key}"="${value}"](${bboxStr});\n  way["${key}"="${value}"](${bboxStr});\n  relation["${key}"="${value}"](${bboxStr});\n);\nout geom;`;
   let lastErr;
   for (const mirror of OSM_OVERPASS_MIRRORS) {
@@ -114,7 +67,7 @@ async function fetchElements(key, value, bboxStr) {
       if (res.status === 429 || res.status === 504) { lastErr = new Error(`HTTP ${res.status}`); continue; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      return (json.elements || []);
+      return json.elements || [];
     } catch (e) { lastErr = e; }
   }
   throw lastErr ?? new Error('All mirrors failed');
@@ -124,53 +77,75 @@ function latToMercN(lat) {
   return Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 180 / 2));
 }
 
-function renderToPng(elements, bbox, mapW, mapH, color) {
-  const canvas = document.createElement('canvas');
-  canvas.width = mapW; canvas.height = mapH;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, mapW, mapH);
+/**
+ * Get the representative lat/lon of an element (centroid for ways/relations).
+ */
+function elementCentroid(el) {
+  if (el.type === 'node' && el.lat != null) return { lat: el.lat, lon: el.lon };
+  const pts = el.type === 'way' ? (el.geometry || [])
+    : (el.type === 'relation'
+        ? (el.members || []).flatMap(m => m.geometry || [])
+        : []);
+  if (!pts.length) return null;
+  const lat = pts.reduce((s, p) => s + p.lat, 0) / pts.length;
+  const lon = pts.reduce((s, p) => s + p.lon, 0) / pts.length;
+  return { lat, lon };
+}
 
+/**
+ * Convert lat/lon to pixel coords using Mercator projection.
+ * Returns integer { px, py } or null if out-of-bounds.
+ */
+function latLonToPixel(lat, lon, bbox, W, H) {
   const mercNorth = latToMercN(bbox.north);
   const mercSouth = latToMercN(bbox.south);
-  const mercRange = mercNorth - mercSouth;
+  const px = Math.round(((lon - bbox.west) / (bbox.east - bbox.west)) * (W - 1));
+  const py = Math.round(((mercNorth - latToMercN(lat)) / (mercNorth - mercSouth)) * (H - 1));
+  if (px < 0 || py < 0 || px >= W || py >= H) return null;
+  return { px, py };
+}
 
-  const toXY = (lat, lon) => [
-    ((lon - bbox.west) / (bbox.east - bbox.west)) * (mapW - 1),
-    ((mercNorth - latToMercN(lat)) / mercRange) * (mapH - 1),
-  ];
-
+/**
+ * Render elements to a pixel-perfect ImageData (mapW × mapH).
+ * Each feature is a single pixel (or small cross for visibility).
+ * Returns { imageData, points: [{px, py, name, type}] }
+ */
+function renderToImageData(elements, bbox, mapW, mapH, color) {
+  const imageData = new ImageData(mapW, mapH);
   const [r, g, b] = color;
-  ctx.fillStyle = `rgb(${r},${g},${b})`;
-  ctx.strokeStyle = `rgb(${r},${g},${b})`;
+  const points = [];
+
+  const setPixel = (px, py) => {
+    if (px < 0 || py < 0 || px >= mapW || py >= mapH) return;
+    const i = (py * mapW + px) * 4;
+    imageData.data[i] = r; imageData.data[i + 1] = g; imageData.data[i + 2] = b; imageData.data[i + 3] = 255;
+  };
 
   for (const el of elements) {
-    if (el.type === 'node' && el.lat != null) {
-      const [x, y] = toXY(el.lat, el.lon);
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (el.type === 'way' && el.geometry?.length > 1) {
-      ctx.beginPath();
-      el.geometry.forEach(({ lat, lon }, i) => {
-        const [x, y] = toXY(lat, lon);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-      ctx.closePath();
-      ctx.fill();
-    } else if (el.type === 'relation' && el.members) {
-      for (const m of el.members) {
-        if (m.geometry?.length > 1) {
-          ctx.beginPath();
-          m.geometry.forEach(({ lat, lon }, i) => {
-            const [x, y] = toXY(lat, lon);
-            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-          });
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-    }
+    const center = elementCentroid(el);
+    if (!center) continue;
+    const pos = latLonToPixel(center.lat, center.lon, bbox, mapW, mapH);
+    if (!pos) continue;
+    const { px, py } = pos;
+
+    // Draw a 3x3 cross so single-pixel features are visible
+    setPixel(px, py);
+    setPixel(px - 1, py); setPixel(px + 1, py);
+    setPixel(px, py - 1); setPixel(px, py + 1);
+
+    const name = el.tags?.name || el.tags?.['name:en'] || '';
+    points.push({ px, py, name, osmId: el.id });
   }
+
+  return { imageData, points };
+}
+
+function imageDataToDataUrl(imageData) {
+  const canvas = document.createElement('canvas');
+  canvas.width = imageData.width; canvas.height = imageData.height;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.putImageData(imageData, 0, 0);
   return canvas.toDataURL('image/png');
 }
 
@@ -179,9 +154,16 @@ function downloadDataUrl(dataUrl, filename) {
   a.href = dataUrl; a.download = filename; a.click();
 }
 
+function downloadText(text, filename) {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
-  const [tagStates, setTagStates] = useState({}); // k → { status, count, dataUrl }
+  // tagStates: key → { status, count, imageData, points, color }
+  const [tagStates, setTagStates] = useState({});
   const [fetchProgress, setFetchProgress] = useState({});
   const [expanded, setExpanded] = useState(true);
   const [openGroups, setOpenGroups] = useState({});
@@ -196,7 +178,7 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
     if (!bbox || !mapW || !mapH) return;
     const k = getKey(tag);
     const color = tagColor(tag.key, tag.value);
-    setTagStates(s => ({ ...s, [k]: { ...s[k], status: 'running' } }));
+    setTagStates(s => ({ ...s, [k]: { ...s[k], status: 'running', color } }));
     setFetchProgress(p => ({ ...p, [k]: 0 }));
 
     let pct = 0;
@@ -209,8 +191,11 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
       const elements = await fetchElements(tag.key, tag.value, bboxStr);
       clearInterval(interval);
       setFetchProgress(p => ({ ...p, [k]: 100 }));
-      const dataUrl = renderToPng(elements, bbox, mapW, mapH, color);
-      setTagStates(s => ({ ...s, [k]: { status: 'done', count: elements.length, dataUrl, color } }));
+      const { imageData, points } = renderToImageData(elements, bbox, mapW, mapH, color);
+      setTagStates(s => ({
+        ...s,
+        [k]: { status: 'done', count: elements.length, imageData, points, color, label: tag.label }
+      }));
     } catch (e) {
       clearInterval(interval);
       setFetchProgress(p => ({ ...p, [k]: 0 }));
@@ -218,13 +203,38 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
     }
   };
 
-  const groups = [
-    { group: 'Historic', tags: HISTORIC_TAGS },
-    { group: 'Castle Types (castle_type=*)', tags: CASTLE_TYPE_TAGS },
-  ];
+  const downloadTag = (k, label) => {
+    const st = tagStates[k];
+    if (!st?.imageData) return;
+    const dataUrl = imageDataToDataUrl(st.imageData);
+    downloadDataUrl(dataUrl, `${k.replace('=', '_')}.png`);
+  };
+
+  const doneStates = Object.entries(tagStates).filter(([, s]) => s?.status === 'done');
+  const doneCount = doneStates.length;
+
+  const downloadAll = () => {
+    if (!doneStates.length) return;
+    // Download each PNG
+    doneStates.forEach(([k, s]) => {
+      const dataUrl = imageDataToDataUrl(s.imageData);
+      downloadDataUrl(dataUrl, `${k.replace('=', '_')}.png`);
+    });
+    // Build bulk TXT: one entry per feature point across all tags
+    const lines = ['; OSM Historic Features — Bulk Export', `; Map size: ${mapW}x${mapH}`, ''];
+    doneStates.forEach(([k, s]) => {
+      lines.push(`; === ${s.label} (${k}) — ${s.count} features ===`);
+      (s.points || []).forEach(p => {
+        const name = p.name ? `"${p.name}"` : '"(no name)"';
+        lines.push(`${s.label}; x${p.px}; y${p.py}; name: ${name}`);
+      });
+      lines.push('');
+    });
+    downloadText(lines.join('\n'), 'historic_features.txt');
+  };
 
   const searchLower = search.toLowerCase();
-  const filteredGroups = groups.map(g => ({
+  const filteredGroups = ALL_TAG_GROUPS.map(g => ({
     ...g,
     tags: search ? g.tags.filter(t =>
       t.label.toLowerCase().includes(searchLower) ||
@@ -233,8 +243,6 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
       t.desc.toLowerCase().includes(searchLower)
     ) : g.tags,
   })).filter(g => g.tags.length > 0);
-
-  const doneCount = Object.values(tagStates).filter(s => s?.status === 'done').length;
 
   return (
     <div className="rounded border border-slate-700 bg-slate-900/60">
@@ -256,8 +264,18 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
       {expanded && (
         <div className="px-2 pb-2 space-y-2 border-t border-slate-700/50">
           <p className="text-[9px] text-slate-500 pt-1.5 leading-relaxed">
-            Fetch OSM historic features and download them as transparent PNG layers — one per tag, sized to your map. Use them as reference overlays alongside the regions map.
+            Fetch OSM historic features as pixel-perfect transparent PNG layers sized exactly to your regions map. Download individually or bulk-export all PNGs + a coordinate text file.
           </p>
+
+          {/* Bulk download */}
+          {doneCount > 0 && (
+            <button
+              onClick={downloadAll}
+              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] bg-green-800/40 border border-green-600/50 text-green-300 hover:bg-green-700/50 transition-colors font-semibold">
+              <Download className="w-3 h-3" />
+              Download All ({doneCount}) — PNGs + historic_features.txt
+            </button>
+          )}
 
           {/* Search */}
           <input
@@ -298,7 +316,6 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
 
                       return (
                         <div key={k} className="bg-slate-900">
-                          {/* Progress bar */}
                           {isRunning && (
                             <div className="mx-1.5 mt-1">
                               <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
@@ -310,28 +327,26 @@ export default function OsmHistoricTagFetcher({ bbox, mapW, mapH }) {
                           )}
 
                           <div className="flex items-start gap-1.5 px-1.5 py-1.5">
-                            {/* Colour swatch (stable random colour for this tag) */}
                             <div className="w-3 h-3 rounded-sm shrink-0 mt-0.5 border border-slate-600" style={{ backgroundColor: colorCss }} />
 
-                            {/* Label + key + description */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1 flex-wrap">
                                 <span className="text-[10px] text-slate-200 font-semibold">{tag.label}</span>
                                 <span className="text-[8px] font-mono text-slate-600">{k}</span>
                                 {isDone && (
-                                  <span className="text-[8px] text-green-400 font-mono">✓ {st.count}</span>
+                                  <span className="text-[8px] text-green-400 font-mono">
+                                    ✓ {st.count} feat / {st.points?.length ?? 0} placed
+                                  </span>
                                 )}
-                                {isErr && (
-                                  <span className="text-[8px] text-red-400">✕ err</span>
-                                )}
+                                {isErr && <span className="text-[8px] text-red-400">✕ err</span>}
                               </div>
                               <p className="text-[8px] text-slate-500 leading-relaxed mt-0.5 line-clamp-2">{tag.desc}</p>
                             </div>
 
-                            {/* Download button — only when done */}
+                            {/* Download PNG */}
                             {isDone && (
                               <button
-                                onClick={() => downloadDataUrl(st.dataUrl, `${k.replace('=', '_')}.png`)}
+                                onClick={() => downloadTag(k, tag.label)}
                                 title={`Download ${k} as PNG`}
                                 className="shrink-0 flex items-center justify-center w-5 h-5 rounded bg-slate-700/60 text-slate-400 hover:bg-slate-600 hover:text-white transition-colors">
                                 <Download className="w-2.5 h-2.5" />
