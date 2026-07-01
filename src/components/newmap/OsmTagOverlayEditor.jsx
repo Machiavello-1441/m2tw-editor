@@ -92,8 +92,8 @@ const OSM_OVERPASS_MIRRORS = [
 ];
 
 async function fetchPolygons(key, value, bboxStr) {
-  // Fetch ways with geometry directly; for relations use `(._;>>;)` to resolve member ways
-  const query = `[out:json][timeout:180][maxsize:536870912];\n(\n  way["${key}"="${value}"](${bboxStr});\n  relation["${key}"="${value}"](${bboxStr});\n);\n(._;>>; );\nout geom;`;
+  // out geom on ways gives inline geometry; relations get member geometry via out geom too
+  const query = `[out:json][timeout:180];\n(\n  way["${key}"="${value}"](${bboxStr});\n  relation["${key}"="${value}"](${bboxStr});\n);\nout geom;`;
   let lastErr;
   for (const mirror of OSM_OVERPASS_MIRRORS) {
     try {
@@ -106,6 +106,10 @@ async function fetchPolygons(key, value, bboxStr) {
       if (res.status === 429 || res.status === 504) { lastErr = new Error(`HTTP ${res.status}`); continue; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
+      // Detect server-side runtime errors (returned with HTTP 200 but zero elements)
+      if (json.remark && /runtime error|out of memory|exceeded/i.test(json.remark)) {
+        throw new Error(`Overpass server error: ${json.remark}`);
+      }
       return (json.elements || []).filter(e =>
         (e.type === 'way' && e.geometry?.length > 1) ||
         (e.type === 'relation' && e.members?.some(m => m.geometry?.length > 1))
