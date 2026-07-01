@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { Download, ChevronDown, ChevronRight, X, Eye, EyeOff } from 'lucide-react';
 import { GROUND_TYPE_PALETTE } from '@/lib/mapLayerStore';
 import { GT } from '@/lib/autoGroundTypes';
 
@@ -196,6 +196,8 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(true);
   const [openGroups, setOpenGroups] = useState({});
+  // set of tag keys currently hidden
+  const [hiddenTags, setHiddenTags] = useState(new Set());
 
   const hasLayer = !!groundLayer?.imageData;
   const bboxStr = bbox ? `${bbox.south},${bbox.west},${bbox.north},${bbox.east}` : '';
@@ -215,6 +217,39 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
   // ref to always-current groundLayer so the tiled loop can read latest painted state
   const groundLayerRef = React.useRef(groundLayer);
   React.useEffect(() => { groundLayerRef.current = groundLayer; }, [groundLayer]);
+  // store the original ground layer before any tags were applied (for repaint on toggle)
+  const baseLayerRef = React.useRef(null);
+  React.useEffect(() => {
+    // Capture base layer once we have one, but only if no tags have been applied yet
+    if (groundLayer?.imageData && Object.keys(tagStates).length === 0) {
+      baseLayerRef.current = groundLayer.imageData;
+    }
+  }, [groundLayer, tagStates]);
+
+  /** Repaint ground layer from base + all currently visible done tags */
+  const repaintFromBase = React.useCallback((newHidden, newTagStates) => {
+    const base = baseLayerRef.current ?? groundLayerRef.current?.imageData;
+    if (!base || !bbox) return;
+    const copy = new ImageData(new Uint8ClampedArray(base.data), base.width, base.height);
+    const states = newTagStates ?? tagStates;
+    for (const [k, st] of Object.entries(states)) {
+      if (st?.status?.startsWith('done') && st.elements?.length && !newHidden.has(k)) {
+        const gtId = st.gtId ?? ALL_TAGS.find(t => `${t.key}=${t.value}` === k)?.defaultGt ?? 'fertile_medium';
+        const color = GT[gtId] ?? [96, 160, 64];
+        paintPolygonsOntoImageData(copy, st.elements, bbox, color);
+      }
+    }
+    onLayerUpdate('ground', { imageData: copy, visible: true, opacity: 1, dirty: true });
+  }, [tagStates, bbox, onLayerUpdate]);
+
+  const toggleTagVisibility = (k) => {
+    setHiddenTags(prev => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      repaintFromBase(next, null);
+      return next;
+    });
+  };
 
   const applyTag = async (tag) => {
     if (!hasLayer || !bbox) return;
@@ -225,7 +260,11 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
     const tiles = computeTiles(bbox);
     const CONCURRENCY = 4; // fetch up to 4 tiles in parallel
 
-    setTagStates(s => ({ ...s, [k]: { ...s[k], status: 'running', elements: [] } }));
+    // Capture base layer before first tag application
+    if (Object.keys(tagStates).filter(tk => tagStates[tk]?.status?.startsWith('done')).length === 0) {
+      baseLayerRef.current = groundLayerRef.current?.imageData ?? null;
+    }
+    setTagStates(s => ({ ...s, [k]: { ...s[k], status: 'running', elements: [], gtId } }));
     setFetchProgress(p => ({ ...p, [k]: { pct: 0, tilesDone: 0, tilesTotal: tiles.length } }));
 
     let tilesDone = 0;
@@ -266,7 +305,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
     }
 
     setFetchProgress(p => ({ ...p, [k]: { pct: 100, tilesDone: tiles.length, tilesTotal: tiles.length } }));
-    setTagStates(s => ({ ...s, [k]: { ...s[k], status: `done ${totalElements}`, elements: allElements } }));
+    setTagStates(s => ({ ...s, [k]: { ...s[k], status: `done ${totalElements}`, elements: allElements, gtId } }));
   };
 
   const downloadTagPng = (tag) => {
@@ -418,6 +457,19 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
                               <span className={`text-[8px] font-mono shrink-0 ${isDone ? 'text-green-400' : isErr ? 'text-red-400' : 'text-amber-400'}`}>
                                 {isDone ? `✓${st.replace('done ', '')}` : '✕'}
                               </span>
+                            )}
+                            {/* Visibility toggle — only when fetched */}
+                            {isDone && (
+                              <button
+                                onClick={() => toggleTagVisibility(k)}
+                                title={hiddenTags.has(k) ? 'Show on map' : 'Hide from map'}
+                                className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors ${
+                                  hiddenTags.has(k)
+                                    ? 'bg-slate-700/60 text-slate-500 hover:bg-slate-600 hover:text-white'
+                                    : 'bg-amber-700/40 text-amber-300 hover:bg-amber-600/60'
+                                }`}>
+                                {hiddenTags.has(k) ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
+                              </button>
                             )}
                             {/* Download PNG button — only when fetched */}
                             {isDone && (
