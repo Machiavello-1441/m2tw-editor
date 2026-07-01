@@ -223,39 +223,46 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
     const color = GT[gtId] ?? [96, 160, 64];
 
     const tiles = computeTiles(bbox);
-    const isTiled = tiles.length > 1;
+    const CONCURRENCY = 4; // fetch up to 4 tiles in parallel
 
     setTagStates(s => ({ ...s, [k]: { ...s[k], status: 'running', elements: [] } }));
     setFetchProgress(p => ({ ...p, [k]: { pct: 0, tilesDone: 0, tilesTotal: tiles.length } }));
 
+    let tilesDone = 0;
     let totalElements = 0;
     let allElements = [];
+    let fetchError = null;
 
-    for (let i = 0; i < tiles.length; i++) {
-      const tile = tiles[i];
+    // Process tiles in parallel batches of CONCURRENCY
+    for (let i = 0; i < tiles.length; i += CONCURRENCY) {
+      if (fetchError) break;
+      const batch = tiles.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(batch.map(tile => fetchTile(tag.key, tag.value, tile)));
 
-      let elements;
-      try {
-        elements = await fetchTile(tag.key, tag.value, tile);
-      } catch (e) {
-        setFetchProgress(p => ({ ...p, [k]: { pct: 0, tilesDone: i, tilesTotal: tiles.length } }));
-        setTagStates(s => ({ ...s, [k]: { ...s[k], status: `error: ${e.message}` } }));
-        return;
+      for (const result of results) {
+        tilesDone++;
+        const pct = Math.round((tilesDone / tiles.length) * 100);
+        setFetchProgress(p => ({ ...p, [k]: { pct, tilesDone, tilesTotal: tiles.length } }));
+
+        if (result.status === 'rejected') {
+          fetchError = result.reason;
+          break;
+        }
+        const elements = result.value;
+        if (elements.length > 0) {
+          const src = groundLayerRef.current.imageData;
+          const copy = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
+          paintPolygonsOntoImageData(copy, elements, bbox, color);
+          onLayerUpdate('ground', { imageData: copy, visible: true, opacity: 1, dirty: true });
+          totalElements += elements.length;
+          allElements = allElements.concat(elements);
+        }
       }
+    }
 
-      // Update progress AFTER tile completes — real progress
-      const tilesDone = i + 1;
-      const pct = Math.round((tilesDone / tiles.length) * 100);
-      setFetchProgress(p => ({ ...p, [k]: { pct, tilesDone, tilesTotal: tiles.length } }));
-
-      if (elements.length > 0) {
-        const src = groundLayerRef.current.imageData;
-        const copy = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
-        paintPolygonsOntoImageData(copy, elements, bbox, color);
-        onLayerUpdate('ground', { imageData: copy, visible: true, opacity: 1, dirty: true });
-        totalElements += elements.length;
-        allElements = allElements.concat(elements);
-      }
+    if (fetchError) {
+      setTagStates(s => ({ ...s, [k]: { ...s[k], status: `error: ${fetchError.message}` } }));
+      return;
     }
 
     setFetchProgress(p => ({ ...p, [k]: { pct: 100, tilesDone: tiles.length, tilesTotal: tiles.length } }));
