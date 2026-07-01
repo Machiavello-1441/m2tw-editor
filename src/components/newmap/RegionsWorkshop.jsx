@@ -57,7 +57,7 @@ function chainPolylines(polylines) {
   if (!polylines.length) return [];
   const PREC = 5;
   const k = pt => `${pt.lat.toFixed(PREC)},${pt.lon.toFixed(PREC)}`;
-  const endpointMap = new Map();
+  const endpointMap = new globalThis.Map();
   const used = new Array(polylines.length).fill(false);
   polylines.forEach((pl, idx) => {
     [k(pl[0]), k(pl[pl.length - 1])].forEach(key => {
