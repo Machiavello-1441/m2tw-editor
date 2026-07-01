@@ -1,95 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Search, Plus, Trash2, Download, MapPin, Map as MapIcon, Loader } from 'lucide-react';
-
-const OSM_OVERPASS_MIRRORS = [
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass-api.de/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-];
-
-async function fetchOverpass(query) {
-  let lastErr;
-  for (const mirror of OSM_OVERPASS_MIRRORS) {
-    try {
-      const res = await fetch(mirror, {
-        method: 'POST', mode: 'cors',
-        body: 'data=' + encodeURIComponent(query),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) { lastErr = e; }
-  }
-  throw lastErr ?? new Error('All mirrors failed');
-}
-
-/** Rasterize a polygon ring (array of {lat, lon}) onto imageData using toXY mapper. Scanline fill. */
-function fillPolygon(imageData, ring, toXY, r, g, b) {
-  if (ring.length < 3) return;
-  const { data, width, height } = imageData;
-  const pts = ring.map(p => toXY(p.lat, p.lon));
-  let minY = Infinity, maxY = -Infinity;
-  for (const [, y] of pts) { if (y < minY) minY = y; if (y > maxY) maxY = y; }
-  minY = Math.max(0, Math.floor(minY));
-  maxY = Math.min(height - 1, Math.ceil(maxY));
-  for (let y = minY; y <= maxY; y++) {
-    const intersections = [];
-    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-      const [x0, y0] = pts[j], [x1, y1] = pts[i];
-      if ((y0 <= y && y1 > y) || (y1 <= y && y0 > y)) {
-        intersections.push(x0 + (y - y0) / (y1 - y0) * (x1 - x0));
-      }
-    }
-    intersections.sort((a, b) => a - b);
-    for (let k = 0; k < intersections.length - 1; k += 2) {
-      const xStart = Math.max(0, Math.round(intersections[k]));
-      const xEnd = Math.min(width - 1, Math.round(intersections[k + 1]));
-      for (let x = xStart; x <= xEnd; x++) {
-        const i = (y * width + x) * 4;
-        data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
-      }
-    }
-  }
-}
-
-/** Chain way segments into closed rings. */
-function chainPolylines(polylines) {
-  if (!polylines.length) return [];
-  const PREC = 5;
-  const k = pt => `${pt.lat.toFixed(PREC)},${pt.lon.toFixed(PREC)}`;
-  const endpointMap = new globalThis.Map();
-  const used = new Array(polylines.length).fill(false);
-  polylines.forEach((pl, idx) => {
-    [k(pl[0]), k(pl[pl.length - 1])].forEach(key => {
-      if (!endpointMap.has(key)) endpointMap.set(key, []);
-    });
-    endpointMap.get(k(pl[0])).push({ idx, isStart: true });
-    endpointMap.get(k(pl[pl.length - 1])).push({ idx, isStart: false });
-  });
-  const chains = [];
-  for (let start = 0; start < polylines.length; start++) {
-    if (used[start]) continue;
-    used[start] = true;
-    let chain = [...polylines[start]];
-    for (let dir = 0; dir < 2; dir++) {
-      let extended = true;
-      while (extended) {
-        extended = false;
-        const endPt = dir === 0 ? chain[chain.length - 1] : chain[0];
-        for (const { idx, isStart } of (endpointMap.get(k(endPt)) ?? [])) {
-          if (used[idx]) continue;
-          used[idx] = true;
-          const seg = polylines[idx];
-          if (dir === 0) chain = chain.concat(isStart ? seg.slice(1) : [...seg].reverse().slice(1));
-          else chain = (isStart ? [...seg].reverse() : seg).concat(chain.slice(1));
-          extended = true; break;
-        }
-      }
-    }
-    chains.push(chain);
-  }
-  return chains;
-}
+import { Search, Plus, Trash2, Download, MapPin } from 'lucide-react';
 
 function randomRgb(used) {
   for (let attempt = 0; attempt < 200; attempt++) {
@@ -132,18 +42,9 @@ function latLngToPixel(lat, lng, bbox, width, height) {
   return { px, py };
 }
 
-function makeToXY(bbox, W, H) {
-  const mercNorth = latToMercN(bbox.north);
-  const mercSouth = latToMercN(bbox.south);
-  return (lat, lon) => [
-    ((lon - bbox.west) / (bbox.east - bbox.west)) * (W - 1),
-    ((mercNorth - latToMercN(lat)) / (mercNorth - mercSouth)) * (H - 1),
-  ];
-}
-
 /**
- * RegionsWorkshop — settlement search, placement, and municipality fill.
- * settlements / onSettlementsChange are lifted to the parent so state survives tab switches.
+ * RegionsWorkshop — settlement search and placement only.
+ * Settlements are lifted to parent so state survives tab switches.
  */
 export default function RegionsWorkshop({
   bbox, layers, onLayerUpdate, mapWidth, mapHeight,
@@ -153,14 +54,11 @@ export default function RegionsWorkshop({
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [status, setStatus] = useState('');
-  const [municipalityStatus, setMunicipalityStatus] = useState({}); // idx → 'fetching'|'done'|string
   const usedColors = useRef(new Set());
 
-  // Keep a ref to layers so async fill always sees the latest imageData
   const layersRef = useRef(layers);
   useEffect(() => { layersRef.current = layers; }, [layers]);
 
-  // Keep ref to settlements so remove/rebuild always has latest list
   const settlementsRef = useRef(settlements);
   useEffect(() => { settlementsRef.current = settlements; }, [settlements]);
 
@@ -223,110 +121,13 @@ export default function RegionsWorkshop({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bbox, mapWidth, mapHeight, onLayerUpdate, onSettlementsChange]);
 
-  const fillMunicipalityFor = async (settlement, idx, baseImageData) => {
-    setMunicipalityStatus(s => ({ ...s, [idx]: 'fetching' }));
-
-    // Use a small search radius — just enough to find the local boundary
-    const pad = 0.15;
-    const bboxStr = `${settlement.lat - pad},${settlement.lng - pad},${settlement.lat + pad},${settlement.lng + pad}`;
-    // Query the settlement node itself first to get its admin_level, then fetch boundaries
-    // Try admin_level 8 (municipality), fall back to 7, then 6
-    const q = `[out:json][timeout:60];
-(
-  relation["boundary"="administrative"]["admin_level"="8"](${bboxStr});
-  relation["boundary"="administrative"]["admin_level"="9"](${bboxStr});
-  relation["boundary"="administrative"]["admin_level"="10"](${bboxStr});
-  way["boundary"="administrative"]["admin_level"="8"](${bboxStr});
-);
-out geom;`;
-
-    let elements;
-    try {
-      const data = await fetchOverpass(q);
-      elements = (data.elements || []).filter(e =>
-        (e.type === 'way' && e.geometry?.length > 2) ||
-        (e.type === 'relation' && e.members?.some(m => m.geometry?.length > 1))
-      );
-    } catch (e) {
-      setMunicipalityStatus(s => ({ ...s, [idx]: `Error: ${e.message}` }));
-      return;
-    }
-
-    if (!elements.length) {
-      setMunicipalityStatus(s => ({ ...s, [idx]: 'No boundary found.' }));
-      return;
-    }
-
-    // Pick the SMALLEST element whose bounding box contains the settlement point.
-    // "Smallest" = smallest bbox area (in degrees²). This avoids picking large regional boundaries.
-    const getElementBbox = (el) => {
-      let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
-      const processGeom = (geom) => {
-        for (const pt of geom) {
-          if (pt.lat < minLat) minLat = pt.lat;
-          if (pt.lat > maxLat) maxLat = pt.lat;
-          if (pt.lon < minLon) minLon = pt.lon;
-          if (pt.lon > maxLon) maxLon = pt.lon;
-        }
-      };
-      if (el.type === 'way' && el.geometry) processGeom(el.geometry);
-      else if (el.type === 'relation' && el.members) {
-        el.members.filter(m => m.geometry).forEach(m => processGeom(m.geometry));
-      }
-      return { minLat, maxLat, minLon, maxLon, area: (maxLat - minLat) * (maxLon - minLon) };
-    };
-
-    const containsPoint = (bb) =>
-      settlement.lat >= bb.minLat && settlement.lat <= bb.maxLat &&
-      settlement.lng >= bb.minLon && settlement.lng <= bb.maxLon;
-
-    // Filter to elements that actually contain the settlement point, then pick the smallest
-    const containing = elements.map(el => ({ el, bb: getElementBbox(el) })).filter(({ bb }) => containsPoint(bb));
-    const candidates = containing.length ? containing : elements.map(el => ({ el, bb: getElementBbox(el) }));
-    candidates.sort((a, b) => a.bb.area - b.bb.area);
-    const best = candidates[0].el;
-
-    // Use the freshest layer data available
-    const currentLayer = layersRef.current.regions;
-    const srcData = baseImageData ?? currentLayer?.imageData;
-    if (!srcData) {
-      setMunicipalityStatus(s => ({ ...s, [idx]: 'No regions layer.' }));
-      return;
-    }
-
-    const W = mapWidth, H = mapHeight;
-    const toXY = makeToXY(bbox, W, H);
-    const copy = new ImageData(new Uint8ClampedArray(srcData.data), W, H);
-    const [r, g, b] = settlement.rgb;
-
-    if (best.type === 'way' && best.geometry?.length > 2) {
-      fillPolygon(copy, best.geometry, toXY, r, g, b);
-    } else if (best.type === 'relation' && best.members) {
-      const outerWays = best.members
-        .filter(m => m.type === 'way' && m.geometry?.length > 1 && (m.role === 'outer' || m.role === ''))
-        .map(m => m.geometry);
-      const rings = chainPolylines(outerWays.length ? outerWays
-        : best.members.filter(m => m.type === 'way' && m.geometry?.length > 1).map(m => m.geometry));
-      for (const ring of rings) fillPolygon(copy, ring, toXY, r, g, b);
-    }
-
-    // Re-stamp all settlement dots on top so none are erased
-    settlementsRef.current.forEach(s => paintRegionPixels(copy, s.px, s.py, s.rgb));
-    paintRegionPixels(copy, settlement.px, settlement.py, settlement.rgb);
-
-    onLayerUpdate('regions', { imageData: copy, visible: true, opacity: 1, dirty: true });
-    setMunicipalityStatus(s => ({ ...s, [idx]: 'done' }));
-  };
-
   const removeSettlement = (idx) => {
     const next = settlements.filter((_, i) => i !== idx);
     onSettlementsChange(next);
-    // Rebuild layer from remaining settlements
     const layer = layersRef.current.regions;
     if (!layer?.imageData) return;
     const w = layer.imageData.width, h = layer.imageData.height;
     const fresh = new ImageData(w, h);
-    // Copy sea pixels
     const srcData = layer.imageData.data;
     for (let i = 0; i < srcData.length; i += 4) {
       if (srcData[i] === 0 && srcData[i + 1] === 0 && srcData[i + 2] === 255) {
@@ -423,40 +224,15 @@ out geom;`;
               </div>
               <div className="max-h-48 overflow-y-auto space-y-1">
                 {settlements.map((s, i) => (
-                  <div key={i} className="flex flex-col gap-1 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-sm shrink-0 border border-slate-600"
-                        style={{ backgroundColor: `rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})` }} />
-                      <span className="text-[10px] text-slate-300 flex-1 truncate">{s.displayName}</span>
-                      <span className="text-[9px] text-slate-600 font-mono shrink-0">{s.px},{s.py}</span>
-                      <button
-                        onClick={() => fillMunicipalityFor(s, i, null)}
-                        disabled={municipalityStatus[i] === 'fetching'}
-                        title="Re-fetch & fill municipality boundary"
-                        className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors disabled:opacity-40 ${
-                          municipalityStatus[i] === 'done'
-                            ? 'bg-green-800/50 text-green-400 hover:bg-green-700/50'
-                            : municipalityStatus[i] === 'fetching'
-                              ? 'bg-blue-800/50 text-blue-400'
-                              : typeof municipalityStatus[i] === 'string'
-                                ? 'bg-red-800/50 text-red-400 hover:bg-red-700/50'
-                                : 'bg-slate-700/60 text-slate-400 hover:bg-slate-600 hover:text-amber-300'
-                        }`}>
-                        {municipalityStatus[i] === 'fetching'
-                          ? <Loader className="w-2.5 h-2.5 animate-spin" />
-                          : <MapIcon className="w-2.5 h-2.5" />}
-                      </button>
-                      <button onClick={() => removeSettlement(i)}
-                        className="text-slate-600 hover:text-red-400 transition-colors shrink-0">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                    {typeof municipalityStatus[i] === 'string' && municipalityStatus[i] !== 'fetching' && municipalityStatus[i] !== 'done' && (
-                      <p className="text-[8px] text-red-400 pl-5">{municipalityStatus[i]}</p>
-                    )}
-                    {municipalityStatus[i] === 'done' && (
-                      <p className="text-[8px] text-green-400 pl-5">Municipality filled ✓</p>
-                    )}
+                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded">
+                    <div className="w-3 h-3 rounded-sm shrink-0 border border-slate-600"
+                      style={{ backgroundColor: `rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})` }} />
+                    <span className="text-[10px] text-slate-300 flex-1 truncate">{s.displayName}</span>
+                    <span className="text-[9px] text-slate-600 font-mono shrink-0">{s.px},{s.py}</span>
+                    <button onClick={() => removeSettlement(i)}
+                      className="text-slate-600 hover:text-red-400 transition-colors shrink-0">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -464,7 +240,7 @@ out geom;`;
           )}
 
           <p className="text-[9px] text-slate-500 leading-relaxed">
-            Click the map icon next to a settlement to fetch and fill its municipality boundary. This is optional — use it to pre-fill a region's area on the map.
+            Search and place settlement dots on the regions map. Use the paint tool to fill region areas manually.
           </p>
         </>
       )}
