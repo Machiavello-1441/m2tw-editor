@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { CheckCircle, Circle, ChevronRight, Wand2, AlertCircle, Paintbrush, Upload } from 'lucide-react';
+import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
 import { CLIMATE_PALETTE } from '@/lib/mapLayerStore';
 import GroundTypeRangeEditor, { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import RiverChecker from '@/components/newmap/RiverChecker';
@@ -35,6 +36,38 @@ export default function WorkflowPanel({
   const [showRangeEditor, setShowRangeEditor] = useState(false);
   const [selectedFillClimate, setSelectedFillClimate] = useState(CLIMATE_PALETTE[0].id);
   const groundImportRef = useRef(null);
+  const featuresImportRef = useRef(null);
+
+  const handleImportFeatures = async (file) => {
+    if (!file) return;
+    const isTga = file.name.toLowerCase().endsWith('.tga');
+    if (isTga) {
+      const buf = await file.arrayBuffer();
+      const dataUrl = decodeTgaToDataUrl(buf);
+      if (!dataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = mapWidth; canvas.height = mapHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, mapWidth, mapHeight);
+        onLayerUpdate('features', { imageData: ctx.getImageData(0, 0, mapWidth, mapHeight), visible: true, opacity: 1, dirty: true });
+      };
+      img.src = dataUrl;
+    } else {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = mapWidth; canvas.height = mapHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, mapWidth, mapHeight);
+        onLayerUpdate('features', { imageData: ctx.getImageData(0, 0, mapWidth, mapHeight), visible: true, opacity: 1, dirty: true });
+      };
+      img.src = URL.createObjectURL(file);
+    }
+  };
 
   const handleImportGround = (file) => {
     if (!file) return;
@@ -195,6 +228,16 @@ export default function WorkflowPanel({
                 {/* Features: OSM fetcher + river checker + hints */}
                 {step.id === 'features' && (
                   <>
+                    <div className="flex items-center gap-1.5">
+                      <input ref={featuresImportRef} type="file" accept=".tga,.png,image/png" className="hidden"
+                        onChange={e => { handleImportFeatures(e.target.files?.[0]); e.target.value = ''; }} />
+                      <button
+                        onClick={() => featuresImportRef.current?.click()}
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] border transition-colors font-semibold ${layers.features?.imageData ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'}`}>
+                        <Upload className="w-3 h-3" />
+                        {layers.features?.imageData ? '↺ Replace Features Map (.tga/.png)' : 'Import Features Map (.tga/.png)'}
+                      </button>
+                    </div>
                     <FeaturesLayerGenerator
                       bbox={bbox}
                       mapWidth={mapWidth}
