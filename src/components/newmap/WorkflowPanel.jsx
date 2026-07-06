@@ -4,6 +4,7 @@ import { CLIMATE_PALETTE } from '@/lib/mapLayerStore';
 import GroundTypeRangeEditor, { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import RiverChecker from '@/components/newmap/RiverChecker';
 import OsmTagOverlayEditor from '@/components/newmap/OsmTagOverlayEditor';
+import KoppenClimateFetcher from '@/components/newmap/KoppenClimateFetcher';
 import FeaturesLayerGenerator from '@/components/newmap/FeaturesLayerGenerator';
 
 /**
@@ -173,6 +174,14 @@ export default function WorkflowPanel({
                         Fill Entire Map
                       </button>
                     </div>
+
+                    <KoppenClimateFetcher
+                      bbox={bbox}
+                      climateLayer={layers.climates}
+                      onLayerUpdate={onLayerUpdate}
+                      mapWidth={mapWidth}
+                      mapHeight={mapHeight}
+                    />
 
                     <p className="text-[9px] text-slate-500">
                       You can also switch to the <strong className="text-slate-300">Paint</strong> tab to paint climate zones manually.
