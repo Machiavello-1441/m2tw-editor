@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle, Circle, ChevronRight, Wand2, AlertCircle, Paintbrush } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { CheckCircle, Circle, ChevronRight, Wand2, AlertCircle, Paintbrush, Upload } from 'lucide-react';
 import { CLIMATE_PALETTE } from '@/lib/mapLayerStore';
 import GroundTypeRangeEditor, { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import RiverChecker from '@/components/newmap/RiverChecker';
@@ -33,6 +33,21 @@ export default function WorkflowPanel({
   const currentIdx = STEPS.findIndex(s => s.id === currentStepId);
   const [showRangeEditor, setShowRangeEditor] = useState(false);
   const [selectedFillClimate, setSelectedFillClimate] = useState(CLIMATE_PALETTE[0].id);
+  const groundImportRef = useRef(null);
+
+  const handleImportGround = (file) => {
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = mapWidth; canvas.height = mapHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, 0, 0, mapWidth, mapHeight);
+      onLayerUpdate('ground', { imageData: ctx.getImageData(0, 0, mapWidth, mapHeight), visible: true, opacity: 1, dirty: true });
+    };
+    img.src = URL.createObjectURL(file);
+  };
 
   const ranges = groundRanges ?? DEFAULT_GROUND_RANGES;
 
@@ -109,6 +124,18 @@ export default function WorkflowPanel({
                         <div className="bg-blue-500 h-1 transition-all duration-200" style={{ width: `${groundProgress ?? 0}%` }} />
                       </div>
                     )}
+
+                    {/* Import existing ground map PNG */}
+                    <div className="flex items-center gap-1.5">
+                      <input ref={groundImportRef} type="file" accept="image/*" className="hidden"
+                        onChange={e => { handleImportGround(e.target.files?.[0]); e.target.value = ''; }} />
+                      <button
+                        onClick={() => groundImportRef.current?.click()}
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] border transition-colors font-semibold ${layers.ground?.imageData ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'}`}>
+                        <Upload className="w-3 h-3" />
+                        {layers.ground?.imageData ? '↺ Replace Ground Map (PNG)' : 'Import Ground Map (PNG)'}
+                      </button>
+                    </div>
 
                     <OsmTagOverlayEditor
                       bbox={bbox}
