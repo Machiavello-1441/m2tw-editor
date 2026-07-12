@@ -855,6 +855,7 @@ export default function StratPanel({
   const [openCharId, setOpenCharId] = useState(null);
   const [search, setSearch] = useState('');
   const [showNewRegion, setShowNewRegion] = useState(false);
+  const [newRegionSeedColor, setNewRegionSeedColor] = useState(null);
   const [winConditions, setWinConditions] = useState(() => {
     try {
       // Try sessionStorage first, then fall back to localStorage (loaded from Home)
@@ -1448,7 +1449,11 @@ export default function StratPanel({
           <RegionColorDetector
             regionsLayer={regionsLayer}
             regionsData={regionsData}
-            onRegionsDataUpdate={onRegionsDataUpdate} />
+            onRegionsDataUpdate={onRegionsDataUpdate}
+            onAddNewRegion={(seedColor) => {
+              setNewRegionSeedColor(seedColor);
+              setShowNewRegion(true);
+            }} />
           
           <div className="flex gap-1.5">
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search region or faction…"
@@ -1468,10 +1473,12 @@ export default function StratPanel({
             mercenaryPoolList={mercenaryPoolList}
             religionList={religionList}
             naturalResList={naturalResList}
-            onCancel={() => setShowNewRegion(false)}
+            seedColor={newRegionSeedColor}
+            onCancel={() => { setShowNewRegion(false); setNewRegionSeedColor(null); }}
             onAdd={(draft) => {
               if (onAddNewRegion) onAddNewRegion(draft);
               setShowNewRegion(false);
+              setNewRegionSeedColor(null);
             }} />
 
           }

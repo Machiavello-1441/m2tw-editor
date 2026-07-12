@@ -33,7 +33,7 @@ function extractUniqueColors(layerData) {
     .sort((a, b) => b.pixelCount - a.pixelCount);
 }
 
-export default function RegionColorDetector({ regionsLayer, regionsData, onRegionsDataUpdate }) {
+export default function RegionColorDetector({ regionsLayer, regionsData, onRegionsDataUpdate, onAddNewRegion }) {
   const [scanned, setScanned] = useState(false);
   const [tgaColors, setTgaColors] = useState([]);
 
@@ -172,11 +172,16 @@ export default function RegionColorDetector({ regionsLayer, regionsData, onRegio
               </summary>
               <div className="mt-1 max-h-32 overflow-y-auto space-y-0.5">
                 {unmatched.map(c => (
-                  <div key={`${c.r},${c.g},${c.b}`} className="flex items-center gap-1.5 px-1 py-0.5">
+                  <button
+                    key={`${c.r},${c.g},${c.b}`}
+                    onClick={() => onAddNewRegion?.({ r: c.r, g: c.g, b: c.b })}
+                    title="Click to create a new region with this color"
+                    className="w-full flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-amber-900/30 transition-colors text-left group/row">
                     <span className="w-3 h-3 rounded-sm border border-white/20 shrink-0" style={{ background: `rgb(${c.r},${c.g},${c.b})` }} />
                     <span className="text-[10px] text-amber-400 font-mono flex-1">{c.r}, {c.g}, {c.b}</span>
                     <span className="text-[9px] text-slate-600">{c.pixelCount.toLocaleString()}px</span>
-                  </div>
+                    {onAddNewRegion && <span className="text-[8px] text-slate-600 group-hover/row:text-amber-400 transition-colors">+ create</span>}
+                  </button>
                 ))}
               </div>
             </details>

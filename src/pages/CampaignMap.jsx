@@ -512,6 +512,26 @@ export default function CampaignMap() {
   }, []);
 
   // ── Painting ───────────────────────────────────────────────────────────────
+  // RAF handle for debounced bitmap rebuilds during painting
+  const bitmapRafRef = useRef(null);
+  const pendingBitmapRef = useRef({}); // layerId → newData
+
+  const flushBitmaps = useCallback(() => {
+    bitmapRafRef.current = null;
+    const pending = { ...pendingBitmapRef.current };
+    pendingBitmapRef.current = {};
+    for (const [layerId, newData] of Object.entries(pending)) {
+      setLayers(p => {
+        const layer = p[layerId];
+        if (!layer) return p;
+        createImageBitmap(new ImageData(newData, layer.width, layer.height)).then(bitmap => {
+          setLayers(p2 => ({ ...p2, [layerId]: { ...p2[layerId], bitmap } }));
+        });
+        return p;
+      });
+    }
+  }, []);
+
   const handlePaint = useCallback((type, layerId, color, patches, bucketCoord) => {
     setLayers(prev => {
       const layer = prev[layerId];
@@ -528,16 +548,15 @@ export default function CampaignMap() {
         setPaintState(ps => ({ ...ps, paintColor: color }));
         return prev;
       }
-      // Rebuild bitmap
-      createImageBitmap(new ImageData(newData, layer.width, layer.height)).then(bitmap => {
-        setLayers(p => ({ ...p, [layerId]: { ...p[layerId], bitmap, data: newData } }));
-      });
+      // Debounce bitmap rebuild via RAF to avoid per-stroke freezes
+      pendingBitmapRef.current[layerId] = newData;
+      if (!bitmapRafRef.current) bitmapRafRef.current = requestAnimationFrame(flushBitmaps);
       return { ...prev, [layerId]: { ...layer, data: newData } };
     });
     if (type !== 'pipette') {
       setDirtyLayers(prev => new Set([...prev, layerId]));
     }
-  }, []);
+  }, [flushBitmaps]);
 
   // Derive map dimensions from loaded layers
   const mapH = (() => {

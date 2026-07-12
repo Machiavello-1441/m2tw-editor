@@ -135,15 +135,15 @@ function SearchableMultiSelect({ selected, onChange, options, placeholder, empty
 }
 
 // ─── Main form ────────────────────────────────────────────────────────────────
-export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList }) {
+export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList, seedColor }) {
   const [draft, setDraft] = useState({
     regionName: '',
     settlementName: '',
     regionDisplayName: '',
     settlementDisplayName: '',
-    r: Math.floor(Math.random() * 200) + 30,
-    g: Math.floor(Math.random() * 200) + 30,
-    b: Math.floor(Math.random() * 200) + 30,
+    r: seedColor?.r ?? Math.floor(Math.random() * 200) + 30,
+    g: seedColor?.g ?? Math.floor(Math.random() * 200) + 30,
+    b: seedColor?.b ?? Math.floor(Math.random() * 200) + 30,
     faction: '',
     factionCreator: '',
     castle: false,
@@ -161,6 +161,13 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
     religions: {},
   });
   const [selectedTree, setSelectedTree] = useState('');
+
+  // When a new seed color is provided (from detector), update the draft RGB
+  useEffect(() => {
+    if (seedColor) {
+      setDraft(d => ({ ...d, r: seedColor.r, g: seedColor.g, b: seedColor.b }));
+    }
+  }, [seedColor?.r, seedColor?.g, seedColor?.b]);
 
   const factionList = factionColors ? Object.keys(factionColors).sort() : [];
   const edbHiddenRes = useMemo(() => hiddenResourceList?.length ? hiddenResourceList : extractHiddenResourcesFromEDB(edbData), [hiddenResourceList, edbData]);
