@@ -1,17 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
- * OsmBackground — renders OSM Humanitarian tiles behind TGA layers.
- *
- * Key design decisions:
- *  - CSS `opacity` on the container div drives the opacity slider (instant, no redraw).
- *  - Tiles loaded via HTMLImageElement with crossOrigin="anonymous" (works for OSM/HOT servers).
- *  - Zoom is picked dynamically from transform.scale so tiles sharpen on zoom-in.
- *  - Rendered inside MapCanvas container, below the TGA <canvas> in DOM order.
+ * OsmBackground — renders OSM tiles behind TGA layers.
+ * Rendered inside MapCanvas's container div, absolutely positioned to fill it.
  */
 
-// OSM Humanitarian (HOT) — great river/coastline visibility
-// Falls back to standard OSM if HOT has CORS issues
 const TILE_SOURCES = [
   'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -32,34 +25,37 @@ function lonToTileX(lon, zoom) {
 
 function chooseBestZoom(bbox, mapW, scale) {
   const screenW = mapW * Math.max(scale, 0.05);
-  // OSM tiles go up to zoom 19. Pick highest zoom where tiles are ≥64px wide.
-  for (let z = 19; z >= 1; z--) {
+  // Clamp to a safe range; OSM max is 19
+  for (let z = Math.min(19, 18); z >= 1; z--) {
     const tileCount = lonToTileX(bbox.east, z) - lonToTileX(bbox.west, z);
+    if (tileCount <= 0) continue;
     const pxPerTile = screenW / tileCount;
     if (pxPerTile >= 64) return z;
   }
   return 1;
 }
 
-// Global tile image cache: url → HTMLImageElement | Promise<HTMLImageElement|null>
+// Global tile cache: url → HTMLImageElement (loaded) | Promise | null (failed)
 const tileCache = new Map();
 
-function loadTileImage(url) {
+function loadTile(url) {
   const cached = tileCache.get(url);
   if (cached instanceof HTMLImageElement) return Promise.resolve(cached);
-  if (cached instanceof Promise)          return cached;
+  if (cached instanceof Promise) return cached;
 
   const p = new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload  = () => { tileCache.set(url, img); resolve(img); };
+    img.onload = () => { tileCache.set(url, img); resolve(img); };
     img.onerror = () => {
-      // Try fallback source if first fails
-      if (url.includes('hot')) {
-        const fallback = url.replace('tile.openstreetmap.fr/hot', 'tile.openstreetmap.org');
+      // Try standard OSM as fallback
+      const fallback = url.includes('hot')
+        ? url.replace('tile.openstreetmap.fr/hot', 'tile.openstreetmap.org')
+        : null;
+      if (fallback) {
         const img2 = new Image();
         img2.crossOrigin = 'anonymous';
-        img2.onload  = () => { tileCache.set(url, img2); resolve(img2); };
+        img2.onload = () => { tileCache.set(url, img2); resolve(img2); };
         img2.onerror = () => { tileCache.set(url, null); resolve(null); };
         img2.src = fallback;
       } else {
@@ -74,41 +70,28 @@ function loadTileImage(url) {
 }
 
 export default function OsmBackground({ bbox, mapW, mapH, transform, opacity = 0.6 }) {
-  const containerRef = useRef(null);
-  const canvasRef    = useRef(null);
-  const renderIdRef  = useRef(0);
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const canvasRef   = useRef(null);
+  const renderIdRef = useRef(0);
 
-  // Track container dimensions
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(entries => {
-      for (const e of entries) {
-        setSize({ w: Math.round(e.contentRect.width), h: Math.round(e.contentRect.height) });
-      }
-    });
-    ro.observe(el);
-    setSize({ w: el.clientWidth, h: el.clientHeight });
-    return () => ro.disconnect();
-  }, []);
-
-  // Redraw whenever transform/bbox/size change
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !bbox || size.w <= 0) return;
+    if (!canvas || !bbox) return;
 
-    const W = size.w;
-    const H = size.h;
+    // Use the canvas element's rendered size (layout size) as the draw surface
+    const W = canvas.clientWidth;
+    const H = canvas.clientHeight;
+    if (W <= 0 || H <= 0) return;
+
     canvas.width  = W;
     canvas.height = H;
+
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
 
-    const effectiveMapW = mapW > 0 ? mapW : W;
-    const effectiveMapH = mapH > 0 ? mapH : H;
+    const effW = mapW > 0 ? mapW : W;
+    const effH = mapH > 0 ? mapH : H;
 
-    const zoom = chooseBestZoom(bbox, effectiveMapW, transform.scale);
+    const zoom = chooseBestZoom(bbox, effW, transform.scale);
     const n    = Math.pow(2, zoom);
 
     const txMin = Math.floor(lonToTileX(bbox.west,  zoom));
@@ -116,37 +99,27 @@ export default function OsmBackground({ bbox, mapW, mapH, transform, opacity = 0
     const tyMin = Math.floor(latToTileY(bbox.north, zoom));
     const tyMax = Math.ceil( latToTileY(bbox.south, zoom));
 
-    const mercNorth = latToMercY(bbox.north);
-    const mercSouth = latToMercY(bbox.south);
-    const mercRange = mercNorth - mercSouth;
-    const lonWest   = bbox.west * Math.PI / 180;
-    const lonRange  = (bbox.east - bbox.west) * Math.PI / 180;
+    const mercNorth  = latToMercY(bbox.north);
+    const mercSouth  = latToMercY(bbox.south);
+    const mercRange  = mercNorth - mercSouth;
+    const lonWest    = bbox.west  * Math.PI / 180;
+    const lonRange   = (bbox.east - bbox.west) * Math.PI / 180;
 
     const tileToMercN  = ty => Math.PI * (1 - 2 * ty / n);
     const tileToLonRad = tx => (tx / n) * 2 * Math.PI - Math.PI;
 
     const geoToScreen = (mercN, lonRad) => ({
-      x: ((lonRad - lonWest) / lonRange) * effectiveMapW * transform.scale + transform.x,
-      y: ((mercNorth - mercN) / mercRange) * effectiveMapH * transform.scale + transform.y,
+      x: ((lonRad - lonWest) / lonRange) * effW * transform.scale + transform.x,
+      y: ((mercNorth - mercN) / mercRange) * effH * transform.scale + transform.y,
     });
 
     const renderId = ++renderIdRef.current;
 
-    const jobs = [];
-    for (let tx = txMin; tx < txMax; tx++) {
-      for (let ty = tyMin; ty < tyMax; ty++) {
-        const url = TILE_SOURCES[0].replace('{z}', zoom).replace('{x}', tx).replace('{y}', ty);
-        jobs.push(loadTileImage(url).then(img => ({ img, tx, ty })));
-      }
-    }
-
-    // Draw immediately with whatever is already cached
-    const drawAll = (tiles) => {
+    const drawTiles = (tiles) => {
       if (renderIdRef.current !== renderId) return;
       ctx.clearRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-
       for (const { img, tx, ty } of tiles) {
         if (!img) continue;
         const tl = geoToScreen(tileToMercN(ty),     tileToLonRad(tx));
@@ -158,43 +131,41 @@ export default function OsmBackground({ bbox, mapW, mapH, transform, opacity = 0
       }
     };
 
-    // Do an optimistic draw with already-cached tiles, then again when all load
-    const cachedTiles = [];
-    const pendingJobs = [];
+    // Collect all tile jobs; also do an optimistic draw with cached ones
+    const cachedNow = [];
+    const jobs = [];
     for (let tx = txMin; tx < txMax; tx++) {
       for (let ty = tyMin; ty < tyMax; ty++) {
-        const url = TILE_SOURCES[0].replace('{z}', zoom).replace('{x}', tx).replace('{y}', ty);
-        const cached = tileCache.get(url);
-        if (cached instanceof HTMLImageElement) {
-          cachedTiles.push({ img: cached, tx, ty });
-        }
-        pendingJobs.push(loadTileImage(url).then(img => ({ img, tx, ty })));
+        const url = TILE_SOURCES[0]
+          .replace('{z}', zoom)
+          .replace('{x}', tx)
+          .replace('{y}', ty);
+        const c = tileCache.get(url);
+        if (c instanceof HTMLImageElement) cachedNow.push({ img: c, tx, ty });
+        jobs.push(loadTile(url).then(img => ({ img, tx, ty })));
       }
     }
 
-    if (cachedTiles.length > 0) drawAll(cachedTiles);
-
-    Promise.all(pendingJobs).then(tiles => drawAll(tiles));
+    if (cachedNow.length > 0) drawTiles(cachedNow);
+    Promise.all(jobs).then(drawTiles);
 
     return () => { renderIdRef.current++; };
-  }, [bbox, mapW, mapH, transform, size]);
+  }, [bbox, mapW, mapH, transform, opacity]);
 
   return (
-    <div
-      ref={containerRef}
+    <canvas
+      ref={canvasRef}
       style={{
         position: 'absolute',
         inset: 0,
+        width: '100%',
+        height: '100%',
+        display: 'block',
         pointerEvents: 'none',
         zIndex: 0,
         opacity,
         transition: 'opacity 0.15s',
       }}
-    >
-      <canvas
-        ref={canvasRef}
-        style={{ display: 'block', width: '100%', height: '100%' }}
-      />
-    </div>
+    />
   );
 }
