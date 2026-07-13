@@ -88,9 +88,13 @@ function MapSyncHandler({ onTransformChange, jumpRef, osmBbox }) {
     if (!jumpRef || !osmBbox) return;
     jumpRef.current = (mapX, mapY, mapW, mapH) => {
       if (!osmBbox || !mapW || !mapH) return;
-      const lat = osmBbox.north - (mapY / mapH) * (osmBbox.north - osmBbox.south);
-      const lng = osmBbox.west  + (mapX / mapW) * (osmBbox.east  - osmBbox.west);
-      map.setView([lat, lng], map.getZoom());
+      const z = map.getZoom();
+      const swPx = map.project([osmBbox.south, osmBbox.west], z);
+      const nePx = map.project([osmBbox.north, osmBbox.east], z);
+      const projX = swPx.x + (mapX / mapW) * (nePx.x - swPx.x);
+      const projY = nePx.y + (mapY / mapH) * (swPx.y - nePx.y);
+      const latlng = map.unproject([projX, projY], z);
+      map.setView(latlng, z);
     };
   }, [jumpRef, map, osmBbox]);
 
@@ -137,18 +141,20 @@ function PaintCanvas({
     return () => map.off('resize', resize);
   }, [map]);
 
-  // Convert screen point → layer pixel coordinate given the bbox alignment
+  // Convert screen point → layer pixel coordinate using Mercator-correct projection
   const screenToMapPx = useCallback((clientX, clientY) => {
     if (!osmBbox || !mapW || !mapH) return null;
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const sx = clientX - rect.left, sy = clientY - rect.top;
-    // Convert screen px → latlng via Leaflet
-    const latlng = map.containerPointToLatLng([sx, sy]);
-    const { north, south, west, east } = osmBbox;
-    const fracX = (latlng.lng - west)  / (east  - west);
-    const fracY = (latlng.lat - north) / (south - north); // note: south > north in screen space
+    const z = map.getZoom();
+    const swPx = map.project([osmBbox.south, osmBbox.west], z);
+    const nePx = map.project([osmBbox.north, osmBbox.east], z);
+    const pt = map.containerPointToLatLng([sx, sy]);
+    const mPx = map.project(pt, z);
+    const fracX = (mPx.x - swPx.x) / (nePx.x - swPx.x);
+    const fracY = (mPx.y - nePx.y) / (swPx.y - nePx.y); // nePx.y < swPx.y in Mercator
     const px = Math.round(fracX * mapW);
     const py = Math.round(fracY * mapH);
     return { px, py, fracX, fracY };

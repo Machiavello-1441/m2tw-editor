@@ -62,17 +62,40 @@ function useResourceIcons() {
 
 /**
  * Convert M2TW map pixel coords to Leaflet screen pixel coords.
+ * Uses Mercator-correct projection: the TGA is georeferenced via ImageOverlay
+ * which stretches it in Mercator space, so we must use the same projection.
  * osmBbox: { north, south, east, west }
  * mapW, mapH: TGA pixel dimensions
  */
 function mapCoordToScreen(mx, my, osmBbox, mapW, mapH, leafletMap) {
   if (!osmBbox || !mapW || !mapH || !leafletMap) return null;
-  // M2TW Y is flipped (0=bottom), convert to top-down
+  const L = leafletMap.options.crs || window.L?.CRS?.EPSG3857;
+  // Project bbox corners to Mercator meters
+  const swPx = leafletMap.project([osmBbox.south, osmBbox.west], leafletMap.getZoom());
+  const nePx = leafletMap.project([osmBbox.north, osmBbox.east], leafletMap.getZoom());
+  // M2TW Y=0 is bottom of map → flip
   const flippedY = mapH - 1 - my;
-  const lat = osmBbox.north - (flippedY / mapH) * (osmBbox.north - osmBbox.south);
-  const lng = osmBbox.west  + (mx / mapW)  * (osmBbox.east  - osmBbox.west);
-  const pt = leafletMap.latLngToContainerPoint([lat, lng]);
+  // Interpolate linearly in projected (Mercator) pixel space
+  const projX = swPx.x + (mx / mapW) * (nePx.x - swPx.x);
+  const projY = nePx.y + (flippedY / mapH) * (swPx.y - nePx.y);
+  // Convert back to screen container point
+  const containerPt = leafletMap.unproject([projX, projY], leafletMap.getZoom());
+  const pt = leafletMap.latLngToContainerPoint(containerPt);
   return { sx: pt.x, sy: pt.y };
+}
+
+/**
+ * Convert a Leaflet container point back to M2TW map pixel coords.
+ */
+function screenToMapCoord(sx, sy, osmBbox, mapW, mapH, leafletMap) {
+  const swPx = leafletMap.project([osmBbox.south, osmBbox.west], leafletMap.getZoom());
+  const nePx = leafletMap.project([osmBbox.north, osmBbox.east], leafletMap.getZoom());
+  const latlng = leafletMap.containerPointToLatLng([sx, sy]);
+  const pt = leafletMap.project(latlng, leafletMap.getZoom());
+  const mx = Math.round((pt.x - swPx.x) / (nePx.x - swPx.x) * mapW);
+  const flippedY = Math.round((pt.y - nePx.y) / (swPx.y - nePx.y) * mapH);
+  const my = mapH - 1 - flippedY;
+  return { mx, my };
 }
 
 /** Inner component that lives inside MapContainer and has access to map context */
@@ -110,20 +133,14 @@ function StratOverlayInner({
       if (!draggingRef.current || !onMoveItem) return;
       const rect = svgRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
-      const latlng = map.containerPointToLatLng([sx, sy]);
-      const mx = Math.round((latlng.lng - osmBbox.west) / (osmBbox.east - osmBbox.west) * mapW);
-      const my = Math.round(mapH - 1 - ((latlng.lat - osmBbox.south) / (osmBbox.north - osmBbox.south) * mapH));
+      const { mx, my } = screenToMapCoord(e.clientX - rect.left, e.clientY - rect.top, osmBbox, mapW, mapH, map);
       onMoveItem(draggingRef.current.id, mx, my, false);
     };
     const onUp = (e) => {
       if (!draggingRef.current || !onMoveItem) { draggingRef.current = null; map.dragging.enable(); return; }
       const rect = svgRef.current?.getBoundingClientRect();
       if (rect) {
-        const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
-        const latlng = map.containerPointToLatLng([sx, sy]);
-        const mx = Math.round((latlng.lng - osmBbox.west) / (osmBbox.east - osmBbox.west) * mapW);
-        const my = Math.round(mapH - 1 - ((latlng.lat - osmBbox.south) / (osmBbox.north - osmBbox.south) * mapH));
+        const { mx, my } = screenToMapCoord(e.clientX - rect.left, e.clientY - rect.top, osmBbox, mapW, mapH, map);
         onMoveItem(draggingRef.current.id, mx, my, true);
       }
       draggingRef.current = null;
