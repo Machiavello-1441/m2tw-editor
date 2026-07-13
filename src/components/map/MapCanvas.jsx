@@ -363,6 +363,8 @@ export default function MapCanvas({
   showTooltip = true,
   osmBbox = null,
   osmOpacity = 0.6,
+  showOsm = true,
+  showTopo = true,
   onTransformChange,
   regionsData,
   settlementNames,
@@ -397,14 +399,14 @@ export default function MapCanvas({
         <TileLayer
           url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
           attribution='&copy; OpenStreetMap contributors, HOT'
-          opacity={osmOpacity}
+          opacity={showOsm ? osmOpacity : 0}
           maxZoom={19}
         />
         {/* OpenTopoMap — stacked on top at reduced opacity */}
         <TileLayer
           url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
           attribution='&copy; OpenTopoMap contributors'
-          opacity={Math.max(0, osmOpacity - 0.3)}
+          opacity={showTopo ? Math.max(0, osmOpacity - 0.3) : 0}
           maxZoom={17}
         />
 
