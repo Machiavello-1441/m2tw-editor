@@ -1,12 +1,11 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Map, CheckSquare, Globe, FolderOpen, Box, Layers } from 'lucide-react';
-import OsmBackground from '../components/map/OsmBackground';
 import CoastlineTracer from '../components/map/CoastlineTracer';
 import Map3DPreview from '../components/map/Map3DPreview';
 import MapCanvas, { floodFillRGB } from '../components/map/MapCanvas';
 import MapPaintToolbar from '../components/map/MapPaintToolbar';
 import MapValidationPanel from '../components/map/MapValidationPanel';
-import StratOverlay from '../components/map/StratOverlay';
+
 import StratPanel from '../components/map/StratPanel';
 import NewRegionPaintWizard from '../components/map/NewRegionPaintWizard';
 import { loadTGA } from '../components/map/tgaLoader';
@@ -61,7 +60,7 @@ export default function CampaignMap() {
   const [overlayDirty, setOverlayDirty] = useState(false);
   const [paintState, setPaintState] = useState(INITIAL_PAINT);
   const [activeTab, setActiveTab] = useState('strat');
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [showPixelGrid, setShowPixelGrid] = useState(false);
   const [regionsMode, setRegionsMode] = useState('fill');
 
@@ -1182,15 +1181,8 @@ export default function CampaignMap() {
         {/* Canvas */}
         <div className="flex-1 relative min-w-0">
           <MapCanvas
-            osmBackground={osmBbox ? (
-              <OsmBackground
-                bbox={osmBbox}
-                mapW={mapW2 || 256}
-                mapH={mapH || 256}
-                transform={transform}
-                opacity={osmOpacity}
-              />
-            ) : null}
+            osmBbox={osmBbox}
+            osmOpacity={osmOpacity}
             layers={layers}
             regionsMode={regionsMode}
             onRegionClick={handleCanvasClick}
@@ -1203,17 +1195,12 @@ export default function CampaignMap() {
             regionsData={regionsData}
             settlementNames={settlementNames}
             highlightRegion={selectedRegion}
-          />
-          {/* Strat SVG overlay */}
-          <StratOverlay
-            items={overlayItems}
-            transform={transform}
-            mapH={mapH}
+            overlayItems={overlayItems}
             visibleCategories={visibleCategories}
             selectedId={selectedItem?.id}
-            onSelect={setSelectedItem}
+            onSelectItem={setSelectedItem}
             onMoveItem={handleMoveItem}
-            onDoubleClick={(item) => {
+            onDoubleClickItem={(item) => {
               setSelectedItem(item);
               setActiveTab('strat');
               setStratPanelOpenItemId(item.category === 'character' ? item.id : null);
@@ -1292,7 +1279,7 @@ export default function CampaignMap() {
                   }}
                   onSelectItem={(item) => {
                     setSelectedItem(item);
-                    if (jumpRef.current && item.x != null) jumpRef.current(item.x, mapH > 0 ? mapH - 1 - item.y : item.y);
+                    if (jumpRef.current && item.x != null) jumpRef.current(item.x, mapH > 0 ? mapH - 1 - item.y : item.y, mapW2, mapH);
                     // Highlight region on map when selecting a settlement
                     if (item.category === 'settlement' && item.region && regionsData) {
                       const reg = regionsData.find(r => r.regionName === item.region);
