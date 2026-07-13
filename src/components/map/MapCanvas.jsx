@@ -283,8 +283,10 @@ function PaintCanvas({
     const { layerId, paintColor, brushSize } = paintState;
     const layer = layers[layerId];
     if (!layer?.data) return;
-    const lx = Math.floor(pos.px * (layer.width  / mapW));
-    const ly = Math.floor(pos.py * (layer.height / mapH));
+    // Go directly from geographic fractions → layer pixel space to avoid
+    // any intermediate rounding through mapW/mapH (which may differ in resolution)
+    const lx = Math.floor(pos.fracX * layer.width);
+    const ly = Math.floor(pos.fracY * layer.height);
     if (lx < 0 || ly < 0 || lx >= layer.width || ly >= layer.height) return;
     if (tool === 'bucket') {
       onPaint('bucket', layerId, paintColor, null, { x: lx, y: ly });
@@ -356,8 +358,8 @@ function PaintCanvas({
         for (const def of LAYER_DEFS) {
           const state = layers[def.id];
           if (!state?.data) continue;
-          const nx = Math.floor(pos.px * (state.width / mapW));
-          const ny = Math.floor(pos.py * (state.height / mapH));
+          const nx = Math.floor(pos.fracX * state.width);
+          const ny = Math.floor(pos.fracY * state.height);
           const idx = (ny * state.width + nx) * 4;
           pixelData[def.id] = { r: state.data[idx], g: state.data[idx+1], b: state.data[idx+2], a: state.data[idx+3] };
         }
@@ -378,8 +380,8 @@ function PaintCanvas({
       const pos = screenToMapPx(e.clientX, e.clientY);
       if (pos) {
         const regL = layers['regions'];
-        const rx = Math.floor(pos.px * ((regL?.width || mapW) / mapW));
-        const ry = Math.floor(pos.py * ((regL?.height || mapH) / mapH));
+        const rx = Math.floor(pos.fracX * (regL?.width || mapW));
+        const ry = Math.floor(pos.fracY * (regL?.height || mapH));
         if (rx >= 0 && ry >= 0) onRegionClick(rx, ry);
       }
     }
