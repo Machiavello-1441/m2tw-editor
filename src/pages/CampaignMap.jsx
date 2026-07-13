@@ -140,8 +140,8 @@ export default function CampaignMap() {
   const [pendingCoordPick, setPendingCoordPick] = useState(null); // callback(x, y) waiting for map click
   const [osmBbox, setOsmBbox] = useState(null); // { north, south, east, west } from bbox_coords.txt
   const [osmOpacity, setOsmOpacity] = useState(0.5);
-  const [showOsm, setShowOsm] = useState(true);
-  const [showTopo, setShowTopo] = useState(true);
+  const [showOsm, setShowOsm] = useState(false);
+  const [showTopo, setShowTopo] = useState(false);
   const [showCoastlineTracer, setShowCoastlineTracer] = useState(false);
 
   // ── Extra data sources for region editor ──────────────────────────────────

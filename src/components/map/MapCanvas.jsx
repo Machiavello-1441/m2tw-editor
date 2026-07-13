@@ -493,6 +493,38 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
   );
 }
 
+/** Fallback flat canvas renderer when no bbox is set — renders TGAs stacked */
+function FlatCanvasView({ layers, regionsMode }) {
+  const canvasRef = useRef(null);
+  const { w: mapW, h: mapH } = getMapSize(layers);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !mapW || !mapH) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const id of DRAW_ORDER) {
+      const state = layers[id];
+      const def = LAYER_DEFS.find(d => d.id === id);
+      if (!state?.bitmap) continue;
+      if (!(state.visible ?? def?.defaultVisible)) continue;
+      ctx.globalAlpha = state.opacity ?? def?.defaultOpacity ?? 1;
+      ctx.drawImage(state.bitmap, 0, 0, canvas.width, canvas.height);
+    }
+    ctx.globalAlpha = 1;
+  }, [layers, regionsMode, mapW, mapH]);
+
+  if (!mapW || !mapH) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      width={mapW}
+      height={mapH}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', imageRendering: 'pixelated', objectFit: 'contain' }}
+    />
+  );
+}
+
 // ── Main exported component ────────────────────────────────────────────────
 
 export default function MapCanvas({
@@ -526,23 +558,47 @@ export default function MapCanvas({
     : [45, 15];
   const defaultZoom = osmBbox ? 5 : 4;
 
+  // Without bbox: show TGAs as a flat canvas, hide OSM tiles
+  if (!osmBbox) {
+    return (
+      <div className="relative w-full h-full bg-slate-950">
+        {anyLoaded
+          ? <FlatCanvasView layers={layers} regionsMode={regionsMode} />
+          : (
+            <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm flex-col gap-3 pointer-events-none">
+              <div className="text-4xl">🗺️</div>
+              <div className="bg-slate-900/80 rounded px-4 py-2 text-center">
+                Load TGA map files or import a <strong>bbox_coords.txt</strong> to align with the OSM map
+              </div>
+            </div>
+          )
+        }
+        {anyLoaded && (
+          <div className="absolute bottom-3 left-3 text-[10px] text-slate-400 font-mono bg-slate-900/70 rounded px-2 py-1 z-10 pointer-events-none">
+            {mapW}×{mapH} — no bbox (flat view)
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-full">
       <MapContainer
-        key={osmBbox ? `${osmBbox.north}-${osmBbox.west}` : 'no-bbox'}
+        key={`${osmBbox.north}-${osmBbox.west}`}
         center={defaultCenter}
         zoom={defaultZoom}
         style={{ width: '100%', height: '100%', background: '#1e293b' }}
         zoomControl={true}
       >
-        {/* OSM Humanitarian tile layer — base reference */}
+        {/* OSM Humanitarian tile layer — hidden by default until user enables */}
         <TileLayer
           url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
           attribution='&copy; OpenStreetMap contributors, HOT'
           opacity={showOsm ? osmOpacity : 0}
           maxZoom={19}
         />
-        {/* OpenTopoMap — stacked on top at reduced opacity */}
+        {/* OpenTopoMap — hidden by default until user enables */}
         <TileLayer
           url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
           attribution='&copy; OpenTopoMap contributors'
@@ -551,9 +607,7 @@ export default function MapCanvas({
         />
 
         {/* TGA layer overlays */}
-        {osmBbox && (
-          <TgaLayerOverlays layers={layers} regionsMode={regionsMode} osmBbox={osmBbox} />
-        )}
+        <TgaLayerOverlays layers={layers} regionsMode={regionsMode} osmBbox={osmBbox} />
 
         <MapSyncHandler onTransformChange={onTransformChange} jumpRef={jumpRef} osmBbox={osmBbox} />
 
@@ -583,15 +637,6 @@ export default function MapCanvas({
           showPixelGrid={showPixelGrid}
         />
       </MapContainer>
-
-      {!anyLoaded && !osmBbox && (
-        <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm flex-col gap-3 pointer-events-none z-10">
-          <div className="text-4xl">🗺️</div>
-          <div className="bg-slate-900/80 rounded px-4 py-2 text-center">
-            Load TGA map files and import a <strong>bbox_coords.txt</strong> to align the OSM map
-          </div>
-        </div>
-      )}
 
       {/* Status bar */}
       {anyLoaded && (
