@@ -130,6 +130,22 @@ function PaintCanvas({
   const [probe, setProbe] = useState(null);
   const { w: mapW, h: mapH } = getMapSize(layers);
 
+  // Dimensions to use for the grid and cursor preview:
+  // when painting, use the active layer's own dimensions;
+  // otherwise use the topmost visible layer's dimensions.
+  const getGridDims = useCallback(() => {
+    if (paintState?.active && paintState.layerId) {
+      const l = layers[paintState.layerId];
+      if (l?.width && l?.height) return { gW: l.width, gH: l.height };
+    }
+    // topmost visible layer (reverse draw order)
+    for (const id of [...DRAW_ORDER].reverse()) {
+      const l = layers[id];
+      if (l?.bitmap && (l.visible ?? true)) return { gW: l.width || l.bitmap.width, gH: l.height || l.bitmap.height };
+    }
+    return { gW: mapW, gH: mapH };
+  }, [paintState, layers, mapW, mapH]);
+
   // Keep canvas sized to the Leaflet container
   useEffect(() => {
     const container = map.getContainer();
@@ -197,71 +213,65 @@ function PaintCanvas({
     const nePx = map.project([osmBbox.north, osmBbox.east], z);
     const totalProjW = nePx.x - swPx.x;
     const totalProjH = swPx.y - nePx.y; // swPx.y > nePx.y
+    const bounds = map.getPixelBounds();
+    const scaleX = canvas.width  / (bounds.max.x - bounds.min.x);
+    const scaleY = canvas.height / (bounds.max.y - bounds.min.y);
 
-    // Screen size of one map pixel
-    const screenPixelW = (totalProjW / mapW) * (canvas.width  / (map.getPixelBounds().max.x - map.getPixelBounds().min.x));
-    const screenPixelH = (totalProjH / mapH) * (canvas.height / (map.getPixelBounds().max.y - map.getPixelBounds().min.y));
+    // Helper: map-image pixel → screen rect
+    const cellRect = (gW, gH, px, py) => {
+      const x0 = (swPx.x + (px       / gW) * totalProjW - bounds.min.x) * scaleX;
+      const x1 = (swPx.x + ((px + 1) / gW) * totalProjW - bounds.min.x) * scaleX;
+      const y0 = (nePx.y + (py       / gH) * totalProjH - bounds.min.y) * scaleY;
+      const y1 = (nePx.y + ((py + 1) / gH) * totalProjH - bounds.min.y) * scaleY;
+      return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+    };
 
     // ── Pixel grid ─────────────────────────────────────────────────────────
-    if (showPixelGrid && screenPixelW >= 4) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = 0.5;
-      const bounds = map.getPixelBounds();
-      // vertical lines
-      for (let gx = 0; gx <= mapW; gx++) {
-        const projX = swPx.x + (gx / mapW) * totalProjW;
-        const screenX = (projX - bounds.min.x) * (canvas.width / (bounds.max.x - bounds.min.x));
-        ctx.beginPath();
-        ctx.moveTo(screenX, 0);
-        ctx.lineTo(screenX, canvas.height);
-        ctx.stroke();
+    if (showPixelGrid) {
+      const { gW, gH } = getGridDims();
+      // Screen size of one pixel in this layer
+      const spW = (totalProjW / gW) * scaleX;
+      if (spW >= 4) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 0.5;
+        for (let gx = 0; gx <= gW; gx++) {
+          const screenX = (swPx.x + (gx / gW) * totalProjW - bounds.min.x) * scaleX;
+          ctx.beginPath(); ctx.moveTo(screenX, 0); ctx.lineTo(screenX, canvas.height); ctx.stroke();
+        }
+        for (let gy = 0; gy <= gH; gy++) {
+          const screenY = (nePx.y + (gy / gH) * totalProjH - bounds.min.y) * scaleY;
+          ctx.beginPath(); ctx.moveTo(0, screenY); ctx.lineTo(canvas.width, screenY); ctx.stroke();
+        }
+        ctx.restore();
       }
-      // horizontal lines
-      for (let gy = 0; gy <= mapH; gy++) {
-        const projY = nePx.y + (gy / mapH) * totalProjH;
-        const screenY = (projY - bounds.min.y) * (canvas.height / (bounds.max.y - bounds.min.y));
-        ctx.beginPath();
-        ctx.moveTo(0, screenY);
-        ctx.lineTo(canvas.width, screenY);
-        ctx.stroke();
-      }
-      ctx.restore();
     }
 
     // ── Cursor / brush preview ─────────────────────────────────────────────
     const cur = cursorPosRef.current;
-    if (cur && paintState?.active && paintState.tool === 'pencil' && osmBbox) {
-      const { px: cpx, py: cpy } = cur;
+    if (cur && paintState?.active && paintState.tool === 'pencil') {
+      const { gW, gH } = getGridDims();
+      // cursorPosRef stores fractions relative to mapW/mapH; convert to active layer px
+      const cpx = Math.floor(cur.fracX * gW);
+      const cpy = Math.floor(cur.fracY * gH);
       const { paintColor, brushSize = 1 } = paintState;
       const half = Math.floor(brushSize / 2);
-      const bounds = map.getPixelBounds();
       ctx.save();
       for (let dy = -half; dy <= half; dy++) {
         for (let dx = -half; dx <= half; dx++) {
           const bx = cpx + dx, by = cpy + dy;
-          // screen position of this cell's top-left
-          const projX0 = swPx.x + (bx / mapW) * totalProjW;
-          const projX1 = swPx.x + ((bx + 1) / mapW) * totalProjW;
-          const projY0 = nePx.y + (by / mapH) * totalProjH;
-          const projY1 = nePx.y + ((by + 1) / mapH) * totalProjH;
-          const sx0 = (projX0 - bounds.min.x) * (canvas.width  / (bounds.max.x - bounds.min.x));
-          const sx1 = (projX1 - bounds.min.x) * (canvas.width  / (bounds.max.x - bounds.min.x));
-          const sy0 = (projY0 - bounds.min.y) * (canvas.height / (bounds.max.y - bounds.min.y));
-          const sy1 = (projY1 - bounds.min.y) * (canvas.height / (bounds.max.y - bounds.min.y));
-          const w = Math.max(1, sx1 - sx0), h = Math.max(1, sy1 - sy0);
-          // semi-transparent fill in paint colour
+          if (bx < 0 || by < 0 || bx >= gW || by >= gH) continue;
+          const { x, y, w, h } = cellRect(gW, gH, bx, by);
           ctx.fillStyle = `rgba(${paintColor.r},${paintColor.g},${paintColor.b},0.6)`;
-          ctx.fillRect(sx0, sy0, w, h);
-          // white outline
+          ctx.fillRect(x, y, w, h);
           ctx.strokeStyle = 'rgba(255,255,255,0.9)';
           ctx.lineWidth = 1;
-          ctx.strokeRect(sx0 + 0.5, sy0 + 0.5, w - 1, h - 1);
+          ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
         }
       }
       ctx.restore();
     }
-  }, [map, osmBbox, mapW, mapH, showPixelGrid, paintState]);
+  }, [map, osmBbox, mapW, mapH, showPixelGrid, paintState, getGridDims]);
 
   // Redraw canvas whenever relevant state changes
   useEffect(() => { drawCanvas(); }, [drawCanvas]);
@@ -312,10 +322,10 @@ function PaintCanvas({
     if (Math.abs(dx) > 2 || Math.abs(dy) > 2) didDrag.current = true;
     lastMouse.current = { x: e.clientX, y: e.clientY };
 
-    // Update cursor preview position
+    // Update cursor preview position (store fracs so drawCanvas uses active layer dims)
     if (osmBbox && mapW > 0) {
       const pos = screenToMapPx(e.clientX, e.clientY);
-      cursorPosRef.current = pos && pos.px >= 0 && pos.py >= 0 ? pos : null;
+      cursorPosRef.current = pos && pos.fracX >= 0 && pos.fracX <= 1 && pos.fracY >= 0 && pos.fracY <= 1 ? pos : null;
     }
 
     // Throttle paint calls via RAF
