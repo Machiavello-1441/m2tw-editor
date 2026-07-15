@@ -35,6 +35,33 @@ function latToMercN(lat) {
   return Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
 }
 
+// Classify a Nominatim result into a short, color-coded tag so visually
+// identical results (e.g. "Trapani, Sicily" as a city, a commune, a province
+// and a metropolitan area) become distinguishable.
+function classifyNominatimResult(r) {
+  const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  const at = (r.addresstype || r.type || '').toLowerCase();
+  const lvl = r.extratags && r.extratags.admin_level ? parseInt(r.extratags.admin_level, 10) : null;
+  if (r.osm_type === 'node') {
+    if (['city', 'town', 'village', 'hamlet', 'suburb', 'neighbourhood'].includes(at))
+      return { label: cap(at), cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+    return { label: 'Settlement', cls: 'bg-amber-500/10 text-amber-200 border-amber-500/20' };
+  }
+  if (r.class === 'boundary' || r.type === 'administrative' || lvl !== null) {
+    if (lvl === 2) return { label: 'Country', cls: 'bg-rose-500/15 text-rose-300 border-rose-500/30' };
+    if (lvl === 4 || lvl === 5) return { label: 'Region', cls: 'bg-violet-500/20 text-violet-300 border-violet-500/30' };
+    if (lvl === 6 || lvl === 7) return { label: 'Province', cls: 'bg-sky-500/20 text-sky-300 border-sky-500/30' };
+    if (lvl === 8) return { label: 'Commune', cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' };
+    if (lvl === 9 || lvl === 10 || lvl === 11) return { label: 'District', cls: 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20' };
+    if (at === 'state' || at === 'region') return { label: 'Region', cls: 'bg-violet-500/20 text-violet-300 border-violet-500/30' };
+    if (at === 'county') return { label: 'Province', cls: 'bg-sky-500/20 text-sky-300 border-sky-500/30' };
+    return { label: 'Admin', cls: 'bg-slate-500/20 text-slate-300 border-slate-500/30' };
+  }
+  if (['city', 'town', 'village', 'hamlet'].includes(at))
+    return { label: cap(at), cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+  return { label: at ? cap(at) : 'Place', cls: 'bg-slate-500/15 text-slate-300 border-slate-500/25' };
+}
+
 function latLngToPixel(lat, lng, bbox, width, height) {
   const mercNorth = latToMercN(bbox.north);
   const mercSouth = latToMercN(bbox.south);
@@ -86,7 +113,7 @@ export default function RegionsWorkshop({
     setStatus('Searching Nominatim…');
     try {
       const bboxStr = `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`;
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=10&bounded=1&viewbox=${bboxStr}&featuretype=settlement,city,town,village`;
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=12&bounded=1&viewbox=${bboxStr}&extratags=1&addressdetails=1`;
       const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
       const data = await res.json();
       setSearchResults(data);
@@ -203,13 +230,28 @@ export default function RegionsWorkshop({
 
             {searchResults.length > 0 && (
               <div className="bg-slate-800 border border-slate-700 rounded max-h-36 overflow-y-auto">
-                {searchResults.map((r, i) => (
-                  <button key={i} onClick={() => addSettlement(r)}
-                    className="w-full text-left px-2 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 border-b border-slate-700 last:border-0 flex items-center gap-2 transition-colors">
-                    <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span className="truncate">{r.display_name.split(',').slice(0, 2).join(',')}</span>
-                  </button>
-                ))}
+                {searchResults.map((r, i) => {
+                  const tag = classifyNominatimResult(r);
+                  const parts = (r.display_name || '').split(',').map(s => s.trim());
+                  const top = parts[0] || r.name || '';
+                  const sub = parts.slice(1, 3).join(', ');
+                  return (
+                    <button key={i} onClick={() => addSettlement(r)}
+                      className="w-full text-left px-2 py-1.5 hover:bg-slate-700 border-b border-slate-700 last:border-0 flex items-start gap-1.5 transition-colors">
+                      <MapPin className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-slate-200 truncate flex-1">{top}</span>
+                          <span className={`shrink-0 px-1 py-0.5 rounded text-[8px] font-semibold leading-none border ${tag.cls}`}
+                            title={r.extratags && r.extratags.admin_level ? `admin_level ${r.extratags.admin_level}` : tag.label}>
+                            {tag.label}{r.extratags && r.extratags.admin_level ? ` ${r.extratags.admin_level}` : ''}
+                          </span>
+                        </div>
+                        {sub && <div className="text-[9px] text-slate-500 truncate">{sub}</div>}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
