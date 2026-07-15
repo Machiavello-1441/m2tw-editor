@@ -44,8 +44,9 @@ export default function WorkflowPanel({
 
   const importRefs = { heights: heightsImportRef, ground: groundImportRef, climates: climatesImportRef, features: featuresImportRef, regions: regionsImportRef };
 
-  /** Generic import handler: reads .tga or image, scales to map size, pushes to layer. */
-  const handleImportLayer = async (layerId, file) => {
+  /** Generic import handler: reads .tga or image, scales to map size, pushes to layer.
+   *  Optional onDone fires after the layer is committed (used to auto-advance the workflow). */
+  const handleImportLayer = async (layerId, file, onDone) => {
     if (!file) return;
     const isTga = file.name.toLowerCase().endsWith('.tga');
     let dataUrl;
@@ -64,16 +65,17 @@ export default function WorkflowPanel({
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 0, 0, mapWidth, mapHeight);
       onLayerUpdate(layerId, { imageData: ctx.getImageData(0, 0, mapWidth, mapHeight), visible: true, opacity: 1, dirty: true });
+      if (typeof onDone === 'function') onDone();
     };
     img.src = dataUrl;
   };
 
-  const ImportButton = ({ layerId, label }) => {
+  const ImportButton = ({ layerId, label, onDone }) => {
     const hasData = !!layers[layerId]?.imageData;
     return (
       <div className="flex items-center gap-1.5">
         <input ref={importRefs[layerId]} type="file" accept=".tga,.png,image/png" className="hidden"
-          onChange={e => { handleImportLayer(layerId, e.target.files?.[0]); e.target.value = ''; }} />
+          onChange={e => { handleImportLayer(layerId, e.target.files?.[0], onDone); e.target.value = ''; }} />
         <button
           onClick={() => importRefs[layerId].current?.click()}
           className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] border transition-colors font-semibold ${hasData ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'}`}>
@@ -126,7 +128,15 @@ export default function WorkflowPanel({
 
                 {/* Heights */}
                 {step.id === 'heights' && (
-                  <ImportButton layerId="heights" label="Heightmap" />
+                  <>
+                    <ImportButton layerId="heights" label="Heightmap"
+                      onDone={() => onValidateAndNext('heights')} />
+                    <p className="text-[9px] text-slate-500 flex items-start gap-1">
+                      <span className="text-slate-500 shrink-0">⤴</span>
+                      Upload an existing <strong className="text-slate-300">.tga</strong> or <strong className="text-slate-300">.png</strong>{' '}
+                      heightmap to skip painting and proceed to Ground Types.
+                    </p>
+                  </>
                 )}
 
                 {/* Ground type step: range editor + auto-generate + import */}
