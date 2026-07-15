@@ -706,6 +706,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                 <ReligionsEditor
                   religions={draft.religions}
                   availableReligions={religionList}
+                  showAll
                   onChange={(v) => setDraft((d) => ({ ...d, religions: v }))}
                 />
               </div>

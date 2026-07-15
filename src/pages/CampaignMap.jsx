@@ -192,7 +192,13 @@ export default function CampaignMap() {
     return [...new Set([...fromFactions, ...fromPlayable])];
   }, [stratData]);
   const rebelFactionList   = useMemo(() => rebelFactions.map(f => f.name || f).filter(Boolean), [rebelFactions]);
-  const religionList       = useMemo(() => religions.map(r => r.name || r).filter(Boolean), [religions]);
+  // Canonical M2TW religions used as a fallback when descr_religions.txt isn't loaded,
+  // so the religion editors stay usable for brand-new regions without preloading a file.
+  const RELIGION_DEFAULTS = ['catholic', 'orthodox', 'islam', 'pagan', 'heretic'];
+  const religionList       = useMemo(() => {
+    const list = religions.map(r => r.name || r).filter(Boolean);
+    return list.length ? list : RELIGION_DEFAULTS;
+  }, [religions]);
   const naturalResList     = useMemo(() => naturalResources.map(r => r.name || r).filter(Boolean), [naturalResources]);
   const mercenaryPoolList  = useMemo(() => mercenaryPools.map(p => p.name || p).filter(Boolean), [mercenaryPools]);
   const musicTypeList      = useMemo(() => musicTypes.map(t => t.name || t).filter(Boolean), [musicTypes]);
