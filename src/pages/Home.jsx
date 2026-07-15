@@ -4,6 +4,7 @@ import { useRefData } from '../components/edb/RefDataContext';
 import { parseEventsFromCampaign } from '../components/edb/EDBParser';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
@@ -148,8 +149,10 @@ function FileStatus({ label, hint, status }) {
 }
 
 export default function Home() {
+  const { toast } = useToast();
   const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadSkeletonFile, loadMountFile, loadCampaignScript, loadGuildsFile } = useRefData();
+  const [loadResult, setLoadResult] = useState({ ok: 0, errors: [] });
 
   const [fileStatus, setFileStatus] = useState(() => {
     // Show 'ok' for files already cached in localStorage from a previous session
@@ -209,11 +212,31 @@ export default function Home() {
 
   const handleDataFolderFromPicker = async (files, campaignFolders, selectedCampaigns) => {
     setLoadingData(true);
-    await processDataFiles(files);
-    setLoadingData(false);
+    setLoadResult({ ok: 0, errors: [] });
+    try {
+      const result = await processDataFiles(files);
+      setLoadResult(result);
+      if (result.errors.length > 0) {
+        toast({
+          variant: 'destructive',
+          title: `Loaded ${files.length - result.errors.length}/${files.length}, failed ${result.errors.length}`,
+          description: result.errors.slice(0, 5).join('\n') + (result.errors.length > 5 ? `\n…(+${result.errors.length - 5} more)` : ''),
+        });
+      } else {
+        toast({ title: 'Data loaded', description: `Loaded ${files.length} file${files.length === 1 ? '' : 's'}` });
+      }
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Load failed', description: err?.message || String(err) });
+    } finally {
+      setLoadingData(false);
+    }
   };
 
   const processDataFiles = async (files) => {
+    // Track per-file outcomes so a single bad file can't silently abort the whole
+    // batch (one uncaught throw here would leave setLoadingData(true) forever and
+    // make the "Load selected files" button appear dead even on later clicks).
+    const result = { ok: 0, errors: [] };
     // Only clear keys for the file types we are actually re-loading in this batch.
     // Wiping everything upfront causes data loss if the browser crashes or the user
     // only loads a partial set of files.
@@ -633,6 +656,7 @@ export default function Home() {
       setBldImgCount(parsed.length);
       setFileStatus((prev) => ({ ...prev, bld_images: 'ok' }));
     }
+    return result;
   };
 
   const handleDataFolder = async (e) => {
