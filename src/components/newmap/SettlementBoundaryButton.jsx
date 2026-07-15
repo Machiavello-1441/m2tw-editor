@@ -43,8 +43,10 @@ async function overpass(query) {
  * contains the settlement point, and rasterizes that polygon onto the
  * regions layer using the settlement's RGB colour. OSM-Boundaries.com serves
  * the exact same OSM administrative-boundary polygons, but its download API
- * requires paid membership/credits, so we query the underlying OSM source
- * directly via the public Overpass API.
+ * requires paid membership/credits, so we fetch the pre-indexed polygon from
+ * Nominatim's lookup API (fast) using the OSM relation id captured at
+ * settlement-add time; place-node settlements without a stored id fall back
+ * to resolving the enclosing boundary via Overpass.
  *
  * Painting rules:
  *  • Pixels outside the boundary polygon are left untouched.
@@ -97,21 +99,31 @@ out tags;`;
         targetRelId = candidates[0].rel_id;
       }
 
-      // 2) Fetch the relation's outer-ring geometry.
-      const geomQuery = `[out:json][timeout:60];
-relation(${targetRelId});
-out geom;`;
-      const geomJson = await overpass(geomQuery);
-      const rel = geomJson.elements && geomJson.elements[0];
-      if (!rel || !rel.members) {
-        throw new Error('Boundary geometry unavailable.');
+      // 2) Fetch the boundary geometry via Nominatim's lookup endpoint with
+      //    polygon_geojson — a single fast request. Nominatim serves
+      //    pre-indexed boundary polygons directly, so this is far faster and
+      //    more reliable than Overpass's out geom on busy public servers
+      //    (which was causing the "Failed to fetch" / 504 timeouts).
+      const lookupUrl = `https://nominatim.openstreetmap.org/lookup?osm_ids=R${targetRelId}&format=jsonv2&polygon_geojson=1&addressdetails=0`;
+      const lookupRes = await fetch(lookupUrl, { headers: { 'Accept-Language': 'en' } });
+      if (!lookupRes.ok) throw new Error(`Nominatim HTTP ${lookupRes.status}`);
+      const lookupJson = await lookupRes.json();
+      const item = lookupJson && lookupJson[0];
+      if (!item || !item.geojson) {
+        throw new Error('Boundary geometry unavailable from Nominatim.');
       }
-      const rings = [];
-      for (const m of rel.members) {
-        if (m.role !== 'outer' || !m.geometry) continue;
-        const pts = m.geometry.map(g => latLngToPixel(g.lat, g.lon, bbox, mapWidth, mapHeight));
-        if (pts.length >= 3) rings.push(pts);
+      const geo = item.geojson;
+      const coordRings = [];
+      if (geo.type === 'Polygon') {
+        coordRings.push(...geo.coordinates);
+      } else if (geo.type === 'MultiPolygon') {
+        for (const poly of geo.coordinates) coordRings.push(...poly);
+      } else {
+        throw new Error('Unsupported boundary geometry type: ' + geo.type);
       }
+      const rings = coordRings
+        .map(ring => ring.map(([lng, lat]) => latLngToPixel(lat, lng, bbox, mapWidth, mapHeight)))
+        .filter(pts => pts.length >= 3);
       if (rings.length === 0) throw new Error('No outer rings found in boundary.');
 
       // 3) Rasterize the polygon(s) onto a hidden canvas (evenodd handles
