@@ -42,10 +42,26 @@ function categorizeFile(file) {
 
 function summarizeFiles(files) {
   const byCategory = {};
+  // Track seen filenames per category to avoid duplicates when the same
+  // .txt file exists in several subfolders of data\ (e.g. a culture/mod layout
+  // has export_buildings.txt in multiple dirs). The loader matches files by
+  // filename only (DATA_FILE_MAP keys on name), so duplicates would silently
+  // overwrite each other at load time anyway — collapse them in the picker
+  // so the list reflects what will actually be loaded.
+  const seenByCat = {};
   for (const file of files) {
     const cat = categorizeFile(file);
     if (!cat) continue;
-    if (!byCategory[cat]) byCategory[cat] = [];
+    if (!byCategory[cat]) { byCategory[cat] = []; seenByCat[cat] = new Set(); }
+    const dedupKey = file.name.toLowerCase();
+    // Only de-dupe categories routed by filename (text, strings_bin which keys
+    // by full filepath on display anyway, and images_terrain). UI/campaign
+    // legitimately contain many same-named files in different subfolders, but
+    // those categories pick by subfolder, not by file — keep them as-is.
+    if (cat === 'text' || cat === 'images_terrain') {
+      if (seenByCat[cat].has(dedupKey)) continue;
+      seenByCat[cat].add(dedupKey);
+    }
     byCategory[cat].push(file);
   }
   return byCategory;
@@ -297,8 +313,17 @@ export default function DataFolderPicker({ onLoad, loading }) {
                                 <input type="checkbox" checked={isChecked} onChange={() => toggleFile(f)}
                                   className="accent-primary w-3 h-3 shrink-0" />
                                 <span className={`text-[10px] font-mono truncate leading-tight ${isChecked ? 'text-foreground' : 'text-muted-foreground/50 line-through'}`}
-                                  title={f.name}>
+                                  title={f.webkitRelativePath || f.name}>
                                   {f.name}
+                                  {(() => {
+                                    const p = (f.webkitRelativePath || '').replace(/\\/g, '/');
+                                    // strip leading folder prefix (e.g. "data/")
+                                    const stripped = p.replace(/^[^/]+\//, '');
+                                    // show subfolder segment not equal to the file's own basename
+                                    return stripped && stripped !== f.name
+                                      ? <span className="text-muted-foreground/60"> · {stripped.slice(0, -f.name.length)}</span>
+                                      : null;
+                                  })()}
                                 </span>
                               </label>
                             );
