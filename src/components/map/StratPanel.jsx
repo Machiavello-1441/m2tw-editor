@@ -907,6 +907,23 @@ export default function StratPanel({
 
   const [overviewTab, setOverviewTab] = useState('files');
 
+  // ── M2EX wasteland detection ─────────────────────────────────────────────
+  // Wasteland regions are an M2EX-patch feature. A wasteland province uses the
+  // keyword 'wasteland' on the settlement-name line of descr_regions.txt and the
+  // province MUST be the LAST entry in the file. We also warn the player when
+  // they have literally named a region with the word 'wasteland' — they should
+  // use the keyword on the settlement line instead.
+  const wastelandRegions = useMemo(
+    () => (regionsData || []).filter(r =>
+      r.wasteland === true || /^wasteland$/i.test(r.settlementName || '')
+    ),
+    [regionsData]
+  );
+  const badNameRegions = useMemo(
+    () => (regionsData || []).filter(r => /wasteland/i.test(r.regionName || '')).map(r => r.regionName),
+    [regionsData]
+  );
+
   // Auto-switch to settlements tab when a settlement is selected
   useEffect(() => {
     if (selectedItem?.category === 'settlement') setTab('settlements');
@@ -1145,6 +1162,38 @@ export default function StratPanel({
           {/* Campaign Files sub-tab */}
           {overviewTab === 'files' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Files</p>
+
+            {/* ── M2EX encart — wasteland regions ───────────────────────────── */}
+            {/* Shown after descr_strat.txt import whenever wasteland regions are
+                detected in descr_regions.txt, or when a region's name itself
+                contains the word 'wasteland' (a mistake — use the keyword on the
+                settlement-name line instead). */}
+            {stratData?.raw && (wastelandRegions.length > 0 || badNameRegions.length > 0) && (
+              <div className="rounded border border-amber-500/40 bg-amber-950/30 p-2 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/30 text-[10px] font-bold text-amber-300 tracking-widest">M2EX</span>
+                  <span className="text-[9px] text-amber-400/70 italic">extension-patch wasteland regions</span>
+                </div>
+                {wastelandRegions.length > 0 && (
+                  <p className="text-[10px] text-amber-200/80 leading-tight">
+                    {wastelandRegions.length} wasteland region{wastelandRegions.length === 1 ? '' : 's'} detected. The wasteland
+                    province must always be the <strong>last</strong> entry in <code>descr_regions.txt</code>.
+                    {" "}Paint its tiles with the <code>impassable_shrouded</code> ground type (RGB 32&nbsp;32&nbsp;32) to turn it into a permanently black, impassable void.
+                  </p>
+                )}
+                {badNameRegions.length > 0 && (
+                  <div className="text-[10px] text-red-300 leading-tight">
+                    <span className="font-semibold">⚠ Warning:</span> do not <em>name</em> a region &lsquo;wasteland&rsquo;. Put the
+                    <code className="mx-0.5">&nbsp;wasteland&nbsp;</code> keyword on the settlement-name line instead, and leave the region
+                    name as a normal province identifier.
+                    <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                      {badNameRegions.map(name => <li key={name} className="font-mono text-red-300/80">{name}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Text files — load + download inline */}
             {[
             { label: 'descr_strat.txt', type: 'strat', loaded: !!stratData, onDl: handleExportStrat, ready: !!stratData?.raw },

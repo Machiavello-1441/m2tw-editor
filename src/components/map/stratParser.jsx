@@ -937,7 +937,6 @@ export function parseDescrRegions(text) {
   const lines = text.split('\n').map(l => l.replace(/;.*$/, '').trimEnd());
 
   // Collect non-blank stripped lines per region block
-  // Each region block has exactly 9 data lines; blocks are separated by blank lines
   const stripped = [];
   for (const raw of lines) {
     const t = raw.trim();
@@ -947,14 +946,36 @@ export function parseDescrRegions(text) {
   }
 
   let i = 0;
-  while (i + 8 < stripped.length) {
-    // The 5th line in a block must be RGB values (3 numbers). If not, skip this line
-    // to re-sync (handles stray comment remnants or section headers).
-    const rgbCandidate = stripped[i + 4];
-    if (!rgbCandidate || !/^\d+\s+\d+\s+\d+$/.test(rgbCandidate)) {
-      i++;
+  while (i < stripped.length) {
+    // ── M2EX wasteland short form ───────────────────────────────────────────
+    // <regionName>\nwasteland\nR G B (3 lines, no settlement/owner/economy).
+    // See https://github.com/Pannoniae/rex/blob/master/modding/wasteland_regions.md
+    if (
+      i + 2 <= stripped.length - 1 &&
+      /^wasteland$/i.test(stripped[i + 1]) &&
+      /^\d+\s+\d+\s+\d+$/.test(stripped[i + 2])
+    ) {
+      const regionName = stripped[i++];
+      i++; // skip the 'wasteland' keyword (where the settlement name normally sits)
+      const rgbParts = stripped[i++].split(/\s+/);
+      const r = parseInt(rgbParts[0]) || 0;
+      const g = parseInt(rgbParts[1]) || 0;
+      const b = parseInt(rgbParts[2]) || 0;
+      regions.push({
+        regionName, settlementName: 'wasteland', wasteland: true,
+        factionCreator: '', rebelFaction: '', r, g, b,
+        resources: [], val1: 0, val2: 0, religions: {},
+      });
       continue;
     }
+
+    // ── Standard 9-line form ───────────────────────────────────────────────
+    // The 5th line in a block must be RGB values (3 numbers). If not, skip this
+    // line to re-sync (handles stray comment remnants or section headers).
+    if (i + 8 > stripped.length - 1) { i++; continue; }
+    const rgbCandidate = stripped[i + 4];
+    if (!rgbCandidate || !/^\d+\s+\d+\s+\d+$/.test(rgbCandidate)) { i++; continue; }
+
     const regionName     = stripped[i++];
     const settlementName = stripped[i++];
     const factionCreator = stripped[i++];
@@ -976,15 +997,33 @@ export function parseDescrRegions(text) {
         if (parts[j] && parts[j + 1] !== undefined) religions[parts[j]] = parseInt(parts[j + 1]);
       }
     }
-    regions.push({ regionName, settlementName, factionCreator, rebelFaction, r, g, b, resources, val1, val2, religions });
+    // Long-form wasteland: settlement-name line already holds the 'wasteland'
+    // keyword but the rest of the body is still present (still read, ignored).
+    const isWasteland = /^wasteland$/i.test(settlementName);
+    regions.push({
+      regionName,
+      settlementName: isWasteland ? 'wasteland' : settlementName,
+      wasteland: isWasteland,
+      factionCreator, rebelFaction, r, g, b, resources, val1, val2, religions,
+    });
   }
   return regions;
 }
 
 // ─── Regions serializer ───────────────────────────────────────────────────────
 export function serializeDescrRegions(regions, allReligions) {
-  return regions.map(reg => {
-    // Build religion entries: include all known religions, defaulting to 0
+  // A wasteland province MUST always be the LAST entry in descr_regions.txt, so
+  // sort all wasteland regions to the end while preserving the relative order of
+  // the non-wasteland regions at the head of the file.
+  const sorted = [...regions].sort((a, b) =>
+    (a.wasteland ? 1 : 0) - (b.wasteland ? 1 : 0)
+  );
+  return sorted.map(reg => {
+    // Wasteland short form: <regionName>\nwasteland\nR G B
+    if (reg.wasteland) {
+      return [reg.regionName, 'wasteland', `${reg.r} ${reg.g} ${reg.b}`].join('\n');
+    }
+    // Standard 9-line form
     let relEntries;
     const relObj = reg.religions || {};
     if (allReligions?.length > 0) {
