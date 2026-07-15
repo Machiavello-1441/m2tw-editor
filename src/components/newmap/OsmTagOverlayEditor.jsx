@@ -92,7 +92,7 @@ const OSM_OVERPASS_MIRRORS = [
 ];
 
 // Area threshold in square degrees above which tiling kicks in
-const TILE_THRESHOLD_DEG2 = 4; // ~2°×2° tile max before splitting
+const TILE_THRESHOLD_DEG2 = 9; // ~3°×3° tile before splitting
 // Max tiles per axis (so a huge map uses at most 6×6 = 36 tiles)
 const MAX_TILES_PER_AXIS = 6;
 
@@ -121,40 +121,38 @@ function computeTiles(bbox) {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function fetchTile(key, value, tile, attempt = 0) {
+async function fetchTile(key, value, tile) {
   const bboxStr = `${tile.south},${tile.west},${tile.north},${tile.east}`;
-  const query = `[out:json][timeout:120];\n(\n  way["${key}"="${value}"](${bboxStr});\n  relation["${key}"="${value}"](${bboxStr});\n);\nout geom;`;
-  // Try each mirror; on rate-limit/timeout, wait and retry up to 3 times total
-  const MAX_ATTEMPTS = 3;
-  for (let a = 0; a <= MAX_ATTEMPTS; a++) {
-    for (const mirror of OSM_OVERPASS_MIRRORS) {
-      try {
-        const res = await fetch(mirror, {
-          method: 'POST',
-          mode: 'cors',
-          body: 'data=' + encodeURIComponent(query),
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        });
-        if (res.status === 429 || res.status === 504 || res.status === 502) {
-          // Rate-limited or gateway error — wait before trying next mirror/attempt
-          await sleep(2000 * (a + 1));
-          continue;
-        }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (json.remark && /runtime error|out of memory|exceeded/i.test(json.remark)) {
-          throw new Error(`Overpass: ${json.remark}`);
-        }
-        return (json.elements || []).filter(e =>
-          (e.type === 'way' && e.geometry?.length > 1) ||
-          (e.type === 'relation' && e.members?.some(m => m.geometry?.length > 1))
-        );
-      } catch (e) {
-        if (a < MAX_ATTEMPTS) await sleep(1500 * (a + 1));
+  // out skel geom: geometry only, no per-element tags — we already know the tag
+  // we queried, so skipping tags shrinks the JSON and speeds parsing.
+  const query = `[out:json][timeout:90];\n(\n  way["${key}"="${value}"](${bboxStr});\n  relation["${key}"="${value}"](${bboxStr});\n);\nout skel geom;`;
+  // Fail-fast: try each mirror once; a brief wait only on a transient gateway
+  // error. One bad tile returns [] rather than stalling the whole job.
+  for (const mirror of OSM_OVERPASS_MIRRORS) {
+    try {
+      const res = await fetch(mirror, {
+        method: 'POST',
+        mode: 'cors',
+        body: 'data=' + encodeURIComponent(query),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+      if (res.status === 429 || res.status === 504 || res.status === 502) {
+        await sleep(800);
+        continue;
       }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (json.remark && /runtime error|out of memory|exceeded/i.test(json.remark)) {
+        throw new Error(`Overpass: ${json.remark}`);
+      }
+      return (json.elements || []).filter(e =>
+        (e.type === 'way' && e.geometry?.length > 1) ||
+        (e.type === 'relation' && e.members?.some(m => m.geometry?.length > 1))
+      );
+    } catch (e) {
+      // fall through to next mirror
     }
   }
-  // Return empty rather than throwing so one bad tile doesn't kill the whole job
   return [];
 }
 
@@ -282,8 +280,8 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
     let totalElements = 0;
     let allElements = [];
 
-    // Process tiles in small parallel batches; fetchTile never throws — returns [] on failure
-    const CONCURRENCY = 2;
+    // Process tiles in parallel batches; fetchTile never throws — returns [] on failure
+    const CONCURRENCY = 5;
     for (let i = 0; i < tiles.length; i += CONCURRENCY) {
       const batch = tiles.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(batch.map(tile => fetchTile(tag.key, tag.value, tile)));
@@ -305,7 +303,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
       }
 
       // Brief pause between batches to avoid rate-limiting
-      if (i + CONCURRENCY < tiles.length) await sleep(500);
+      if (i + CONCURRENCY < tiles.length) await sleep(250);
     }
 
     setFetchProgress(p => ({ ...p, [k]: { pct: 100, tilesDone: tiles.length, tilesTotal: tiles.length } }));
