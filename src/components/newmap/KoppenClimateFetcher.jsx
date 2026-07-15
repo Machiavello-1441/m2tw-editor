@@ -9,41 +9,41 @@ import { CLIMATE_PALETTE, hexToRgb } from '@/lib/mapLayerStore';
  */
 const KOPPEN_ZONES = [
   // Tropical
-  { code: 'Af',  label: 'Tropical Rainforest',             group: 'Tropical (A)',   defaultClimate: 'tropical' },
-  { code: 'Am',  label: 'Tropical Monsoon',                group: 'Tropical (A)',   defaultClimate: 'tropical' },
-  { code: 'Aw',  label: 'Tropical Savanna',                group: 'Tropical (A)',   defaultClimate: 'tropical' },
-  { code: 'As',  label: 'Tropical Savanna (Dry Summer)',   group: 'Tropical (A)',   defaultClimate: 'tropical' },
+  { code: 'Af',  label: 'Tropical Rainforest',         group: 'Tropical (A)',   defaultClimate: 'tropical', desc: 'Tropical rainforest climate — hot and wet all year' },
+  { code: 'Am',  label: 'Tropical Monsoon',            group: 'Tropical (A)',   defaultClimate: 'tropical', desc: 'Tropical monsoon climate — short, pronounced dry season' },
+  { code: 'Aw',  label: 'Tropical Savanna',            group: 'Tropical (A)',   defaultClimate: 'tropical', desc: 'Tropical savanna climate — dry winter' },
+  { code: 'As',  label: 'Tropical Savanna (Dry Summer)', group: 'Tropical (A)', defaultClimate: 'tropical', desc: 'Tropical savanna climate — dry summer (rare)' },
   // Arid
-  { code: 'BWh', label: 'Hot Desert',                      group: 'Arid (B)',       defaultClimate: 'sandy_desert' },
-  { code: 'BWk', label: 'Cold Desert',                     group: 'Arid (B)',       defaultClimate: 'rocky_desert' },
-  { code: 'BSh', label: 'Hot Steppe',                      group: 'Arid (B)',       defaultClimate: 'steppe' },
-  { code: 'BSk', label: 'Cold Steppe',                     group: 'Arid (B)',       defaultClimate: 'steppe' },
+  { code: 'BWh', label: 'Hot Desert',                  group: 'Arid (B)',       defaultClimate: 'sandy_desert', desc: 'Hot desert climate' },
+  { code: 'BWk', label: 'Cold Desert',                 group: 'Arid (B)',       defaultClimate: 'rocky_desert', desc: 'Cold desert climate' },
+  { code: 'BSh', label: 'Hot Steppe',                  group: 'Arid (B)',       defaultClimate: 'steppe',       desc: 'Hot semi-arid steppe climate' },
+  { code: 'BSk', label: 'Cold Steppe',                 group: 'Arid (B)',       defaultClimate: 'steppe',       desc: 'Cold semi-arid steppe climate' },
   // Temperate
-  { code: 'Csa', label: 'Mediterranean (Hot Summer)',      group: 'Temperate (C)',  defaultClimate: 'mediterranean' },
-  { code: 'Csb', label: 'Mediterranean (Warm Summer)',     group: 'Temperate (C)',  defaultClimate: 'mediterranean' },
-  { code: 'Csc', label: 'Mediterranean (Cold Summer)',     group: 'Temperate (C)',  defaultClimate: 'mediterranean' },
-  { code: 'Cwa', label: 'Humid Subtropical (Dry Winter)',  group: 'Temperate (C)',  defaultClimate: 'tropical' },
-  { code: 'Cwb', label: 'Subtropical Highland (Dry Winter)',group:'Temperate (C)',  defaultClimate: 'highland' },
-  { code: 'Cwc', label: 'Subpolar Oceanic (Dry Winter)',   group: 'Temperate (C)',  defaultClimate: 'highland' },
-  { code: 'Cfa', label: 'Humid Subtropical',               group: 'Temperate (C)',  defaultClimate: 'temperate_grassland' },
-  { code: 'Cfb', label: 'Oceanic',                         group: 'Temperate (C)',  defaultClimate: 'temperate_deciduous' },
-  { code: 'Cfc', label: 'Subpolar Oceanic',                group: 'Temperate (C)',  defaultClimate: 'temperate_coniferous' },
+  { code: 'Csa', label: 'Mediterranean (Hot Summer)',  group: 'Temperate (C)',  defaultClimate: 'mediterranean',     desc: 'Mediterranean climate — hot, dry summer' },
+  { code: 'Csb', label: 'Mediterranean (Warm Summer)', group: 'Temperate (C)',  defaultClimate: 'mediterranean',     desc: 'Mediterranean climate — warm, dry summer' },
+  { code: 'Csc', label: 'Mediterranean (Cold Summer)', group: 'Temperate (C)',  defaultClimate: 'mediterranean',     desc: 'Mediterranean climate — cool, dry summer' },
+  { code: 'Cwa', label: 'Humid Subtropical (Dry Winter)', group: 'Temperate (C)', defaultClimate: 'tropical', desc: 'Humid subtropical climate — dry winter, hot summer' },
+  { code: 'Cwb', label: 'Subtropical Highland (Dry Winter)', group: 'Temperate (C)', defaultClimate: 'highland', desc: 'Subtropical highland climate — dry winter' },
+  { code: 'Cwc', label: 'Subpolar Oceanic (Dry Winter)', group: 'Temperate (C)', defaultClimate: 'highland', desc: 'Cold subtropical highland climate — dry winter' },
+  { code: 'Cfa', label: 'Humid Subtropical',           group: 'Temperate (C)',  defaultClimate: 'temperate_grassland', desc: 'Humid subtropical climate — hot summer, no dry season' },
+  { code: 'Cfb', label: 'Oceanic',                     group: 'Temperate (C)',  defaultClimate: 'temperate_deciduous',  desc: 'Oceanic climate — warm summer, no dry season' },
+  { code: 'Cfc', label: 'Subpolar Oceanic',            group: 'Temperate (C)',  defaultClimate: 'temperate_coniferous', desc: 'Subpolar oceanic climate — cool summer, no dry season' },
   // Continental
-  { code: 'Dsa', label: 'Mediterranean Continental (Hot Summer)',   group: 'Continental (D)', defaultClimate: 'mediterranean' },
-  { code: 'Dsb', label: 'Mediterranean Continental (Warm Summer)',  group: 'Continental (D)', defaultClimate: 'mediterranean' },
-  { code: 'Dsc', label: 'Mediterranean Continental (Cold Summer)',  group: 'Continental (D)', defaultClimate: 'steppe' },
-  { code: 'Dsd', label: 'Mediterranean Continental (Very Cold)',    group: 'Continental (D)', defaultClimate: 'alpine' },
-  { code: 'Dwa', label: 'Monsoon Continental (Hot Summer)',         group: 'Continental (D)', defaultClimate: 'temperate_grassland' },
-  { code: 'Dwb', label: 'Monsoon Continental (Warm Summer)',        group: 'Continental (D)', defaultClimate: 'temperate_deciduous' },
-  { code: 'Dwc', label: 'Monsoon Continental (Cold Summer)',        group: 'Continental (D)', defaultClimate: 'temperate_coniferous' },
-  { code: 'Dwd', label: 'Monsoon Continental (Very Cold)',          group: 'Continental (D)', defaultClimate: 'alpine' },
-  { code: 'Dfa', label: 'Humid Continental (Hot Summer)',           group: 'Continental (D)', defaultClimate: 'temperate_grassland' },
-  { code: 'Dfb', label: 'Humid Continental (Warm Summer)',          group: 'Continental (D)', defaultClimate: 'temperate_deciduous' },
-  { code: 'Dfc', label: 'Subarctic',                                group: 'Continental (D)', defaultClimate: 'temperate_coniferous' },
-  { code: 'Dfd', label: 'Subarctic (Severe Winter)',                group: 'Continental (D)', defaultClimate: 'alpine' },
+  { code: 'Dsa', label: 'Continental (Hot, Dry Summer)',      group: 'Continental (D)', defaultClimate: 'mediterranean',          desc: 'Humid continental climate — hot summer, dry summer' },
+  { code: 'Dsb', label: 'Continental (Warm, Dry Summer)',     group: 'Continental (D)', defaultClimate: 'mediterranean',          desc: 'Humid continental climate — warm summer, dry summer' },
+  { code: 'Dsc', label: 'Continental (Cool, Dry Summer)',     group: 'Continental (D)', defaultClimate: 'steppe',                 desc: 'Humid continental climate — cool summer, dry summer' },
+  { code: 'Dsd', label: 'Continental (Very Cold, Dry Summer)', group: 'Continental (D)', defaultClimate: 'alpine',                 desc: 'Humid continental climate — very cold winter, dry summer' },
+  { code: 'Dwa', label: 'Continental (Hot, Dry Winter)',      group: 'Continental (D)', defaultClimate: 'temperate_grassland',    desc: 'Humid continental climate — dry winter, hot summer' },
+  { code: 'Dwb', label: 'Continental (Warm, Dry Winter)',     group: 'Continental (D)', defaultClimate: 'temperate_deciduous',    desc: 'Humid continental climate — dry winter, warm summer' },
+  { code: 'Dwc', label: 'Continental (Cool, Dry Winter)',     group: 'Continental (D)', defaultClimate: 'temperate_coniferous',   desc: 'Humid continental climate — dry winter, cool summer' },
+  { code: 'Dwd', label: 'Continental (Very Cold, Dry Winter)', group: 'Continental (D)', defaultClimate: 'alpine',                desc: 'Humid continental climate — dry winter, very cold' },
+  { code: 'Dfa', label: 'Humid Continental (Hot Summer)',      group: 'Continental (D)', defaultClimate: 'temperate_grassland',    desc: 'Humid continental climate — hot summer, no dry season' },
+  { code: 'Dfb', label: 'Humid Continental (Warm Summer)',     group: 'Continental (D)', defaultClimate: 'temperate_deciduous',    desc: 'Humid continental climate — warm summer, no dry season' },
+  { code: 'Dfc', label: 'Subarctic',                          group: 'Continental (D)', defaultClimate: 'temperate_coniferous',   desc: 'Subarctic climate — cool summer, no dry season' },
+  { code: 'Dfd', label: 'Subarctic (Severe Winter)',          group: 'Continental (D)', defaultClimate: 'alpine',                 desc: 'Subarctic climate — extremely cold winter' },
   // Polar
-  { code: 'ET',  label: 'Tundra',                          group: 'Polar (E)',      defaultClimate: 'alpine' },
-  { code: 'EF',  label: 'Ice Cap',                         group: 'Polar (E)',      defaultClimate: 'alpine' },
+  { code: 'ET',  label: 'Tundra',                     group: 'Polar (E)',      defaultClimate: 'alpine', desc: 'Tundra climate' },
+  { code: 'EF',  label: 'Ice Cap',                    group: 'Polar (E)',      defaultClimate: 'alpine', desc: 'Ice cap climate' },
 ];
 
 // koppen.earth pixel RGB values for each zone (from their published legend)
@@ -71,7 +71,7 @@ function rgbDist(a, b) {
 }
 
 // Match a pixel's RGB to the closest Köppen zone
-function matchKoppen(r, g, b, threshold = 40) {
+function matchKoppen(r, g, b, threshold = 50) {
   let best = null, bestD = Infinity;
   for (const [code, rgb] of Object.entries(KOPPEN_RGB)) {
     const d = rgbDist([r, g, b], rgb);
@@ -98,99 +98,69 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
 
   const toggleGroup = (g) => setOpenGroups(s => ({ ...s, [g]: !s[g] }));
 
+  // koppen.earth serves its Köppen map through a terrakio WMS (EPSG:3857) backend
+  // using the Beck 2018 classification (cmap "koppen", values 1–30). The WMS itself
+  // does not send CORS headers, so we load via blob-URL image fetch with CORS-proxy
+  // fallbacks — blob-URL images are same-origin, so getImageData never taints.
+  const WMS_BASE = 'https://terrakio-server-wms-lark-573248941006.australia-southeast1.run.app/wms';
+  const WMS_KEY = 'dzK6YcYlYjlXsI7k5r2pv1EPHpQ1-7GHPizDazLMy4c';
+
+  const buildWmsURL = (W, H) => {
+    const R = 6378137;
+    const westX = R * bbox.west * Math.PI / 180;
+    const eastX = R * bbox.east * Math.PI / 180;
+    const northY = R * Math.log(Math.tan(Math.PI / 4 + bbox.north * Math.PI / 360));
+    const southY = R * Math.log(Math.tan(Math.PI / 4 + bbox.south * Math.PI / 360));
+    const params = new URLSearchParams({
+      service: 'WMS', request: 'GetMap', layers: 'koppen', styles: '',
+      format: 'image/png', transparent: 'false', version: '1.1.1',
+      expression: 'CMIP6Koppen.reanalysis@(year=2020)',
+      cmap: 'koppen', vmin: '1', vmax: '30',
+      'api-key': WMS_KEY,
+      width: String(W), height: String(H), srs: 'EPSG:3857',
+      bbox: `${westX},${southY},${eastX},${northY}`,
+    });
+    return `${WMS_BASE}?${params.toString()}`;
+  };
+
+  const fetchAsImage = async (urls) => {
+    for (const u of urls) {
+      try {
+        const res = await fetch(u, { mode: 'cors' });
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        if (!blob || blob.size < 100) continue;
+        const obj = URL.createObjectURL(blob);
+        try {
+          return await new Promise((resolve, reject) => {
+            const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = obj;
+          });
+        } finally { URL.revokeObjectURL(obj); }
+      } catch { /* try next source */ }
+    }
+    return null;
+  };
+
   const fetchAndApply = async () => {
     if (!bbox) { setStatus('No bounding box defined.'); return; }
     setFetching(true);
-    setStatus('Fetching Köppen data from koppen.earth…');
-
+    setStatus('Fetching Köppen data (terreserv WMS)…');
     try {
-      // koppen.earth provides a tile-based map; we request their WMS/tile endpoint
-      // for the bbox at a resolution matching our map canvas
-      const W = mapWidth, H = mapHeight;
-      const url = `https://koppen.earth/map?bbox=${bbox.west},${bbox.south},${bbox.east},${bbox.north}&width=${W}&height=${H}&format=png`;
-
-      const res = await fetch(url, { mode: 'cors' });
-      if (!res.ok) throw new Error(`HTTP ${res.status} from koppen.earth`);
-
-      const blob = await res.blob();
-      const imgUrl = URL.createObjectURL(blob);
-      const img = await new Promise((resolve, reject) => {
-        const i = new Image(); i.crossOrigin = 'anonymous';
-        i.onload = () => resolve(i); i.onerror = reject;
-        i.src = imgUrl;
-      });
-
+      const CAP = 2000;
+      const W = Math.max(2, Math.min(mapWidth, CAP));
+      const H = Math.max(2, Math.min(mapHeight, CAP));
+      const raw = buildWmsURL(W, H);
+      const img = await fetchAsImage([
+        raw,
+        `https://corsproxy.io/?url=${encodeURIComponent(raw)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(raw)}`,
+      ]);
+      if (!img) { setStatus('Köppen fetch failed — WMS service unavailable.'); setFetching(false); return; }
       applyKoppenImage(img, W, H);
-      URL.revokeObjectURL(imgUrl);
     } catch (e) {
-      // Fallback: use OSM tile proxy or CORS proxy
-      setStatus(`Direct fetch failed (${e.message}). Trying tile proxy…`);
-      await fetchViaTiles();
-    }
-  };
-
-  const fetchViaTiles = async () => {
-    // koppen.earth uses standard XYZ tiles at zoom 6
-    const ZOOM = 6;
-    const lat2tile = (lat) => Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, ZOOM));
-    const lon2tile = (lon) => Math.floor((lon + 180) / 360 * Math.pow(2, ZOOM));
-
-    const xMin = lon2tile(bbox.west), xMax = lon2tile(bbox.east);
-    const yMin = lat2tile(bbox.north), yMax = lat2tile(bbox.south);
-    const totalTiles = (xMax - xMin + 1) * (yMax - yMin + 1);
-
-    if (totalTiles > 64) {
-      setStatus(`Area too large for tile fetch (${totalTiles} tiles). Try a smaller bbox.`);
+      setStatus(`Error: ${e.message}`);
       setFetching(false);
-      return;
     }
-
-    // Build a canvas covering the full bbox tiled extent
-    const TILE_SIZE = 256;
-    const cols = xMax - xMin + 1, rows = yMax - yMin + 1;
-    const tileCanvas = document.createElement('canvas');
-    tileCanvas.width = cols * TILE_SIZE; tileCanvas.height = rows * TILE_SIZE;
-    const tileCtx = tileCanvas.getContext('2d');
-
-    let done = 0;
-    for (let tx = xMin; tx <= xMax; tx++) {
-      for (let ty = yMin; ty <= yMax; ty++) {
-        const tileUrl = `https://koppen.earth/tiles/${ZOOM}/${tx}/${ty}.png`;
-        try {
-          const img = await new Promise((resolve, reject) => {
-            const i = new Image(); i.crossOrigin = 'anonymous';
-            i.onload = () => resolve(i); i.onerror = reject;
-            i.src = tileUrl;
-          });
-          tileCtx.drawImage(img, (tx - xMin) * TILE_SIZE, (ty - yMin) * TILE_SIZE);
-        } catch { /* skip missing tiles */ }
-        done++;
-        setStatus(`Loading tiles… ${done}/${totalTiles}`);
-      }
-    }
-
-    // Compute the sub-region within the tiled canvas that corresponds to our bbox
-    const tile2lon = (x) => x / Math.pow(2, ZOOM) * 360 - 180;
-    const tile2lat = (y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / Math.pow(2, ZOOM)))) * 180 / Math.PI;
-
-    const canvasWest = tile2lon(xMin), canvasEast = tile2lon(xMax + 1);
-    const canvasNorth = tile2lat(yMin), canvasSouth = tile2lat(yMax + 1);
-
-    const sx = Math.round(((bbox.west - canvasWest) / (canvasEast - canvasWest)) * tileCanvas.width);
-    const sy = Math.round(((canvasNorth - bbox.north) / (canvasNorth - canvasSouth)) * tileCanvas.height);
-    const sw = Math.round(((bbox.east - bbox.west) / (canvasEast - canvasWest)) * tileCanvas.width);
-    const sh = Math.round(((bbox.north - bbox.south) / (canvasNorth - canvasSouth)) * tileCanvas.height);
-
-    // Draw cropped region scaled to our map dimensions
-    const outCanvas = document.createElement('canvas');
-    outCanvas.width = mapWidth; outCanvas.height = mapHeight;
-    const outCtx = outCanvas.getContext('2d');
-    outCtx.imageSmoothingEnabled = false;
-    outCtx.drawImage(tileCanvas, sx, sy, sw, sh, 0, 0, mapWidth, mapHeight);
-
-    const img = new Image();
-    img.onload = () => applyKoppenImage(img, mapWidth, mapHeight);
-    img.src = outCanvas.toDataURL();
   };
 
   const applyKoppenImage = (img, W, H) => {
@@ -272,42 +242,46 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
                       const climId = zoneMap[zone.code];
                       const isHidden = hiddenZones.has(zone.code);
                       return (
-                        <div key={zone.code} className="flex items-center gap-1.5 px-1.5 py-1 bg-slate-900">
-                          {/* Köppen pixel color swatch */}
-                          <div
-                            className="w-3 h-3 rounded-sm shrink-0 border border-slate-700"
-                            style={{ backgroundColor: `rgb(${KOPPEN_RGB[zone.code]?.join(',') ?? '128,128,128'})` }}
-                            title={`Köppen pixel color for ${zone.code}`}
-                          />
-                          <span className="text-[9px] font-mono text-slate-500 w-7 shrink-0">{zone.code}</span>
-                          <span className="text-[9px] text-slate-300 flex-1 truncate">{zone.label}</span>
-                          {/* Arrow */}
-                          <span className="text-[9px] text-slate-600">→</span>
-                          {/* M2TW climate color swatch */}
-                          <div
-                            className="w-3 h-3 rounded-sm shrink-0 border border-slate-600"
-                            style={{ backgroundColor: CLIMATE_COLOR[climId] ?? '#888' }}
-                          />
-                          {/* Climate selector */}
-                          <select
-                            value={climId}
-                            onChange={e => setZoneMap(m => ({ ...m, [zone.code]: e.target.value }))}
-                            className="h-5 text-[9px] bg-slate-800 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-amber-500 max-w-[100px]">
-                            {CLIMATE_PALETTE.map(p => (
-                              <option key={p.id} value={p.id}>{p.label}</option>
-                            ))}
-                          </select>
-                          {/* Visibility toggle */}
-                          <button
-                            onClick={() => setHiddenZones(prev => {
-                              const next = new Set(prev);
-                              if (next.has(zone.code)) next.delete(zone.code); else next.add(zone.code);
-                              return next;
-                            })}
-                            title={isHidden ? 'Include zone' : 'Exclude zone'}
-                            className={`shrink-0 ${isHidden ? 'text-slate-600' : 'text-slate-400'} hover:text-white transition-colors`}>
-                            {isHidden ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
-                          </button>
+                        <div key={zone.code} className="bg-slate-900">
+                          <div className="flex items-center gap-1.5 px-1.5 pt-1">
+                            {/* Köppen pixel color swatch */}
+                            <div
+                              className="w-3 h-3 rounded-sm shrink-0 border border-slate-700"
+                              style={{ backgroundColor: `rgb(${KOPPEN_RGB[zone.code]?.join(',') ?? '128,128,128'})` }}
+                              title={`Köppen pixel color for ${zone.code}`}
+                            />
+                            <span className="text-[9px] font-mono text-slate-500 w-7 shrink-0">{zone.code}</span>
+                            <span className="text-[9px] text-slate-300 flex-1 truncate">{zone.label}</span>
+                            {/* Arrow */}
+                            <span className="text-[9px] text-slate-600">→</span>
+                            {/* M2TW climate color swatch */}
+                            <div
+                              className="w-3 h-3 rounded-sm shrink-0 border border-slate-600"
+                              style={{ backgroundColor: CLIMATE_COLOR[climId] ?? '#888' }}
+                            />
+                            {/* Climate selector */}
+                            <select
+                              value={climId}
+                              onChange={e => setZoneMap(m => ({ ...m, [zone.code]: e.target.value }))}
+                              className="h-5 text-[9px] bg-slate-800 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-amber-500 max-w-[100px]">
+                              {CLIMATE_PALETTE.map(p => (
+                                <option key={p.id} value={p.id}>{p.label}</option>
+                              ))}
+                            </select>
+                            {/* Visibility toggle */}
+                            <button
+                              onClick={() => setHiddenZones(prev => {
+                                const next = new Set(prev);
+                                if (next.has(zone.code)) next.delete(zone.code); else next.add(zone.code);
+                                return next;
+                              })}
+                              title={isHidden ? 'Include zone' : 'Exclude zone'}
+                              className={`shrink-0 ${isHidden ? 'text-slate-600' : 'text-slate-400'} hover:text-white transition-colors`}>
+                              {isHidden ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
+                            </button>
+                          </div>
+                          {/* Short explanation */}
+                          <p className="px-2.5 pb-1 -mt-0.5 text-[8.5px] italic text-slate-500 leading-tight">{zone.desc}</p>
                         </div>
                       );
                     })}
