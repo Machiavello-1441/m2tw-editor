@@ -105,6 +105,19 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
   const WMS_BASE = 'https://terrakio-server-wms-lark-573248941006.australia-southeast1.run.app/wms';
   const WMS_KEY = 'dzK6YcYlYjlXsI7k5r2pv1EPHpQ1-7GHPizDazLMy4c';
 
+  // Compute request dimensions that match the bbox's true Web-Mercator aspect
+  // (so the WMS server doesn't quietly resample / letterbox ↔ detail loss or distortion).
+  const computeWmsDimensions = (targetMaxSide) => {
+    const R = 6378137;
+    const mercW = R * (bbox.east - bbox.west) * Math.PI / 180;
+    const mercH = R * (latToMercN(bbox.north) - latToMercN(bbox.south));
+    const aspect = mercW / mercH; // requested width : height
+    const t = Math.max(64, targetMaxSide);
+    const W = Math.round(aspect >= 1 ? t : t * aspect);
+    const H = Math.round(aspect >= 1 ? t / aspect : t);
+    return { W: Math.max(8, W), H: Math.max(8, H) };
+  };
+
   const buildWmsURL = (W, H) => {
     const R = 6378137;
     const westX = R * bbox.west * Math.PI / 180;
@@ -146,9 +159,11 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
     setFetching(true);
     setStatus('Fetching Köppen data (terreserv WMS)…');
     try {
-      const CAP = 2000;
-      const W = Math.max(2, Math.min(mapWidth, CAP));
-      const H = Math.max(2, Math.min(mapHeight, CAP));
+      // Request an image whose width:height matches the bbox's true
+      // Web-Mercator aspect — the server then returns that exact resolution,
+      // so no aspect resampling skews our sampling.
+      const targetSide = Math.min(2048, Math.max(512, Math.max(mapWidth, mapHeight) * 2 + 1));
+      const { W, H } = computeWmsDimensions(targetSide);
       const raw = buildWmsURL(W, H);
       const img = await fetchAsImage([
         raw,
@@ -156,22 +171,27 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
         `https://api.allorigins.win/raw?url=${encodeURIComponent(raw)}`,
       ]);
       if (!img) { setStatus('Köppen fetch failed — WMS service unavailable.'); setFetching(false); return; }
-      applyKoppenImage(img, W, H);
+      applyKoppenImage(img);
     } catch (e) {
       setStatus(`Error: ${e.message}`);
       setFetching(false);
     }
   };
 
-  const applyKoppenImage = (img, W, H) => {
+  const applyKoppenImage = (img) => {
+    // CRITICAL: sample from the WMS image at ITS NATURAL aspect — never
+    // pre-stretch into an arbitrary W×H canvas, or rows/cols get skewed
+    // before sampling (which produced the diagonal mismatch with terrain).
+    const nW = img.naturalWidth || img.width;
+    const nH = img.naturalHeight || img.height;
     const srcCanvas = document.createElement('canvas');
-    srcCanvas.width = W; srcCanvas.height = H;
+    srcCanvas.width = nW; srcCanvas.height = nH;
     const srcCtx = srcCanvas.getContext('2d');
     srcCtx.imageSmoothingEnabled = false;
-    srcCtx.drawImage(img, 0, 0, W, H);
-    const srcData = srcCtx.getImageData(0, 0, W, H);
+    srcCtx.drawImage(img, 0, 0, nW, nH);
+    const srcData = srcCtx.getImageData(0, 0, nW, nH);
 
-    // Target: climates layer (may be 2×+1 scaled)
+    // Target: climates layer (2×+1 scaled)
     const cW = mapWidth * 2 + 1, cH = mapHeight * 2 + 1;
     const base = climateLayerRef.current?.imageData;
     const out = base
@@ -180,11 +200,12 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
 
     let painted = 0;
     for (let cy = 0; cy < cH; cy++) {
+      const fy = cy / (cH - 1);
+      const sy = Math.round(fy * (nH - 1));
       for (let cx = 0; cx < cW; cx++) {
-        // Map climate pixel → source pixel
-        const sx = Math.round((cx / (cW - 1)) * (W - 1));
-        const sy = Math.round((cy / (cH - 1)) * (H - 1));
-        const si = (sy * W + sx) * 4;
+        const fx = cx / (cW - 1);
+        const sx = Math.round(fx * (nW - 1));
+        const si = (sy * nW + sx) * 4;
         const r = srcData.data[si], g = srcData.data[si + 1], b = srcData.data[si + 2], a = srcData.data[si + 3];
         if (a < 10) continue; // transparent = sea/unmapped
 
@@ -203,7 +224,7 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
     }
 
     onLayerUpdate('climates', { imageData: out, visible: true, opacity: 1, dirty: true });
-    setStatus(`Done — painted ${painted.toLocaleString()} pixels from Köppen data.`);
+    setStatus(`Done — painted ${painted.toLocaleString()} pixels from Köppen data (${nW}×${nH}).`);
     setFetching(false);
   };
 
