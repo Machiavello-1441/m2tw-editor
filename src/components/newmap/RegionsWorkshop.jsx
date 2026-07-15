@@ -116,7 +116,7 @@ export default function RegionsWorkshop({
     if (layer?.imageData) {
       const copy = new ImageData(new Uint8ClampedArray(layer.imageData.data), layer.imageData.width, layer.imageData.height);
       paintRegionPixels(copy, px, py, rgb);
-      onLayerUpdate('regions', { imageData: copy, visible: true, opacity: 1, dirty: true });
+      onLayerUpdate('regions', { imageData: copy, visible: true, opacity: layer.opacity ?? 1, dirty: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bbox, mapWidth, mapHeight, onLayerUpdate, onSettlementsChange]);
