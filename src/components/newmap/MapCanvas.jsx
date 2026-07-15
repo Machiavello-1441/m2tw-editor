@@ -103,6 +103,8 @@ export default function MapCanvas({
   box, onBoxChange,
   // Historic tag overlays: key → ImageData
   historicOverlays = {},
+  // Port placement: when active, a single map click places a white port pixel.
+  portMode, onPortPicked,
 }) {
   const isPainting = useRef(false);
   const [dragDisabled, setDragDisabled] = useState(false);
@@ -169,6 +171,7 @@ export default function MapCanvas({
   }, [layers, activeLayerId, bboxBounds, onPickColor]);
 
   const handleMouseDown = useCallback((latlng) => {
+    if (portMode) { onPortPicked(latlng); return; }
     if (activeTool === 'picker') {
       pickColor(latlng);
       return;
@@ -178,7 +181,7 @@ export default function MapCanvas({
       setDragDisabled(true);
       applyPaint(latlng);
     }
-  }, [activeTool, isPaintTool, applyPaint, pickColor]);
+  }, [activeTool, isPaintTool, applyPaint, pickColor, portMode, onPortPicked]);
 
   const handleMouseMove = useCallback((latlng) => {
     if (isPainting.current && isPaintTool) {
@@ -274,8 +277,8 @@ export default function MapCanvas({
         />
       )}
 
-      <DragController disabled={dragDisabled || selectionMode} />
-      <ZoomController disabled={selectionMode} />
+      <DragController disabled={dragDisabled || selectionMode || portMode} />
+      <ZoomController disabled={selectionMode || portMode} />
       <MapEventHandler
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

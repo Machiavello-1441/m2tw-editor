@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { getLayerDimensions, LAYER_DEFS, CLIMATE_PALETTE, hexToRgb } from '@/lib/mapLayerStore';
 import {
   Map, Download, Crop, Edit3, MousePointer, Layers,
-  GitBranch
+  GitBranch, Anchor
 } from 'lucide-react';
 import LayerSidebar from '../components/newmap/LayerSidebar';
 import MapStatusBar from '../components/newmap/MapStatusBar';
@@ -76,6 +76,12 @@ export default function NewMapEditor() {
 
   // Lifted state from RegionsWorkshop so it survives tab switches
   const [settlements, setSettlements] = useState([]);
+  const settlementsRef = useRef(settlements);
+  useEffect(() => { settlementsRef.current = settlements; }, [settlements]);
+
+  // The settlement (object reference) currently awaiting a port-placement
+  // click on the map. When non-null the MapCanvas is in "port mode".
+  const [portTarget, setPortTarget] = useState(null);
 
   // Lifted state from OsmHistoricTagFetcher so it survives tab switches
   const [historicTagStates, setHistoricTagStates] = useState({});
@@ -245,6 +251,76 @@ export default function NewMapEditor() {
     const result = fillSolidColor(width, height, r, g, b);
     handleLayerUpdate('climates', { imageData: result, visible: true, opacity: 1, dirty: true });
   };
+
+  // Place a white port pixel at the clicked location for the targeted
+  // settlement. Restores the previous colour at an old port location when
+  // moving, so re-placing doesn't leave behind stray white dots.
+  const handlePortPicked = useCallback((latlng) => {
+    if (!portTarget) { setPortTarget(null); return; }
+    const layer = layers.regions;
+    if (!bbox || !layer?.imageData) { setPortTarget(null); return; }
+    const w = layer.imageData.width, h = layer.imageData.height;
+    const px = Math.round(((latlng.lng - bbox.west) / (bbox.east - bbox.west)) * (w - 1));
+    const py = Math.round(((bbox.north - latlng.lat) / (bbox.north - bbox.south)) * (h - 1));
+    if (px < 0 || py < 0 || px >= w || py >= h) { setPortTarget(null); return; }
+
+    const s = settlementsRef.current.find(x => x === portTarget);
+    if (!s) { setPortTarget(null); return; }
+
+    const copy = new ImageData(new Uint8ClampedArray(layer.imageData.data), w, h);
+    // Restore the old port pixel (if moving).
+    if (s.portX != null && (s.portX !== px || s.portY !== py)) {
+      const oi = (s.portY * w + s.portX) * 4;
+      if (s.portPrev) {
+        copy.data[oi]     = s.portPrev[0];
+        copy.data[oi + 1] = s.portPrev[1];
+        copy.data[oi + 2] = s.portPrev[2];
+        copy.data[oi + 3] = s.portPrev[3];
+      } else {
+        copy.data[oi + 3] = 0;
+      }
+    }
+    // Remember the colour we're overwriting, then paint white.
+    const ni = (py * w + px) * 4;
+    const portPrev = [copy.data[ni], copy.data[ni + 1], copy.data[ni + 2], copy.data[ni + 3]];
+    copy.data[ni] = 255; copy.data[ni + 1] = 255; copy.data[ni + 2] = 255; copy.data[ni + 3] = 255;
+    handleLayerUpdate('regions', { imageData: copy, visible: true, opacity: layer.opacity ?? 1, dirty: true });
+
+    setSettlements(prev => {
+      const idx = prev.findIndex(x => x === portTarget);
+      if (idx < 0) return prev;
+      const next = [...prev];
+      next[idx] = { ...prev[idx], portX: px, portY: py, portPrev };
+      return next;
+    });
+    setPortTarget(null);
+  }, [portTarget, bbox, layers, handleLayerUpdate]);
+
+  const handleRemovePort = useCallback((settlement) => {
+    const layer = layers.regions;
+    if (layer?.imageData && settlement.portX != null) {
+      const w = layer.imageData.width, h = layer.imageData.height;
+      const copy = new ImageData(new Uint8ClampedArray(layer.imageData.data), w, h);
+      const oi = (settlement.portY * w + settlement.portX) * 4;
+      if (settlement.portPrev) {
+        copy.data[oi]     = settlement.portPrev[0];
+        copy.data[oi + 1] = settlement.portPrev[1];
+        copy.data[oi + 2] = settlement.portPrev[2];
+        copy.data[oi + 3] = settlement.portPrev[3];
+      } else {
+        copy.data[oi + 3] = 0;
+      }
+      handleLayerUpdate('regions', { imageData: copy, visible: true, opacity: layer.opacity ?? 1, dirty: true });
+    }
+    setSettlements(prev => {
+      const idx = prev.findIndex(s => s === settlement);
+      if (idx < 0) return prev;
+      const { portX, portY, portPrev, ...rest } = prev[idx];
+      const next = [...prev];
+      next[idx] = rest;
+      return next;
+    });
+  }, [layers, handleLayerUpdate]);
 
   const phaseIndex = PHASES.findIndex(p => p.id === phase);
   const availableTabs = SIDEBAR_TABS[phase] ?? ['area'];
@@ -494,6 +570,10 @@ export default function NewMapEditor() {
                       settlements={settlements}
                       onSettlementsChange={setSettlements}
                       onAssetReady={registerExtraAsset}
+                      portTarget={portTarget}
+                      onRequestPort={setPortTarget}
+                      onCancelPort={() => setPortTarget(null)}
+                      onRemovePort={handleRemovePort}
                     />
                     <OsmHistoricTagFetcher
                       bbox={bbox}
@@ -545,6 +625,8 @@ export default function NewMapEditor() {
             box={box}
             onBoxChange={setBox}
             historicOverlays={historicOverlays}
+            portMode={!!portTarget}
+            onPortPicked={handlePortPicked}
           />
           <MapStatusBar
             coords={coords}
@@ -558,6 +640,20 @@ export default function NewMapEditor() {
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-none">
               <div className="bg-slate-900/90 border border-amber-600/40 rounded-lg px-4 py-2 text-[12px] text-amber-300 text-center shadow-xl">
                 Navigate the map, then click <strong>"Draw Selection Box"</strong> in the sidebar
+              </div>
+            </div>
+          )}
+
+          {portTarget && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000]">
+              <div className="bg-slate-900/95 border border-amber-500/60 rounded-lg px-3 py-1.5 text-[11px] text-amber-200 flex items-center gap-2 shadow-xl">
+                <Anchor className="w-3.5 h-3.5" />
+                Click on the map to place the port for
+                <strong className="text-amber-100">{portTarget.displayName}</strong>
+                <button onClick={() => setPortTarget(null)}
+                  className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600">
+                  Cancel
+                </button>
               </div>
             </div>
           )}
