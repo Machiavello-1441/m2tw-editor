@@ -64,33 +64,42 @@ export default function SettlementBoundaryButton({
     setError('');
     try {
       if (!bbox) throw new Error('No bounding box set.');
-      const { lat, lng } = settlement;
+      const { lat, lng, osmId, osmType } = settlement;
 
-      // 1) Find all administrative areas containing the point; pick the one
-      //    with the highest admin_level value (smallest / lowest-order unit).
-      const isinQuery = `[out:json][timeout:25];
+      let targetRelId;
+      if (osmType === 'relation' && osmId) {
+        // Fast path: Nominatim already returned the admin-boundary relation
+        // (e.g. a comune like Canicattì), so skip the slow global is_in
+        // point-in-polygon lookup that times out on overloaded public
+        // Overpass servers, and fetch only this one relation's geometry.
+        targetRelId = osmId;
+      } else {
+        // Fallback for place-node/way results or older settlements without
+        // a stored osm_id: resolve the enclosing admin boundary the slow way.
+        const isinQuery = `[out:json][timeout:25];
 is_in(${lat},${lng});
 out tags;`;
-      const isinJson = await overpass(isinQuery);
-      const candidates = (isinJson.elements || [])
-        .filter(e => e.type === 'area' && e.tags && e.tags.boundary === 'administrative' && e.tags.admin_level)
-        .map(e => ({
-          area_id: e.id,
-          rel_id: e.id > 3600000000 ? e.id - 3600000000 : null,
-          admin_level: parseInt(e.tags.admin_level, 10),
-          name: e.tags.name || e.tags['name:en'],
-        }))
-        .filter(c => c.rel_id && !Number.isNaN(c.admin_level))
-        .sort((a, b) => b.admin_level - a.admin_level);
+        const isinJson = await overpass(isinQuery);
+        const candidates = (isinJson.elements || [])
+          .filter(e => e.type === 'area' && e.tags && e.tags.boundary === 'administrative' && e.tags.admin_level)
+          .map(e => ({
+            area_id: e.id,
+            rel_id: e.id > 3600000000 ? e.id - 3600000000 : null,
+            admin_level: parseInt(e.tags.admin_level, 10),
+            name: e.tags.name || e.tags['name:en'],
+          }))
+          .filter(c => c.rel_id && !Number.isNaN(c.admin_level))
+          .sort((a, b) => b.admin_level - a.admin_level);
 
-      if (candidates.length === 0) {
-        throw new Error('No administrative boundary found at this point.');
+        if (candidates.length === 0) {
+          throw new Error('No administrative boundary found at this point.');
+        }
+        targetRelId = candidates[0].rel_id;
       }
-      const target = candidates[0];
 
       // 2) Fetch the relation's outer-ring geometry.
       const geomQuery = `[out:json][timeout:60];
-relation(${target.rel_id});
+relation(${targetRelId});
 out geom;`;
       const geomJson = await overpass(geomQuery);
       const rel = geomJson.elements && geomJson.elements[0];

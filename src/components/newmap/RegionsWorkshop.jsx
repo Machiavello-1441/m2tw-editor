@@ -104,7 +104,7 @@ export default function RegionsWorkshop({
     const rgb = randomRgb(usedColors.current);
     const name = result.display_name.split(',')[0].trim().toLowerCase().replace(/\s+/g, '_');
     const displayName = result.display_name.split(',')[0];
-    const settlement = { name, displayName, lat, lng, rgb, px, py };
+    const settlement = { name, displayName, lat, lng, rgb, px, py, osmId: result.osm_id, osmType: result.osm_type };
 
     const newSettlements = [...settlementsRef.current, settlement];
     onSettlementsChange(newSettlements);
