@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, X, Check, Search } from 'lucide-react';
 import { extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from './additionalParsers';
+import ReligionsEditor from './ReligionsEditor';
 
 const SETTLEMENT_LEVELS = ['village', 'town', 'large_town', 'city', 'large_city', 'huge_city'];
 
@@ -488,18 +489,14 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
                 sum: {religionSum}/100
               </span>
             </div>
-            <div className="space-y-0.5 max-h-28 overflow-y-auto">
-              {religionList.map(rel => (
-                <div key={rel} className="flex items-center gap-1.5">
-                  <span className="text-[9px] text-slate-400 font-mono flex-1 truncate">{rel}</span>
-                  <input type="number" min="0" max="100" value={draft.religions[rel] || 0}
-                    onChange={e => setDraft(d => ({ ...d, religions: { ...d.religions, [rel]: parseInt(e.target.value) || 0 } }))}
-                    className="w-14 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
-                </div>
-              ))}
-            </div>
+            <ReligionsEditor
+              religions={draft.religions}
+              availableReligions={religionList}
+              showAll
+              onChange={v => setDraft(d => ({ ...d, religions: v }))}
+            />
             {religionError && (
-              <p className="text-[9px] text-red-400 mt-0.5">Religion percentages must sum to exactly 100 before creating the region.</p>
+              <p className="text-[9px] text-red-400 mt-0.5">Drag a slider — the others rescale so the total stays 100.</p>
             )}
           </div>
         )}

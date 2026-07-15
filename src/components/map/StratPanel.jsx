@@ -10,6 +10,7 @@ import JSZip from 'jszip';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
 import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';
+import ReligionsEditor from './ReligionsEditor';
 import FactionsCampaignTab from './FactionsCampaignTab';
 import CharactersTab from './CharactersTab';
 import { parseFactionMovies, serializeFactionMovies } from './factionMoviesParser';
@@ -702,30 +703,11 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               {/* Religions */}
               <div>
                 <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">Religions (sum=100)</p>
-                {Object.entries(draft.religions || {}).map(([rel, val]) =>
-            <div key={rel} className="flex items-center gap-1 mb-0.5">
-                    <span className="text-[10px] font-mono text-slate-300 flex-1 truncate">{rel}</span>
-                    <input type="number" min={0} max={100} value={val}
-              onChange={(e) => setDraft((d) => ({ ...d, religions: { ...d.religions, [rel]: parseInt(e.target.value) || 0 } }))}
-              className="w-14 h-5 px-1 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center" />
-                    <button onClick={() => setDraft((d) => {const r = { ...d.religions };delete r[rel];return { ...d, religions: r };})}
-              className="text-slate-600 hover:text-red-400"><X className="w-2.5 h-2.5" /></button>
-                  </div>
-            )}
-                {(religionList || []).filter((r) => !(r in (draft.religions || {}))).length > 0 &&
-            <select defaultValue="" onChange={(e) => {
-              if (!e.target.value) return;
-              setDraft((d) => ({ ...d, religions: { ...(d.religions || {}), [e.target.value]: 0 } }));
-              e.target.value = '';
-            }} className="w-full h-5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-400">
-                    <option value="">+ Add religion…</option>
-                    {(religionList || []).filter((r) => !(r in (draft.religions || {}))).map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
-            }
-                {Object.keys(draft.religions || {}).length > 0 && (() => {
-              const total = Object.values(draft.religions || {}).reduce((s, v) => s + (parseInt(v) || 0), 0);
-              return <p className={`text-[9px] font-mono mt-0.5 ${total === 100 ? 'text-green-400' : 'text-red-400'}`}>Total: {total}/100</p>;
-            })()}
+                <ReligionsEditor
+                  religions={draft.religions}
+                  availableReligions={religionList}
+                  onChange={(v) => setDraft((d) => ({ ...d, religions: v }))}
+                />
               </div>
 
               <div className="flex gap-1.5 justify-end pt-0.5">
