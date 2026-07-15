@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Search, Plus, Trash2, Download, MapPin } from 'lucide-react';
+import SettlementBoundaryButton from './SettlementBoundaryButton';
 
 function randomRgb(used) {
   for (let attempt = 0; attempt < 200; attempt++) {
@@ -224,15 +225,25 @@ export default function RegionsWorkshop({
               </div>
               <div className="max-h-48 overflow-y-auto space-y-1">
                 {settlements.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded">
-                    <div className="w-3 h-3 rounded-sm shrink-0 border border-slate-600"
-                      style={{ backgroundColor: `rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})` }} />
-                    <span className="text-[10px] text-slate-300 flex-1 truncate">{s.displayName}</span>
-                    <span className="text-[9px] text-slate-600 font-mono shrink-0">{s.px},{s.py}</span>
-                    <button onClick={() => removeSettlement(i)}
-                      className="text-slate-600 hover:text-red-400 transition-colors shrink-0">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                  <div key={i} className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-sm shrink-0 border border-slate-600"
+                        style={{ backgroundColor: `rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})` }} />
+                      <span className="text-[10px] text-slate-300 flex-1 truncate">{s.displayName}</span>
+                      <span className="text-[9px] text-slate-600 font-mono shrink-0">{s.px},{s.py}</span>
+                      <button onClick={() => removeSettlement(i)}
+                        className="text-slate-600 hover:text-red-400 transition-colors shrink-0">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <SettlementBoundaryButton
+                      settlement={s}
+                      bbox={bbox}
+                      layers={layers}
+                      onLayerUpdate={onLayerUpdate}
+                      mapWidth={mapWidth}
+                      mapHeight={mapHeight}
+                    />
                   </div>
                 ))}
               </div>
