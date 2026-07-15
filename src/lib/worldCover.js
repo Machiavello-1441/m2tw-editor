@@ -11,8 +11,13 @@
  */
 
 import * as Lerc from 'lerc';
-import wasmUrl from 'lerc/lerc-wasm.wasm?url';
 import { GT } from '@/lib/autoGroundTypes';
+
+// The lerc package ships its decoder as JS + a separate lerc-wasm.wasm. Vite
+// can't bundle the wasm as an import (it tries to parse it as JS), so we pull
+// the wasm from the unpkg CDN via Lerc.load's locateFile hook.
+const LERC_VERSION = '4.1.2';
+const LERC_WASM_URL = `https://unpkg.com/lerc@${LERC_VERSION}/lerc-wasm.wasm`;
 
 // Service root (TilesOnly ImageServer, WGS84 cached).
 export const ESA_WORLDCOVER_BASE =
@@ -85,7 +90,7 @@ function tileBounds(bbox, level) {
 let _wasmLoaded = false;
 async function ensureLerc() {
   if (_wasmLoaded && (!(Lerc.isLoaded) || Lerc.isLoaded())) return;
-  await Lerc.load({ locateFile: () => wasmUrl });
+  await Lerc.load({ locateFile: () => LERC_WASM_URL });
   _wasmLoaded = true;
 }
 
