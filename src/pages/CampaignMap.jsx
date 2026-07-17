@@ -1517,7 +1517,7 @@ export default function CampaignMap() {
 
             {activeTab === 'validation' && (
               <div className="h-full overflow-hidden">
-                <MapValidationPanel layers={layers} onJumpTo={(x, y) => jumpRef.current?.(x, y)} />
+                <MapValidationPanel layers={layers} onJumpTo={(x, y) => jumpRef.current?.(x, y, mapW2, mapH)} />
               </div>
             )}
           </div>

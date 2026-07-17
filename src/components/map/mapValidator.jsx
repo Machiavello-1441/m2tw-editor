@@ -67,12 +67,17 @@ export function validateLayers(layers, step = 4) {
     for (let y = 0; y < h; y += step) {
       for (let x = 0; x < w; x += step) {
         const [fr, fg, fb] = getPixel(features.data, w, x, y);
-        if (!isRiver(fr, fg, fb) && !isFord(fr, fg, fb)) continue;
+        const isR = isRiver(fr, fg, fb);
+        const isF = isFord(fr, fg, fb);
+        if (!isR && !isF) continue;
         const hx = Math.round(x * (heights.width / w));
         const hy = Math.round(y * (heights.height / h));
         const [hr, hg, hb] = getPixel(heights.data, heights.width, hx, hy);
         if (isSeaHeight(hr, hg, hb)) {
-          push('error', 'features', `River/ford on sea height at (${x},${y})`, x, y);
+          // Fords crossing the sea are invalid; rivers often legitimately run
+          // into the sea, so those stay a warning.
+          if (isF) push('error', 'features', `Ford on sea height at (${x},${y})`, x, y);
+          else     push('warning', 'features', `River on sea height at (${x},${y})`, x, y);
         }
       }
     }
