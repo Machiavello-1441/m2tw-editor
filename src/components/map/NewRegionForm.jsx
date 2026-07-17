@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, X, Check, Search } from 'lucide-react';
+import { Plus, X, Check, Search, Copy } from 'lucide-react';
 import { extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from './additionalParsers';
 import ReligionsEditor from './ReligionsEditor';
 
@@ -136,10 +136,12 @@ function SearchableMultiSelect({ selected, onChange, options, placeholder, empty
 }
 
 // ─── Main form ────────────────────────────────────────────────────────────────
-export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList, seedColor }) {
+export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList, seedColor, cloneSources }) {
   const [draft, setDraft] = useState({
-    regionName: '',
-    settlementName: '',
+    // Seed the unique-name suffixes so region and settlement can never collide,
+    // even before the user has typed anything — they prefix with their own name.
+    regionName: '_Province',
+    settlementName: '_City',
     regionDisplayName: '',
     settlementDisplayName: '',
     r: seedColor?.r ?? Math.floor(Math.random() * 200) + 30,
@@ -200,6 +202,42 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
 
   const canSubmit = draft.regionName && draft.settlementName && !religionError;
 
+  const [cloneChoice, setCloneChoice] = useState('');
+
+  // Apply a previously-created region's non-identity fields to the draft.
+  // Names and colours stay as the user set them — everything else is copied so
+  // mass-creating similar regions takes one click instead of a dozen.
+  const applyClone = () => {
+    const source = (cloneSources || []).find(s => s.key === cloneChoice);
+    if (!source) return;
+    const region = source.region || {};
+    const settlement = source.settlement || {};
+    // Hidden resources = region's resources minus natural ones, intersected with EDB hidden list
+    const hiddenRes = (region.resources || []).filter(r => !(naturalResList || []).includes(r) && (edbHiddenRes.length ? edbHiddenRes.includes(r) : true));
+    // Restrict copied religions to those in the available list so the slider UI stays consistent
+    const cleanReligions = {};
+    if (religionList?.length) {
+      for (const k of religionList) if ((region.religions || {})[k] != null) cleanReligions[k] = parseInt(region.religions[k]) || 0;
+    } else {
+      Object.assign(cleanReligions, region.religions || {});
+    }
+    setDraft(d => ({
+      ...d,
+      faction: settlement.faction || d.faction || '',
+      factionCreator: region.factionCreator || settlement.factionCreator || d.factionCreator || '',
+      rebelFaction: region.rebelFaction || d.rebelFaction || '',
+      level: settlement.level || d.level || 'village',
+      population: settlement.population ?? d.population ?? 400,
+      buildings: [...(settlement.buildings || [])],
+      val1: region.val1 ?? d.val1 ?? 0,
+      val2: region.val2 ?? d.val2 ?? 0,
+      hiddenResources: hiddenRes,
+      musicType: region.musicType || d.musicType || '',
+      mercenaryPool: region.mercenaryPool || d.mercenaryPool || '',
+      religions: cleanReligions,
+    }));
+  };
+
   const handleSubmit = () => {
     if (!canSubmit) return;
     onAdd(draft);
@@ -210,6 +248,25 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
       <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider flex items-center gap-1">
         <Plus className="w-3 h-3" /> New Region
       </p>
+
+      {/* Clone fields from an existing region — copies everything except names & colours */}
+      {cloneSources?.length > 0 && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-900/10 p-1.5 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <Copy className="w-3 h-3 text-amber-400 shrink-0" />
+            <span className="text-[9px] font-semibold text-amber-400 uppercase tracking-wider">Clone fields from region</span>
+          </div>
+          <select value={cloneChoice} onChange={e => setCloneChoice(e.target.value)}
+            className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+            <option value="">— pick a region —</option>
+            {cloneSources.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+          <button type="button" onClick={applyClone} disabled={!cloneChoice}
+            className="w-full h-6 rounded text-[10px] bg-amber-600/30 hover:bg-amber-600/40 border border-amber-500/30 text-amber-300 disabled:opacity-40 transition-colors">
+            Apply (keeps names & colours, copies the rest)
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-1.5">
         <div>

@@ -1116,6 +1116,28 @@ export default function StratPanel({
 
   const regionNames = useMemo(() => (regionsData || []).map((r) => r.regionName).filter(Boolean), [regionsData]);
 
+  // Sources for the "clone fields from existing region" picker in NewRegionForm.
+  // Includes every loaded region; the most recently added and the currently selected
+  // settlement's region are flagged and pinned to the top of the list.
+  const cloneSources = useMemo(() => {
+    if (!regionsData?.length) return [];
+    const lastRegionName = regionsData[regionsData.length - 1]?.regionName;
+    const selectedRegionName = selectedItem?.category === 'settlement' && selectedItem.region ? selectedItem.region : null;
+    const sources = [];
+    regionsData.forEach((region, idx) => {
+      const settlement = (overlayItems || []).find(i => i.category === 'settlement' && i.region === region.regionName);
+      const badges = [];
+      if (region.regionName === lastRegionName) badges.push('Last created');
+      if (region.regionName === selectedRegionName) badges.push('Selected');
+      const dispName = settlementNames?.[region.regionName] || region.regionName || '(unnamed)';
+      const label = badges.length ? `[${badges.join(' / ')}] ${dispName}` : dispName;
+      sources.push({ key: region.regionName || `reg-${idx}`, label, region, settlement });
+    });
+    const order = (name) => (name === lastRegionName ? 0 : name === selectedRegionName ? 1 : 2);
+    sources.sort((a, b) => order(a.region.regionName) - order(b.region.regionName) || a.label.localeCompare(b.label));
+    return sources;
+  }, [regionsData, overlayItems, selectedItem, settlementNames]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Sub-tabs */}
@@ -1506,6 +1528,7 @@ export default function StratPanel({
             religionList={religionList}
             naturalResList={naturalResList}
             seedColor={newRegionSeedColor}
+            cloneSources={cloneSources}
             onCancel={() => { setShowNewRegion(false); setNewRegionSeedColor(null); }}
             onAdd={(draft) => {
               if (onAddNewRegion) onAddNewRegion(draft);
