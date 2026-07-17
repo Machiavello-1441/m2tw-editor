@@ -21,6 +21,10 @@ export default function OsmRegionSearch({ bbox, onAdd, onMergeBoundary, lastRegi
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
   const [mergeStatus, setMergeStatus] = useState('');
+  // The OSM result most recently used to "Add region" — kept so the top-level
+  // "Boundary → last" button can paint that same place's boundary without the
+  // user having to re-search it.
+  const [lastAddedResult, setLastAddedResult] = useState(null);
 
   const search = useCallback(async () => {
     if (!query.trim() || !bbox) return;
@@ -45,6 +49,7 @@ export default function OsmRegionSearch({ bbox, onAdd, onMergeBoundary, lastRegi
     setBusy(true);
     try {
       await onAdd?.(r);
+      setLastAddedResult(r);
       setResults([]);
       setQuery('');
       setStatus('');
@@ -94,6 +99,18 @@ export default function OsmRegionSearch({ bbox, onAdd, onMergeBoundary, lastRegi
           {searching ? <Loader2 className="w-3 h-3 text-white animate-spin" /> : <Search className="w-3 h-3 text-white" />}
         </button>
       </div>
+      {/* Top-level boundary action — reuses the last OSM result that was used
+          to add a region, so you can paint its territory immediately without
+          having to search the same settlement again. */}
+      {lastAddedResult && lastRegionLabel && (
+        <button
+          onClick={() => handleMerge(lastAddedResult)}
+          disabled={busy}
+          title={`Paint the boundary of "${(lastAddedResult.display_name || lastAddedResult.name || '').split(',')[0]}" onto the last region (${lastRegionLabel})`}
+          className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-violet-700 text-white hover:bg-violet-600 disabled:opacity-40 transition-colors font-semibold">
+          <Wand2 className="w-3 h-3" /> Boundary → last  <span className="font-mono text-[9px] text-violet-200 truncate">{(lastAddedResult.display_name || lastAddedResult.name || '').split(',')[0]}</span>
+        </button>
+      )}
       {status && <p className="text-[9px] text-slate-500">{status}</p>}
       {mergeStatus && <p className="text-[9px] text-amber-400">{mergeStatus}</p>}
 
