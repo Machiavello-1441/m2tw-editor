@@ -1126,6 +1126,20 @@ export default function StratPanel({
     return settlementNames?.[last.regionName] || last.regionName || '';
   }, [regionsData, settlementNames]);
 
+  // When a settlement is selected in the list, expose its region's existing
+  // colour + display name so the OSM search panel can paint boundaries onto an
+  // already-existing region's territory (instead of only the last-added one).
+  const selectedRegionInfo = useMemo(() => {
+    if (!selectedItem || selectedItem.category !== 'settlement' || !regionsData?.length) return null;
+    const reg = regionsData.find(r => r.regionName === selectedItem.region);
+    if (!reg) return null;
+    return {
+      regionName: reg.regionName,
+      displayName: settlementNames?.[reg.regionName] || reg.settlementName || reg.regionName || '',
+      r: reg.r, g: reg.g, b: reg.b,
+    };
+  }, [selectedItem, regionsData, settlementNames]);
+
   // Sources for the "clone fields from existing region" picker in NewRegionForm.
   // Includes every loaded region; the most recently added and the currently selected
   // settlement's region are flagged and pinned to the top of the list.
@@ -1520,13 +1534,16 @@ export default function StratPanel({
             }} />
 
           {/* OSM-bounded region search — only when the campaign map editor
-              has a validated BBox AND a regions layer is loaded. */}
+              has a validated BBox AND a regions layer is loaded. When a
+              settlement is selected in the list, its region's existing colour
+              is exposed so the panel can paint OSM boundaries onto it. */}
           {osmBbox && regionsLayer?.data && (
             <OsmRegionSearch
               bbox={osmBbox}
               onAdd={onOsmAddRegion}
               onMergeBoundary={onOsmPaintBoundary}
-              lastRegionLabel={lastRegionLabel} />
+              lastRegionLabel={lastRegionLabel}
+              selectedRegionInfo={selectedRegionInfo} />
           )}
 
           <div className="flex gap-1.5">

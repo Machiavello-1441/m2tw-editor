@@ -1042,10 +1042,15 @@ export default function CampaignMap() {
   // ── Paint a Nominatim-resolved municipality polygon onto the regions TGA
   // using the last-added region's colour (merges territory — preserves sea,
   // black cities and white ports). Mirrors the New Map Editor "Merge to last".
-  const handleOsmPaintBoundary = useCallback(async (result) => {
+  const handleOsmPaintBoundary = useCallback(async (result, colorOverride) => {
     const regLayer = layers['regions'];
     if (!regLayer?.data || !osmBbox) return;
-    const last = (regionsData || [])[regionsData?.length ? regionsData.length - 1 : 0];
+    // When a colour override is supplied (e.g. painting the boundary onto an
+    // existing region picked from the settlements list) use it; otherwise fall
+    // back to the most recently added region's colour.
+    const last = colorOverride
+      ? { r: colorOverride.r, g: colorOverride.g, b: colorOverride.b }
+      : (regionsData || [])[regionsData?.length ? regionsData.length - 1 : 0];
     if (!last) return;
     const rgb = [last.r, last.g, last.b];
     const imageData = new ImageData(new Uint8ClampedArray(regLayer.data), regLayer.width, regLayer.height);
