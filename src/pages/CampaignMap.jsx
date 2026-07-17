@@ -261,17 +261,25 @@ export default function CampaignMap() {
         }
       }
     } catch {}
-    // Auto-restore settlement names from strings bin store if not already loaded
+    // Auto-restore settlement names from the strings-bin store for the ACTIVE
+    // campaign only. Without matching the campaign name we would silently
+    // import another campaign's regions (e.g. americas_* when working on
+    // imperial_campaign), producing entries that don't exist in this mod.
     try {
       if (!sessionStorage.getItem('m2tw_names_raw')) {
         const store = getStringsBinStore();
-        for (const [fname, binData] of Object.entries(store)) {
-          if (fname.toLowerCase().includes('regions_and_settlement_names')) {
-            const namesMap = {};
-            for (const { key, value } of binData.entries) if (key) namesMap[key] = value;
-            setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
-            break;
+        const activeCampaign = (stratData?.campaignName || '').toLowerCase();
+        const pickPrefix = activeCampaign ? `${activeCampaign}_regions_and_settlement_names` : '';
+        let matched = null;
+        if (pickPrefix) {
+          for (const fname of Object.keys(store)) {
+            if (fname.toLowerCase().startsWith(pickPrefix)) { matched = store[fname]; break; }
           }
+        }
+        if (matched?.entries?.length) {
+          const namesMap = {};
+          for (const { key, value } of matched.entries) if (key) namesMap[key] = value;
+          setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
         }
       }
     } catch {}

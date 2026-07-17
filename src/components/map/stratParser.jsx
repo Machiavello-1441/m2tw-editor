@@ -1049,9 +1049,30 @@ export function serializeDescrRegions(regions, allReligions) {
 // ─── regions_and_settlement_names.txt ─────────────────────────────────────────
 export function parseSettlementNames(text) {
   const names = {};
-  const regex = /\{([^}]+)\}([^\n{]+)/g;
-  let m;
-  while ((m = regex.exec(text)) !== null) names[m[1].trim()] = m[2].trim();
+  // Two accepted layouts per entry:
+  //   1. {key}value         — the engine / extract-from-strings.bin format
+  //   2. {key}\nvalue       — the hand-edited two-line format
+  // Lines beginning with `;` are M2TW comments (usually deactivated regions
+  // removed from the mod) — skipping them keeps those stale entries out of
+  // the rebuilt file. Line endings may be LF or CRLF; a leading `¬`/BOM is
+  // trimmed off each line so the first key still matches.
+  const lines = text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((l) => l.replace(/^[\s\u00AC\uFEFF]+/, '').replace(/\s+$/, ''));
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line || line.startsWith(';')) continue;
+    let m = line.match(/^\{([^}]+)\}(.+)$/);
+    if (m) { const k = m[1].trim(); if (k) names[k] = m[2].trim(); continue; }
+    m = line.match(/^\{([^}]+)\}$/);
+    if (m) {
+      const key = m[1].trim();
+      let j = i + 1;
+      while (j < lines.length && (!lines[j] || lines[j].startsWith(';'))) j++;
+      if (key) { names[key] = j < lines.length ? lines[j] : ''; i = j; }
+    }
+  }
   return names;
 }
 

@@ -974,9 +974,10 @@ export default function StratPanel({
 
   const handleExportNames = () => {
     if (!settlementNames || !Object.keys(settlementNames).length) return;
+    const campaignName = (stratData?.campaignName || 'imperial_campaign').replace(/[^a-zA-Z0-9_\-]/g, '_');
     const lines = Object.entries(settlementNames).map(([k, v]) => `{${k}}${v}`);
-    downloadBlob(new Blob([toCRLF(lines.join('\n'))], { type: 'text/plain' }), 'regions_and_settlement_names.txt');
-  };
+    downloadBlob(new Blob([toCRLF(lines.join('\n'))], { type: 'text/plain' }), `${campaignName}_regions_and_settlement_names.txt`);
+};
 
   const handleExportFactions = () => {
     const raw = sessionStorage.getItem('m2tw_factions_raw');
