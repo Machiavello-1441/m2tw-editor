@@ -1,6 +1,45 @@
 import React, { useState, useCallback } from 'react';
 import { Search, Plus, Wand2, MapPin, Loader2 } from 'lucide-react';
 
+// Classify a Nominatim result into a short, color-coded tag so visually
+// identical results (e.g. "Trapani, Sicily" as a city, a commune, a province
+// and a metropolitan area) become distinguishable — mirrors the New Map Editor.
+function classifyNominatimResult(r) {
+  const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  const at = (r.addresstype || r.type || '').toLowerCase();
+  const lvl = r.extratags && r.extratags.admin_level ? parseInt(r.extratags.admin_level, 10) : null;
+  if (r.osm_type === 'node') {
+    if (['city', 'town', 'village', 'hamlet', 'suburb', 'neighbourhood'].includes(at))
+      return { label: cap(at), cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+    return { label: 'Settlement', cls: 'bg-amber-500/10 text-amber-200 border-amber-500/20' };
+  }
+  if (r.class === 'boundary' || r.type === 'administrative' || lvl !== null) {
+    if (lvl === 2) return { label: 'Country', cls: 'bg-rose-500/15 text-rose-300 border-rose-500/30' };
+    if (lvl === 4 || lvl === 5) return { label: 'Region', cls: 'bg-violet-500/20 text-violet-300 border-violet-500/30' };
+    if (lvl === 6 || lvl === 7) return { label: 'Province', cls: 'bg-sky-500/20 text-sky-300 border-sky-500/30' };
+    if (lvl === 8) return { label: 'Commune', cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' };
+    if (lvl === 9 || lvl === 10 || lvl === 11) return { label: 'District', cls: 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20' };
+    if (at === 'state' || at === 'region') return { label: 'Region', cls: 'bg-violet-500/20 text-violet-300 border-violet-500/30' };
+    if (at === 'county') return { label: 'Province', cls: 'bg-sky-500/20 text-sky-300 border-sky-500/30' };
+    return { label: 'Admin', cls: 'bg-slate-500/20 text-slate-300 border-slate-500/30' };
+  }
+  if (['city', 'town', 'village', 'hamlet'].includes(at))
+    return { label: cap(at), cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+  return { label: at ? cap(at) : 'Place', cls: 'bg-slate-500/15 text-slate-300 border-slate-500/25' };
+}
+
+// Renders the Level badge for a Nominatim result (label + admin_level).
+function LevelBadge({ r }) {
+  const tag = classifyNominatimResult(r);
+  const lvl = r.extratags && r.extratags.admin_level ? parseInt(r.extratags.admin_level, 10) : null;
+  return (
+    <span className={`shrink-0 px-1 py-0.5 rounded text-[8px] font-semibold leading-none border ${tag.cls}`}
+      title={lvl != null ? `admin_level ${lvl}` : tag.label}>
+      {tag.label}{lvl != null ? ` ${lvl}` : ''}
+    </span>
+  );
+}
+
 /**
  * OsmRegionSearch — Nominatim-bounded search for a real-world place, with two
  * actions per result:
@@ -146,6 +185,7 @@ export default function OsmRegionSearch({ bbox, onAdd, onMergeBoundary, lastRegi
           title={`Paint the boundary of "${(lastAddedResult.display_name || lastAddedResult.name || '').split(',')[0]}" onto the ${target === 'selected' && selectedRegionInfo ? 'selected region' : 'last region'}`}
           className={`w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] disabled:opacity-40 transition-colors font-semibold ${target === 'selected' && selectedRegionInfo ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-violet-700 hover:bg-violet-600 text-white'}`}>
           <Wand2 className="w-3 h-3" /> {target === 'selected' && selectedRegionInfo ? 'Boundary → selected' : 'Boundary → last'}  <span className={`font-mono text-[9px] truncate ${target === 'selected' && selectedRegionInfo ? 'text-amber-100' : 'text-violet-200'}`}>{(lastAddedResult.display_name || lastAddedResult.name || '').split(',')[0]}</span>
+          <LevelBadge r={lastAddedResult} />
         </button>
       )}
       {status && <p className="text-[9px] text-slate-500">{status}</p>}
@@ -162,7 +202,10 @@ export default function OsmRegionSearch({ bbox, onAdd, onMergeBoundary, lastRegi
                 className="px-2 py-1.5 hover:bg-slate-700/60 border-b border-slate-700 last:border-0 flex items-start gap-1.5 transition-colors">
                 <MapPin className="w-3 h-3 text-blue-400 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] text-slate-200 truncate">{top}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-200 truncate flex-1">{top}</span>
+                    <LevelBadge r={r} />
+                  </div>
                   {sub && <div className="text-[9px] text-slate-500 truncate">{sub}</div>}
                   <div className="flex gap-1 mt-1">
                     <button onClick={() => handleAdd(r)} disabled={busy}
