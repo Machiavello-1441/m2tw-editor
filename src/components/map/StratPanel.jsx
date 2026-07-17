@@ -10,6 +10,7 @@ import JSZip from 'jszip';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
 import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';
+import OsmRegionSearch from './OsmRegionSearch';
 import ReligionsEditor from './ReligionsEditor';
 import FactionsCampaignTab from './FactionsCampaignTab';
 import CharactersTab from './CharactersTab';
@@ -827,7 +828,8 @@ export default function StratPanel({
   onLoadTgaLayer,
   descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onPinCharacter,
   openItemId, onOpenItemHandled,
-  onPickFromMap
+  onPickFromMap,
+  osmBbox, onOsmAddRegion, onOsmPaintBoundary
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -1115,6 +1117,14 @@ export default function StratPanel({
   }, [stratData]);
 
   const regionNames = useMemo(() => (regionsData || []).map((r) => r.regionName).filter(Boolean), [regionsData]);
+
+  // Display name of the most recently added region — shown in the OSM search
+  // panel so the "Boundary → last" action makes its target explicit.
+  const lastRegionLabel = useMemo(() => {
+    if (!regionsData?.length) return '';
+    const last = regionsData[regionsData.length - 1];
+    return settlementNames?.[last.regionName] || last.regionName || '';
+  }, [regionsData, settlementNames]);
 
   // Sources for the "clone fields from existing region" picker in NewRegionForm.
   // Includes every loaded region; the most recently added and the currently selected
@@ -1508,7 +1518,17 @@ export default function StratPanel({
               setNewRegionSeedColor(seedColor);
               setShowNewRegion(true);
             }} />
-          
+
+          {/* OSM-bounded region search — only when the campaign map editor
+              has a validated BBox AND a regions layer is loaded. */}
+          {osmBbox && regionsLayer?.data && (
+            <OsmRegionSearch
+              bbox={osmBbox}
+              onAdd={onOsmAddRegion}
+              onMergeBoundary={onOsmPaintBoundary}
+              lastRegionLabel={lastRegionLabel} />
+          )}
+
           <div className="flex gap-1.5">
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search region or faction…"
             className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />

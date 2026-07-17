@@ -18,6 +18,7 @@ import { parseEDU } from '../components/units/EDUParser';
 import { parseStringsBin } from '../components/strings/stringsBinCodec';
 import { getStringsBinStore } from '../lib/stringsBinStore';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
+import { latLngToPixel, paintBoundary } from '../components/newmap/boundaryRasterizer';
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
 import { setLayer, getLayer, getAllLayers, hasAnyLayer } from '../lib/mapLayerStore';
@@ -914,6 +915,122 @@ export default function CampaignMap() {
     setDirtyLayers(prev => new Set([...prev, 'regions']));
   }, []);
 
+  // Generate a random region colour that doesn't collide with the(sea-blue,
+  // pure-white port, pure-black city) reserved pixels or any colour already
+  // used by an existing region.
+  const randomRegionColor = useCallback((used) => {
+    for (let i = 0; i < 200; i++) {
+      const r = 10 + Math.floor(Math.random() * 240);
+      const g = 10 + Math.floor(Math.random() * 240);
+      const b = 10 + Math.floor(Math.random() * 240);
+      if (r < 5 && g < 5 && b > 200) continue;           // sea blue
+      if (r > 250 && g > 250 && b > 250) continue;        // white port
+      if (r < 5 && g < 5 && b < 5) continue;              // black city
+      const key = `${r},${g},${b}`;
+      if (!used.has(key)) { used.add(key); return [r, g, b]; }
+    }
+    return [Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)];
+  }, []);
+
+  // ── Paint the settlement dot (black center + 8 surrounding RGB pixels)
+  // onto the regions TGA, then create the matching region + strat settlement
+  // with the auto-naming convention: <Name>_Province / <Name> / <Name>_City / <Name>.
+  const handleOsmAddRegion = useCallback(async (result) => {
+    const regLayer = layers['regions'];
+    if (!regLayer?.data || !osmBbox) return;
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    const { px, py } = latLngToPixel(lat, lng, osmBbox, regLayer.width, regLayer.height);
+    if (px < 0 || py < 0 || px >= regLayer.width || py >= regLayer.height) return;
+    const usedKeys = new Set();
+    for (const r of (regionsData || [])) usedKeys.add(`${r.r},${r.g},${r.b}`);
+    const [r, g, b] = randomRegionColor(usedKeys);
+    const topName = (result.display_name || result.name || '').split(',')[0].trim() || 'Settlement';
+    // Preserve the source capitalisation (e.g. "Camerino" → "Camerino_Province"),
+    // collapse spaces to underscores and strip non-ASCII for engine-safe internals.
+    const internalName = topName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'Settlement';
+
+    // Paint 3×3 dot: black city center + 8 surrounding region-RGB pixels
+    setLayers(prev => {
+      const layer = prev['regions'];
+      if (!layer?.data) return prev;
+      const newData = new Uint8ClampedArray(layer.data);
+      const w = layer.width, h = layer.height;
+      const set = (x, y, rr, gg, bb) => {
+        if (x < 0 || y < 0 || x >= w || y >= h) return;
+        const i = (y * w + x) * 4;
+        newData[i] = rr; newData[i + 1] = gg; newData[i + 2] = bb;
+      };
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) set(px + dx, py + dy, 0, 0, 0);
+          else set(px + dx, py + dy, r, g, b);
+        }
+      }
+      createImageBitmap(new ImageData(newData, w, h)).then(bitmap => {
+        setLayers(p => ({ ...p, regions: { ...p['regions'], bitmap, data: newData } }));
+      });
+      return { ...prev, regions: { ...layer, data: newData } };
+    });
+    setDirtyLayers(prev => new Set([...prev, 'regions']));
+
+    const draft = {
+      regionName: internalName + '_Province',
+      settlementName: internalName + '_City',
+      regionDisplayName: topName,
+      settlementDisplayName: topName,
+      r, g, b,
+      faction: '', factionCreator: '', rebelFaction: 'slave',
+      castle: false,
+      level: 'village',
+      population: 400,
+      yearFounded: 0,
+      resources: [], hiddenResources: [], buildings: [],
+      val1: 0, val2: 0,
+      musicType: '', mercenaryPool: '',
+      religions: {},
+      _osm: { lat, lng, osmId: result.osm_id, osmType: result.osm_type },
+    };
+    finalizeNewRegion(draft, px, py, null, null);
+  }, [layers, regionsData, osmBbox, randomRegionColor, finalizeNewRegion]);
+
+  // ── Paint a Nominatim-resolved municipality polygon onto the regions TGA
+  // using the last-added region's colour (merges territory — preserves sea,
+  // black cities and white ports). Mirrors the New Map Editor "Merge to last".
+  const handleOsmPaintBoundary = useCallback(async (result) => {
+    const regLayer = layers['regions'];
+    if (!regLayer?.data || !osmBbox) return;
+    const last = (regionsData || [])[regionsData?.length ? regionsData.length - 1 : 0];
+    if (!last) return;
+    const rgb = [last.r, last.g, last.b];
+    const imageData = new ImageData(new Uint8ClampedArray(regLayer.data), regLayer.width, regLayer.height);
+    const fakeLayers = { regions: { imageData, opacity: regLayer.opacity ?? 1 } };
+    try {
+      await paintBoundary({
+        lat: parseFloat(result.lat),
+        lng: parseFloat(result.lon),
+        osmId: result.osm_id,
+        osmType: result.osm_type,
+        rgb,
+        drawDot: false,
+        bbox: osmBbox,
+        layers: fakeLayers,
+        mapWidth: regLayer.width,
+        mapHeight: regLayer.height,
+        onLayerUpdate: (_id, update) => {
+          const newData = new Uint8ClampedArray(update.imageData.data);
+          createImageBitmap(new ImageData(newData, regLayer.width, regLayer.height)).then(bitmap => {
+            setLayers(p => ({ ...p, regions: { ...p['regions'], bitmap, data: newData } }));
+          });
+        },
+      });
+      setDirtyLayers(prev => new Set([...prev, 'regions']));
+    } catch (e) {
+      console.error('OSM boundary paint failed:', e);
+      throw e;
+    }
+  }, [layers, regionsData, osmBbox]);
+
   // ── Add brand-new region — start paint wizard ───────────────────────────
   const handleAddNewRegion = useCallback((draft) => {
     // Start the region paint wizard
@@ -1341,8 +1458,11 @@ export default function CampaignMap() {
                     openItemId={stratPanelOpenItemId}
                     onOpenItemHandled={() => setStratPanelOpenItemId(null)}
                     onPickFromMap={(cb) => setPendingCoordPick(() => cb)}
+                    osmBbox={osmBbox}
+                    onOsmAddRegion={handleOsmAddRegion}
+                    onOsmPaintBoundary={handleOsmPaintBoundary}
                     />
-              </div>
+                    </div>
             )}
 
             {activeTab === 'validation' && (
