@@ -935,6 +935,44 @@ export default function CampaignMap() {
   // ── Paint the settlement dot (black center + 8 surrounding RGB pixels)
   // onto the regions TGA, then create the matching region + strat settlement
   // with the auto-naming convention: <Name>_Province / <Name> / <Name>_City / <Name>.
+  // Copy the non-identity fields (faction, faction creator, religions,
+  // buildings, hidden resources, music, mercenaries, level, population, …)
+  // from the most recently created region + its matching settlement, so that
+  // newly OSM-created regions inherit their predecessor's setup instead of
+  // being created under "slave" with empty data.
+  const cloneFromLastRegion = useCallback(() => {
+    if (!regionsData?.length) return null;
+    const last = regionsData[regionsData.length - 1];
+    const settlement = (overlayItems || []).find(
+      (oi) => oi.category === 'settlement' && oi.region === last.regionName
+    );
+    const srcResources = last.resources || [];
+    const edbHidden = hiddenResourceList?.length ? hiddenResourceList : [];
+    const hiddenRes = srcResources.filter(
+      (res) => !(naturalResList || []).includes(res) && (edbHidden.length ? edbHidden.includes(res) : true)
+    );
+    const cleanReligions = {};
+    if (religionList?.length) {
+      for (const k of religionList) if ((last.religions || {})[k] != null) cleanReligions[k] = parseInt(last.religions[k]) || 0;
+    } else {
+      Object.assign(cleanReligions, last.religions || {});
+    }
+    return {
+      faction: settlement?.faction || '',
+      factionCreator: last.factionCreator || settlement?.factionCreator || '',
+      rebelFaction: last.rebelFaction || '',
+      level: settlement?.level || 'village',
+      population: settlement?.population ?? 400,
+      buildings: [...(settlement?.buildings || [])],
+      hiddenResources: hiddenRes,
+      val1: last.val1 ?? 0,
+      val2: last.val2 ?? 0,
+      musicType: last.musicType || '',
+      mercenaryPool: last.mercenaryPool || '',
+      religions: cleanReligions,
+    };
+  }, [regionsData, overlayItems, hiddenResourceList, naturalResList, religionList]);
+
   const handleOsmAddRegion = useCallback(async (result) => {
     const regLayer = layers['regions'];
     if (!regLayer?.data || !osmBbox) return;
@@ -949,6 +987,11 @@ export default function CampaignMap() {
     // Preserve the source capitalisation (e.g. "Camerino" → "Camerino_Province"),
     // collapse spaces to underscores and strip non-ASCII for engine-safe internals.
     const internalName = topName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'Settlement';
+
+    // Inherit the last region's non-identity fields (faction, religions,
+    // buildings, etc.) so the new region carries on its predecessor's setup
+    // instead of falling back to "slave" with empty data.
+    const clone = cloneFromLastRegion();
 
     // Paint 3×3 dot: black city center + 8 surrounding region-RGB pixels
     setLayers(prev => {
@@ -980,19 +1023,21 @@ export default function CampaignMap() {
       regionDisplayName: topName,
       settlementDisplayName: topName,
       r, g, b,
-      faction: '', factionCreator: '', rebelFaction: 'slave',
+      faction: clone?.faction ?? '',
+      factionCreator: clone?.factionCreator ?? '',
+      rebelFaction: clone?.rebelFaction || 'slave',
       castle: false,
-      level: 'village',
-      population: 400,
+      level: clone?.level ?? 'village',
+      population: clone?.population ?? 400,
       yearFounded: 0,
-      resources: [], hiddenResources: [], buildings: [],
-      val1: 0, val2: 0,
-      musicType: '', mercenaryPool: '',
-      religions: {},
+      resources: [], hiddenResources: clone?.hiddenResources ?? [], buildings: clone?.buildings ?? [],
+      val1: clone?.val1 ?? 0, val2: clone?.val2 ?? 0,
+      musicType: clone?.musicType ?? '', mercenaryPool: clone?.mercenaryPool ?? '',
+      religions: clone?.religions ?? {},
       _osm: { lat, lng, osmId: result.osm_id, osmType: result.osm_type },
     };
     finalizeNewRegion(draft, px, py, null, null);
-  }, [layers, regionsData, osmBbox, randomRegionColor, finalizeNewRegion]);
+  }, [layers, regionsData, osmBbox, randomRegionColor, finalizeNewRegion, cloneFromLastRegion]);
 
   // ── Paint a Nominatim-resolved municipality polygon onto the regions TGA
   // using the last-added region's colour (merges territory — preserves sea,
