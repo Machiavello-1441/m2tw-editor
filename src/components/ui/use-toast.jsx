@@ -2,7 +2,10 @@
 import { useState, useEffect } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+// Time after dismiss() before the toast is removed from the DOM. Was
+// 1000000ms (~16min) which left closed toasts visible forever across editor
+// navigation. 1000ms is enough for a quick fade and an immediate unmount.
+const TOAST_REMOVE_DELAY = 1000;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -161,4 +164,4 @@ function useToast() {
   };
 }
 
-export { useToast, toast }; 
+export { useToast, toast };
