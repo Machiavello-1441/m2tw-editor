@@ -165,84 +165,87 @@ function PaintCanvas({
     };
   }, [map]); // eslint-disable-line
 
-  // Convert screen point → map pixel coordinate using floor (not round) for accuracy
+  // Convert screen point → map pixel coordinate. Going through
+  // latLngToContainerPoint keeps hit-testing consistent with what Leaflet
+  // actually paints (no separate scale/bounds bookkeeping that drifts on
+  // sub-pixel zoom levels, which previously made the preview cell shorter
+  // than the pixel underneath it).
   const screenToMapPx = useCallback((clientX, clientY) => {
     if (!osmBbox || !mapW || !mapH) return null;
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const sx = clientX - rect.left, sy = clientY - rect.top;
-    const z = map.getZoom();
-    const swPx = map.project([osmBbox.south, osmBbox.west], z);
-    const nePx = map.project([osmBbox.north, osmBbox.east], z);
-    const pt = map.containerPointToLatLng([sx, sy]);
-    const mPx = map.project(pt, z);
-    const fracX = (mPx.x - swPx.x) / (nePx.x - swPx.x);
-    const fracY = (mPx.y - nePx.y) / (swPx.y - nePx.y);
-    // Use floor so the pixel aligns with the top-left corner of the hovered cell
+    const swC = map.latLngToContainerPoint([osmBbox.south, osmBbox.west]);
+    const neC = map.latLngToContainerPoint([osmBbox.north, osmBbox.east]);
+    const imageW = neC.x - swC.x;
+    const imageH = swC.y - neC.y; // south sits below north in container space
+    if (!imageW || !imageH) return null;
+    const fracX = (sx - swC.x) / imageW;
+    const fracY = (sy - neC.y) / imageH;
     const px = Math.floor(fracX * mapW);
     const py = Math.floor(fracY * mapH);
     return { px, py, fracX, fracY };
   }, [map, osmBbox, mapW, mapH]);
 
-  // Map-pixel → screen-pixel centre for drawing the cursor preview
+  // Map-pixel centre → Leaflet LatLng for client-image-alignment tools.
   const mapPxToScreen = useCallback((px, py) => {
     if (!osmBbox || !mapW || !mapH) return null;
-    const z = map.getZoom();
-    const swPx = map.project([osmBbox.south, osmBbox.west], z);
-    const nePx = map.project([osmBbox.north, osmBbox.east], z);
-    // fraction of the way across / down the image
-    const fracX = (px + 0.5) / mapW;
-    const fracY = (py + 0.5) / mapH;
-    const projX = swPx.x + fracX * (nePx.x - swPx.x);
-    const projY = nePx.y + fracY * (swPx.y - nePx.y);
-    return map.unproject([projX, projY], z);
+    const swC = map.latLngToContainerPoint([osmBbox.south, osmBbox.west]);
+    const neC = map.latLngToContainerPoint([osmBbox.north, osmBbox.east]);
+    const cx = swC.x + ((px + 0.5) / mapW) * (neC.x - swC.x);
+    const cy = neC.y + ((py + 0.5) / mapH) * (swC.y - neC.y);
+    return map.containerPointToLatLng([cx, cy]);
   }, [map, osmBbox, mapW, mapH]);
 
-  // Draw pixel-grid + cursor preview on the canvas
+  // Draw pixel-grid + cursor preview on the canvas. All math goes through
+  // latLngToContainerPoint (= what Leaflet actually paints), so the brush
+  // preview lines up one-to-one with the pixel underneath the cursor — no
+  // extra scale/bounds bookkeeping that previously shrank the cell from the
+  // bottom on sub-pixel zoom levels.
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (!osmBbox || !mapW || !mapH) return;
 
-    const z = map.getZoom();
-    const swPx = map.project([osmBbox.south, osmBbox.west], z);
-    const nePx = map.project([osmBbox.north, osmBbox.east], z);
-    const totalProjW = nePx.x - swPx.x;
-    const totalProjH = swPx.y - nePx.y; // swPx.y > nePx.y
-    const bounds = map.getPixelBounds();
-    const scaleX = canvas.width  / (bounds.max.x - bounds.min.x);
-    const scaleY = canvas.height / (bounds.max.y - bounds.min.y);
+    const swC = map.latLngToContainerPoint([osmBbox.south, osmBbox.west]);
+    const neC = map.latLngToContainerPoint([osmBbox.north, osmBbox.east]);
+    const baseX = swC.x;
+    const baseY = neC.y; // top of the image in container space (north is up)
+    const imageW = neC.x - swC.x;
+    const imageH = swC.y - neC.y; // positive: south sits below north
 
-    // Helper: map-image pixel → screen rect
+    // Helper: map-image pixel → screen rect (NO Math.max(1) clipping — that
+    // was inflating sub-pixel cells and shaving the visible bottom edge).
     const cellRect = (gW, gH, px, py) => {
-      const x0 = (swPx.x + (px       / gW) * totalProjW - bounds.min.x) * scaleX;
-      const x1 = (swPx.x + ((px + 1) / gW) * totalProjW - bounds.min.x) * scaleX;
-      const y0 = (nePx.y + (py       / gH) * totalProjH - bounds.min.y) * scaleY;
-      const y1 = (nePx.y + ((py + 1) / gH) * totalProjH - bounds.min.y) * scaleY;
-      return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+      const x0 = baseX + (px       / gW) * imageW;
+      const x1 = baseX + ((px + 1) / gW) * imageW;
+      const y0 = baseY + (py       / gH) * imageH;
+      const y1 = baseY + ((py + 1) / gH) * imageH;
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     };
 
     // ── Pixel grid ─────────────────────────────────────────────────────────
     if (showPixelGrid) {
       const { gW, gH } = getGridDims();
-      // Screen size of one pixel in this layer
-      const spW = (totalProjW / gW) * scaleX;
-      if (spW >= 4) {
+      if (imageW > 0 && imageH > 0 && Math.abs(imageW / gW) >= 4) {
         ctx.save();
         ctx.strokeStyle = 'rgba(255,255,255,0.25)';
         ctx.lineWidth = 0.5;
+        ctx.beginPath();
         for (let gx = 0; gx <= gW; gx++) {
-          const screenX = (swPx.x + (gx / gW) * totalProjW - bounds.min.x) * scaleX;
-          ctx.beginPath(); ctx.moveTo(screenX, 0); ctx.lineTo(screenX, canvas.height); ctx.stroke();
+          const sx = baseX + (gx / gW) * imageW;
+          ctx.moveTo(sx, 0); ctx.lineTo(sx, canvas.height);
         }
         for (let gy = 0; gy <= gH; gy++) {
-          const screenY = (nePx.y + (gy / gH) * totalProjH - bounds.min.y) * scaleY;
-          ctx.beginPath(); ctx.moveTo(0, screenY); ctx.lineTo(canvas.width, screenY); ctx.stroke();
+          const sy = baseY + (gy / gH) * imageH;
+          ctx.moveTo(0, sy); ctx.lineTo(canvas.width, sy);
         }
+        ctx.stroke();
         ctx.restore();
       }
     }
@@ -251,12 +254,12 @@ function PaintCanvas({
     const cur = cursorPosRef.current;
     if (cur && paintState?.active && paintState.tool === 'pencil') {
       const { gW, gH } = getGridDims();
-      // cursorPosRef stores fractions relative to mapW/mapH; convert to active layer px
       const cpx = Math.floor(cur.fracX * gW);
       const cpy = Math.floor(cur.fracY * gH);
       const { paintColor, brushSize = 1 } = paintState;
       const half = Math.floor(brushSize / 2);
       ctx.save();
+      ctx.lineWidth = 1;
       for (let dy = -half; dy <= half; dy++) {
         for (let dx = -half; dx <= half; dx++) {
           const bx = cpx + dx, by = cpy + dy;
@@ -265,8 +268,7 @@ function PaintCanvas({
           ctx.fillStyle = `rgba(${paintColor.r},${paintColor.g},${paintColor.b},0.6)`;
           ctx.fillRect(x, y, w, h);
           ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+          ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
         }
       }
       ctx.restore();
@@ -495,38 +497,6 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
   );
 }
 
-/** Fallback flat canvas renderer when no bbox is set — renders TGAs stacked */
-function FlatCanvasView({ layers, regionsMode }) {
-  const canvasRef = useRef(null);
-  const { w: mapW, h: mapH } = getMapSize(layers);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !mapW || !mapH) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const id of DRAW_ORDER) {
-      const state = layers[id];
-      const def = LAYER_DEFS.find(d => d.id === id);
-      if (!state?.bitmap) continue;
-      if (!(state.visible ?? def?.defaultVisible)) continue;
-      ctx.globalAlpha = state.opacity ?? def?.defaultOpacity ?? 1;
-      ctx.drawImage(state.bitmap, 0, 0, canvas.width, canvas.height);
-    }
-    ctx.globalAlpha = 1;
-  }, [layers, regionsMode, mapW, mapH]);
-
-  if (!mapW || !mapH) return null;
-  return (
-    <canvas
-      ref={canvasRef}
-      width={mapW}
-      height={mapH}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', imageRendering: 'pixelated', objectFit: 'contain' }}
-    />
-  );
-}
-
 // ── Main exported component ────────────────────────────────────────────────
 
 export default function MapCanvas({
@@ -554,69 +524,81 @@ export default function MapCanvas({
   const { w: mapW, h: mapH } = getMapSize(layers);
   const anyLoaded = Object.values(layers).some(s => s?.bitmap);
 
-  // Default center — Europe
-  const defaultCenter = osmBbox
-    ? [(osmBbox.north + osmBbox.south) / 2, (osmBbox.east + osmBbox.west) / 2]
-    : [45, 15];
-  const defaultZoom = osmBbox ? 5 : 4;
+  // When no bbox_coords.txt is loaded, synthesize an equatorial bounding box
+  // whose aspect ratio matches the TGA. That keeps Leaflet's pan/zoom + paint
+  // + tooltip logic working — without it the no-bbox view was a dead static
+  // canvas where zoom was unavailable.
+  const synthBbox = React.useMemo(() => {
+    if (osmBbox || !mapW || !mapH) return null;
+    const aspect = mapW / mapH;
+    const span = 4; // degrees of latitude near the equator — keeps Mercator
+                    // distortion negligible so cell sizes stay uniform
+    return {
+      north: 2 + span / 2,
+      south: 2 - span / 2,
+      east:  (span * aspect) / 2,
+      west: -(span * aspect) / 2,
+      _synth: true,
+    };
+  }, [osmBbox, mapW, mapH]);
+  const effectiveBbox = osmBbox || synthBbox;
 
-  // Without bbox: show TGAs as a flat canvas, hide OSM tiles
-  if (!osmBbox) {
+  if (!effectiveBbox) {
     return (
       <div className="relative w-full h-full bg-slate-950">
-        {anyLoaded
-          ? <FlatCanvasView layers={layers} regionsMode={regionsMode} />
-          : (
-            <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm flex-col gap-3 pointer-events-none">
-              <div className="text-4xl">🗺️</div>
-              <div className="bg-slate-900/80 rounded px-4 py-2 text-center">
-                Load TGA map files or import a <strong>bbox_coords.txt</strong> to align with the OSM map
-              </div>
-            </div>
-          )
-        }
-        {anyLoaded && (
-          <div className="absolute bottom-3 left-3 text-[10px] text-slate-400 font-mono bg-slate-900/70 rounded px-2 py-1 z-10 pointer-events-none">
-            {mapW}×{mapH} — no bbox (flat view)
+        <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm flex-col gap-3 pointer-events-none">
+          <div className="text-4xl">🗺️</div>
+          <div className="bg-slate-900/80 rounded px-4 py-2 text-center">
+            Load TGA map files to begin painting, or import a <strong>bbox_coords.txt</strong> to align with the OSM map
           </div>
-        )}
+        </div>
       </div>
     );
   }
 
+  const center = [
+    (effectiveBbox.north + effectiveBbox.south) / 2,
+    (effectiveBbox.east + effectiveBbox.west) / 2,
+  ];
+  const zoom = effectiveBbox._synth ? 3 : 5;
+
   return (
     <div className="relative w-full h-full">
       <MapContainer
-        key={`${osmBbox.north}-${osmBbox.west}`}
-        center={defaultCenter}
-        zoom={defaultZoom}
+        key={`${effectiveBbox.north}-${effectiveBbox.west}-${effectiveBbox._synth ? 'synth' : 'real'}`}
+        center={center}
+        zoom={zoom}
+        minZoom={1}
+        maxZoom={effectiveBbox._synth ? 12 : 19}
         style={{ width: '100%', height: '100%', background: '#1e293b' }}
         zoomControl={true}
       >
-        {/* OSM Humanitarian tile layer — hidden by default until user enables */}
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap contributors, HOT'
-          opacity={showOsm ? osmOpacity : 0}
-          maxZoom={19}
-        />
-        {/* OpenTopoMap — hidden by default until user enables */}
-        <TileLayer
-          url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenTopoMap contributors'
-          opacity={showTopo ? Math.max(0, osmOpacity - 0.3) : 0}
-          maxZoom={17}
-        />
+        {/* OSM tile layers only make sense for a real geographic bbox —
+            silenced under the synthetic bounds */}
+        {osmBbox && (
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
+            attribution='&copy; OpenStreetMap contributors, HOT'
+            opacity={showOsm ? osmOpacity : 0}
+            maxZoom={19}
+          />
+        )}
+        {osmBbox && (
+          <TileLayer
+            url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+            attribution='&copy; OpenTopoMap contributors'
+            opacity={showTopo ? Math.max(0, osmOpacity - 0.3) : 0}
+            maxZoom={17}
+          />
+        )}
 
-        {/* TGA layer overlays */}
-        <TgaLayerOverlays layers={layers} regionsMode={regionsMode} osmBbox={osmBbox} />
+        <TgaLayerOverlays layers={layers} regionsMode={regionsMode} osmBbox={effectiveBbox} />
 
-        <MapSyncHandler onTransformChange={onTransformChange} jumpRef={jumpRef} osmBbox={osmBbox} />
+        <MapSyncHandler onTransformChange={onTransformChange} jumpRef={jumpRef} osmBbox={effectiveBbox} />
 
-        {/* Strat overlay — icons for settlements, characters, resources */}
         <StratOverlay
           items={overlayItems}
-          osmBbox={osmBbox}
+          osmBbox={effectiveBbox}
           mapW={mapW}
           mapH={mapH}
           visibleCategories={visibleCategories}
@@ -626,12 +608,11 @@ export default function MapCanvas({
           onDoubleClick={onDoubleClickItem}
         />
 
-        {/* Paint/click canvas — transparent overlay */}
         <PaintCanvas
           layers={layers}
           paintState={paintState}
           onPaint={onPaint}
-          osmBbox={osmBbox}
+          osmBbox={effectiveBbox}
           onRegionClick={onRegionClick}
           showTooltip={showTooltip}
           regionsData={regionsData}
@@ -640,10 +621,10 @@ export default function MapCanvas({
         />
       </MapContainer>
 
-      {/* Status bar */}
       {anyLoaded && (
         <div className="absolute bottom-3 left-3 text-[10px] text-slate-400 font-mono bg-slate-900/70 rounded px-2 py-1 z-[600] pointer-events-none">
           {mapW}×{mapH}
+          {effectiveBbox._synth && <span className="ml-1 text-slate-500">— synthetic bounds</span>}
           {paintState?.active && <span className="text-amber-500 ml-2">● PAINT [{paintState.tool}]</span>}
         </div>
       )}
