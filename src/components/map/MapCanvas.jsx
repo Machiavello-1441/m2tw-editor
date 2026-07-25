@@ -57,12 +57,52 @@ function buildCitiesPortsBitmap(data, width, height) {
   return createImageBitmap(new ImageData(out, width, height));
 }
 
-/** Convert a layer's bitmap to a data URL for ImageOverlay */
-function bitmapToDataURL(bitmap) {
-  const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width; canvas.height = bitmap.height;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0);
-  return canvas.toDataURL();
+/**
+ * Renders a single layer's ImageBitmap as a Leaflet ImageOverlay. The bitmap
+ * is asynchronously encoded (toBlob → object URL) and the URL is only rebuilt
+ * when the bitmap reference actually changes. This keeps painting responsive:
+ * touching one layer's pixels only re-encodes that one layer, and the encode
+ * happens off the main thread (toBlob) instead of blocking on toDataURL.
+ * The previous implementation re-encoded ALL visible layers to a synchronous
+ * base64 PNG on every stroke, which froze the UI for several seconds per
+ * pixel on large TGA maps.
+ */
+function TgaBitmapOverlay({ bounds, bitmap, opacity, zIndex }) {
+  const [url, setUrl] = useState(null);
+  const urlRef = useRef(null);
+
+  useEffect(() => {
+    if (!bitmap) { setUrl(null); return; }
+    let cancelled = false;
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    canvas.toBlob((blob) => {
+      if (cancelled || !blob) return;
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      const u = URL.createObjectURL(blob);
+      urlRef.current = u;
+      setUrl(u);
+    }, 'image/png');
+    return () => { cancelled = true; };
+  }, [bitmap]);
+
+  // Revoke the last blob URL on unmount to avoid leaking object URLs.
+  useEffect(() => () => {
+    if (urlRef.current) { URL.revokeObjectURL(urlRef.current); urlRef.current = null; }
+  }, []);
+
+  if (!url) return null;
+  return (
+    <ImageOverlay
+      url={url}
+      bounds={bounds}
+      opacity={opacity}
+      className="pixelated-overlay"
+      zIndex={zIndex}
+    />
+  );
 }
 
 /** Get map pixel dimensions from loaded layers */
@@ -432,7 +472,6 @@ function PaintCanvas({
 
 /** Renders TGA layer bitmaps as Leaflet ImageOverlays */
 function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
-  const [dataUrls, setDataUrls] = useState({});
   const [transparentBitmaps, setTransparentBitmaps] = useState({});
 
   // Build transparent variants for features/fog/regions-cities
@@ -454,22 +493,12 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
     }
   }, [layers]);
 
-  // Convert bitmaps → data URLs for changed layers
-  useEffect(() => {
-    const updates = {};
-    for (const id of DRAW_ORDER) {
-      const state = layers[id];
-      if (!state?.bitmap) continue;
-      if (!(state.visible ?? LAYER_DEFS.find(d => d.id === id)?.defaultVisible)) continue;
-      let bmp = state.bitmap;
-      if (id === 'features' && transparentBitmaps.features?.bmp) bmp = transparentBitmaps.features.bmp;
-      else if (id === 'fog' && transparentBitmaps.fog?.bmp) bmp = transparentBitmaps.fog.bmp;
-      else if (id === 'regions' && regionsMode === 'citiesports' && transparentBitmaps.citiesports?.bmp) bmp = transparentBitmaps.citiesports.bmp;
-      updates[id] = bitmapToDataURL(bmp);
-    }
-    setDataUrls(updates);
-  }, [layers, regionsMode, transparentBitmaps]);
-
+  // Note: each visible layer renders through its own <TgaBitmapOverlay> below,
+  // which only re-encodes its bitmap when that specific bitmap changes. The old
+  // implementation re-encoded ALL visible layers to a synchronous base64 PNG
+  // (canvas.toDataURL) on every paint stroke — that froze the UI for several
+  // seconds per pixel on large TGA maps. Now encoding is async (toBlob) and
+  // per-layer, so painting stays responsive.
   if (!osmBbox) return null;
   const bounds = [[osmBbox.south, osmBbox.west], [osmBbox.north, osmBbox.east]];
 
@@ -480,15 +509,16 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
         const def = LAYER_DEFS.find(d => d.id === id);
         if (!state?.bitmap) return null;
         if (!(state.visible ?? def?.defaultVisible)) return null;
-        const url = dataUrls[id];
-        if (!url) return null;
+        let bmp = state.bitmap;
+        if (id === 'features' && transparentBitmaps.features?.bmp) bmp = transparentBitmaps.features.bmp;
+        else if (id === 'fog' && transparentBitmaps.fog?.bmp) bmp = transparentBitmaps.fog.bmp;
+        else if (id === 'regions' && regionsMode === 'citiesports' && transparentBitmaps.citiesports?.bmp) bmp = transparentBitmaps.citiesports.bmp;
         return (
-          <ImageOverlay
+          <TgaBitmapOverlay
             key={id}
-            url={url}
             bounds={bounds}
+            bitmap={bmp}
             opacity={state.opacity ?? def?.defaultOpacity ?? 1}
-            className="pixelated-overlay"
             zIndex={DRAW_ORDER.indexOf(id) + 200}
           />
         );
