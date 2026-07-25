@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
+import DataLoadingBanner from '../components/home/DataLoadingBanner';
 import { useEDB } from '../components/edb/EDBContext';
 import { useRefData } from '../components/edb/RefDataContext';
 import { parseEventsFromCampaign } from '../components/edb/EDBParser';
@@ -197,6 +198,14 @@ export default function Home() {
   const [campaignName, setCampaignName] = useState('');
   const [campaignError, setCampaignError] = useState('');
   const [loadingData, setLoadingData] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(null);
+
+  // Live progress tick — bumped from inside processDataFiles as each file /
+  // image is handled, so the loading banner reflects real work in flight.
+  const tickProgress = useCallback(
+    (name, phase = 'Loading') => setLoadProgress(p => ({ ...p, phase, name, current: (p?.current || 0) + 1 })),
+    []
+  );
   const dataFolderRef = useRef();
   const ancImagesFolderRef = useRef();
   const campaignFolderRef = useRef();
@@ -212,9 +221,10 @@ export default function Home() {
 
   const handleDataFolderFromPicker = async (files, campaignFolders, selectedCampaigns) => {
     setLoadingData(true);
+    setLoadProgress({ current: 0, total: files.length, name: '', phase: 'Loading' });
     setLoadResult({ ok: 0, errors: [] });
     try {
-      const result = await processDataFiles(files);
+      const result = await processDataFiles(files, tickProgress);
       setLoadResult(result);
       if (result.errors.length > 0) {
         toast({
@@ -229,14 +239,20 @@ export default function Home() {
       toast({ variant: 'destructive', title: 'Load failed', description: err?.message || String(err) });
     } finally {
       setLoadingData(false);
+      // Keep the banner filled at 100% briefly so the user sees the finish.
+      setLoadProgress(p => ({ ...p, current: p?.total || 0, name: 'done', phase: 'Loaded' }));
+      setTimeout(() => setLoadProgress(null), 900);
     }
   };
 
-  const processDataFiles = async (files) => {
+  const processDataFiles = async (files, onTick) => {
     // Track per-file outcomes so a single bad file can't silently abort the whole
     // batch (one uncaught throw here would leave setLoadingData(true) forever and
     // make the "Load selected files" button appear dead even on later clicks).
+    // `onTick(name)` is called as each file / image is consumed so the loading
+    // banner reflects real progress (one tick = one unit of work).
     const result = { ok: 0, errors: [] };
+    const tick = (name) => { onTick?.(name); };
     // Only clear keys for the file types we are actually re-loading in this batch.
     // Wiping everything upfront causes data loss if the browser crashes or the user
     // only loads a partial set of files.
@@ -307,6 +323,7 @@ export default function Home() {
     const stringsBinFiles = {};
 
     for (const file of files) {
+      tick(file.name);
       const name = file.name.toLowerCase();
       const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
 
@@ -496,6 +513,7 @@ export default function Home() {
       const existing = getStringsBinStore();
       const merged = { ...existing, ...stringsBinFiles };
       setStringsBinStore(merged);
+      tick(`merging ${Object.keys(stringsBinFiles).length} strings.bin`);
       // Dispatch specific events for vnvs/ancillaries text bins so contexts pick them up directly
       for (const [filename, binData] of Object.entries(stringsBinFiles)) {
         const lname = filename.toLowerCase();
@@ -526,6 +544,7 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, anc_images: 'loading' }));
       const images = {};
       for (const file of ancTgaFiles) {
+        tick(`ancillary · ${file.name}`);
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
@@ -540,6 +559,7 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, unit_images: 'loading' }));
       const images = {};
       for (const file of unitTgaFiles) {
+        tick(`unit UI · ${file.name}`);
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
@@ -554,6 +574,7 @@ export default function Home() {
     if (religionPipFiles.length > 0) {
       const pips = {};
       for (const file of religionPipFiles) {
+        tick(`religion pip · ${file.name}`);
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) pips[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
@@ -565,6 +586,7 @@ export default function Home() {
     if (resourceTgaFiles.length > 0) {
       const icons = {};
       for (const file of resourceTgaFiles) {
+        tick(`resource icon · ${file.name}`);
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) icons[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
@@ -579,6 +601,7 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, ground_textures: 'loading' }));
       const textures = {};
       for (const file of groundTypeTgaFiles) {
+        tick(`ground texture · ${file.name}`);
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) textures[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
@@ -591,6 +614,7 @@ export default function Home() {
 
     // Auto-load base map files
     if (baseMapFiles.length > 0) {
+      tick(`base map · ${baseMapFiles.length} files staged`);
       window._m2tw_map_files = (window._m2tw_map_files || []).concat(baseMapFiles);
       window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: baseMapFiles, source: 'base' } }));
       setMapFileCount((prev) => prev + baseMapFiles.length);
@@ -601,6 +625,7 @@ export default function Home() {
     if (portraitTgaFiles.length > 0) {
       const portraits = { ...(window._m2tw_portraits || {}) };
       for (const file of portraitTgaFiles) {
+        tick(`portrait · ${file.name}`);
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) {
@@ -624,6 +649,7 @@ export default function Home() {
     if (eventPicFiles.length > 0) {
       const pics = { ...(window._m2tw_event_pics || {}) };
       for (const file of eventPicFiles) {
+        tick(`event pic · ${file.name}`);
         const buf = await file.arrayBuffer();
         const dataUrl = decodeTgaToDataUrl(buf);
         if (dataUrl) {
@@ -646,6 +672,7 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, bld_images: 'loading' }));
       const parsed = [];
       for (const file of bldTgaFiles) {
+        tick(`building image · ${file.name}`);
         const buf = await file.arrayBuffer();
         const url = decodeTgaToDataUrl(buf);
         if (url) {
@@ -884,6 +911,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-start gap-6 pt-12">
+
+      {loadingData && <DataLoadingBanner progress={loadProgress} />}
 
       {/* Header */}
       <div className="text-center space-y-2 max-w-xl">
