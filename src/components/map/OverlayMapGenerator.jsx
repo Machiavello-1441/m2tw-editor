@@ -202,7 +202,7 @@ export default function OverlayMapGenerator({
         </p>
       )}
 
-      {hasList && (!needsStrat || stratLoaded) && (
+      {hasRegions && hasList && (!needsStrat || stratLoaded) && (
         <>
           <select
             value={selected}
