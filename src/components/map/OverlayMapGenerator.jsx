@@ -142,26 +142,38 @@ export default function OverlayMapGenerator({
   const [category, setCategory] = useState('hidden');
   const [selected, setSelected] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [doneMsg, setDoneMsg] = useState(null);
 
   const list = category === 'hidden' ? hiddenResourceList
     : category === 'religion' ? religionList
     : factionList;
 
   const generate = useCallback(async (forDownload) => {
-    if (!selected || !regionsLayer?.data) return;
+    setError(null);
+    setDoneMsg(null);
+    if (!selected) { setError('Select an item from the list first.'); return; }
+    if (!regionsLayer?.data) { setError('Regions TGA (map_regions.tga) is not loaded.'); return; }
+    if (!regionsData?.length) { setError('descr_regions.txt is not loaded.'); return; }
     setBusy(true);
     try {
       const img = buildOverlay(regionsLayer, regionsData, category, selected, stratData, factionColors);
-      if (!img) return;
+      if (!img) { setError('Overlay build returned no data.'); return; }
       const blob = await imageDataToBlob(img);
+      if (!blob) { setError('Failed to encode PNG from overlay.'); return; }
       const suffix = category === 'owner' ? '_owner' : category === 'creator' ? '_creator' : '';
       const filename = `${selected}${suffix}.png`;
       if (forDownload) {
         downloadBlob(blob, filename);
+        setDoneMsg(`Downloaded ${filename}`);
       } else {
         const url = URL.createObjectURL(blob);
         onShowOverlay({ url, name: filename, mode: category });
+        setDoneMsg('Overlay shown on map');
       }
+    } catch (err) {
+      console.error('[OverlayMapGenerator] generate failed:', err);
+      setError(`Error: ${err?.message || String(err)}`);
     } finally {
       setBusy(false);
     }
@@ -241,6 +253,13 @@ export default function OverlayMapGenerator({
 
           <p className="text-[10px] text-slate-500">{HINTS[category]}</p>
         </>
+      )}
+
+      {error && (
+        <p className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/30 rounded px-2 py-1">{error}</p>
+      )}
+      {doneMsg && !error && (
+        <p className="text-[10px] text-green-400">{doneMsg}</p>
       )}
     </div>
   );
