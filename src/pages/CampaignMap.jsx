@@ -1541,6 +1541,9 @@ export default function CampaignMap() {
                     regionsData={regionsData}
                     hiddenResourceList={hiddenResourceList}
                     religionList={religionList}
+                    factionList={factionList}
+                    stratData={stratData}
+                    factionColors={factionColors}
                     onShowOverlay={showOverlayMap}
                     onClearOverlay={clearOverlayMap}
                     active={!!overlayMap}
