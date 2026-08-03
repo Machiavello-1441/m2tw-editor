@@ -5,6 +5,7 @@ import Map3DPreview from '../components/map/Map3DPreview';
 import MapCanvas, { floodFillRGB } from '../components/map/MapCanvas';
 import MapPaintToolbar from '../components/map/MapPaintToolbar';
 import MapValidationPanel from '../components/map/MapValidationPanel';
+import OverlayMapGenerator from '../components/map/OverlayMapGenerator';
 
 import StratPanel from '../components/map/StratPanel';
 import NewRegionPaintWizard from '../components/map/NewRegionPaintWizard';
@@ -144,6 +145,7 @@ export default function CampaignMap() {
   const [showOsm, setShowOsm] = useState(false);
   const [showTopo, setShowTopo] = useState(false);
   const [showCoastlineTracer, setShowCoastlineTracer] = useState(false);
+  const [overlayMap, setOverlayMap] = useState(null); // { url, name, mode } | null
 
   // ── Extra data sources for region editor ──────────────────────────────────
   const [rebelFactions, setRebelFactions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_rebel_factions_raw'); return r ? parseDescrRebelFactions(r) : []; } catch { return []; } });
@@ -1141,6 +1143,13 @@ export default function CampaignMap() {
     });
   };
 
+  const showOverlayMap = useCallback((o) => {
+    setOverlayMap(prev => { if (prev?.url && prev.url !== o.url) URL.revokeObjectURL(prev.url); return o; });
+  }, []);
+  const clearOverlayMap = useCallback(() => {
+    setOverlayMap(prev => { if (prev?.url) URL.revokeObjectURL(prev.url); return null; });
+  }, []);
+
   // ── Save / Revert / Export TGA ─────────────────────────────────────────────
   const handleSave = useCallback(() => {
     // Snapshot current layer pixel data + overlay items
@@ -1380,6 +1389,7 @@ export default function CampaignMap() {
             showTopo={showTopo}
             layers={layers}
             regionsMode={regionsMode}
+            overlayUrl={overlayMap?.url}
             onRegionClick={handleCanvasClick}
             jumpRef={jumpRef}
             paintState={paintState}
@@ -1524,8 +1534,21 @@ export default function CampaignMap() {
             )}
 
             {activeTab === 'validation' && (
-              <div className="h-full overflow-hidden">
-                <MapValidationPanel layers={layers} onJumpTo={(x, y) => jumpRef.current?.(x, y, mapW2, mapH)} />
+              <div className="h-full flex flex-col">
+                <div className="shrink-0 p-3 border-b border-slate-800 bg-slate-900/40">
+                  <OverlayMapGenerator
+                    regionsLayer={layers['regions']}
+                    regionsData={regionsData}
+                    hiddenResourceList={hiddenResourceList}
+                    religionList={religionList}
+                    onShowOverlay={showOverlayMap}
+                    onClearOverlay={clearOverlayMap}
+                    active={!!overlayMap}
+                  />
+                </div>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <MapValidationPanel layers={layers} onJumpTo={(x, y) => jumpRef.current?.(x, y, mapW2, mapH)} />
+                </div>
               </div>
             )}
           </div>

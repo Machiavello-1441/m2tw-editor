@@ -550,6 +550,7 @@ export default function MapCanvas({
   onSelectItem,
   onMoveItem,
   onDoubleClickItem,
+  overlayUrl = null,
 }) {
   const { w: mapW, h: mapH } = getMapSize(layers);
   const anyLoaded = Object.values(layers).some(s => s?.bitmap);
@@ -623,6 +624,16 @@ export default function MapCanvas({
         )}
 
         <TgaLayerOverlays layers={layers} regionsMode={regionsMode} osmBbox={effectiveBbox} />
+
+        {overlayUrl && (
+          <ImageOverlay
+            url={overlayUrl}
+            bounds={[[effectiveBbox.south, effectiveBbox.west], [effectiveBbox.north, effectiveBbox.east]]}
+            opacity={0.85}
+            className="pixelated-overlay"
+            zIndex={500}
+          />
+        )}
 
         <MapSyncHandler onTransformChange={onTransformChange} jumpRef={jumpRef} osmBbox={effectiveBbox} />
 
