@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Map, Download, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Map, Download, Eye, EyeOff, Loader2, Layers } from 'lucide-react';
+import JSZip from 'jszip';
 
 // HSL (h in degrees, s/l in 0-1) → [r,g,b] 0-255
 function hslToRgb(h, s, l) {
@@ -34,7 +35,9 @@ function hslToRgb(h, s, l) {
 function buildOverlay(regionsLayer, regionsData, category, key, stratData, factionColors) {
   if (!regionsLayer?.data || !regionsData?.length || !key) return null;
   const { data, width, height } = regionsLayer;
+  if (!width || !height) return null;
   const overlay = new Uint8ClampedArray(width * height * 4);
+  let matchedPixels = 0;
 
   // RGB → value lookup
   const lookup = new Map();
@@ -82,6 +85,7 @@ function buildOverlay(regionsLayer, regionsData, category, key, stratData, facti
     const r = data[i], g = data[i + 1], b = data[i + 2];
     const v = lookup.get(`${r},${g},${b}`);
     if (v === undefined) continue; // sea / unknown → transparent
+    matchedPixels++;
     if (category === 'hidden') {
       if (v === 1) { overlay[i] = 220; overlay[i + 1] = 60; overlay[i + 2] = 60; overlay[i + 3] = 210; }
     } else if (category === 'religion') {
@@ -94,7 +98,7 @@ function buildOverlay(regionsLayer, regionsData, category, key, stratData, facti
       }
     }
   }
-  return new ImageData(overlay, width, height);
+  return { image: new ImageData(overlay, width, height), matchedPixels };
 }
 
 function imageDataToBlob(imageData) {
@@ -157,19 +161,19 @@ export default function OverlayMapGenerator({
     if (!regionsData?.length) { setError('descr_regions.txt is not loaded.'); return; }
     setBusy(true);
     try {
-      const img = buildOverlay(regionsLayer, regionsData, category, selected, stratData, factionColors);
-      if (!img) { setError('Overlay build returned no data.'); return; }
-      const blob = await imageDataToBlob(img);
+      const result = buildOverlay(regionsLayer, regionsData, category, selected, stratData, factionColors);
+      if (!result) { setError('Overlay build returned no data.'); return; }
+      const blob = await imageDataToBlob(result.image);
       if (!blob) { setError('Failed to encode PNG from overlay.'); return; }
       const suffix = category === 'owner' ? '_owner' : category === 'creator' ? '_creator' : '';
       const filename = `${selected}${suffix}.png`;
       if (forDownload) {
         downloadBlob(blob, filename);
-        setDoneMsg(`Downloaded ${filename}`);
+        setDoneMsg(`Downloaded ${filename} (${result.matchedPixels.toLocaleString()} region pixels matched)`);
       } else {
         const url = URL.createObjectURL(blob);
         onShowOverlay({ url, name: filename, mode: category });
-        setDoneMsg('Overlay shown on map');
+        setDoneMsg(`Overlay shown on map (${result.matchedPixels.toLocaleString()} region pixels matched)`);
       }
     } catch (err) {
       console.error('[OverlayMapGenerator] generate failed:', err);
@@ -178,6 +182,42 @@ export default function OverlayMapGenerator({
       setBusy(false);
     }
   }, [selected, regionsLayer, regionsData, category, stratData, factionColors, onShowOverlay]);
+
+  // Batch export: generate a PNG for every item in the current category list,
+  // bundle them into a single ZIP, and trigger a download.
+  const [batchBusy, setBatchBusy] = useState(false);
+  const batchExport = useCallback(async () => {
+    setError(null);
+    setDoneMsg(null);
+    if (!regionsLayer?.data) { setError('Regions TGA (map_regions.tga) is not loaded.'); return; }
+    if (!regionsData?.length) { setError('descr_regions.txt is not loaded.'); return; }
+    if (!list.length) { setError('No items to export in this category.'); return; }
+    setBatchBusy(true);
+    try {
+      const zip = new JSZip();
+      const suffix = category === 'owner' ? '_owner' : category === 'creator' ? '_creator' : '';
+      let exported = 0;
+      for (const key of list) {
+        const result = buildOverlay(regionsLayer, regionsData, category, key, stratData, factionColors);
+        if (!result) continue;
+        const blob = await imageDataToBlob(result.image);
+        if (!blob) continue;
+        const buf = await blob.arrayBuffer();
+        zip.file(`${key}${suffix}.png`, buf);
+        exported++;
+      }
+      if (exported === 0) { setError('No overlays could be generated.'); return; }
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const catLabel = CATEGORIES.find(c => c.id === category)?.label || category;
+      downloadBlob(zipBlob, `overlays_${category}.zip`);
+      setDoneMsg(`Exported ${exported} ${catLabel.toLowerCase()} overlays as ZIP`);
+    } catch (err) {
+      console.error('[OverlayMapGenerator] batch export failed:', err);
+      setError(`Batch error: ${err?.message || String(err)}`);
+    } finally {
+      setBatchBusy(false);
+    }
+  }, [regionsLayer, regionsData, category, stratData, factionColors, list]);
 
   const hasRegions = !!regionsLayer?.data && !!regionsData?.length;
   const hasList = list.length > 0;
@@ -250,6 +290,16 @@ export default function OverlayMapGenerator({
               </button>
             )}
           </div>
+
+          <button
+            onClick={batchExport}
+            disabled={batchBusy || busy}
+            title={`Generate and download a PNG for every ${CATEGORIES.find(c => c.id === category)?.label.toLowerCase()} at once`}
+            className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-semibold bg-purple-700 hover:bg-purple-600 text-slate-100 disabled:opacity-40 transition-colors"
+          >
+            {batchBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Layers className="w-3 h-3" />}
+            Download All ({list.length}) as ZIP
+          </button>
 
           <p className="text-[10px] text-slate-500">{HINTS[category]}</p>
         </>

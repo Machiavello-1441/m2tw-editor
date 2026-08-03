@@ -627,6 +627,7 @@ export default function MapCanvas({
 
         {overlayUrl && (
           <ImageOverlay
+            key={overlayUrl}
             url={overlayUrl}
             bounds={[[effectiveBbox.south, effectiveBbox.west], [effectiveBbox.north, effectiveBbox.east]]}
             opacity={0.85}
