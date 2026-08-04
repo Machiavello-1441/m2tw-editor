@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Map, Download, Eye, EyeOff, Loader2, Layers } from 'lucide-react';
+import { Map as MapIcon, Download, Eye, EyeOff, Loader2, Layers } from 'lucide-react';
 
 // HSL (h in degrees, s/l in 0-1) → [r,g,b] 0-255
 function hslToRgb(h, s, l) {
@@ -231,7 +231,7 @@ export default function OverlayMapGenerator({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5">
-        <Map className="w-3.5 h-3.5 text-purple-400" />
+        <MapIcon className="w-3.5 h-3.5 text-purple-400" />
         <span className="text-xs font-semibold text-slate-200">Overlay Maps</span>
       </div>
       <p className="text-[10px] text-slate-500 leading-relaxed">
