@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Plus, Download, Trash2, ImagePlus, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,40 @@ export default function SpriteSheetEditor({ label, storageKey }) {
   const [imageError, setImageError] = useState({});
   const [originalFilename, setOriginalFilename] = useState('');
   const xmlInputRef = useRef();
+
+  // --- Auto-load from localStorage / live load event ---
+  // Derive the event key from the storageKey (e.g. m2tw_strategy_sd_xml → sd_strategy)
+  const eventKey = storageKey?.replace('m2tw_', 'sd_').replace('_sd_xml', '');
+
+  useEffect(() => {
+    // On mount, try to restore from localStorage
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = parseSdXml(stored);
+        setData(parsed);
+        setOriginalFilename(`${eventKey}.sd.xml`);
+      }
+    } catch {}
+
+    // Listen for live loads from the Home page
+    const handler = (e) => {
+      if (e.detail?.key !== eventKey) return;
+      const text = e.detail?.text;
+      if (!text) return;
+      try {
+        const parsed = parseSdXml(text);
+        setData(parsed);
+        setOriginalFilename(`${eventKey}.sd.xml`);
+        setActivePageIdx(0);
+        setPendingRect(null);
+        setSelectionMode(false);
+        setSelectedIdx(null);
+      } catch {}
+    };
+    window.addEventListener('load-sd-xml', handler);
+    return () => window.removeEventListener('load-sd-xml', handler);
+  }, [storageKey, eventKey]);
 
   // --- Load XML ---
   const handleXmlFile = useCallback(async (e) => {

@@ -257,12 +257,17 @@ export default function BannersTab() {
     try { localStorage.setItem(STORAGE_KEY, text); } catch {}
   }, []);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount + listen for live loads from Home
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved && !data) setData(parseBannersXml(saved));
     } catch {}
+    const handler = (e) => {
+      try { setData(parseBannersXml(e.detail)); } catch {}
+    };
+    window.addEventListener('load-banners', handler);
+    return () => window.removeEventListener('load-banners', handler);
   }, []);
 
   const handleTextures = useCallback(async (e) => {
