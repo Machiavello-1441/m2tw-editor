@@ -561,6 +561,28 @@ export default function StratMapCharTab() {
     try { const s = localStorage.getItem(FACTIONS_KEY); if (s) setFactions(JSON.parse(s)); } catch {}
   }, []);
 
+  // Listen for files loaded from the Home page while this tab is mounted
+  useEffect(() => {
+    const onChar = (e) => { try { setCharData(parseDescrCharacter(e.detail)); } catch {} };
+    const onStrat = (e) => {
+      try {
+        const m = parseDescrModelStrat(e.detail);
+        setStratData(m); setStratModelMap(buildModelMap(m));
+      } catch {}
+    };
+    const onFactions = (e) => {
+      try { setFactions(e.detail || JSON.parse(localStorage.getItem(FACTIONS_KEY) || '[]')); } catch {}
+    };
+    window.addEventListener('load-descr-character', onChar);
+    window.addEventListener('load-descr-model-strat', onStrat);
+    window.addEventListener('m2tw-factions-loaded', onFactions);
+    return () => {
+      window.removeEventListener('load-descr-character', onChar);
+      window.removeEventListener('load-descr-model-strat', onStrat);
+      window.removeEventListener('m2tw-factions-loaded', onFactions);
+    };
+  }, []);
+
   function buildModelMap(models) {
     const map = {};
     for (const m of models) map[m.name] = m;

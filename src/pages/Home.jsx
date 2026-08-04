@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback } from 'react';
 import DataLoadingBanner from '../components/home/DataLoadingBanner';
 import { useEDB } from '../components/edb/EDBContext';
 import { useRefData } from '../components/edb/RefDataContext';
-import { parseEventsFromCampaign } from '../components/edb/EDBParser';
+import { parseEventsFromCampaign, parseFactionsFile } from '../components/edb/EDBParser';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
@@ -112,7 +112,15 @@ const DATA_FILE_MAP = {
   'battle_models.modeldb': 'modeldb',
   'descr_skeleton.txt': 'skeleton',
   'descr_mount.txt': 'mount',
-  'export_descr_guilds.txt': 'guilds'
+  'export_descr_guilds.txt': 'guilds',
+  'descr_character.txt': 'char',
+  'descr_model_strat.txt': 'strat_model',
+  'descr_models_strat.txt': 'strat_model',
+  'descr_banners_new.xml': 'banners',
+  'strategy.sd.xml': 'sd_strategy',
+  'battle.sd.xml': 'sd_battle',
+  'shared.sd.xml': 'sd_shared',
+  'radar.sd.xml': 'sd_radar',
 };
 
 
@@ -181,7 +189,14 @@ export default function Home() {
       names: ls('m2tw_names_file') ? 'ok' : 'idle',
       rebel_fac: ls('m2tw_rebel_factions_file') ? 'ok' : 'idle',
       religions: ls('m2tw_religions_file') ? 'ok' : 'idle',
-      modeldb: 'idle'
+      modeldb: 'idle',
+      char: ls('m2tw_descr_character') ? 'ok' : 'idle',
+      strat_model: ls('m2tw_descr_model_strat') ? 'ok' : 'idle',
+      banners: ls('m2tw_banners_file') ? 'ok' : 'idle',
+      sd_strategy: ls('m2tw_strategy_sd_xml') ? 'ok' : 'idle',
+      sd_battle: ls('m2tw_battle_sd_xml') ? 'ok' : 'idle',
+      sd_shared: ls('m2tw_shared_sd_xml') ? 'ok' : 'idle',
+      sd_radar: ls('m2tw_radar_sd_xml') ? 'ok' : 'idle',
     };
   });
 
@@ -268,6 +283,14 @@ export default function Home() {
     conditionalRemove('m2tw_traits_file',        fileNames.has('export_descr_character_traits.txt'));
     conditionalRemove('m2tw_anc_file',           fileNames.has('export_descr_ancillaries.txt'));
     conditionalRemove('m2tw_export_units_file',  fileNames.has('export_units.txt'));
+    conditionalRemove('m2tw_descr_character',    fileNames.has('descr_character.txt'));
+    conditionalRemove('m2tw_descr_model_strat',  fileNames.has('descr_model_strat.txt') || fileNames.has('descr_models_strat.txt'));
+    conditionalRemove('m2tw_sm_factions',        fileNames.has('descr_sm_factions.txt'));
+    conditionalRemove('m2tw_banners_file',      fileNames.has('descr_banners_new.xml'));
+    conditionalRemove('m2tw_strategy_sd_xml',   fileNames.has('strategy.sd.xml'));
+    conditionalRemove('m2tw_battle_sd_xml',     fileNames.has('battle.sd.xml'));
+    conditionalRemove('m2tw_shared_sd_xml',      fileNames.has('shared.sd.xml'));
+    conditionalRemove('m2tw_radar_sd_xml',       fileNames.has('radar.sd.xml'));
 
 
     const loaderMap = {
@@ -298,7 +321,15 @@ export default function Home() {
       cultures: 'm2tw_cultures_file',
       names: 'm2tw_names_file',
       rebel_fac: 'm2tw_rebel_factions_file',
-      religions: 'm2tw_religions_file'
+      religions: 'm2tw_religions_file',
+      // files stored for minor files editor
+      char: 'm2tw_descr_character',
+      strat_model: 'm2tw_descr_model_strat',
+      banners: 'm2tw_banners_file',
+      sd_strategy: 'm2tw_strategy_sd_xml',
+      sd_battle: 'm2tw_battle_sd_xml',
+      sd_shared: 'm2tw_shared_sd_xml',
+      sd_radar: 'm2tw_radar_sd_xml',
     };
 
     // Filename storage keys (for context auto-load)
@@ -482,12 +513,35 @@ export default function Home() {
           if (key === 'modeldb') {
             window.dispatchEvent(new CustomEvent('modeldb-file-loaded', { detail: text }));
           }
+          if (key === 'char') {
+            sessionStorage.setItem('m2tw_descr_character_raw', text);
+            window.dispatchEvent(new CustomEvent('load-descr-character', { detail: text }));
+          }
+          if (key === 'strat_model') {
+            sessionStorage.setItem('m2tw_descr_model_strat_raw', text);
+            window.dispatchEvent(new CustomEvent('load-descr-model-strat', { detail: text }));
+          }
+          if (key === 'banners') {
+            sessionStorage.setItem('m2tw_banners_raw', text);
+            window.dispatchEvent(new CustomEvent('load-banners', { detail: text }));
+          }
+          if (key === 'sd_strategy' || key === 'sd_battle' || key === 'sd_shared' || key === 'sd_radar') {
+            window.dispatchEvent(new CustomEvent('load-sd-xml', { detail: { key, text } }));
+          }
         } catch {}
       } else {
         loaderMap[key]?.(text);
         // Store factions in sessionStorage for campaign map editor
         if (key === 'fac') {
-          try {sessionStorage.setItem('m2tw_factions_raw', text);} catch {}
+          try {
+            sessionStorage.setItem('m2tw_factions_raw', text);
+            // Also store parsed faction list for StratMapCharTab (Minor Files Editor)
+            const facResult = parseFactionsFile(text);
+            if (facResult.factions) {
+              localStorage.setItem('m2tw_sm_factions', JSON.stringify(facResult.factions));
+              window.dispatchEvent(new CustomEvent('m2tw-factions-loaded', { detail: facResult.factions }));
+            }
+          } catch {}
         }
         // Store resources in sessionStorage + localStorage
         if (key === 'res') {
