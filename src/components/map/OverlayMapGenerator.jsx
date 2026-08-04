@@ -97,14 +97,17 @@ function buildOverlay(regionsLayer, regionsData, category, key, stratData, facti
       }
     }
   }
-  return { image: new ImageData(overlay, width, height), matchedPixels };
+  return { data: overlay, width, height, matchedPixels };
 }
 
-function imageDataToBlob(imageData) {
+function imageDataToBlob({ data, width, height }) {
   const canvas = document.createElement('canvas');
-  canvas.width = imageData.width;
-  canvas.height = imageData.height;
-  canvas.getContext('2d').putImageData(imageData, 0, 0);
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.createImageData(width, height);
+  imageData.data.set(data);
+  ctx.putImageData(imageData, 0, 0);
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
 
@@ -162,7 +165,7 @@ export default function OverlayMapGenerator({
     try {
       const result = buildOverlay(regionsLayer, regionsData, category, selected, stratData, factionColors);
       if (!result) { setError('Overlay build returned no data.'); return; }
-      const blob = await imageDataToBlob(result.image);
+      const blob = await imageDataToBlob(result);
       if (!blob) { setError('Failed to encode PNG from overlay.'); return; }
       const suffix = category === 'owner' ? '_owner' : category === 'creator' ? '_creator' : '';
       const filename = `${selected}${suffix}.png`;
@@ -201,7 +204,7 @@ export default function OverlayMapGenerator({
       for (const key of list) {
         const result = buildOverlay(regionsLayer, regionsData, category, key, stratData, factionColors);
         if (!result) continue;
-        const blob = await imageDataToBlob(result.image);
+        const blob = await imageDataToBlob(result);
         if (!blob) continue;
         const buf = await blob.arrayBuffer();
         zip.file(`${key}${suffix}.png`, buf);
