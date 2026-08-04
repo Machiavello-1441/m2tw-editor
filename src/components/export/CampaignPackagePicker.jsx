@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { FolderOpen, X, ChevronRight, ChevronDown, FileText, Folder, CheckSquare, Square, Minus, Download } from 'lucide-react';
 
 /**
@@ -155,32 +155,35 @@ export default function CampaignPackagePicker({ selectedFiles, onChange }) {
         const p = f.webkitRelativePath || f.name;
         if (!existingPaths.has(p)) { combined.push(f); existingPaths.add(p); }
       }
-      const newTree = buildTree(combined);
-      setTree(newTree);
       return combined;
     });
   }, []);
 
+  // Derive tree from allFiles — avoids nested setState inside updater (React 18 strict-mode safe)
+  useEffect(() => {
+    setTree(allFiles.length > 0 ? buildTree(allFiles) : null);
+  }, [allFiles]);
+
   const handleFolderLoad = (e) => {
     const files = Array.from(e.target.files || []);
-    e.target.value = '';
     if (!files.length) return;
     loadFiles(files);
     // Auto-select all newly added files
-    const newPaths = new Set(files.map(f => f.webkitRelativePath || f.name));
     const updated = new Map(selectedFiles);
     for (const f of files) updated.set(f.webkitRelativePath || f.name, f);
     onChange(updated);
+    // Defer reset so the browser finishes processing the change event
+    setTimeout(() => { e.target.value = ''; }, 0);
   };
 
   const handleFilesLoad = (e) => {
     const files = Array.from(e.target.files || []);
-    e.target.value = '';
     if (!files.length) return;
     loadFiles(files);
     const updated = new Map(selectedFiles);
     for (const f of files) updated.set(f.webkitRelativePath || f.name, f);
     onChange(updated);
+    setTimeout(() => { e.target.value = ''; }, 0);
   };
 
   const handleTogglePaths = useCallback((paths, select) => {
