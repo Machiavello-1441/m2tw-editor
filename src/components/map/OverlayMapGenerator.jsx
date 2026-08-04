@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { Map, Download, Eye, EyeOff, Loader2, Layers } from 'lucide-react';
-import JSZip from 'jszip';
 
 // HSL (h in degrees, s/l in 0-1) → [r,g,b] 0-255
 function hslToRgb(h, s, l) {
@@ -194,6 +193,8 @@ export default function OverlayMapGenerator({
     if (!list.length) { setError('No items to export in this category.'); return; }
     setBatchBusy(true);
     try {
+      const JSZipModule = await import('jszip');
+      const JSZip = JSZipModule.default || JSZipModule;
       const zip = new JSZip();
       const suffix = category === 'owner' ? '_owner' : category === 'creator' ? '_creator' : '';
       let exported = 0;
