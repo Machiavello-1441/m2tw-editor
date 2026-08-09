@@ -75,9 +75,11 @@ function mapCoordToScreen(mx, my, osmBbox, mapW, mapH, leafletMap) {
   const nePx = leafletMap.project([osmBbox.north, osmBbox.east], leafletMap.getZoom());
   // M2TW Y=0 is bottom of map → flip
   const flippedY = mapH - 1 - my;
-  // Interpolate linearly in projected (Mercator) pixel space
-  const projX = swPx.x + (mx / mapW) * (nePx.x - swPx.x);
-  const projY = nePx.y + (flippedY / mapH) * (swPx.y - nePx.y);
+  // Interpolate linearly in projected (Mercator) pixel space.
+  // +0.5 offsets to the pixel centre so markers sit in the middle of their
+  // pixel rather than its top-left corner.
+  const projX = swPx.x + ((mx + 0.5) / mapW) * (nePx.x - swPx.x);
+  const projY = nePx.y + ((flippedY + 0.5) / mapH) * (swPx.y - nePx.y);
   // Convert back to screen container point
   const containerPt = leafletMap.unproject([projX, projY], leafletMap.getZoom());
   const pt = leafletMap.latLngToContainerPoint(containerPt);
@@ -92,8 +94,9 @@ function screenToMapCoord(sx, sy, osmBbox, mapW, mapH, leafletMap) {
   const nePx = leafletMap.project([osmBbox.north, osmBbox.east], leafletMap.getZoom());
   const latlng = leafletMap.containerPointToLatLng([sx, sy]);
   const pt = leafletMap.project(latlng, leafletMap.getZoom());
-  const mx = Math.round((pt.x - swPx.x) / (nePx.x - swPx.x) * mapW);
-  const flippedY = Math.round((pt.y - nePx.y) / (swPx.y - nePx.y) * mapH);
+  // Inverse of mapCoordToScreen — undo the +0.5 pixel-centre offset.
+  const mx = Math.round((pt.x - swPx.x) / (nePx.x - swPx.x) * mapW - 0.5);
+  const flippedY = Math.round((pt.y - nePx.y) / (swPx.y - nePx.y) * mapH - 0.5);
   const my = mapH - 1 - flippedY;
   return { mx, my };
 }

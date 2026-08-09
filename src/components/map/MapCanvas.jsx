@@ -131,8 +131,9 @@ function MapSyncHandler({ onTransformChange, jumpRef, osmBbox }) {
       const z = map.getZoom();
       const swPx = map.project([osmBbox.south, osmBbox.west], z);
       const nePx = map.project([osmBbox.north, osmBbox.east], z);
-      const projX = swPx.x + (mapX / mapW) * (nePx.x - swPx.x);
-      const projY = nePx.y + (mapY / mapH) * (swPx.y - nePx.y);
+      // +0.5 to centre on the pixel rather than its top-left corner
+      const projX = swPx.x + ((mapX + 0.5) / mapW) * (nePx.x - swPx.x);
+      const projY = nePx.y + ((mapY + 0.5) / mapH) * (swPx.y - nePx.y);
       const latlng = map.unproject([projX, projY], z);
       map.setView(latlng, z);
     };
