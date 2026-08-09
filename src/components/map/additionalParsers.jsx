@@ -175,22 +175,35 @@ export function extractHiddenResourcesFromEDB(edbData) {
 }
 
 // Extract all building level names from EDB data (for upgrades list)
-// Accepts either a parsed edbData object { buildings: [...] } or a raw buildings array
+// Accepts either a parsed edbData object { buildings: [...] } or a raw buildings array.
+// Each entry is { name, building, settlementMin }.
+// Deduplicates (building, name) pairs — a level that is both a level itself and an
+// upgrade target of a lower level would otherwise appear twice.
 export function extractBuildingLevelsFromEDB(edbDataOrArray) {
   const buildingsArr = Array.isArray(edbDataOrArray)
     ? edbDataOrArray
     : edbDataOrArray?.buildings;
   if (!Array.isArray(buildingsArr)) return [];
   const levels = [];
+  const seen = new Set();
+  const push = (name, building, settlementMin) => {
+    const key = `${building}\u0000${name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    levels.push({ name, building, settlementMin: settlementMin || 'village' });
+  };
   const walk = (building) => {
-    if (Array.isArray(building.levels)) {
-      for (const lvl of building.levels) {
-        if (lvl.name) levels.push({ name: lvl.name, building: building.name || '' });
-        if (Array.isArray(lvl.upgrades)) lvl.upgrades.forEach(u => {
-          const name = typeof u === 'string' ? u : u?.name;
-          if (name) levels.push({ name, building: building.name || '' });
-        });
-      }
+    if (!Array.isArray(building.levels)) return;
+    // First pass: register each level with its own settlementMin
+    for (const lvl of building.levels) {
+      if (lvl.name) push(lvl.name, building.name || '', lvl.settlementMin);
+    }
+    // Second pass: register upgrade targets (only fills names not already seen)
+    for (const lvl of building.levels) {
+      if (Array.isArray(lvl.upgrades)) lvl.upgrades.forEach(u => {
+        const name = typeof u === 'string' ? u : u?.name;
+        if (name) push(name, building.name || '', lvl.settlementMin);
+      });
     }
   };
   buildingsArr.forEach(walk);

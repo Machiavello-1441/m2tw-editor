@@ -292,6 +292,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
   const [selectedTree, setSelectedTree] = useState('');
+  const [showAllBuildings, setShowAllBuildings] = useState(false);
   const [relocating, setRelocating] = useState(null); // null | 'city' | 'port'
 
   // Auto-expand when selected from map click
@@ -332,22 +333,48 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     return (regionInfo?.resources || []).filter((r) => hiddenSet.has(r));
   }, [regionInfo, hiddenResourceMasterList]);
 
-  // Group building levels by tree name for two-step dropdown
+  // Group building levels by tree name for two-step dropdown.
+  // Each entry stores the full level object { name, settlementMin } so we can
+  // filter out levels that require a higher settlement tier than the current one.
   const buildingTrees = useMemo(() => {
     const map = {};
     for (const bl of buildingLevels) {
       const tree = bl.building || '(unknown)';
       if (!map[tree]) map[tree] = [];
-      map[tree].push(bl.name);
+      map[tree].push(bl);
     }
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [buildingLevels]);
 
+  // Index of a settlement level in the canonical progression (village→huge_city).
+  // Returns -1 for unknown values so they are treated as the lowest tier.
+  const settlementLevelIndex = (lvl) => SETTLEMENT_LEVELS.indexOf(lvl);
+
+  // Building trees that have at least one level available at the current
+  // settlement tier (or all trees when showAllBuildings is on).
+  const availableTrees = useMemo(() => {
+    if (showAllBuildings) return buildingTrees;
+    const maxIdx = settlementLevelIndex(draft.level);
+    return buildingTrees.filter(([, levels]) =>
+      levels.some(bl => {
+        const reqIdx = settlementLevelIndex(bl.settlementMin);
+        return reqIdx === -1 || reqIdx <= maxIdx;
+      })
+    );
+  }, [buildingTrees, draft.level, showAllBuildings]);
+
+  // Levels for the selected tree, filtered by settlement tier.
   const treeLevels = useMemo(() => {
     if (!selectedTree) return [];
     const entry = buildingTrees.find(([t]) => t === selectedTree);
-    return entry ? entry[1] : [];
-  }, [buildingTrees, selectedTree]);
+    if (!entry) return [];
+    if (showAllBuildings) return entry[1];
+    const maxIdx = settlementLevelIndex(draft.level);
+    return entry[1].filter(bl => {
+      const reqIdx = settlementLevelIndex(bl.settlementMin);
+      return reqIdx === -1 || reqIdx <= maxIdx;
+    });
+  }, [buildingTrees, selectedTree, draft.level, showAllBuildings]);
 
   // Build faction list from factionColors (descr_sm_factions.txt)
   const factionList = useMemo(() => {
@@ -622,8 +649,8 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                 <div className="grid grid-cols-2 gap-1">
                   <select value={selectedTree} onChange={(e) => setSelectedTree(e.target.value)}
                     className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                    <option value="">{buildingTrees.length ? '— tree —' : 'Load EDB'}</option>
-                    {buildingTrees.map(([tree]) => <option key={tree} value={tree}>{tree}</option>)}
+                    <option value="">{availableTrees.length ? '— tree —' : 'Load EDB'}</option>
+                    {availableTrees.map(([tree]) => <option key={tree} value={tree}>{tree}</option>)}
                   </select>
                   <select value="" onChange={(e) => {
                     const level = e.target.value;
@@ -635,12 +662,18 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                     }
                     setSelectedTree('');
                   }}
-                    disabled={!selectedTree}
+                    disabled={!selectedTree || treeLevels.length === 0}
                     className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 disabled:opacity-40">
-                    <option value="">— level —</option>
-                    {treeLevels.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
+                    <option value="">{treeLevels.length ? '— level —' : 'none available'}</option>
+                    {treeLevels.map((bl) => <option key={bl.name} value={bl.name}>{bl.name}</option>)}
                   </select>
                 </div>
+                <label className="flex items-center gap-1.5 cursor-pointer pt-0.5">
+                  <input type="checkbox" checked={showAllBuildings}
+                    onChange={(e) => { setShowAllBuildings(e.target.checked); setSelectedTree(''); }}
+                    className="w-3 h-3 accent-amber-500" />
+                  <span className="text-[9px] text-slate-500">Show buildings above {draft.level} level</span>
+                </label>
               </div>
 
               {/* Owning Faction */}
