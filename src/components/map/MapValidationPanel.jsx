@@ -31,7 +31,8 @@ export default function MapValidationPanel({ layers, onJumpTo }) {
       <div className="shrink-0 p-3 border-b border-slate-800 space-y-2">
         <p className="text-[10px] text-slate-500 leading-relaxed">
           Scans loaded layer pixel data for common modding errors: invalid river placements,
-          mismatched map sizes, orphan city/port markers, and unknown feature colours.
+          mismatched map sizes, orphan city/port markers, city/port on river/ford/source/volcano
+          features, and unknown feature colours.
         </p>
         <button
           onClick={runValidation}

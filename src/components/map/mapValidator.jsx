@@ -14,9 +14,22 @@ function colorDist(r1, g1, b1, r2, g2, b2) {
 function isSeaHeight(r, g, b) { return r < 10 && g < 10 && b > 200; }
 function isRiver(r, g, b) { return r < 15 && g < 15 && b > 200; }
 function isFord(r, g, b)  { return r < 15 && g > 200 && b > 200; }
+function isSource(r, g, b) { return r > 243 && g > 243 && b > 243; }
+function isVolcano(r, g, b) { return r > 200 && g < 15 && b < 15; }
 function isFeatureBg(r, g, b) { return r < 12 && g < 12 && b < 12; }
 function isRegionCity(r, g, b) { return r < 12 && g < 12 && b < 12; }
 function isRegionPort(r, g, b) { return r > 243 && g > 243 && b > 243; }
+
+// Returns the feature name if the pixel is a river, ford, source, or volcano —
+// the four feature types that crash the game when a city/port sits on them.
+function getBlockingFeature(r, g, b) {
+  if (isFeatureBg(r, g, b)) return null;
+  if (isRiver(r, g, b)) return 'river';
+  if (isFord(r, g, b)) return 'ford';
+  if (isSource(r, g, b)) return 'source';
+  if (isVolcano(r, g, b)) return 'volcano';
+  return null;
+}
 
 const KNOWN_FEATURE_COLORS = [
   [0, 0, 255], [0, 255, 255], [255, 255, 255],
@@ -192,6 +205,28 @@ export function validateLayers(layers, step = 4) {
             `Port at (${x},${y}) does not partially overlap a land ground tile`,
             x, y);
         }
+      }
+    }
+  }
+
+  // Check 8: City/port markers on river/ford/source/volcano feature pixels.
+  // A settlement or port placed on one of these map_features.tga pixels causes
+  // a back-to-menu crash in-game. Full-resolution scan — markers are single pixels.
+  if (regions?.data && features?.data &&
+      regions.width === features.width && regions.height === features.height) {
+    const rw = regions.width, rh = regions.height;
+    for (let y = 0; y < rh; y++) {
+      for (let x = 0; x < rw; x++) {
+        const [rr, rg, rb] = getPixel(regions.data, rw, x, y);
+        const isCity = isRegionCity(rr, rg, rb);
+        if (!isCity && !isRegionPort(rr, rg, rb)) continue;
+        const [fr, fg, fb] = getPixel(features.data, rw, x, y);
+        const feat = getBlockingFeature(fr, fg, fb);
+        if (!feat) continue;
+        const name = isCity ? 'City' : 'Port';
+        push('error', 'regions',
+          `${name} marker sits on a ${feat} feature pixel at (${x},${y}) — causes back-to-menu crash`,
+          x, y);
       }
     }
   }
