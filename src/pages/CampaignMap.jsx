@@ -1163,14 +1163,24 @@ export default function CampaignMap() {
         };
       }
     }
+    // Serialize the updated strat text (includes newly placed forts/watchtowers/characters)
+    // and persist it to sessionStorage so the Export page and re-navigation pick it up.
+    let updatedRaw = stratData?.raw ?? null;
+    if (stratData?.raw) {
+      try {
+        updatedRaw = serializeDescrStrat(stratData, overlayItems, editedSettlements);
+        sessionStorage.setItem('m2tw_strat_raw', updatedRaw);
+        setStratDataRaw(prev => prev ? { ...prev, raw: updatedRaw } : prev);
+      } catch {}
+    }
     savedSnapshot.current = {
       layers: layerSnap,
       overlayItems: JSON.parse(JSON.stringify(overlayItems)),
-      stratRaw: stratData?.raw ?? null,
+      stratRaw: updatedRaw,
     };
     setDirtyLayers(new Set());
     setOverlayDirty(false);
-  }, [layers, overlayItems, stratData]);
+  }, [layers, overlayItems, stratData, editedSettlements]);
 
   const handleRevert = useCallback(() => {
     const snap = savedSnapshot.current;
