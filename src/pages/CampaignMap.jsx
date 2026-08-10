@@ -795,7 +795,7 @@ export default function CampaignMap() {
         setPendingPlace(null);
         setSelectedItem(updated);
       } else {
-        const newItem = { ...pendingPlace, id: pendingPlace.id || Date.now(), x: rx, y: stratY };
+        const newItem = { ...pendingPlace, id: pendingPlace.id || -Date.now(), x: rx, y: stratY };
         setOverlayItems(prev => [...prev, newItem]);
         setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
         setPendingPlace(null);

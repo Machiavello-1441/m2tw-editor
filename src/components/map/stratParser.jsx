@@ -888,15 +888,19 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // Append newly added forts (negative ID)
-  const newForts = overlayItems.filter(i => i.id < 0 && i.category === 'fortification' && i.type === 'fort');
+  // Append newly added forts and watchtowers (negative ID = user-created)
+  const newForts = overlayItems.filter(i => i.id < 0 && i.category === 'fortification');
   if (newForts.length > 0) {
     for (const fort of newForts) {
-      let line = `\tfort\t${fort.x} ${fort.y}`;
-      if (fort.fortType) line += ` ${fort.fortType}`;
-      if (fort.culture) line += ` culture ${fort.culture}`;
-      if (fort.comment) line += `\t;;;;; ${fort.comment}`;
-      lines.push(line);
+      if (fort.type === 'watchtower') {
+        lines.push(`\twatchtower\t${fort.x} ${fort.y}`);
+      } else {
+        let line = `\tfort\t${fort.x} ${fort.y}`;
+        if (fort.fortType) line += ` ${fort.fortType}`;
+        if (fort.culture) line += ` culture ${fort.culture}`;
+        if (fort.comment) line += `\t;;;;; ${fort.comment}`;
+        lines.push(line);
+      }
     }
   }
 
