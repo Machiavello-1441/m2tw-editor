@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle, GripVertical } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle, GripVertical, ArrowDownAZ } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -723,6 +723,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   const [subTab, setSubTab] = useState('list');
   const [search, setSearch] = useState('');
   const [filterFaction, setFilterFaction] = useState('');
+  const [sortAlpha, setSortAlpha] = useState(false);
   // Family tree state lives HERE so it persists across tab switches
   const [familyTrees, setFamilyTrees] = useState({});
   const [treesInitialized, setTreesInitialized] = useState(false);
@@ -766,6 +767,28 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
     }),
     [allRecords, search, filterFaction]
   );
+
+  // Display list: when sortAlpha is on, sort by surname with leader/heir pinned to top.
+  // Characters without a surname go to the bottom. New items (_isNew) stay at the very top.
+  const displayList = useMemo(() => {
+    const newItems = filtered.filter(c => c._isNew);
+    const rest = filtered.filter(c => !c._isNew);
+    if (!sortAlpha) return [...newItems, ...rest];
+    const sorted = [...rest].sort((a, b) => {
+      // Leader always first, heir always second
+      const aRank = a.role === 'leader' ? 0 : a.role === 'heir' ? 1 : 2;
+      const bRank = b.role === 'leader' ? 0 : b.role === 'heir' ? 1 : 2;
+      if (aRank !== bRank) return aRank - bRank;
+      // Below leader/heir, sort by surname alphabetically; no-surname goes last
+      const aSur = getDisplayName(namesDisplayMap, a.surname) || a.surname || '';
+      const bSur = getDisplayName(namesDisplayMap, b.surname) || b.surname || '';
+      if (aSur && !bSur) return -1;
+      if (!aSur && bSur) return 1;
+      if (!aSur && !bSur) return 0;
+      return aSur.localeCompare(bSur);
+    });
+    return [...newItems, ...sorted];
+  }, [filtered, sortAlpha, namesDisplayMap]);
 
   const handleUpdate = (id, updatedChar) => {
     if (!stratData) return;
@@ -823,8 +846,8 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   const handleDragEnd = (result) => {
     if (!result.destination || result.destination.index === result.source.index) return;
     if (!stratData) return;
-    // Work on the full filtered list order (new items first, then rest)
-    const ordered = [...filtered.filter(c => c._isNew), ...filtered.filter(c => !c._isNew)];
+    // Work on the displayed list order (respects alphabetical sort if active)
+    const ordered = [...displayList];
     const [moved] = ordered.splice(result.source.index, 1);
     ordered.splice(result.destination.index, 0, moved);
     // Rebuild items: replace chars in their new order, keep non-char items
@@ -880,6 +903,11 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
                 <option value="">All factions</option>
                 {allFactions.map(f => <option key={f}>{f}</option>)}
               </select>
+              <button onClick={() => setSortAlpha(v => !v)}
+                title="Sort by surname (leader & heir always first)"
+                className={`h-6 px-1.5 flex items-center gap-0.5 rounded text-[10px] border transition-colors ${sortAlpha ? 'border-amber-500/50 text-amber-400 bg-amber-500/10' : 'border-slate-600/40 text-slate-500 hover:text-slate-200'}`}>
+                <ArrowDownAZ className="w-3 h-3" />A-Z
+              </button>
             </div>
             {/* File status hints */}
             <div className="flex flex-wrap gap-1">
@@ -901,7 +929,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
               <Droppable droppableId="characters-list">
                 {(provided) => (
                   <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-0.5">
-                    {[...filtered.filter(c => c._isNew), ...filtered.filter(c => !c._isNew)].map((char, idx) => (
+                    {displayList.map((char, idx) => (
                       <Draggable key={String(char.id)} draggableId={String(char.id)} index={idx}>
                         {(drag) => (
                           <div ref={drag.innerRef} {...drag.draggableProps}>
