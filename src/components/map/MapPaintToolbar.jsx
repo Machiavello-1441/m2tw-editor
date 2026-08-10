@@ -125,13 +125,33 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
               </div>
             )}
 
-            {/* Color picker + presets toggle */}
+            {/* Color picker + presets toggle + custom RGB */}
             <div className="flex items-center gap-1.5">
               <span
-                className="w-5 h-5 rounded border border-white/20 cursor-pointer"
+                className="w-5 h-5 rounded border border-white/20 cursor-pointer shrink-0"
                 style={{ backgroundColor: swatchBg(paintColor.r, paintColor.g, paintColor.b) }}
                 title="Current colour"
               />
+              {/* Editable RGB values — shows pipette result & allows custom entry */}
+              <div className="flex items-center gap-0.5">
+                {['r', 'g', 'b'].map(ch => (
+                  <div key={ch} className="flex items-center gap-0.5">
+                    <span className="text-[9px] text-slate-500 uppercase">{ch}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={255}
+                      value={paintColor[ch]}
+                      onChange={e => {
+                        const v = Math.max(0, Math.min(255, parseInt(e.target.value) || 0));
+                        onPaintChange({ ...paintState, paintColor: { ...paintColor, [ch]: v } });
+                      }}
+                      className="w-8 h-5 px-0.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono text-center"
+                      title={`${ch.toUpperCase()} channel`}
+                    />
+                  </div>
+                ))}
+              </div>
               <button
                 onClick={() => setShowPresets(p => !p)}
                 className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${showPresets ? 'border-amber-500/40 text-amber-400' : 'border-slate-600/40 text-slate-400 hover:text-slate-200'}`}
