@@ -36,8 +36,8 @@ export default function MapPixelTooltip({ probe, layers, mapWidth, mapHeight, re
 
   return (
     <div
-      className="absolute z-50 pointer-events-none bg-slate-900/95 border border-slate-600 rounded-lg shadow-2xl p-2.5 text-xs min-w-[180px]"
-      style={{ left: probe.screenX + 14, top: probe.screenY - 10 }}
+      className="absolute pointer-events-none bg-slate-900/95 border border-slate-600 rounded-lg shadow-2xl p-2.5 text-xs min-w-[180px]"
+      style={{ left: probe.screenX + 14, top: probe.screenY - 10, zIndex: 9999 }}
     >
       <div className="text-slate-400 font-mono mb-1.5">
         pixel ({x}, {y}) / map ({mapWidth}×{mapHeight})

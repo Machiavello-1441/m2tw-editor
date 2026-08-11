@@ -64,6 +64,7 @@ export default function CampaignMap() {
   const [activeTab, setActiveTab] = useState('strat');
   const [, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [showPixelGrid, setShowPixelGrid] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(true);
   const [regionsMode, setRegionsMode] = useState('fill');
 
   // Strat overlay state — initialize from sessionStorage if available
@@ -1302,6 +1303,12 @@ export default function CampaignMap() {
             >≈ Coast</button>
             <button onClick={() => setOsmBbox(null)} className="text-[10px] text-slate-600 hover:text-red-400" title="Remove bbox">✕</button>
           </>}
+          {/* Tooltip visibility toggle — keeps the pixel tooltip on top of all map layers */}
+          <button
+            onClick={() => setShowTooltip(v => !v)}
+            className={`px-1.5 py-0.5 rounded text-[9px] border transition-colors ${showTooltip ? 'border-amber-500/40 text-amber-400 bg-amber-500/10' : 'border-slate-600/40 text-slate-500 hover:text-slate-200'}`}
+            title="Show/hide pixel tooltip"
+          >Tooltip</button>
         </div>
 
         {/* Pixel grid toggle */}
@@ -1418,7 +1425,7 @@ export default function CampaignMap() {
             paintState={paintState}
             onPaint={handlePaint}
             showPixelGrid={showPixelGrid}
-            showTooltip={!paintState.active || !!regionWizard}
+            showTooltip={showTooltip && (!paintState.active || !!regionWizard)}
             onTransformChange={setTransform}
             regionsData={regionsData}
             settlementNames={settlementNames}
