@@ -1166,21 +1166,34 @@ export default function CampaignMap() {
     // Serialize the updated strat text (includes newly placed forts/watchtowers/characters)
     // and persist it to sessionStorage so the Export page and re-navigation pick it up.
     let updatedRaw = stratData?.raw ?? null;
+    let savedItems = overlayItems;
     if (stratData?.raw) {
       try {
         updatedRaw = serializeDescrStrat(stratData, overlayItems, editedSettlements);
         sessionStorage.setItem('m2tw_strat_raw', updatedRaw);
-        setStratDataRaw(prev => prev ? { ...prev, raw: updatedRaw } : prev);
+        // Re-parse the serialized text so _lineNum / _lineStart / _lineEnd values
+        // stay in sync with the modified raw. Without this, the line indices
+        // become stale after splices (new settlements/characters/forts inserted,
+        // faction header rewrites) and the NEXT save would patch the wrong
+        // lines — overwriting settlement lines with character lines and
+        // corrupting the file (characters interspersed with settlements).
+        const reparsed = parseDescrStrat(updatedRaw);
+        const enriched = applySettlementPositions(reparsed, regionsData, layers['regions']);
+        setStratDataRaw(enriched);
+        setOverlayItems(enriched.items || []);
+        setEditedSettlements({});
+        updatedRaw = enriched.raw || updatedRaw;
+        savedItems = enriched.items || [];
       } catch {}
     }
     savedSnapshot.current = {
       layers: layerSnap,
-      overlayItems: JSON.parse(JSON.stringify(overlayItems)),
+      overlayItems: JSON.parse(JSON.stringify(savedItems)),
       stratRaw: updatedRaw,
     };
     setDirtyLayers(new Set());
     setOverlayDirty(false);
-  }, [layers, overlayItems, stratData, editedSettlements]);
+  }, [layers, overlayItems, stratData, editedSettlements, regionsData, applySettlementPositions]);
 
   const handleRevert = useCallback(() => {
     const snap = savedSnapshot.current;

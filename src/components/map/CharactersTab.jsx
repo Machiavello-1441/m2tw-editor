@@ -850,9 +850,12 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
     const ordered = [...displayList];
     const [moved] = ordered.splice(result.source.index, 1);
     ordered.splice(result.destination.index, 0, moved);
-    // Rebuild items: replace chars in their new order, keep non-char items
-    const nonChars = (stratData.items || []).filter(i => i.category !== 'character');
-    onStratDataChange({ ...stratData, items: [...ordered, ...nonChars] });
+    // Rebuild items: replace ONLY the displayed chars with their new order,
+    // keep all other items (chars from other factions, settlements, etc.)
+    // so nothing is lost when a faction filter is active.
+    const displayIds = new Set(displayList.map(c => c.id));
+    const nonDisplayed = (stratData.items || []).filter(i => !displayIds.has(i.id));
+    onStratDataChange({ ...stratData, items: [...ordered, ...nonDisplayed] });
   };
 
   if (!stratData?.raw) {
