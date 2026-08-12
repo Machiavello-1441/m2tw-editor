@@ -1170,7 +1170,10 @@ export default function CampaignMap() {
     let savedItems = overlayItems;
     if (stratData?.raw) {
       try {
-        updatedRaw = serializeDescrStrat(stratData, overlayItems, editedSettlements);
+        updatedRaw = serializeDescrStrat(
+          { ...stratData, _regionsLookup: regionsData, _regionsLayer: layers['regions'] },
+          overlayItems, editedSettlements
+        );
         sessionStorage.setItem('m2tw_strat_raw', updatedRaw);
         // Re-parse the serialized text so _lineNum / _lineStart / _lineEnd values
         // stay in sync with the modified raw. Without this, the line indices
@@ -1233,7 +1236,10 @@ export default function CampaignMap() {
     });
     // Also export descr_strat.txt if it has changes
     if (stratData?.raw && overlayDirty) {
-      const text = serializeDescrStrat(stratData, overlayItems, editedSettlements);
+      const text = serializeDescrStrat(
+        { ...stratData, _regionsLookup: regionsData, _regionsLayer: layers['regions'] },
+        overlayItems, editedSettlements
+      );
       downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_strat.txt');
     }
   };

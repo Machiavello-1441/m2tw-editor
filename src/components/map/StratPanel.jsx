@@ -997,7 +997,10 @@ export default function StratPanel({
 
   const handleExportStrat = () => {
     if (!stratData?.raw) return;
-    const text = toCRLF(serializeDescrStrat(stratData, overlayItems, editedSettlements));
+    const text = toCRLF(serializeDescrStrat(
+      { ...stratData, _regionsLookup: regionsData, _regionsLayer: regionsLayer },
+      overlayItems, editedSettlements
+    ));
     downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_strat.txt');
   };
 
@@ -1044,7 +1047,10 @@ export default function StratPanel({
 
     // descr_strat.txt
     if (stratData?.raw) {
-      zip.file(`${basePath}/descr_strat.txt`, toCRLF(serializeDescrStrat(stratData, overlayItems, editedSettlements)));
+      zip.file(`${basePath}/descr_strat.txt`, toCRLF(serializeDescrStrat(
+        { ...stratData, _regionsLookup: regionsData, _regionsLayer: regionsLayer },
+        overlayItems, editedSettlements
+      )));
     }
     // descr_regions.txt
     if (regionsData?.length) {
@@ -1509,7 +1515,7 @@ export default function StratPanel({
 
               {/* Inline editor for resource */}
               {selectedItem.category === 'resource' &&
-            <ResourceEditor item={selectedItem} onSave={(saved) => {onSaveItem?.(saved);onSelectItem(saved);}} />
+            <ResourceEditor item={selectedItem} resourceList={naturalResList} onSave={(saved) => {onSaveItem?.(saved);onSelectItem(saved);}} />
             }
 
               {/* Inline editor for fort/watchtower */}
