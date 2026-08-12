@@ -799,7 +799,10 @@ export default function CampaignMap() {
         const newItem = { ...pendingPlace, id: pendingPlace.id || -Date.now(), x: rx, y: stratY };
         setOverlayItems(prev => [...prev, newItem]);
         setStratDataRaw(prev => prev ? { ...prev, items: [...(prev.items || []), newItem] } : prev);
-        setPendingPlace(null);
+        // For resources, keep placement mode armed with the same type so the
+        // user can place multiple of the same type in succession without
+        // having to re-open the Add panel and re-select the type each time.
+        if (pendingPlace.category !== 'resource') setPendingPlace(null);
         setSelectedItem(newItem);
       }
       setOverlayDirty(true);
@@ -1352,6 +1355,7 @@ export default function CampaignMap() {
         {pendingPlace && (
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-semibold animate-pulse">
             Click map to place {pendingPlace.type || pendingPlace.charType}
+            {pendingPlace.category === 'resource' && <span className="text-amber-300/70">— keep clicking, ✕ to finish</span>}
             <button onClick={() => setPendingPlace(null)} className="ml-1 text-amber-600 hover:text-amber-400">✕</button>
           </span>
         )}
