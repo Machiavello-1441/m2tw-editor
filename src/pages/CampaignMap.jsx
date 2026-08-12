@@ -1352,10 +1352,9 @@ export default function CampaignMap() {
         )}
 
         {/* Pending place indicator */}
-        {pendingPlace && (
+        {pendingPlace && pendingPlace.category !== 'resource' && (
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-semibold animate-pulse">
             Click map to place {pendingPlace.type || pendingPlace.charType}
-            {pendingPlace.category === 'resource' && <span className="text-amber-300/70">— keep clicking, ✕ to finish</span>}
             <button onClick={() => setPendingPlace(null)} className="ml-1 text-amber-600 hover:text-amber-400">✕</button>
           </span>
         )}
@@ -1553,6 +1552,8 @@ export default function CampaignMap() {
                   mercenaryPoolList={mercenaryPoolList}
                   religionList={religionList}
                   naturalResList={naturalResList}
+                  pendingPlace={pendingPlace}
+                  onCancelPlacement={() => setPendingPlace(null)}
                   onRelocatePixel={handleRelocatePixel}
                     mapH={mapH}
                     onLoadTgaLayer={loadLayerFile}

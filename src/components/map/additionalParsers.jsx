@@ -26,11 +26,12 @@ export function parseDescrReligions(text) {
 }
 
 // descr_sm_resources.txt → array of resource name strings
+// The file uses "type <name>" entries (not "resource <name>").
 export function parseDescrSmResources(text) {
   const resources = [];
   for (const raw of text.split('\n')) {
     const line = raw.replace(/;.*$/, '').trim();
-    const m = line.match(/^resource\s+(\S+)/i);
+    const m = line.match(/^type\s+(\S+)/i);
     if (m) resources.push(m[1]);
   }
   return [...new Set(resources)];

@@ -29,6 +29,7 @@ function ResourceEditor({ item, onSave, resourceList }) {
   const [draft, setDraft] = useState({ type: item.type || '', x: item.x ?? '', y: item.y ?? '' });
   useEffect(() => {setDraft({ type: item.type || '', x: item.x ?? '', y: item.y ?? '' });}, [item.id]);
   const resOptions = resourceList?.length ? resourceList : RESOURCE_TYPES_LIST;
+  // noop
   return (
     <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
       <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit Resource</p>
@@ -859,6 +860,7 @@ export default function StratPanel({
   onRecolorRegion, onAddNewRegion,
   layers, dirtyLayers, editedSettlements,
   rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList,
+  pendingPlace, onCancelPlacement,
   onRelocatePixel, mapH,
   onLoadTgaLayer,
   descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onPinCharacter,
@@ -1402,73 +1404,104 @@ export default function StratPanel({
 
           {/* Add item (resources + fortifications only; characters moved to Characters tab) */}
           {overviewTab === 'overlay' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Add to Map (click to place)</p>
-            <div className="flex gap-1 flex-wrap">
-              {CATEGORIES.filter((c) => c.id !== 'settlement' && c.id !== 'character').map((cat) =>
-              <button key={cat.id} onClick={() => setAddMode(addMode?.category === cat.id ? null : { category: cat.id })}
-              className={`px-2 py-1 rounded text-[10px] border transition-colors ${addMode?.category === cat.id ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'border-slate-600/40 text-slate-400 hover:text-slate-200'}`}>
-                  {cat.emoji} {cat.label}
-                </button>
-              )}
-              <span className="text-[9px] text-slate-600 self-center italic">Characters → Characters tab</span>
-            </div>
-            {addMode &&
-            <div className="space-y-1.5 border-t border-slate-700/40 pt-1.5">
-                {addMode.category === 'resource' &&
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Add to Map</p>
+
+            {/* ── Resource placer (always visible) ── */}
+            <div className="space-y-1.5 border-b border-slate-700/40 pb-1.5">
+              <p className="text-[9px] text-slate-500 uppercase font-semibold">💎 Resources</p>
               <select value={newType} onChange={(e) => setNewType(e.target.value)}
               className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                    <option value="">— pick resource —</option>
-                    {(naturalResList?.length ? naturalResList : RESOURCE_TYPES_LIST).map((t) => <option key={t}>{t}</option>)}
-                  </select>
-              }
-                {addMode.category === 'fortification' &&
-              <div className="space-y-1">
-                    <select value={newType} onChange={(e) => setNewType(e.target.value)}
-                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                      <option value="fort">Fort</option>
-                      <option value="watchtower">Watchtower</option>
-                    </select>
-                    {(newType === 'fort' || newType === '') &&
-                <>
-                        <select value={newFortType} onChange={(e) => setNewFortType(e.target.value)}
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                          {FORT_TYPES.map((t) => <option key={t}>{t}</option>)}
-                        </select>
-                        {cultureList?.length > 0 ?
-                  <select value={newFortCulture} onChange={(e) => setNewFortCulture(e.target.value)}
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                            <option value="">— culture (optional) —</option>
-                            {cultureList.map((c) => <option key={c}>{c}</option>)}
-                          </select> :
-
-                  <input value={newFortCulture} onChange={(e) => setNewFortCulture(e.target.value)}
-                  placeholder="culture name (optional)"
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                  }
-                        <input value={newFortComment} onChange={(e) => setNewFortComment(e.target.value)}
-                  placeholder="comment (optional)"
-                  className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                      </>
-                }
-                  </div>
-              }
-                <button
-                onClick={() => {
-                  if (!newType && addMode.category === 'resource') return;
-                  onAddItem({
-                    ...addMode,
-                    type: newType || 'fort',
-                    fortType: newFortType,
-                    culture: newFortCulture,
-                    comment: newFortComment
-                  });
-                  setAddMode(null);setNewType('');setNewFortType('me_fort_a');setNewFortCulture('');setNewFortComment('');
-                }}
-                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 text-slate-900 font-semibold transition-colors">
-                  <Plus className="w-3 h-3" /> Click on map to place
+                <option value="">— pick resource —</option>
+                {(naturalResList?.length ? naturalResList : RESOURCE_TYPES_LIST).map((t) => <option key={t}>{t}</option>)}
+              </select>
+              {pendingPlace?.category === 'resource' ? (
+                <button onClick={() => onCancelPlacement?.()}
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-red-600/80 hover:bg-red-600 text-slate-100 font-semibold transition-colors">
+                  <X className="w-3 h-3" /> Stop placing ({pendingPlace.type})
                 </button>
-              </div>
-            }
+              ) : (
+                <button
+                onClick={() => { if (!newType) return; onAddItem({ category: 'resource', type: newType }); }}
+                disabled={!newType}
+                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-semibold transition-colors">
+                  <MapPin className="w-3 h-3" /> Place on map
+                </button>
+              )}
+              {pendingPlace?.category === 'resource' && (
+                <p className="text-[9px] text-amber-400/70 text-center">Click on the map to place — keep clicking to place more</p>
+              )}
+              {/* List of placed resources of the selected type */}
+              {newType && (() => {
+                const placed = (overlayItems || []).filter(i => i.category === 'resource' && i.type === newType);
+                if (!placed.length) return null;
+                return (
+                  <div className="space-y-0.5 max-h-32 overflow-y-auto">
+                    <p className="text-[9px] text-slate-500">Placed ({placed.length}):</p>
+                    {placed.map((r) => (
+                      <div key={r.id} className="flex items-center gap-1 px-1 py-0.5 rounded bg-slate-800/40 hover:bg-slate-800/70">
+                        <span className="text-[9px] text-slate-300 font-mono flex-1">{r.x}, {r.y}</span>
+                        <button onClick={() => onSelectItem(r)} className="text-slate-500 hover:text-amber-400"><Edit2 className="w-2.5 h-2.5" /></button>
+                        <button onClick={() => onDeleteItem(r.id)} className="text-slate-500 hover:text-red-400"><Trash2 className="w-2.5 h-2.5" /></button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* ── Fortification placer ── */}
+            <div className="space-y-1.5">
+              <p className="text-[9px] text-slate-500 uppercase font-semibold">🏰 Fortifications</p>
+              <button onClick={() => setAddMode(addMode?.category === 'fortification' ? null : { category: 'fortification' })}
+              className={`w-full px-2 py-1 rounded text-[10px] border transition-colors ${addMode?.category === 'fortification' ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'border-slate-600/40 text-slate-400 hover:text-slate-200'}`}>
+                {addMode?.category === 'fortification' ? 'Cancel' : 'Add Fort / Watchtower'}
+              </button>
+              {addMode?.category === 'fortification' &&
+              <div className="space-y-1.5 border-t border-slate-700/40 pt-1.5">
+                  <select value={newType} onChange={(e) => setNewType(e.target.value)}
+              className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                    <option value="fort">Fort</option>
+                    <option value="watchtower">Watchtower</option>
+                  </select>
+                  {(newType === 'fort' || newType === '') &&
+              <>
+                      <select value={newFortType} onChange={(e) => setNewFortType(e.target.value)}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                        {FORT_TYPES.map((t) => <option key={t}>{t}</option>)}
+                      </select>
+                      {cultureList?.length > 0 ?
+                <select value={newFortCulture} onChange={(e) => setNewFortCulture(e.target.value)}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                          <option value="">— culture (optional) —</option>
+                          {cultureList.map((c) => <option key={c}>{c}</option>)}
+                        </select> :
+
+                <input value={newFortCulture} onChange={(e) => setNewFortCulture(e.target.value)}
+                placeholder="culture name (optional)"
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                }
+                      <input value={newFortComment} onChange={(e) => setNewFortComment(e.target.value)}
+                placeholder="comment (optional)"
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                    </>
+              }
+                  <button
+                  onClick={() => {
+                    onAddItem({
+                      ...addMode,
+                      type: newType || 'fort',
+                      fortType: newFortType,
+                      culture: newFortCulture,
+                      comment: newFortComment
+                    });
+                    setAddMode(null);
+                  }}
+                  className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 text-slate-900 font-semibold transition-colors">
+                    <Plus className="w-3 h-3" /> Click on map to place
+                  </button>
+                </div>
+              }
+            </div>
           </div>}
 
           {/* Disasters sub-tab */}

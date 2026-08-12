@@ -941,16 +941,27 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
           return new RegExp(`^region[\\s\\t]+${regionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(cl);
         });
         if (regionIdx >= 0) {
-          // Find the end of this region block (next region, diplomacy, or script)
-          let endIdx = lines.length;
+          // Find the closing '}' of this region block and insert the fort line
+          // BEFORE it (inside the braces). If the region has no braces (unbraced
+          // format), insert before the next region/diplomacy/script line.
+          let insertIdx = -1;
+          let braceDepth = 0;
+          let sawBrace = false;
           for (let fi = regionIdx + 1; fi < lines.length; fi++) {
-            const fl = lines[fi].replace(/;.*$/, '').trim();
-            if (/^region[\s\t]+\S/i.test(fl) || /^(faction_standings|faction_relationships|action_relationships|script)\b/i.test(fl)) {
-              endIdx = fi;
-              break;
+            const raw = lines[fi];
+            const fl = raw.replace(/;.*$/, '').trim();
+            for (const ch of raw) {
+              if (ch === '{') { braceDepth++; sawBrace = true; }
+              else if (ch === '}') braceDepth--;
+            }
+            // Braced format: insert before the closing '}' line
+            if (sawBrace && braceDepth === 0) { insertIdx = fi; break; }
+            // Unbraced format: stop at next region or diplomacy/script
+            if (!sawBrace && (/^region[\s\t]+\S/i.test(fl) || /^(faction_standings|faction_relationships|action_relationships|script)\b/i.test(fl))) {
+              insertIdx = fi; break;
             }
           }
-          lines.splice(endIdx, 0, fortLine);
+          if (insertIdx >= 0) lines.splice(insertIdx, 0, fortLine);
         } else {
           // Region block not found — create a new one
           lines.push(`region ${regionName}`, fortLine);
