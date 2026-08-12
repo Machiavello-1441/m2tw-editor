@@ -917,8 +917,8 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   if (newForts.length > 0) {
     for (const fort of newForts) {
       const fortLine = fort.type === 'watchtower'
-        ? `\twatchtower\t${fort.x} ${fort.y}`
-        : `\tfort\t${fort.x} ${fort.y}${fort.fortType ? ` ${fort.fortType}` : ''}${fort.culture ? ` culture ${fort.culture}` : ''}${fort.comment ? `\t;;;;; ${fort.comment}` : ''}`;
+        ? `watchtower\t${fort.x} ${fort.y}`
+        : `fort\t${fort.x} ${fort.y}${fort.fortType ? ` ${fort.fortType}` : ''}${fort.culture ? ` culture ${fort.culture}` : ''}${fort.comment ? `\t;;;;; ${fort.comment}` : ''}`;
 
       // Resolve the region name: explicit property, or lookup from regions layer
       let regionName = fort.region;
@@ -963,12 +963,12 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
           }
           if (insertIdx >= 0) lines.splice(insertIdx, 0, fortLine);
         } else {
-          // Region block not found — create a new one
-          lines.push(`region ${regionName}`, fortLine);
+          // Region block not found — create a new one with default farming/famine
+          lines.push(`region ${regionName}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine);
         }
       } else {
         // No region assignable — append under a generic region block
-        lines.push(`region unknown_region_${fort.x}_${fort.y}`, fortLine);
+        lines.push(`region unknown_region_${fort.x}_${fort.y}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine);
       }
     }
   }
