@@ -916,11 +916,9 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   const newForts = overlayItems.filter(i => i.id < 0 && i.category === 'fortification');
   if (newForts.length > 0) {
     for (const fort of newForts) {
-      // M2TW format: no leading tab — fort/watchtower starts at column 0
-      // e.g. "fort\t93 295 stone_fort_a culture northern_european"
       const fortLine = fort.type === 'watchtower'
-        ? `watchtower\t${fort.x} ${fort.y}`
-        : `fort\t${fort.x} ${fort.y}${fort.fortType ? ` ${fort.fortType}` : ''}${fort.culture ? ` culture ${fort.culture}` : ''}${fort.comment ? `\t;;;;; ${fort.comment}` : ''}`;
+        ? `\twatchtower\t${fort.x} ${fort.y}`
+        : `\tfort\t${fort.x} ${fort.y}${fort.fortType ? ` ${fort.fortType}` : ''}${fort.culture ? ` culture ${fort.culture}` : ''}${fort.comment ? `\t;;;;; ${fort.comment}` : ''}`;
 
       // Resolve the region name: explicit property, or lookup from regions layer
       let regionName = fort.region;
@@ -937,37 +935,40 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       }
 
       if (regionName) {
-        // Find the matching `region <name>` block (unbraced format)
+        // Find the matching `region <name>` block
         const regionIdx = lines.findIndex(l => {
           const cl = l.replace(/;.*$/, '').trim();
           return new RegExp(`^region[\\s\\t]+${regionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(cl);
         });
         if (regionIdx >= 0) {
-          // Find the end of this region block: next region/diplomacy/script line
-          let blockEnd = lines.length;
+          // Find the closing '}' of this region block and insert the fort line
+          // BEFORE it (inside the braces). If the region has no braces (unbraced
+          // format), insert before the next region/diplomacy/script line.
+          let insertIdx = -1;
+          let braceDepth = 0;
+          let sawBrace = false;
           for (let fi = regionIdx + 1; fi < lines.length; fi++) {
-            const fl = lines[fi].replace(/;.*$/, '').trim();
-            if (!fl) continue;
-            if (/^region[\s\t]+\S/i.test(fl) || /^(faction_standings|faction_relationships|action_relationships|script)\b/i.test(fl)) {
-              blockEnd = fi;
-              break;
+            const raw = lines[fi];
+            const fl = raw.replace(/;.*$/, '').trim();
+            for (const ch of raw) {
+              if (ch === '{') { braceDepth++; sawBrace = true; }
+              else if (ch === '}') braceDepth--;
+            }
+            // Braced format: insert before the closing '}' line
+            if (sawBrace && braceDepth === 0) { insertIdx = fi; break; }
+            // Unbraced format: stop at next region or diplomacy/script
+            if (!sawBrace && (/^region[\s\t]+\S/i.test(fl) || /^(faction_standings|faction_relationships|action_relationships|script)\b/i.test(fl))) {
+              insertIdx = fi; break;
             }
           }
-          // Find the last fort/watchtower line in this block to insert after it
-          let lastFortIdx = -1;
-          for (let fi = blockEnd - 1; fi > regionIdx; fi--) {
-            const fl = lines[fi].replace(/;.*$/, '').trim();
-            if (/^(fort|watchtower)\s/i.test(fl)) { lastFortIdx = fi; break; }
-          }
-          const insertIdx = lastFortIdx >= 0 ? lastFortIdx + 1 : blockEnd;
-          lines.splice(insertIdx, 0, fortLine);
+          if (insertIdx >= 0) lines.splice(insertIdx, 0, fortLine);
         } else {
-          // Region block not found — create a new one with farming/famine headers
-          lines.push(`region ${regionName}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine);
+          // Region block not found — create a new one
+          lines.push(`region ${regionName}`, fortLine);
         }
       } else {
         // No region assignable — append under a generic region block
-        lines.push(`region unknown_region_${fort.x}_${fort.y}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine);
+        lines.push(`region unknown_region_${fort.x}_${fort.y}`, fortLine);
       }
     }
   }
