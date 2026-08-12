@@ -152,6 +152,11 @@ export default function CampaignMap() {
   const [rebelFactions, setRebelFactions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_rebel_factions_raw'); return r ? parseDescrRebelFactions(r) : []; } catch { return []; } });
   const [religions, setReligions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_religions_raw'); return r ? parseDescrReligions(r) : []; } catch { return []; } });
   const [naturalResources, setNaturalRes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_sm_resources_raw'); return r ? parseDescrSmResources(r) : []; } catch { return []; } });
+  useEffect(() => {
+    const handler = () => { try { const r = sessionStorage.getItem('m2tw_sm_resources_raw'); setNaturalRes(r ? parseDescrSmResources(r) : []); } catch {} };
+    window.addEventListener('load-sm-resources', handler);
+    return () => window.removeEventListener('load-sm-resources', handler);
+  }, []);
   const [mercenaryPools, setMercenaryPools] = useState(() => { try { const r = sessionStorage.getItem('m2tw_mercenaries_raw'); return r ? parseDescrMercenaries(r) : []; } catch { return []; } });
   const [musicTypes, setMusicTypes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_music_types_raw'); return r ? parseDescrSoundsMusicTypes(r) : []; } catch { return []; } });
   const [cultures, setCultures] = useState(() => { try { const r = sessionStorage.getItem('m2tw_cultures_raw'); return r ? parseDescrCultures(r) : []; } catch { return []; } });

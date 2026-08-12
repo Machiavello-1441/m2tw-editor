@@ -103,6 +103,7 @@ export default function ResourcesTab() {
     const text = await file.text();
     setResources(parseResourcesFull(text));
     try { sessionStorage.setItem('m2tw_sm_resources_raw', text); localStorage.setItem('m2tw_resources_file', text); } catch {}
+    window.dispatchEvent(new Event('load-sm-resources'));
     setLoaded(true);
     e.target.value = '';
   };
