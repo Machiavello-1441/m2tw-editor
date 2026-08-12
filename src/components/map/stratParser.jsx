@@ -888,18 +888,76 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // Append newly added forts and watchtowers (negative ID = user-created)
+  // Append newly added resources (negative ID = user-created).
+  // Resources are top-level entries in descr_strat.txt, placed before the
+  // faction blocks (after the campaign header / playable lists / dates).
+  const newResources = overlayItems.filter(i => i.id < 0 && i.category === 'resource');
+  if (newResources.length > 0) {
+    // Find the last existing resource line, or the first faction line as fallback
+    let lastResourceIdx = -1;
+    let firstFactionIdx = -1;
+    for (let li = 0; li < lines.length; li++) {
+      const cl = lines[li].replace(/;.*$/, '').trim();
+      if (/^resource\s+\w/i.test(cl)) lastResourceIdx = li;
+      if (firstFactionIdx < 0 && /^faction[\s\t]+\w/i.test(cl)) firstFactionIdx = li;
+    }
+    const insertIdx = lastResourceIdx >= 0
+      ? lastResourceIdx + 1
+      : firstFactionIdx >= 0 ? firstFactionIdx : lines.length;
+    const resLines = newResources.map(r => `resource\t${r.type},\t${r.x},\t${r.y}`);
+    lines.splice(insertIdx, 0, ...resLines);
+  }
+
+  // Append newly added forts and watchtowers (negative ID = user-created).
+  // Forts/watchtowers MUST be inside a `region <name>` block in descr_strat.txt.
+  // If the fort has a `region` assigned, insert it into that region block.
+  // Otherwise, look up the region from the fort's coordinates via the regions
+  // layer pixel data (passed through stratData._regionsLookup if available).
   const newForts = overlayItems.filter(i => i.id < 0 && i.category === 'fortification');
   if (newForts.length > 0) {
     for (const fort of newForts) {
-      if (fort.type === 'watchtower') {
-        lines.push(`\twatchtower\t${fort.x} ${fort.y}`);
+      const fortLine = fort.type === 'watchtower'
+        ? `\twatchtower\t${fort.x} ${fort.y}`
+        : `\tfort\t${fort.x} ${fort.y}${fort.fortType ? ` ${fort.fortType}` : ''}${fort.culture ? ` culture ${fort.culture}` : ''}${fort.comment ? `\t;;;;; ${fort.comment}` : ''}`;
+
+      // Resolve the region name: explicit property, or lookup from regions layer
+      let regionName = fort.region;
+      if (!regionName && stratData._regionsLookup && stratData._regionsLayer) {
+        const { data, width, height } = stratData._regionsLayer;
+        const px = Math.round(fort.x);
+        const py = height - 1 - Math.round(fort.y);
+        if (px >= 0 && py >= 0 && px < width && py < height) {
+          const idx = (py * width + px) * 4;
+          const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+          const match = stratData._regionsLookup.find(reg => reg.r === r && reg.g === g && reg.b === b);
+          if (match) regionName = match.regionName;
+        }
+      }
+
+      if (regionName) {
+        // Find the matching `region <name>` block
+        const regionIdx = lines.findIndex(l => {
+          const cl = l.replace(/;.*$/, '').trim();
+          return new RegExp(`^region[\\s\\t]+${regionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(cl);
+        });
+        if (regionIdx >= 0) {
+          // Find the end of this region block (next region, diplomacy, or script)
+          let endIdx = lines.length;
+          for (let fi = regionIdx + 1; fi < lines.length; fi++) {
+            const fl = lines[fi].replace(/;.*$/, '').trim();
+            if (/^region[\s\t]+\S/i.test(fl) || /^(faction_standings|faction_relationships|action_relationships|script)\b/i.test(fl)) {
+              endIdx = fi;
+              break;
+            }
+          }
+          lines.splice(endIdx, 0, fortLine);
+        } else {
+          // Region block not found — create a new one
+          lines.push(`region ${regionName}`, fortLine);
+        }
       } else {
-        let line = `\tfort\t${fort.x} ${fort.y}`;
-        if (fort.fortType) line += ` ${fort.fortType}`;
-        if (fort.culture) line += ` culture ${fort.culture}`;
-        if (fort.comment) line += `\t;;;;; ${fort.comment}`;
-        lines.push(line);
+        // No region assignable — append under a generic region block
+        lines.push(`region unknown_region_${fort.x}_${fort.y}`, fortLine);
       }
     }
   }

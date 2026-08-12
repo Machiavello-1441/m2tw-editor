@@ -25,9 +25,10 @@ import CampaignDescriptionsStrings from './CampaignDescriptionsStrings';
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
 
 // ─── Inline resource editor ────────────────────────────────────────────────────
-function ResourceEditor({ item, onSave }) {
+function ResourceEditor({ item, onSave, resourceList }) {
   const [draft, setDraft] = useState({ type: item.type || '', x: item.x ?? '', y: item.y ?? '' });
   useEffect(() => {setDraft({ type: item.type || '', x: item.x ?? '', y: item.y ?? '' });}, [item.id]);
+  const resOptions = resourceList?.length ? resourceList : RESOURCE_TYPES_LIST;
   return (
     <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
       <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit Resource</p>
@@ -36,7 +37,7 @@ function ResourceEditor({ item, onSave }) {
           <span className="text-[9px] text-slate-500">Type</span>
           <select value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}
           className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-            {RESOURCE_TYPES_LIST.map((t) => <option key={t} value={t}>{t}</option>)}
+            {resOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
@@ -141,7 +142,8 @@ const CATEGORIES = [
 
 // CHARACTER_TYPES moved to CharactersTab
 const RESOURCE_TYPES_LIST = ['coal', 'fish', 'amber', 'furs', 'gold', 'silver', 'iron', 'timber', 'wine', 'wool', 'grain', 'silk', 'dyes', 'tin', 'marble', 'ivory', 'sugar', 'spices', 'tobacco', 'chocolate', 'cotton', 'sulfur', 'slaves'];
-const RESOURCE_TYPES = RESOURCE_TYPES_LIST;
+// Fallback vanilla list used only when descr_sm_resources.txt hasn't been loaded.
+// When loaded, the parsed `naturalResList` prop replaces this everywhere.
 const FORT_TYPES = ['me_fort_a', 'me_fort_b', 'stone_fort_a', 'stone_fort_b', 'stone_fort_c', 'stone_fort_d'];
 const BOOL_FLAGS = ['marian_reforms_disabled', 'marian_reforms_activated', 'rebelling_characters_active', 'gladiator_uprising_disabled', 'night_battles_enabled', 'show_date_as_turns'];
 const SEASONS = ['summer', 'winter'];
@@ -1410,7 +1412,7 @@ export default function StratPanel({
               <select value={newType} onChange={(e) => setNewType(e.target.value)}
               className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                     <option value="">— pick resource —</option>
-                    {RESOURCE_TYPES.map((t) => <option key={t}>{t}</option>)}
+                    {(naturalResList?.length ? naturalResList : RESOURCE_TYPES_LIST).map((t) => <option key={t}>{t}</option>)}
                   </select>
               }
                 {addMode.category === 'fortification' &&
