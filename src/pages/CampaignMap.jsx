@@ -269,35 +269,42 @@ export default function CampaignMap() {
         }
       }
     } catch {}
-    // Auto-restore settlement names from the strings-bin store for the ACTIVE
-    // campaign only. Without matching the campaign name we would silently
-    // import another campaign's regions (e.g. americas_* when working on
-    // imperial_campaign), producing entries that don't exist in this mod.
-    try {
-      if (!sessionStorage.getItem('m2tw_names_raw')) {
-        const store = getStringsBinStore();
-        const activeCampaign = (stratData?.campaignName || '').toLowerCase();
-        const pickPrefix = activeCampaign ? `${activeCampaign}_regions_and_settlement_names` : '';
-        let matched = null;
-        if (pickPrefix) {
-          for (const fname of Object.keys(store)) {
-            if (fname.toLowerCase().startsWith(pickPrefix)) { matched = store[fname]; break; }
-          }
-        }
-        if (matched?.entries?.length) {
-          const namesMap = {};
-          for (const { key, value } of matched.entries) if (key) namesMap[key] = value;
-          setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
-        }
-      }
-    } catch {}
-
     const handler = (e) => {
       if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
     };
     window.addEventListener('m2tw-map-folder-loaded', handler);
     return () => window.removeEventListener('m2tw-map-folder-loaded', handler);
   }, []); // eslint-disable-line
+
+  // Auto-restore settlement names from the strings-bin store for the ACTIVE
+  // campaign. This must run AFTER stratData is loaded (which happens
+  // asynchronously via handleFolderImport), so it depends on stratData.
+  // Without matching the campaign name we would silently import another
+  // campaign's regions (e.g. americas_* when working on imperial_campaign).
+  // We match any file starting with the campaign name that contains
+  // 'settlement' or 'region' — this covers both the standard
+  // <campaign>_regions_and_settlement_names.txt.strings.bin and the shorter
+  // <campaign>_settlement_names.txt.strings.bin naming conventions.
+  useEffect(() => {
+    if (!stratData?.campaignName) return;
+    try {
+      if (sessionStorage.getItem('m2tw_names_raw')) return;
+      const store = getStringsBinStore();
+      const activeCampaign = stratData.campaignName.toLowerCase();
+      let matched = null;
+      for (const fname of Object.keys(store)) {
+        const lname = fname.toLowerCase();
+        if (lname.startsWith(activeCampaign) && (lname.includes('settlement') || lname.includes('region'))) {
+          matched = store[fname]; break;
+        }
+      }
+      if (matched?.entries?.length) {
+        const namesMap = {};
+        for (const { key, value } of matched.entries) if (key) namesMap[key] = value;
+        setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
+      }
+    } catch {}
+  }, [stratData]);
 
   // ── Layer loading ──────────────────────────────────────────────────────────
   const loadLayerFile = useCallback(async (layerId, file, options) => {

@@ -386,7 +386,7 @@ export default function Home() {
           resourceTgaFiles.push(file);
         } else if (pathLower.includes('/pips/') || pathLower.includes('/religion/')) {
           religionPipFiles.push(file);
-        } else if (pathLower.includes('/maps/base/')) {
+        } else if (pathLower.includes('/maps/base/') || pathLower.includes('/maps/campaign/')) {
           baseMapFiles.push(file);
         } else if (pathLower.includes('/terrain/aerial_map/ground_types/')) {
           groundTypeTgaFiles.push(file);

@@ -28,7 +28,7 @@ function categorizeFile(file) {
 
   if (name.endsWith('.strings.bin') || (name.endsWith('.bin') && path.includes('/text/'))) return 'strings_bin';
   if (path.includes('/maps/campaign/') || path.includes('/maps/base/')) {
-    if (name.endsWith('.tga') || name.endsWith('.txt')) return 'campaign';
+    if (name.endsWith('.tga') || name.endsWith('.txt') || name.endsWith('.xml')) return 'campaign';
     return null;
   }
   if (name.endsWith('.tga')) {
