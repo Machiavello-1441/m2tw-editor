@@ -23,6 +23,7 @@ import { latLngToPixel, paintBoundary } from '../components/newmap/boundaryRaste
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
 import { setLayer, getLayer, getAllLayers, hasAnyLayer } from '../lib/mapLayerStore';
+import SubComponentErrorBoundary from '../components/SubComponentErrorBoundary';
 
 const INITIAL_PAINT = {
   active: false,
@@ -1433,6 +1434,7 @@ export default function CampaignMap() {
       <div className="flex-1 flex min-h-0">
         {/* Canvas */}
         <div className="flex-1 relative min-w-0">
+          <SubComponentErrorBoundary name="MapCanvas">
           <MapCanvas
             osmBbox={osmBbox}
             osmOpacity={osmOpacity}
@@ -1462,6 +1464,7 @@ export default function CampaignMap() {
               setStratPanelOpenItemId(item.category === 'character' ? item.id : null);
             }}
           />
+          </SubComponentErrorBoundary>
         </div>
 
         {/* Right panel */}
@@ -1485,6 +1488,7 @@ export default function CampaignMap() {
           <div className="flex-1 overflow-hidden">
             {activeTab === 'strat' && (
               <div className="h-full overflow-hidden">
+                <SubComponentErrorBoundary name="StratPanel">
                 <StratPanel
                   stratData={stratData}
                   regionsData={regionsData}
@@ -1583,6 +1587,7 @@ export default function CampaignMap() {
                     onOsmAddRegion={handleOsmAddRegion}
                     onOsmPaintBoundary={handleOsmPaintBoundary}
                     />
+                </SubComponentErrorBoundary>
                     </div>
             )}
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -102,6 +103,21 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+
+  useEffect(() => {
+    const handler = (e) => {
+      console.error('[GlobalErrorHandler] Unhandled error:', e.error || e.message, e);
+    };
+    const rejectionHandler = (e) => {
+      console.error('[GlobalErrorHandler] Unhandled promise rejection:', e.reason);
+    };
+    window.addEventListener('error', handler);
+    window.addEventListener('unhandledrejection', rejectionHandler);
+    return () => {
+      window.removeEventListener('error', handler);
+      window.removeEventListener('unhandledrejection', rejectionHandler);
+    };
+  }, []);
 
   return (
     <AuthProvider>

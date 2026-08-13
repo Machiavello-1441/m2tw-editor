@@ -354,6 +354,7 @@ export default function Home() {
     const stringsBinFiles = {};
 
     for (const file of files) {
+     try {
       tick(file.name);
       const name = file.name.toLowerCase();
       const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
@@ -559,6 +560,10 @@ export default function Home() {
         }
       }
       setFileStatus((prev) => ({ ...prev, [key]: 'ok' }));
+     } catch (e) {
+       result.errors.push(`${file.name}: ${e?.message || String(e)}`);
+       console.error(`[processDataFiles] Error processing "${file.name}":`, e);
+     }
     }
 
     // Flush .strings.bin files into shared store
