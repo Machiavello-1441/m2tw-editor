@@ -733,14 +733,19 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       lines[orig._lineNum] = serializeCharLine(item);
     }
 
-    if (item.category === 'resource' && orig._lineNum !== undefined && (orig.x !== item.x || orig.y !== item.y)) {
-      const old = lines[orig._lineNum];
-      if (old) lines[orig._lineNum] = old.replace(/,\s*\d+\s*,\s*\d+/, `,\t${item.x},\t${item.y}`);
+    // Always regenerate the full line for resources and forts. The previous
+    // approach only patched x/y and skipped when orig matched item — but
+    // onSaveItem updates stratData.items too, so orig===item and changes were
+    // never detected. Regenerating the full line from `item` captures type,
+    // culture, comment, AND coordinate changes reliably.
+    if (item.category === 'resource' && orig._lineNum !== undefined) {
+      lines[orig._lineNum] = `resource\t${item.type},\t${item.x},\t${item.y}`;
     }
 
-    if (item.category === 'fortification' && orig._lineNum !== undefined && (orig.x !== item.x || orig.y !== item.y)) {
-      const old = lines[orig._lineNum];
-      if (old) lines[orig._lineNum] = old.replace(/^(\s*(?:fort|watchtower))\s+\d+\s+\d+/, `$1 ${item.x} ${item.y}`);
+    if (item.category === 'fortification' && orig._lineNum !== undefined) {
+      lines[orig._lineNum] = item.type === 'watchtower'
+        ? `watchtower\t${item.x} ${item.y}`
+        : `fort\t${item.x} ${item.y}${item.fortType ? ` ${item.fortType}` : ''}${item.culture ? ` culture ${item.culture}` : ''}${item.comment ? `\t;;;;; ${item.comment}` : ''}`;
     }
   }
 
@@ -935,11 +940,25 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       }
 
       if (regionName) {
-        // Find the matching `region <name>` block
-        const regionIdx = lines.findIndex(l => {
-          const cl = l.replace(/;.*$/, '').trim();
-          return new RegExp(`^region[\\s\\t]+${regionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(cl);
-        });
+        // Find the matching `region <name>` block at TOP LEVEL (brace depth 0).
+        // This skips `region <name>` fields inside settlement blocks (which are
+        // inside braces) — otherwise the fort would be inserted into a settlement
+        // block instead of the regions section, corrupting the file on re-parse.
+        let regionIdx = -1;
+        let _bd = 0;
+        for (let li = 0; li < lines.length; li++) {
+          const raw = lines[li];
+          for (const ch of raw) {
+            if (ch === '{') _bd++;
+            else if (ch === '}') _bd--;
+          }
+          if (_bd > 0) continue;
+          const cl = raw.replace(/;.*$/, '').trim();
+          if (new RegExp(`^region[\\s\\t]+${regionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(cl)) {
+            regionIdx = li;
+            break;
+          }
+        }
         if (regionIdx >= 0) {
           // Find the closing '}' of this region block and insert the fort line
           // BEFORE it (inside the braces). If the region has no braces (unbraced
