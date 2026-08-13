@@ -12,7 +12,6 @@ export default class AppErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('[AppErrorBoundary] Render crash:', error, info?.componentStack);
-    this._componentStack = info?.componentStack || '';
   }
 
   handleClear = () => {
@@ -37,20 +36,8 @@ export default class AppErrorBoundary extends React.Component {
             <p className="text-slate-300 text-sm">
               A component crashed while rendering. This is usually caused by corrupt or oversized cached data in localStorage.
             </p>
-            <pre className="text-[11px] text-red-300 bg-slate-800 rounded p-3 overflow-auto max-h-60 whitespace-pre-wrap break-all">
+            <pre className="text-[11px] text-red-300 bg-slate-800 rounded p-3 overflow-auto max-h-40 whitespace-pre-wrap break-all">
               {msg}
-              {this.state.error?.stack && (
-                <>
-                  {'\n\n--- Stack ---\n'}
-                  {this.state.error.stack}
-                </>
-              )}
-              {this._componentStack && (
-                <>
-                  {'\n\n--- Component Stack ---\n'}
-                  {this._componentStack}
-                </>
-              )}
             </pre>
             <div className="flex gap-3">
               <button
