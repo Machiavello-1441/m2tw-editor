@@ -593,14 +593,33 @@ export default function Home() {
       setFileStatus((prev) => ({ ...prev, strings_bin: 'ok' }));
     }
 
+    // ── Pre-read all TGA ArrayBuffers in parallel ──────────────────────────
+    // TGA files are the bulk of I/O during folder load. Reading them one at a
+    // time (await per file) is the main bottleneck. Pre-reading all buffers
+    // concurrently with Promise.all eliminates the sequential I/O wait and
+    // dramatically reduces total load time.
+    const tgaBufferCache = new Map();
+    let _tgaIdx = 0;
+    const _allTgaFiles = [
+      ...ancTgaFiles, ...unitTgaFiles, ...bldTgaFiles, ...portraitTgaFiles,
+      ...eventPicFiles, ...resourceTgaFiles, ...religionPipFiles, ...groundTypeTgaFiles,
+    ];
+    if (_allTgaFiles.length > 0) {
+      await Promise.all(_allTgaFiles.map(f => f.arrayBuffer().then(buf => tgaBufferCache.set(f, buf))));
+      // Yield so the browser can paint the loading banner before the
+      // synchronous TGA decoding begins.
+      await new Promise(r => setTimeout(r));
+    }
+
     // Auto-load ancillary images
     if (ancTgaFiles.length > 0) {
       setFileStatus((prev) => ({ ...prev, anc_images: 'loading' }));
       const images = {};
       for (const file of ancTgaFiles) {
         tick(`ancillary · ${file.name}`);
-        const buf = await file.arrayBuffer();
+        const buf = tgaBufferCache.get(file);
         const dataUrl = decodeTgaToDataUrl(buf);
+        if (++_tgaIdx % 10 === 0) await new Promise(r => setTimeout(r));
         if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window.dispatchEvent(new CustomEvent('load-anc-tga-batch', { detail: images }));
@@ -614,8 +633,9 @@ export default function Home() {
       const images = {};
       for (const file of unitTgaFiles) {
         tick(`unit UI · ${file.name}`);
-        const buf = await file.arrayBuffer();
+        const buf = tgaBufferCache.get(file);
         const dataUrl = decodeTgaToDataUrl(buf);
+        if (++_tgaIdx % 10 === 0) await new Promise(r => setTimeout(r));
         if (dataUrl) images[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window._m2tw_unit_images = images;
@@ -629,8 +649,9 @@ export default function Home() {
       const pips = {};
       for (const file of religionPipFiles) {
         tick(`religion pip · ${file.name}`);
-        const buf = await file.arrayBuffer();
+        const buf = tgaBufferCache.get(file);
         const dataUrl = decodeTgaToDataUrl(buf);
+        if (++_tgaIdx % 10 === 0) await new Promise(r => setTimeout(r));
         if (dataUrl) pips[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window._m2tw_religion_pips = { ...(window._m2tw_religion_pips || {}), ...pips };
@@ -641,8 +662,9 @@ export default function Home() {
       const icons = {};
       for (const file of resourceTgaFiles) {
         tick(`resource icon · ${file.name}`);
-        const buf = await file.arrayBuffer();
+        const buf = tgaBufferCache.get(file);
         const dataUrl = decodeTgaToDataUrl(buf);
+        if (++_tgaIdx % 10 === 0) await new Promise(r => setTimeout(r));
         if (dataUrl) icons[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window._m2tw_resource_icons = { ...(window._m2tw_resource_icons || {}), ...icons };
@@ -656,8 +678,9 @@ export default function Home() {
       const textures = {};
       for (const file of groundTypeTgaFiles) {
         tick(`ground texture · ${file.name}`);
-        const buf = await file.arrayBuffer();
+        const buf = tgaBufferCache.get(file);
         const dataUrl = decodeTgaToDataUrl(buf);
+        if (++_tgaIdx % 10 === 0) await new Promise(r => setTimeout(r));
         if (dataUrl) textures[file.name.replace(/\.tga$/i, '').toLowerCase()] = dataUrl;
       }
       window._m2tw_ground_textures = textures;
@@ -680,8 +703,9 @@ export default function Home() {
       const portraits = { ...(window._m2tw_portraits || {}) };
       for (const file of portraitTgaFiles) {
         tick(`portrait · ${file.name}`);
-        const buf = await file.arrayBuffer();
+        const buf = tgaBufferCache.get(file);
         const dataUrl = decodeTgaToDataUrl(buf);
+        if (++_tgaIdx % 10 === 0) await new Promise(r => setTimeout(r));
         if (dataUrl) {
           const pathLower2 = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
           const baseName = file.name.replace(/\.tga$/i, '').toLowerCase();
@@ -704,8 +728,9 @@ export default function Home() {
       const pics = { ...(window._m2tw_event_pics || {}) };
       for (const file of eventPicFiles) {
         tick(`event pic · ${file.name}`);
-        const buf = await file.arrayBuffer();
+        const buf = tgaBufferCache.get(file);
         const dataUrl = decodeTgaToDataUrl(buf);
+        if (++_tgaIdx % 10 === 0) await new Promise(r => setTimeout(r));
         if (dataUrl) {
           const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
           // Extract culture name from path: ui/[culture]/eventpics/name.tga
@@ -727,8 +752,9 @@ export default function Home() {
       const parsed = [];
       for (const file of bldTgaFiles) {
         tick(`building image · ${file.name}`);
-        const buf = await file.arrayBuffer();
+        const buf = tgaBufferCache.get(file);
         const url = decodeTgaToDataUrl(buf);
+        if (++_tgaIdx % 10 === 0) await new Promise(r => setTimeout(r));
         if (url) {
           parsed.push({ path: file.webkitRelativePath || file.name, name: file.name, url });
         }
