@@ -187,22 +187,32 @@ function PaintCanvas({
     return { gW: mapW, gH: mapH };
   }, [paintState, layers, mapW, mapH]);
 
-  // Keep canvas sized to the Leaflet container
+  // Keep canvas sized to the Leaflet container.
+  // Use a ref for drawCanvas so the event handler always calls the LATEST
+  // version (with current paintState/getGridDims), and wrap in rAF so the
+  // redraw runs AFTER Leaflet has repositioned the image overlay for the new
+  // zoom/pan — without this, the grid can be drawn at stale coordinates
+  // while the image is already at its new position, producing the sub-pixel
+  // misalignment that varied with zoom level.
+  const drawCanvasRef = useRef(() => {});
+  drawCanvasRef.current = drawCanvas;
+
   useEffect(() => {
     const container = map.getContainer();
+    const redraw = () => requestAnimationFrame(() => drawCanvasRef.current());
     const resize = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       canvas.width  = container.clientWidth;
       canvas.height = container.clientHeight;
-      drawCanvas();
+      redraw();
     };
     resize();
     map.on('resize', resize);
-    map.on('move zoom', drawCanvas);
+    map.on('move zoom zoomend moveend', redraw);
     return () => {
       map.off('resize', resize);
-      map.off('move zoom', drawCanvas);
+      map.off('move zoom zoomend moveend', redraw);
     };
   }, [map]); // eslint-disable-line
 
