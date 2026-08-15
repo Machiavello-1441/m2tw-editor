@@ -279,11 +279,11 @@ export default function RegionEditorPanel({
               />
             </Field>
 
-            <Field label="Agriculture Value">
+            <Field label="Triumph Point Value">
               <TextInput type="number" value={reg.val1} onChange={v => updateReg('val1', parseInt(v) || 0)} />
             </Field>
 
-            <Field label="Victory Point Value">
+            <Field label="Agriculture (Base Farm Level)">
               <TextInput type="number" value={reg.val2} onChange={v => updateReg('val2', parseInt(v) || 0)} />
             </Field>
 

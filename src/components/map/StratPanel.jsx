@@ -297,6 +297,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   const [selectedTree, setSelectedTree] = useState('');
   const [showAllBuildings, setShowAllBuildings] = useState(false);
   const [relocating, setRelocating] = useState(null); // null | 'city' | 'port'
+  const [hiddenResSearch, setHiddenResSearch] = useState('');
 
   // Auto-expand when selected from map click
   const prevSelected = useRef(false);
@@ -405,8 +406,11 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       rebelFaction: regionInfo?.rebelFaction || '',
       musicType: regionInfo?.musicType || '',
       mercenaryPool: regionInfo?.mercenaryPool || '',
-      religions: { ...(regionInfo?.religions || {}) }
+      religions: { ...(regionInfo?.religions || {}) },
+      triumph: regionInfo?.val1 ?? 5,
+      agriculture: regionInfo?.val2 ?? 5
     });
+    setHiddenResSearch('');
     setEditing(true);
     setExpanded(true);
   };
@@ -439,7 +443,9 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
         rebelFaction: draft.rebelFaction,
         musicType: draft.musicType,
         mercenaryPool: draft.mercenaryPool,
-        religions: draft.religions
+        religions: draft.religions,
+        val1: draft.triumph,
+        val2: draft.agriculture
       });
     }
     setEditing(false);
@@ -603,18 +609,49 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               )}
                   </div>
             }
-                <select value="" onChange={(e) => {
-              const val = e.target.value;
-              if (val && !draft.hiddenResources?.includes(val)) {
-                setDraft((d) => ({ ...d, hiddenResources: [...(d.hiddenResources || []), val] }));
-              }
-            }}
-            className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                  <option value="">{hiddenResourceMasterList.length ? '— add hidden resource —' : 'Load EDB for list'}</option>
-                  {hiddenResourceMasterList.
-              filter((hr) => !draft.hiddenResources?.includes(hr)).
-              map((hr) => <option key={hr} value={hr}>{hr}</option>)}
-                </select>
+                <div className="relative">
+                  <input
+                    value={hiddenResSearch}
+                    onChange={(e) => setHiddenResSearch(e.target.value)}
+                    placeholder={hiddenResourceMasterList.length ? 'Search hidden resources…' : 'Load EDB for list'}
+                    className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600"
+                  />
+                  {hiddenResSearch && hiddenResourceMasterList.length > 0 && (() => {
+                    const filtered = hiddenResourceMasterList
+                      .filter((hr) => !draft.hiddenResources?.includes(hr))
+                      .filter((hr) => hr.toLowerCase().includes(hiddenResSearch.toLowerCase()));
+                    if (filtered.length === 0) return null;
+                    return (
+                      <div className="absolute z-50 left-0 right-0 top-full mt-0.5 bg-slate-800 border border-slate-600/50 rounded shadow-xl max-h-28 overflow-y-auto">
+                        {filtered.slice(0, 20).map((hr) => (
+                          <button
+                            key={hr}
+                            type="button"
+                            onClick={() => {
+                              setDraft((d) => ({ ...d, hiddenResources: [...(d.hiddenResources || []), hr] }));
+                              setHiddenResSearch('');
+                            }}
+                            className="w-full px-2 py-0.5 text-[10px] text-left hover:bg-slate-700 font-mono text-slate-200"
+                          >{hr}</button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Triumph & Agriculture (descr_regions numeric values) */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <span className="text-[9px] text-slate-500">Triumph Points</span>
+                  <input type="number" value={draft.triumph} onChange={(e) => setDraft((d) => ({ ...d, triumph: parseInt(e.target.value) || 0 }))}
+                    className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500">Agriculture (Farm Level)</span>
+                  <input type="number" value={draft.agriculture} onChange={(e) => setDraft((d) => ({ ...d, agriculture: parseInt(e.target.value) || 0 }))}
+                    className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                </div>
               </div>
 
               {/* Buildings editor — ordered list */}
@@ -781,6 +818,10 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                 <span className="text-slate-500">Faction</span><span className="text-slate-300 font-mono truncate">{item.faction}</span>
                 <span className="text-slate-500">Population</span><span className="text-slate-300 font-mono">{item.population}</span>
                 <span className="text-slate-500">Founded</span><span className="text-slate-300 font-mono">{item.yearFounded}</span>
+                {regionInfo && <>
+                  <span className="text-slate-500">Triumph</span><span className="text-slate-300 font-mono">{regionInfo.val1 ?? 5}</span>
+                  <span className="text-slate-500">Agriculture</span><span className="text-slate-300 font-mono">{regionInfo.val2 ?? 5}</span>
+                </>}
               </div>
               {/* City / Port coordinates box */}
               <div className="rounded border border-slate-700/40 bg-slate-800/30 p-1.5 space-y-1">
