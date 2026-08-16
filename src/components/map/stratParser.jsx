@@ -430,17 +430,27 @@ export function parseDescrStrat(text) {
 
         let wm;
         if ((wm = rl.match(/^(watchtower)\s+(\d+)\s+(\d+)/i))) {
-          items.push({ id: itemId++, category: 'fortification', type: 'watchtower', x: parseInt(wm[2]), y: parseInt(wm[3]), region: m[1], _lineNum: i });
+          // Capture comment from the preceding raw line (new format: ";;; comment")
+          const prevRaw = lines[i - 1] || '';
+          const cmtMatch = prevRaw.match(/^;;;\s+(.+)/);
+          items.push({ id: itemId++, category: 'fortification', type: 'watchtower', x: parseInt(wm[2]), y: parseInt(wm[3]), region: m[1], _lineNum: i, comment: cmtMatch ? cmtMatch[1].trim() : '' });
         } else if ((wm = rl.match(/^(fort)\s+(\d+)\s+(\d+)(.*)/i))) {
           const rest = wm[4].trim();
           const fortTypem = rest.match(/(\S+_fort\S*)/i);
           const culturem = rest.match(/culture\s+(\S+)/i);
+          // Capture comment: prefer preceding-line format (";;; comment"),
+          // fall back to old inline format (";;;;; comment" on the same line)
+          const prevRaw = lines[i - 1] || '';
+          const cmtMatch = prevRaw.match(/^;;;\s+(.+)/);
+          const oldCmtMatch = rest.match(/;;;;;\s+(.+)/);
+          const comment = (cmtMatch?.[1] || oldCmtMatch?.[1] || '').trim();
           items.push({
             id: itemId++, category: 'fortification', type: 'fort',
             x: parseInt(wm[2]), y: parseInt(wm[3]),
             fortType: fortTypem?.[1] || '',
             culture: culturem?.[1] || '',
             region: m[1], _lineNum: i,
+            comment,
           });
         }
         i++;
@@ -724,6 +734,10 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   }
 
   // ── Patch existing characters/resources/forts FIRST (before any splices that shift line numbers) ──
+  // Fort comment lines live on their own line (";;; comment") just before the
+  // fort line. Inserting/removing them shifts line numbers, so we collect those
+  // changes and apply them in reverse order after the loop.
+  const fortCommentChanges = [];
   for (const item of overlayItems) {
     if (item.id < 0) continue; // new items handled below
     const orig = stratData.items?.find(o => o.id === item.id);
@@ -743,10 +757,33 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
 
     if (item.category === 'fortification' && orig._lineNum !== undefined) {
+      // Regenerate the fort/watchtower line WITHOUT inline comment — comments
+      // are now emitted on their own line (";;; comment") just before the fort.
       lines[orig._lineNum] = item.type === 'watchtower'
         ? `watchtower\t${item.x} ${item.y}`
-        : `fort\t${item.x} ${item.y}${item.fortType ? ` ${item.fortType}` : ''}${item.culture ? ` culture ${item.culture}` : ''}${item.comment ? `\t;;;;; ${item.comment}` : ''}`;
+        : `fort\t${item.x} ${item.y}${item.fortType ? ` ${item.fortType}` : ''}${item.culture ? ` culture ${item.culture}` : ''}`;
+      // Handle the comment line that sits just before the fort line.
+      const prevRaw = lines[orig._lineNum - 1] || '';
+      const hadComment = /^;;;\s+/.test(prevRaw);
+      if (item.comment && hadComment) {
+        // Replace existing comment line
+        lines[orig._lineNum - 1] = `;;; ${item.comment}`;
+      } else if (item.comment && !hadComment) {
+        // Insert new comment line before the fort line
+        fortCommentChanges.push({ lineNum: orig._lineNum, action: 'insert', text: `;;; ${item.comment}` });
+      } else if (!item.comment && hadComment) {
+        // Remove the now-empty comment line
+        fortCommentChanges.push({ lineNum: orig._lineNum - 1, action: 'remove' });
+      }
     }
+  }
+
+  // Apply fort comment-line insertions/removals in reverse line order so that
+  // earlier line numbers are not shifted by later splices.
+  fortCommentChanges.sort((a, b) => b.lineNum - a.lineNum);
+  for (const change of fortCommentChanges) {
+    if (change.action === 'insert') lines.splice(change.lineNum, 0, change.text);
+    else if (change.action === 'remove') lines.splice(change.lineNum, 1);
   }
 
   // origIds: IDs that existed in the ORIGINAL file (positive IDs from parsing).
@@ -914,16 +951,22 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   }
 
   // Append newly added forts and watchtowers (negative ID = user-created).
-  // Forts/watchtowers MUST be inside a `region <name>` block in descr_strat.txt.
-  // If the fort has a `region` assigned, insert it into that region block.
-  // Otherwise, look up the region from the fort's coordinates via the regions
-  // layer pixel data (passed through stratData._regionsLookup if available).
+  // Forts/watchtowers MUST appear in the regions section of descr_strat.txt —
+  // between the "; >>>> start of regions section <<<<" comment and the
+  // "script\ncampaign_script.txt" line — inside a `region <name>` block.
+  // The insertion mirrors how resources are appended: find the last
+  // fort/watchtower in the target region block and insert right after it
+  // (or before the block's end if none exist yet).
   const newForts = overlayItems.filter(i => i.id < 0 && i.category === 'fortification');
   if (newForts.length > 0) {
     for (const fort of newForts) {
-      const fortLine = fort.type === 'watchtower'
+      // Build the fort line(s). A comment, if present, goes on its OWN line
+      // just before the fort line, prefixed with ";;; " (three semicolons + space).
+      const fortLines = [];
+      if (fort.comment) fortLines.push(`;;; ${fort.comment}`);
+      fortLines.push(fort.type === 'watchtower'
         ? `watchtower\t${fort.x} ${fort.y}`
-        : `fort\t${fort.x} ${fort.y}${fort.fortType ? ` ${fort.fortType}` : ''}${fort.culture ? ` culture ${fort.culture}` : ''}${fort.comment ? `\t;;;;; ${fort.comment}` : ''}`;
+        : `fort\t${fort.x} ${fort.y}${fort.fortType ? ` ${fort.fortType}` : ''}${fort.culture ? ` culture ${fort.culture}` : ''}`);
 
       // Resolve the region name: explicit property, or lookup from regions layer
       let regionName = fort.region;
@@ -960,10 +1003,11 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
           }
         }
         if (regionIdx >= 0) {
-          // Find the closing '}' of this region block and insert the fort line
-          // BEFORE it (inside the braces). If the region has no braces (unbraced
-          // format), insert before the next region/diplomacy/script line.
-          let insertIdx = -1;
+          // Find the end of this region block AND the last fort/watchtower in it.
+          // Insert after the last fort/watchtower (like resource insertion),
+          // or before the block's closing line if none exist yet.
+          let blockEndIdx = -1;
+          let lastFortIdx = -1;
           let braceDepth = 0;
           let sawBrace = false;
           for (let fi = regionIdx + 1; fi < lines.length; fi++) {
@@ -973,21 +1017,27 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
               if (ch === '{') { braceDepth++; sawBrace = true; }
               else if (ch === '}') braceDepth--;
             }
-            // Braced format: insert before the closing '}' line
-            if (sawBrace && braceDepth === 0) { insertIdx = fi; break; }
-            // Unbraced format: stop at next region or diplomacy/script
+            // Track the last fort/watchtower line inside this block
+            if (/^(fort|watchtower)\s+/i.test(fl)) lastFortIdx = fi;
+            // Braced format: block ends at the closing '}' line
+            if (sawBrace && braceDepth === 0) { blockEndIdx = fi; break; }
+            // Unbraced format: block ends at the next region/diplomacy/script line
             if (!sawBrace && (/^region[\s\t]+\S/i.test(fl) || /^(faction_standings|faction_relationships|action_relationships|script)\b/i.test(fl))) {
-              insertIdx = fi; break;
+              blockEndIdx = fi; break;
             }
           }
-          if (insertIdx >= 0) lines.splice(insertIdx, 0, fortLine);
+          // Insert after the last fort/watchtower if there is one (like resources),
+          // otherwise insert just before the block's closing line.
+          const insertIdx = lastFortIdx >= 0 ? lastFortIdx + 1 : blockEndIdx;
+          if (insertIdx >= 0) lines.splice(insertIdx, 0, ...fortLines);
         } else {
-          // Region block not found — create a new one with default farming/famine
-          lines.push(`region ${regionName}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine);
+          // Region block not found — create a new one with a blank line ("a capo")
+          // before the "region <name>" header, then default farming/famine fields.
+          lines.push('', `region ${regionName}`, '', 'farming_level 0', 'famine_threat 0', '', ...fortLines);
         }
       } else {
-        // No region assignable — append under a generic region block
-        lines.push(`region unknown_region_${fort.x}_${fort.y}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine);
+        // No region assignable — create a generic region block with a blank line before it
+        lines.push('', `region unknown_region_${fort.x}_${fort.y}`, '', 'farming_level 0', 'famine_threat 0', '', ...fortLines);
       }
     }
   }
