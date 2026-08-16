@@ -191,12 +191,27 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
     srcCtx.drawImage(img, 0, 0, nW, nH);
     const srcData = srcCtx.getImageData(0, 0, nW, nH);
 
-    // Target: climates layer (2×+1 scaled)
+    // Target: climates layer (2×+1 scaled) — always use canonical dimensions
+    // so an imported (wrong-size) base layer doesn't propagate its wrong size.
     const cW = mapWidth * 2 + 1, cH = mapHeight * 2 + 1;
     const base = climateLayerRef.current?.imageData;
-    const out = base
-      ? new ImageData(new Uint8ClampedArray(base.data), base.width, base.height)
-      : new ImageData(cW, cH);
+    let out;
+    if (base && base.width === cW && base.height === cH) {
+      out = new ImageData(new Uint8ClampedArray(base.data), cW, cH);
+    } else if (base) {
+      // Resize the existing layer to the correct dimensions (nearest-neighbour)
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = base.width; srcCanvas.height = base.height;
+      srcCanvas.getContext('2d').putImageData(base, 0, 0);
+      const dstCanvas = document.createElement('canvas');
+      dstCanvas.width = cW; dstCanvas.height = cH;
+      const dstCtx = dstCanvas.getContext('2d');
+      dstCtx.imageSmoothingEnabled = false;
+      dstCtx.drawImage(srcCanvas, 0, 0, cW, cH);
+      out = dstCtx.getImageData(0, 0, cW, cH);
+    } else {
+      out = new ImageData(cW, cH);
+    }
 
     let painted = 0;
     for (let cy = 0; cy < cH; cy++) {

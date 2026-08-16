@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { CheckCircle, Circle, ChevronRight, Wand2, AlertCircle, Paintbrush, Upload } from 'lucide-react';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
-import { CLIMATE_PALETTE } from '@/lib/mapLayerStore';
+import { CLIMATE_PALETTE, LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import GroundTypeRangeEditor, { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import RiverChecker from '@/components/newmap/RiverChecker';
 import OsmTagOverlayEditor from '@/components/newmap/OsmTagOverlayEditor';
@@ -60,12 +60,14 @@ export default function WorkflowPanel({
     }
     const img = new Image();
     img.onload = () => {
+      const def = LAYER_DEFS.find(d => d.id === layerId);
+      const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
       const canvas = document.createElement('canvas');
-      canvas.width = mapWidth; canvas.height = mapHeight;
+      canvas.width = width; canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, 0, 0, mapWidth, mapHeight);
-      onLayerUpdate(layerId, { imageData: ctx.getImageData(0, 0, mapWidth, mapHeight), visible: true, opacity: 1, dirty: true });
+      ctx.drawImage(img, 0, 0, width, height);
+      onLayerUpdate(layerId, { imageData: ctx.getImageData(0, 0, width, height), visible: true, opacity: 1, dirty: true });
       if (typeof onDone === 'function') onDone();
     };
     img.src = dataUrl;
@@ -182,6 +184,8 @@ export default function WorkflowPanel({
                       bbox={bbox}
                       groundLayer={layers.ground}
                       onLayerUpdate={onLayerUpdate}
+                      mapWidth={mapWidth}
+                      mapHeight={mapHeight}
                     />
 
                     <LandCoverFetcher

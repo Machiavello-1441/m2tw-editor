@@ -1,7 +1,31 @@
 import React, { useState } from 'react';
 import { Download, ChevronDown, ChevronRight, X, Eye, EyeOff } from 'lucide-react';
-import { GROUND_TYPE_PALETTE } from '@/lib/mapLayerStore';
+import { GROUND_TYPE_PALETTE, LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { GT } from '@/lib/autoGroundTypes';
+
+/** Returns the expected pixel dimensions for the ground layer. */
+function groundDims(mapWidth, mapHeight) {
+  const def = LAYER_DEFS.find(d => d.id === 'ground');
+  return getLayerDimensions(def, mapWidth, mapHeight);
+}
+
+/**
+ * Ensures an ImageData is at the target dimensions. If it already matches,
+ * returns it as-is. If not, resizes via nearest-neighbour onto a new canvas.
+ */
+function ensureDimensions(imageData, targetW, targetH) {
+  if (imageData.width === targetW && imageData.height === targetH) return imageData;
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW; canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  // Put the source imageData onto a temp canvas, then draw it scaled
+  const src = document.createElement('canvas');
+  src.width = imageData.width; src.height = imageData.height;
+  src.getContext('2d').putImageData(imageData, 0, 0);
+  ctx.drawImage(src, 0, 0, targetW, targetH);
+  return ctx.getImageData(0, 0, targetW, targetH);
+}
 
 const GT_COLOR = Object.fromEntries(GROUND_TYPE_PALETTE.map(p => [p.id, p.color]));
 const GT_LABEL = Object.fromEntries(GROUND_TYPE_PALETTE.map(p => [p.id, p.label]));
@@ -198,7 +222,7 @@ function paintPolygonsOntoImageData(imageData, elements, bbox, color) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }) {
+export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, mapWidth, mapHeight }) {
   // tagKey → { gtId, status: null|'running'|'done N'|'error: ...' }
   const [tagStates, setTagStates] = useState({});
   // which tag's gt-picker is open
@@ -240,7 +264,9 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
   const repaintFromBase = React.useCallback((newHidden, newTagStates) => {
     const base = baseLayerRef.current ?? groundLayerRef.current?.imageData;
     if (!base || !bbox) return;
-    const copy = new ImageData(new Uint8ClampedArray(base.data), base.width, base.height);
+    const { width: tW, height: tH } = groundDims(mapWidth, mapHeight);
+    const fixedBase = ensureDimensions(base, tW, tH);
+    const copy = new ImageData(new Uint8ClampedArray(fixedBase.data), tW, tH);
     const states = newTagStates ?? tagStates;
     for (const [k, st] of Object.entries(states)) {
       if (st?.status?.startsWith('done') && st.elements?.length && !newHidden.has(k)) {
@@ -250,7 +276,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
       }
     }
     onLayerUpdate('ground', { imageData: copy, visible: true, opacity: 1, dirty: true });
-  }, [tagStates, bbox, onLayerUpdate]);
+  }, [tagStates, bbox, onLayerUpdate, mapWidth, mapHeight]);
 
   const toggleTagVisibility = (k) => {
     setHiddenTags(prev => {
@@ -294,7 +320,9 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
         const elements = result.status === 'fulfilled' ? result.value : [];
         if (elements.length > 0) {
           const src = groundLayerRef.current.imageData;
-          const copy = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
+          const { width: tW, height: tH } = groundDims(mapWidth, mapHeight);
+          const fixed = ensureDimensions(src, tW, tH);
+          const copy = new ImageData(new Uint8ClampedArray(fixed.data), tW, tH);
           paintPolygonsOntoImageData(copy, elements, bbox, color);
           onLayerUpdate('ground', { imageData: copy, visible: true, opacity: 1, dirty: true });
           totalElements += elements.length;
@@ -314,7 +342,9 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate }
     const k = getTagKey(tag);
     const state = tagStates[k];
     if (!state?.elements || !groundLayer?.imageData) return;
-    const { width, height } = groundLayer.imageData;
+    // Always use the canonical ground-layer dimensions (2× map +1), not the
+    // possibly-wrong actual dimensions of the current ground layer.
+    const { width, height } = groundDims(mapWidth, mapHeight);
     const gtId = getGt(tag);
     const color = GT[gtId] ?? [96, 160, 64];
     // Create transparent canvas, paint only this tag's pixels
