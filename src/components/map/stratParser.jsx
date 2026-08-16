@@ -982,12 +982,28 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
           }
           if (insertIdx >= 0) lines.splice(insertIdx, 0, fortLine);
         } else {
-          // Region block not found — create a new one with default farming/famine
-          lines.push(`region ${regionName}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine);
+          // Region block not found — create a new one with default farming/famine.
+          // MUST be inserted BEFORE the `script` line (between the last region
+          // block and the script section), never appended at the very end —
+          // appending after `script` corrupts the file.
+          const scriptIdx = lines.findIndex(l => /^script\s*$/i.test(l.replace(/;.*$/, '').trim()));
+          const newRegionLines = [`region ${regionName}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine, ''];
+          if (scriptIdx >= 0) {
+            lines.splice(scriptIdx, 0, ...newRegionLines);
+          } else {
+            lines.push(...newRegionLines);
+          }
         }
       } else {
-        // No region assignable — append under a generic region block
-        lines.push(`region unknown_region_${fort.x}_${fort.y}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine);
+        // No region assignable — create a generic region block BEFORE the
+        // `script` line (same reasoning as above).
+        const scriptIdx = lines.findIndex(l => /^script\s*$/i.test(l.replace(/;.*$/, '').trim()));
+        const newRegionLines = [`region unknown_region_${fort.x}_${fort.y}`, '', 'farming_level 0', 'famine_threat 0', '', fortLine, ''];
+        if (scriptIdx >= 0) {
+          lines.splice(scriptIdx, 0, ...newRegionLines);
+        } else {
+          lines.push(...newRegionLines);
+        }
       }
     }
   }
