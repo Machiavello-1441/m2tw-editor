@@ -59,6 +59,8 @@ export default function CampaignMap() {
     }));
   });
   const [dirtyLayers, setDirtyLayers] = useState(new Set());
+  const layersRef = useRef(layers);
+  layersRef.current = layers;
   const [overlayDirty, setOverlayDirty] = useState(false);
   const [paintState, setPaintState] = useState(INITIAL_PAINT);
   const [activeTab, setActiveTab] = useState('strat');
@@ -544,42 +546,41 @@ export default function CampaignMap() {
     bitmapRafRef.current = null;
     const pending = { ...pendingBitmapRef.current };
     pendingBitmapRef.current = {};
-    for (const [layerId, newData] of Object.entries(pending)) {
-      setLayers(p => {
-        const layer = p[layerId];
-        if (!layer) return p;
-        createImageBitmap(new ImageData(newData, layer.width, layer.height)).then(bitmap => {
-          setLayers(p2 => ({ ...p2, [layerId]: { ...p2[layerId], bitmap } }));
-        });
-        return p;
+    for (const [layerId, data] of Object.entries(pending)) {
+      const layer = layersRef.current[layerId];
+      if (!layer) continue;
+      // Copy the data — createImageBitmap may read asynchronously and the
+      // underlying array is mutated in place by subsequent paint strokes.
+      const copy = new Uint8ClampedArray(data);
+      createImageBitmap(new ImageData(copy, layer.width, layer.height)).then(bitmap => {
+        setLayers(p2 => ({ ...p2, [layerId]: { ...p2[layerId], bitmap } }));
       });
     }
   }, []);
 
   const handlePaint = useCallback((type, layerId, color, patches, bucketCoord) => {
-    setLayers(prev => {
-      const layer = prev[layerId];
-      if (!layer?.data) return prev;
-      const newData = new Uint8ClampedArray(layer.data);
-      if (type === 'pencil') {
-        for (const { x, y } of patches) {
-          const i = (y * layer.width + x) * 4;
-          newData[i] = color.r; newData[i+1] = color.g; newData[i+2] = color.b;
-        }
-      } else if (type === 'bucket') {
-        floodFillRGB(newData, layer.width, layer.height, bucketCoord.x, bucketCoord.y, color.r, color.g, color.b);
-      } else if (type === 'pipette') {
-        setPaintState(ps => ({ ...ps, paintColor: color }));
-        return prev;
-      }
-      // Debounce bitmap rebuild via RAF to avoid per-stroke freezes
-      pendingBitmapRef.current[layerId] = newData;
-      if (!bitmapRafRef.current) bitmapRafRef.current = requestAnimationFrame(flushBitmaps);
-      return { ...prev, [layerId]: { ...layer, data: newData } };
-    });
-    if (type !== 'pipette') {
-      setDirtyLayers(prev => new Set([...prev, layerId]));
+    if (type === 'pipette') {
+      setPaintState(ps => ({ ...ps, paintColor: color }));
+      return;
     }
+    const layer = layersRef.current[layerId];
+    if (!layer?.data) return;
+    // Mutate the pixel buffer in place — avoids copying the entire array
+    // (several MB for large TGA maps) on every mouse-move stroke. The bitmap
+    // is rebuilt asynchronously via RAF in flushBitmaps.
+    const data = layer.data;
+    if (type === 'pencil') {
+      for (const { x, y } of patches) {
+        const i = (y * layer.width + x) * 4;
+        data[i] = color.r; data[i+1] = color.g; data[i+2] = color.b;
+      }
+    } else if (type === 'bucket') {
+      floodFillRGB(data, layer.width, layer.height, bucketCoord.x, bucketCoord.y, color.r, color.g, color.b);
+    }
+    // Debounce bitmap rebuild via RAF to avoid per-stroke freezes
+    pendingBitmapRef.current[layerId] = data;
+    if (!bitmapRafRef.current) bitmapRafRef.current = requestAnimationFrame(flushBitmaps);
+    setDirtyLayers(prev => new Set([...prev, layerId]));
   }, [flushBitmaps]);
 
   // Derive map dimensions from loaded layers

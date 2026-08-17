@@ -168,6 +168,7 @@ function PaintCanvas({
   const rafRef = useRef(null);
   const pendingPaint = useRef(null);
   const cursorPosRef = useRef(null); // current map px for cursor preview
+  const drawCanvasRef = useRef(null);   // always-latest drawCanvas for map event handlers
   const [probe, setProbe] = useState(null);
   const { w: mapW, h: mapH } = getMapSize(layers);
 
@@ -190,19 +191,20 @@ function PaintCanvas({
   // Keep canvas sized to the Leaflet container
   useEffect(() => {
     const container = map.getContainer();
+    const onMoveZoom = () => drawCanvasRef.current?.();
     const resize = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       canvas.width  = container.clientWidth;
       canvas.height = container.clientHeight;
-      drawCanvas();
+      drawCanvasRef.current?.();
     };
     resize();
     map.on('resize', resize);
-    map.on('move zoom', drawCanvas);
+    map.on('move zoom', onMoveZoom);
     return () => {
       map.off('resize', resize);
-      map.off('move zoom', drawCanvas);
+      map.off('move zoom', onMoveZoom);
     };
   }, [map]); // eslint-disable-line
 
@@ -315,6 +317,7 @@ function PaintCanvas({
       ctx.restore();
     }
   }, [map, osmBbox, mapW, mapH, showPixelGrid, paintState, getGridDims]);
+  drawCanvasRef.current = drawCanvas;
 
   // Redraw canvas whenever relevant state changes
   useEffect(() => { drawCanvas(); }, [drawCanvas]);
@@ -367,11 +370,11 @@ function PaintCanvas({
     if (Math.abs(dx) > 2 || Math.abs(dy) > 2) didDrag.current = true;
     lastMouse.current = { x: e.clientX, y: e.clientY };
 
+    // Compute map pixel position once — reused for cursor preview and tooltip
+    const pos = (osmBbox && mapW > 0) ? screenToMapPx(e.clientX, e.clientY) : null;
+
     // Update cursor preview position (store fracs so drawCanvas uses active layer dims)
-    if (osmBbox && mapW > 0) {
-      const pos = screenToMapPx(e.clientX, e.clientY);
-      cursorPosRef.current = pos && pos.fracX >= 0 && pos.fracX <= 1 && pos.fracY >= 0 && pos.fracY <= 1 ? pos : null;
-    }
+    cursorPosRef.current = pos && pos.fracX >= 0 && pos.fracX <= 1 && pos.fracY >= 0 && pos.fracY <= 1 ? pos : null;
 
     // Throttle paint calls via RAF
     if (isPainting.current && paintState?.active && paintState.tool === 'pencil') {
@@ -390,28 +393,25 @@ function PaintCanvas({
       drawCanvas();
     }
 
-    // Probe for tooltip
-    if (mapW > 0 && osmBbox) {
-      const pos = screenToMapPx(e.clientX, e.clientY);
-      if (pos && pos.px >= 0 && pos.py >= 0 && pos.px < mapW && pos.py < mapH) {
-        const canvas = canvasRef.current;
-        const rect = canvas?.getBoundingClientRect();
-        const sx = e.clientX - (rect?.left ?? 0), sy = e.clientY - (rect?.top ?? 0);
-        const pixelData = {};
-        for (const def of LAYER_DEFS) {
-          const state = layers[def.id];
-          if (!state?.data) continue;
-          const nx = Math.floor(pos.fracX * state.width);
-          const ny = Math.floor(pos.fracY * state.height);
-          const idx = (ny * state.width + nx) * 4;
-          pixelData[def.id] = { r: state.data[idx], g: state.data[idx+1], b: state.data[idx+2], a: state.data[idx+3] };
-        }
-        setProbe({ x: pos.px, y: pos.py, screenX: sx, screenY: sy, pixelData });
-      } else {
-        setProbe(null);
+    // Probe for tooltip — skip when painting to avoid per-move re-renders
+    if (showTooltip && pos && pos.px >= 0 && pos.py >= 0 && pos.px < mapW && pos.py < mapH) {
+      const canvas = canvasRef.current;
+      const rect = canvas?.getBoundingClientRect();
+      const sx = e.clientX - (rect?.left ?? 0), sy = e.clientY - (rect?.top ?? 0);
+      const pixelData = {};
+      for (const def of LAYER_DEFS) {
+        const state = layers[def.id];
+        if (!state?.data) continue;
+        const nx = Math.floor(pos.fracX * state.width);
+        const ny = Math.floor(pos.fracY * state.height);
+        const idx = (ny * state.width + nx) * 4;
+        pixelData[def.id] = { r: state.data[idx], g: state.data[idx+1], b: state.data[idx+2], a: state.data[idx+3] };
       }
+      setProbe({ x: pos.px, y: pos.py, screenX: sx, screenY: sy, pixelData });
+    } else if (showTooltip) {
+      setProbe(null);
     }
-  }, [paintState, doPaint, drawCanvas, screenToMapPx, layers, mapW, mapH, osmBbox]);
+  }, [paintState, doPaint, drawCanvas, screenToMapPx, layers, mapW, mapH, osmBbox, showTooltip]);
 
   const handleMouseUp = useCallback((e) => {
     if (isPainting.current) {
