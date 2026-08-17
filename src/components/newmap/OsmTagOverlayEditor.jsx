@@ -232,6 +232,8 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
   const [openGroups, setOpenGroups] = useState({});
   // set of tag keys currently hidden
   const [hiddenTags, setHiddenTags] = useState(new Set());
+  // custom RGB input values for the currently-open picker
+  const [customRgb, setCustomRgb] = useState({ r: '', g: '', b: '' });
 
   const hasLayer = !!groundLayer?.imageData;
   const bboxStr = bbox ? `${bbox.south},${bbox.west},${bbox.north},${bbox.east}` : '';
@@ -243,7 +245,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
 
   const setGt = (tag, gtId) => {
     const k = getTagKey(tag);
-    setTagStates(s => ({ ...s, [k]: { ...s[k], gtId } }));
+    setTagStates(s => ({ ...s, [k]: { ...s[k], gtId, customColor: null } }));
   };
 
   // k → { pct: 0-100, tileLabel: string }
@@ -271,7 +273,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
     for (const [k, st] of Object.entries(states)) {
       if (st?.status?.startsWith('done') && st.elements?.length && !newHidden.has(k)) {
         const gtId = st.gtId ?? ALL_TAGS.find(t => `${t.key}=${t.value}` === k)?.defaultGt ?? 'fertile_medium';
-        const color = GT[gtId] ?? [96, 160, 64];
+        const color = st.customColor ?? GT[gtId] ?? [96, 160, 64];
         paintPolygonsOntoImageData(copy, st.elements, bbox, color);
       }
     }
@@ -291,7 +293,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
     if (!hasLayer || !bbox) return;
     const k = getTagKey(tag);
     const gtId = tagStates[k]?.gtId ?? tag.defaultGt;
-    const color = GT[gtId] ?? [96, 160, 64];
+    const color = tagStates[k]?.customColor ?? GT[gtId] ?? [96, 160, 64];
 
     const tiles = computeTiles(bbox);
 
@@ -346,7 +348,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
     // possibly-wrong actual dimensions of the current ground layer.
     const { width, height } = groundDims(mapWidth, mapHeight);
     const gtId = getGt(tag);
-    const color = GT[gtId] ?? [96, 160, 64];
+    const color = tagStates[k]?.customColor ?? GT[gtId] ?? [96, 160, 64];
     // Create transparent canvas, paint only this tag's pixels
     const canvas = document.createElement('canvas');
     canvas.width = width; canvas.height = height;
@@ -469,61 +471,63 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
                               </div>
                             );
                           })()}
-                          {/* Tag row */}
-                          <div className="flex items-center gap-1.5 px-1.5 py-1">
-                            {/* GT color swatch + picker toggle */}
-                            <button
-                              onClick={() => setPickerOpen(isPickerOpen ? null : k)}
-                              title="Change ground type"
-                              className={`w-4 h-4 rounded-sm border shrink-0 transition-all ${isPickerOpen ? 'border-amber-400 ring-1 ring-amber-400/50' : 'border-slate-600 hover:border-slate-400'}`}
-                              style={{ backgroundColor: GT_COLOR[gtId] ?? '#888' }}
-                            />
-                            {/* Tag label + description */}
-                            <div className="flex-1 min-w-0">
-                              <span className="text-[10px] text-slate-300 truncate block">{tag.label}</span>
-                              {tag.desc && <span className="text-[8px] text-slate-500 leading-tight block truncate">{tag.desc}</span>}
+                          {/* Tag row — two lines: label+desc, then buttons */}
+                          <div className="px-1.5 py-1 space-y-1">
+                            {/* Line 1: tag label + description */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-slate-300 truncate flex-1">{tag.label}</span>
+                              <span className="text-[8px] font-mono text-slate-600 hidden sm:inline shrink-0">{k}</span>
+                              {st && !isRunning && (
+                                <span className={`text-[8px] font-mono shrink-0 ${isDone ? 'text-green-400' : isErr ? 'text-red-400' : 'text-amber-400'}`}>
+                                  {isDone ? `✓${st.replace('done ', '')}` : '✕'}
+                                </span>
+                              )}
                             </div>
-                            <span className="text-[8px] font-mono text-slate-600 hidden sm:inline shrink-0">{k}</span>
-                            {/* Status indicator */}
-                            {st && !isRunning && (
-                              <span className={`text-[8px] font-mono shrink-0 ${isDone ? 'text-green-400' : isErr ? 'text-red-400' : 'text-amber-400'}`}>
-                                {isDone ? `✓${st.replace('done ', '')}` : '✕'}
-                              </span>
-                            )}
-                            {/* Visibility toggle — only when fetched */}
-                            {isDone && (
+                            {tag.desc && <p className="text-[8px] text-slate-500 leading-tight -mt-0.5">{tag.desc}</p>}
+                            {/* Line 2: color swatch + buttons */}
+                            <div className="flex items-center gap-1.5">
+                              {/* GT color swatch + picker toggle */}
                               <button
-                                onClick={() => toggleTagVisibility(k)}
-                                title={hiddenTags.has(k) ? 'Show on map' : 'Hide from map'}
-                                className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors ${
-                                  hiddenTags.has(k)
-                                    ? 'bg-slate-700/60 text-slate-500 hover:bg-slate-600 hover:text-white'
-                                    : 'bg-amber-700/40 text-amber-300 hover:bg-amber-600/60'
+                                onClick={() => { setPickerOpen(isPickerOpen ? null : k); setCustomRgb({ r: '', g: '', b: '' }); }}
+                                title="Change ground type"
+                                className={`w-4 h-4 rounded-sm border shrink-0 transition-all ${isPickerOpen ? 'border-amber-400 ring-1 ring-amber-400/50' : 'border-slate-600 hover:border-slate-400'}`}
+                                style={{ backgroundColor: tagStates[k]?.customColor ? `rgb(${tagStates[k].customColor.join(',')})` : (GT_COLOR[gtId] ?? '#888') }}
+                              />
+                              {/* Apply / Re-apply button */}
+                              <button
+                                onClick={() => applyTag(tag)}
+                                disabled={anyRunning || !hasLayer || !bbox}
+                                title={isDone ? 'Re-apply' : 'Apply to ground layer'}
+                                className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors disabled:opacity-30 ${
+                                  isDone ? 'bg-green-800/40 text-green-300 hover:bg-green-700/50' :
+                                  isErr  ? 'bg-red-800/40 text-red-300 hover:bg-red-700/50' :
+                                           'bg-blue-800/40 text-blue-300 hover:bg-blue-700/50'
                                 }`}>
-                                {hiddenTags.has(k) ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
+                                <Download className={`w-2.5 h-2.5 ${isRunning ? 'animate-spin' : ''}`} />
                               </button>
-                            )}
-                            {/* Download PNG button — only when fetched */}
-                            {isDone && (
-                              <button
-                                onClick={() => downloadTagPng(tag)}
-                                title={`Download ${getTagKey(tag)} as PNG`}
-                                className="shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors bg-slate-700/60 text-slate-400 hover:bg-slate-600 hover:text-white">
-                                <Download className="w-2.5 h-2.5" />
-                              </button>
-                            )}
-                            {/* Apply button */}
-                            <button
-                              onClick={() => applyTag(tag)}
-                              disabled={anyRunning || !hasLayer || !bbox}
-                              title={isDone ? 'Re-apply' : 'Apply to ground layer'}
-                              className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors disabled:opacity-30 ${
-                                isDone ? 'bg-green-800/40 text-green-300 hover:bg-green-700/50' :
-                                isErr  ? 'bg-red-800/40 text-red-300 hover:bg-red-700/50' :
-                                         'bg-blue-800/40 text-blue-300 hover:bg-blue-700/50'
-                              }`}>
-                              <Download className={`w-2.5 h-2.5 ${isRunning ? 'animate-spin' : ''}`} />
-                            </button>
+                              {/* Visibility toggle — only when fetched */}
+                              {isDone && (
+                                <button
+                                  onClick={() => toggleTagVisibility(k)}
+                                  title={hiddenTags.has(k) ? 'Show on map' : 'Hide from map'}
+                                  className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors ${
+                                    hiddenTags.has(k)
+                                      ? 'bg-slate-700/60 text-slate-500 hover:bg-slate-600 hover:text-white'
+                                      : 'bg-amber-700/40 text-amber-300 hover:bg-amber-600/60'
+                                  }`}>
+                                  {hiddenTags.has(k) ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
+                                </button>
+                              )}
+                              {/* Download PNG button — only when fetched */}
+                              {isDone && (
+                                <button
+                                  onClick={() => downloadTagPng(tag)}
+                                  title={`Download ${getTagKey(tag)} as PNG`}
+                                  className="shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors bg-slate-700/60 text-slate-400 hover:bg-slate-600 hover:text-white">
+                                  <Download className="w-2.5 h-2.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Inline GT picker */}
@@ -538,12 +542,42 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
                                   {GROUND_TYPE_PALETTE.map(p => (
                                     <button key={p.id} onClick={() => { setGt(tag, p.id); setPickerOpen(null); }}
                                       className={`flex items-center gap-1 px-1 py-0.5 rounded text-[8px] text-left transition-colors ${
-                                        gtId === p.id ? 'bg-amber-600/30 text-amber-300' : 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                                        gtId === p.id && !tagStates[k]?.customColor ? 'bg-amber-600/30 text-amber-300' : 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'
                                       }`}>
                                       <div className="w-2 h-2 rounded-sm shrink-0 border border-slate-700" style={{ backgroundColor: p.color }} />
                                       <span className="truncate">{p.label}</span>
                                     </button>
                                   ))}
+                                </div>
+                                {/* Custom RGB */}
+                                <div className="mt-1 pt-1 border-t border-slate-700">
+                                  <div className="text-[8px] text-slate-500 uppercase tracking-wider mb-1">Custom RGB</div>
+                                  <div className="flex items-center gap-1">
+                                    {['r', 'g', 'b'].map(c => (
+                                      <input
+                                        key={c}
+                                        type="number"
+                                        min="0"
+                                        max="255"
+                                        placeholder={c.toUpperCase()}
+                                        value={customRgb[c] ?? ''}
+                                        onChange={e => setCustomRgb(prev => ({ ...prev, [c]: e.target.value }))}
+                                        className="w-9 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-[8px] text-slate-200 focus:outline-none focus:border-amber-500"
+                                      />
+                                    ))}
+                                    <button
+                                      onClick={() => {
+                                        const r = Math.max(0, Math.min(255, parseInt(customRgb.r) || 0));
+                                        const g = Math.max(0, Math.min(255, parseInt(customRgb.g) || 0));
+                                        const b = Math.max(0, Math.min(255, parseInt(customRgb.b) || 0));
+                                        setTagStates(s => ({ ...s, [k]: { ...s[k], customColor: [r, g, b] } }));
+                                        setPickerOpen(null);
+                                      }}
+                                      className="px-1.5 py-0.5 rounded text-[8px] bg-amber-600/40 text-amber-300 hover:bg-amber-600/60 transition-colors"
+                                    >
+                                      Set
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
