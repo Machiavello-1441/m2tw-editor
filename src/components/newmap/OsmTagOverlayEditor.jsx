@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Download, ChevronDown, ChevronRight, X, Eye, EyeOff, Grid3x3 } from 'lucide-react';
+import { Download, ChevronDown, ChevronRight, X, Eye, EyeOff } from 'lucide-react';
 import { GROUND_TYPE_PALETTE, LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { GT } from '@/lib/autoGroundTypes';
+import { computeTiles } from '@/lib/osmTiles';
 
 /** Returns the expected pixel dimensions for the ground layer. */
 function groundDims(mapWidth, mapHeight) {
@@ -115,34 +116,6 @@ const OSM_OVERPASS_MIRRORS = [
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 
-// Area threshold in square degrees above which tiling kicks in
-const TILE_THRESHOLD_DEG2 = 9; // ~3°×3° tile before splitting
-// Max tiles per axis (so a huge map uses at most 6×6 = 36 tiles)
-const MAX_TILES_PER_AXIS = 6;
-
-/** Split a bbox into a grid of sub-tiles, each ≤ TILE_THRESHOLD_DEG2 sq degrees. */
-function computeTiles(bbox) {
-  const dLat = bbox.north - bbox.south;
-  const dLon = bbox.east - bbox.west;
-  const area = dLat * dLon;
-  if (area <= TILE_THRESHOLD_DEG2) return [bbox]; // small enough — single fetch
-  // How many divisions do we need so each tile ≤ threshold?
-  const nSide = Math.ceil(Math.sqrt(area / TILE_THRESHOLD_DEG2));
-  const n = Math.min(nSide, MAX_TILES_PER_AXIS);
-  const tiles = [];
-  for (let row = 0; row < n; row++) {
-    for (let col = 0; col < n; col++) {
-      tiles.push({
-        south: bbox.south + (dLat / n) * row,
-        north: bbox.south + (dLat / n) * (row + 1),
-        west:  bbox.west  + (dLon / n) * col,
-        east:  bbox.west  + (dLon / n) * (col + 1),
-      });
-    }
-  }
-  return tiles;
-}
-
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function fetchTile(key, value, tile) {
@@ -234,8 +207,6 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
   const [hiddenTags, setHiddenTags] = useState(new Set());
   // custom RGB input values for the currently-open picker
   const [customRgb, setCustomRgb] = useState({ r: '', g: '', b: '' });
-  const [showTileGrid, setShowTileGrid] = useState(false);
-  const tiles = React.useMemo(() => bbox ? computeTiles(bbox) : [], [bbox]);
 
   const hasLayer = !!groundLayer?.imageData;
   const bboxStr = bbox ? `${bbox.south},${bbox.west},${bbox.north},${bbox.east}` : '';
@@ -348,7 +319,8 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
   /** Re-fetch all already-applied tags for a single tile, then repaint. */
   const refetchTile = async (tileIndex) => {
     if (!hasLayer || !bbox) return;
-    const tile = tiles[tileIndex];
+    const allTiles = computeTiles(bbox);
+    const tile = allTiles[tileIndex];
     if (!tile) return;
     const doneEntries = Object.entries(tagStates).filter(([k, s]) => s?.status?.startsWith('done'));
     if (doneEntries.length === 0) return;
@@ -366,6 +338,18 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
     setTagStates(newTagStates);
     repaintFromBase(hiddenTags, newTagStates);
   };
+
+  // Listen for tile re-fetch requests from the map overlay
+  const refetchTileRef = React.useRef(refetchTile);
+  React.useEffect(() => { refetchTileRef.current = refetchTile; });
+  React.useEffect(() => {
+    const handler = (e) => {
+      const { tileIndex } = e.detail || {};
+      if (typeof tileIndex === 'number') refetchTileRef.current(tileIndex);
+    };
+    window.addEventListener('osm-tile-refetch', handler);
+    return () => window.removeEventListener('osm-tile-refetch', handler);
+  }, []);
 
   const downloadTagPng = (tag) => {
     const k = getTagKey(tag);
@@ -433,52 +417,6 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
             onChange={e => setSearch(e.target.value)}
             className="w-full bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-[10px] text-slate-200 focus:outline-none focus:border-amber-500"
           />
-
-          {/* Tile grid toggle — only when area is split into multiple tiles */}
-          {tiles.length > 1 && (
-            <button
-              onClick={() => setShowTileGrid(v => !v)}
-              className={`w-full flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[9px] border transition-colors ${
-                showTileGrid ? 'border-amber-500/50 text-amber-300 bg-amber-500/10' : 'border-slate-600/40 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
-              }`}>
-              <Grid3x3 className="w-2.5 h-2.5" />
-              {showTileGrid ? 'Hide' : 'Show'} tile grid ({tiles.length} tiles)
-            </button>
-          )}
-
-          {/* Tile grid — click a tile to re-fetch all applied tags for just that tile */}
-          {showTileGrid && tiles.length > 1 && (
-            <div className="rounded border border-slate-700 bg-slate-800/60 p-1.5">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[8px] text-slate-500 uppercase tracking-wider">Click tile to re-fetch</span>
-                <span className="text-[8px] text-slate-600">{tiles.length} tiles</span>
-              </div>
-              <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(tiles.length))}, 1fr)` }}>
-                {tiles.map((tile, i) => {
-                  const doneTags = Object.entries(tagStates).filter(([k, s]) => s?.status?.startsWith('done'));
-                  const hasElements = doneTags.some(([k, s]) => s?.tileElements?.[i]?.length > 0);
-                  const noElements = doneTags.length > 0 && doneTags.every(([k, s]) => Array.isArray(s?.tileElements?.[i]) && s.tileElements[i].length === 0);
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => refetchTile(i)}
-                      disabled={doneTags.length === 0 || anyRunning}
-                      title={`Tile ${i+1}: ${tile.south.toFixed(2)},${tile.west.toFixed(2)} → ${tile.north.toFixed(2)},${tile.east.toFixed(2)}`}
-                      className={`aspect-square rounded text-[8px] font-mono flex items-center justify-center transition-colors disabled:opacity-30 ${
-                        hasElements ? 'bg-green-700/40 text-green-300 hover:bg-green-600/50' :
-                        noElements ? 'bg-slate-700/40 text-slate-600' :
-                        'bg-slate-700/60 text-slate-400 hover:bg-slate-600'
-                      }`}>
-                      {i+1}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[7px] text-slate-600 mt-1 leading-tight">
-                Green = has data · empty = fetched but no elements · click to re-fetch all applied tags for that tile
-              </p>
-            </div>
-          )}
 
           {/* Tag groups */}
           <div className="space-y-1">

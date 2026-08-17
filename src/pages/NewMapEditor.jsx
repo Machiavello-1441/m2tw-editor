@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { getLayerDimensions, LAYER_DEFS, CLIMATE_PALETTE, hexToRgb } from '@/lib/mapLayerStore';
 import {
   Map, Download, Crop, Edit3, MousePointer, Layers,
-  GitBranch, Anchor
+  GitBranch, Anchor, Grid3x3
 } from 'lucide-react';
 import LayerSidebar from '../components/newmap/LayerSidebar';
 import MapStatusBar from '../components/newmap/MapStatusBar';
@@ -18,6 +18,7 @@ import { useReferenceLayers, ReferenceLayerControls } from '../components/newmap
 
 import { autoGenerateGroundTypesAsync, autoGenerateClimates, fillSolidColor } from '@/lib/autoGroundTypes';
 import { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
+import { computeTiles } from '@/lib/osmTiles';
 
 const PHASES = [
   { id: 'browse',     label: 'Select Area',     icon: MousePointer },
@@ -65,6 +66,7 @@ export default function NewMapEditor() {
   const [generatingGround, setGeneratingGround] = useState(false);
   const [generatingClimates, setGeneratingClimates] = useState(false);
   const [groundRanges, setGroundRanges] = useState(DEFAULT_GROUND_RANGES);
+  const [showTileGrid, setShowTileGrid] = useState(false);
 
   const { refLayers, toggleRef, setRefOpacity } = useReferenceLayers();
 
@@ -186,6 +188,11 @@ export default function NewMapEditor() {
   const bboxAspect = bbox
     ? (bbox.east - bbox.west) / ((mercLat(bbox.north) - mercLat(bbox.south)) * (180 / Math.PI))
     : 1;
+
+  const tiles = React.useMemo(() => computeTiles(bbox), [bbox]);
+  const handleTileClick = useCallback((tileIndex) => {
+    window.dispatchEvent(new CustomEvent('osm-tile-refetch', { detail: { tileIndex } }));
+  }, []);
 
   const handleWidthChange = (val) => {
     const w = Math.max(1, parseInt(val) || 0);
@@ -627,6 +634,9 @@ export default function NewMapEditor() {
             historicOverlays={historicOverlays}
             portMode={!!portTarget}
             onPortPicked={handlePortPicked}
+            showTileGrid={showTileGrid && tiles.length > 1}
+            tiles={tiles}
+            onTileClick={handleTileClick}
           />
           <MapStatusBar
             coords={coords}
@@ -635,6 +645,19 @@ export default function NewMapEditor() {
             mapWidth={mapWidth}
             mapHeight={mapHeight}
           />
+
+          {tiles.length > 1 && (
+            <button
+              onClick={() => setShowTileGrid(v => !v)}
+              className={`absolute top-2 right-2 z-[1000] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border shadow-lg transition-colors ${
+                showTileGrid
+                  ? 'bg-blue-600/90 border-blue-400 text-white hover:bg-blue-500'
+                  : 'bg-slate-900/90 border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}>
+              <Grid3x3 className="w-3.5 h-3.5" />
+              {showTileGrid ? 'Hide' : 'Show'} Tiles ({tiles.length})
+            </button>
+          )}
 
           {phase === 'browse' && !selectionMode && !box && (
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-none">

@@ -105,6 +105,8 @@ export default function MapCanvas({
   historicOverlays = {},
   // Port placement: when active, a single map click places a white port pixel.
   portMode, onPortPicked,
+  // Tile grid overlay: array of { south, north, west, east }
+  showTileGrid, tiles = [], onTileClick,
 }) {
   const isPainting = useRef(false);
   const [dragDisabled, setDragDisabled] = useState(false);
@@ -262,6 +264,23 @@ export default function MapCanvas({
           pathOptions={{ color: '#f59e0b', weight: 2, fillOpacity: 0, dashArray: '6 3' }}
         />
       )}
+
+      {/* Tile grid overlay — clickable rectangles for per-tile OSM re-fetch */}
+      {showTileGrid && tiles.map((tile, i) => (
+        <Rectangle
+          key={`tile-${i}`}
+          bounds={[[tile.south, tile.west], [tile.north, tile.east]]}
+          pathOptions={{
+            color: '#3b82f6',
+            weight: 1,
+            fillOpacity: 0.05,
+            dashArray: '4 2',
+          }}
+          eventHandlers={{
+            click: () => onTileClick?.(i),
+          }}
+        />
+      ))}
 
       {/* CotaMap-style interactive selection box */}
       {box && <SelectionBox box={box} onChange={onBoxChange} />}
