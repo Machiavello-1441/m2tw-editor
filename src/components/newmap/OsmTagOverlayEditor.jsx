@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, ChevronDown, ChevronRight, X, Eye, EyeOff } from 'lucide-react';
+import { Download, ChevronDown, ChevronRight, X, Eye, EyeOff, Grid3x3 } from 'lucide-react';
 import { GROUND_TYPE_PALETTE, LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { GT } from '@/lib/autoGroundTypes';
 
@@ -234,6 +234,8 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
   const [hiddenTags, setHiddenTags] = useState(new Set());
   // custom RGB input values for the currently-open picker
   const [customRgb, setCustomRgb] = useState({ r: '', g: '', b: '' });
+  const [showTileGrid, setShowTileGrid] = useState(false);
+  const tiles = React.useMemo(() => bbox ? computeTiles(bbox) : [], [bbox]);
 
   const hasLayer = !!groundLayer?.imageData;
   const bboxStr = bbox ? `${bbox.south},${bbox.west},${bbox.north},${bbox.east}` : '';
@@ -307,6 +309,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
     let tilesDone = 0;
     let totalElements = 0;
     let allElements = [];
+    let tileElements = new Array(tiles.length).fill(null);
 
     // Process tiles in parallel batches; fetchTile never throws — returns [] on failure
     const CONCURRENCY = 5;
@@ -314,12 +317,14 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
       const batch = tiles.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(batch.map(tile => fetchTile(tag.key, tag.value, tile)));
 
-      for (const result of results) {
+      for (let j = 0; j < results.length; j++) {
+        const tileIdx = i + j;
         tilesDone++;
         const pct = Math.round((tilesDone / tiles.length) * 100);
         setFetchProgress(p => ({ ...p, [k]: { pct, tilesDone, tilesTotal: tiles.length } }));
 
-        const elements = result.status === 'fulfilled' ? result.value : [];
+        const elements = results[j].status === 'fulfilled' ? results[j].value : [];
+        tileElements[tileIdx] = elements;
         if (elements.length > 0) {
           const src = groundLayerRef.current.imageData;
           const { width: tW, height: tH } = groundDims(mapWidth, mapHeight);
@@ -337,7 +342,29 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
     }
 
     setFetchProgress(p => ({ ...p, [k]: { pct: 100, tilesDone: tiles.length, tilesTotal: tiles.length } }));
-    setTagStates(s => ({ ...s, [k]: { ...s[k], status: `done ${totalElements}`, elements: allElements, gtId } }));
+    setTagStates(s => ({ ...s, [k]: { ...s[k], status: `done ${totalElements}`, elements: allElements, tileElements, gtId } }));
+  };
+
+  /** Re-fetch all already-applied tags for a single tile, then repaint. */
+  const refetchTile = async (tileIndex) => {
+    if (!hasLayer || !bbox) return;
+    const tile = tiles[tileIndex];
+    if (!tile) return;
+    const doneEntries = Object.entries(tagStates).filter(([k, s]) => s?.status?.startsWith('done'));
+    if (doneEntries.length === 0) return;
+
+    const newTagStates = { ...tagStates };
+    for (const [k, state] of doneEntries) {
+      const tag = ALL_TAGS.find(t => getTagKey(t) === k);
+      if (!tag) continue;
+      const elements = await fetchTile(tag.key, tag.value, tile);
+      const tileElements = [...(state.tileElements || [])];
+      tileElements[tileIndex] = elements;
+      newTagStates[k] = { ...state, tileElements, elements: tileElements.flat() };
+    }
+
+    setTagStates(newTagStates);
+    repaintFromBase(hiddenTags, newTagStates);
   };
 
   const downloadTagPng = (tag) => {
@@ -406,6 +433,52 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
             onChange={e => setSearch(e.target.value)}
             className="w-full bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-[10px] text-slate-200 focus:outline-none focus:border-amber-500"
           />
+
+          {/* Tile grid toggle — only when area is split into multiple tiles */}
+          {tiles.length > 1 && (
+            <button
+              onClick={() => setShowTileGrid(v => !v)}
+              className={`w-full flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[9px] border transition-colors ${
+                showTileGrid ? 'border-amber-500/50 text-amber-300 bg-amber-500/10' : 'border-slate-600/40 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+              }`}>
+              <Grid3x3 className="w-2.5 h-2.5" />
+              {showTileGrid ? 'Hide' : 'Show'} tile grid ({tiles.length} tiles)
+            </button>
+          )}
+
+          {/* Tile grid — click a tile to re-fetch all applied tags for just that tile */}
+          {showTileGrid && tiles.length > 1 && (
+            <div className="rounded border border-slate-700 bg-slate-800/60 p-1.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[8px] text-slate-500 uppercase tracking-wider">Click tile to re-fetch</span>
+                <span className="text-[8px] text-slate-600">{tiles.length} tiles</span>
+              </div>
+              <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(tiles.length))}, 1fr)` }}>
+                {tiles.map((tile, i) => {
+                  const doneTags = Object.entries(tagStates).filter(([k, s]) => s?.status?.startsWith('done'));
+                  const hasElements = doneTags.some(([k, s]) => s?.tileElements?.[i]?.length > 0);
+                  const noElements = doneTags.length > 0 && doneTags.every(([k, s]) => Array.isArray(s?.tileElements?.[i]) && s.tileElements[i].length === 0);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => refetchTile(i)}
+                      disabled={doneTags.length === 0 || anyRunning}
+                      title={`Tile ${i+1}: ${tile.south.toFixed(2)},${tile.west.toFixed(2)} → ${tile.north.toFixed(2)},${tile.east.toFixed(2)}`}
+                      className={`aspect-square rounded text-[8px] font-mono flex items-center justify-center transition-colors disabled:opacity-30 ${
+                        hasElements ? 'bg-green-700/40 text-green-300 hover:bg-green-600/50' :
+                        noElements ? 'bg-slate-700/40 text-slate-600' :
+                        'bg-slate-700/60 text-slate-400 hover:bg-slate-600'
+                      }`}>
+                      {i+1}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[7px] text-slate-600 mt-1 leading-tight">
+                Green = has data · empty = fetched but no elements · click to re-fetch all applied tags for that tile
+              </p>
+            </div>
+          )}
 
           {/* Tag groups */}
           <div className="space-y-1">
