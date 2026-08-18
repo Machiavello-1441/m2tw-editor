@@ -475,22 +475,27 @@ function PaintCanvas({
 function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
   const [transparentBitmaps, setTransparentBitmaps] = useState({});
 
-  // Build transparent variants for features/fog/regions-cities
+  // Build transparent variants for features/fog/regions-cities.
+  // Key on the *bitmap* reference (which changes on every flushBitmaps
+  // rebuild), NOT the data reference — handlePaint mutates data in place,
+  // so keying on data would never detect a change and the transparent
+  // variant would stay stale during painting (rivers drawn but never
+  // appearing on the map).
   useEffect(() => {
     const featState = layers['features'];
-    if (featState?.data && transparentBitmaps.features?.src !== featState.data) {
+    if (featState?.data && transparentBitmaps.features?.src !== featState.bitmap) {
       makeBlackTransparent(featState.data, featState.width, featState.height)
-        .then(bmp => setTransparentBitmaps(p => ({ ...p, features: { bmp, src: featState.data } })));
+        .then(bmp => setTransparentBitmaps(p => ({ ...p, features: { bmp, src: featState.bitmap } })));
     }
     const fogState = layers['fog'];
-    if (fogState?.data && transparentBitmaps.fog?.src !== fogState.data) {
+    if (fogState?.data && transparentBitmaps.fog?.src !== fogState.bitmap) {
       makeWhiteTransparent(fogState.data, fogState.width, fogState.height)
-        .then(bmp => setTransparentBitmaps(p => ({ ...p, fog: { bmp, src: fogState.data } })));
+        .then(bmp => setTransparentBitmaps(p => ({ ...p, fog: { bmp, src: fogState.bitmap } })));
     }
     const regState = layers['regions'];
-    if (regState?.data && transparentBitmaps.citiesports?.src !== regState.data) {
+    if (regState?.data && transparentBitmaps.citiesports?.src !== regState.bitmap) {
       buildCitiesPortsBitmap(regState.data, regState.width, regState.height)
-        .then(bmp => setTransparentBitmaps(p => ({ ...p, citiesports: { bmp, src: regState.data } })));
+        .then(bmp => setTransparentBitmaps(p => ({ ...p, citiesports: { bmp, src: regState.bitmap } })));
     }
   }, [layers]);
 

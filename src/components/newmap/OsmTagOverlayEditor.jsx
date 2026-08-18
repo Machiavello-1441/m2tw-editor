@@ -573,7 +573,7 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
                                         placeholder={c.toUpperCase()}
                                         value={customRgb[c] ?? ''}
                                         onChange={e => setCustomRgb(prev => ({ ...prev, [c]: e.target.value }))}
-                                        className="w-9 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-[8px] text-slate-200 focus:outline-none focus:border-amber-500"
+                                        className="w-12 bg-slate-900 border border-slate-600 rounded px-1.5 py-0.5 text-[10px] text-slate-200 focus:outline-none focus:border-amber-500"
                                       />
                                     ))}
                                     <button

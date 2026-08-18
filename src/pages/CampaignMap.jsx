@@ -538,12 +538,18 @@ export default function CampaignMap() {
   }, []);
 
   // ── Painting ───────────────────────────────────────────────────────────────
-  // RAF handle for debounced bitmap rebuilds during painting
-  const bitmapRafRef = useRef(null);
-  const pendingBitmapRef = useRef({}); // layerId → newData
+  // Debounce handle for bitmap rebuilds during painting. Using a timeout
+  // (~120ms) instead of requestAnimationFrame means we rebuild the layer
+  // bitmap ~8×/sec during a continuous stroke rather than 60×/sec. Each
+  // rebuild copies the full pixel buffer (tens of MB for large TGA maps)
+  // and uploads it to the GPU via createImageBitmap, so doing that every
+  // frame was the main cause of painting lag. The cursor preview on the
+  // overlay canvas still updates at full 60fps for immediate feedback.
+  const bitmapTimerRef = useRef(null);
+  const pendingBitmapRef = useRef({}); // layerId → data
 
   const flushBitmaps = useCallback(() => {
-    bitmapRafRef.current = null;
+    bitmapTimerRef.current = null;
     const pending = { ...pendingBitmapRef.current };
     pendingBitmapRef.current = {};
     for (const [layerId, data] of Object.entries(pending)) {
@@ -558,6 +564,11 @@ export default function CampaignMap() {
     }
   }, []);
 
+  const scheduleBitmapFlush = useCallback(() => {
+    if (bitmapTimerRef.current) clearTimeout(bitmapTimerRef.current);
+    bitmapTimerRef.current = setTimeout(flushBitmaps, 120);
+  }, [flushBitmaps]);
+
   const handlePaint = useCallback((type, layerId, color, patches, bucketCoord) => {
     if (type === 'pipette') {
       setPaintState(ps => ({ ...ps, paintColor: color }));
@@ -567,7 +578,7 @@ export default function CampaignMap() {
     if (!layer?.data) return;
     // Mutate the pixel buffer in place — avoids copying the entire array
     // (several MB for large TGA maps) on every mouse-move stroke. The bitmap
-    // is rebuilt asynchronously via RAF in flushBitmaps.
+    // is rebuilt on a debounced timer in flushBitmaps.
     const data = layer.data;
     if (type === 'pencil') {
       for (const { x, y } of patches) {
@@ -577,11 +588,11 @@ export default function CampaignMap() {
     } else if (type === 'bucket') {
       floodFillRGB(data, layer.width, layer.height, bucketCoord.x, bucketCoord.y, color.r, color.g, color.b);
     }
-    // Debounce bitmap rebuild via RAF to avoid per-stroke freezes
+    // Debounce bitmap rebuild — coalesces rapid strokes into one GPU upload
     pendingBitmapRef.current[layerId] = data;
-    if (!bitmapRafRef.current) bitmapRafRef.current = requestAnimationFrame(flushBitmaps);
+    scheduleBitmapFlush();
     setDirtyLayers(prev => new Set([...prev, layerId]));
-  }, [flushBitmaps]);
+  }, [scheduleBitmapFlush]);
 
   // Derive map dimensions from loaded layers
   const mapH = (() => {
@@ -1162,6 +1173,8 @@ export default function CampaignMap() {
 
   // ── Save / Revert / Export TGA ─────────────────────────────────────────────
   const handleSave = useCallback(() => {
+    // Flush any pending bitmap rebuilds so the display matches the saved data
+    if (bitmapTimerRef.current) { clearTimeout(bitmapTimerRef.current); flushBitmaps(); }
     // Snapshot current layer pixel data + overlay items
     const layerSnap = {};
     for (const [id, layer] of Object.entries(layers)) {
@@ -1206,7 +1219,7 @@ export default function CampaignMap() {
     };
     setDirtyLayers(new Set());
     setOverlayDirty(false);
-  }, [layers, overlayItems, stratData, editedSettlements, regionsData, applySettlementPositions]);
+  }, [layers, overlayItems, stratData, editedSettlements, regionsData, applySettlementPositions, flushBitmaps]);
 
   const handleRevert = useCallback(() => {
     const snap = savedSnapshot.current;
