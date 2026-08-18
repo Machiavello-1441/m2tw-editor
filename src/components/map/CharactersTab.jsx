@@ -728,6 +728,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   const [familyTrees, setFamilyTrees] = useState({});
   const [treesInitialized, setTreesInitialized] = useState(false);
   const listTopRef = useRef(null);
+  const [localOpenCharId, setLocalOpenCharId] = useState(null);
 
   const allFactions = useMemo(() => {
     const from = (stratData?.factions || []).map(f => f.name).filter(Boolean);
@@ -771,10 +772,8 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   // Display list: when sortAlpha is on, sort by surname with leader/heir pinned to top.
   // Characters without a surname go to the bottom. New items (_isNew) stay at the very top.
   const displayList = useMemo(() => {
-    const newItems = filtered.filter(c => c._isNew);
-    const rest = filtered.filter(c => !c._isNew);
-    if (!sortAlpha) return [...newItems, ...rest];
-    const sorted = [...rest].sort((a, b) => {
+    if (!sortAlpha) return filtered;
+    const sorted = [...filtered].sort((a, b) => {
       // Leader always first, heir always second
       const aRank = a.role === 'leader' ? 0 : a.role === 'heir' ? 1 : 2;
       const bRank = b.role === 'leader' ? 0 : b.role === 'heir' ? 1 : 2;
@@ -787,7 +786,7 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
       if (!aSur && !bSur) return 0;
       return aSur.localeCompare(bSur);
     });
-    return [...newItems, ...sorted];
+    return sorted;
   }, [filtered, sortAlpha, namesDisplayMap]);
 
   const handleUpdate = (id, updatedChar) => {
@@ -825,11 +824,26 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
       subFaction: '', portrait: '', label: '', battleModel: '', heroAbility: '', direction: '',
       comment: '', _isNew: true,
     };
-    // New chars go at the TOP of items so they appear first in the list
-    const items = [newChar, ...(stratData.items || [])];
-    onStratDataChange({ ...stratData, items });
-    // Scroll to top of list so new char is visible
-    setTimeout(() => listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    // Insert the new character just after the last existing character of the
+    // same faction, so it appears in the right position both in the list and
+    // in the serialized descr_strat.txt. If no characters exist for this
+    // faction yet, fall back to inserting at the top.
+    const items = [...(stratData.items || [])];
+    let lastIdx = -1;
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].category === 'character' && items[i].faction === defaultFaction) {
+        lastIdx = i;
+        break;
+      }
+    }
+    let newItems;
+    if (lastIdx >= 0) {
+      newItems = [...items.slice(0, lastIdx + 1), newChar, ...items.slice(lastIdx + 1)];
+    } else {
+      newItems = [newChar, ...items];
+    }
+    onStratDataChange({ ...stratData, items: newItems });
+    setLocalOpenCharId(newChar.id);
   };
 
   // "Create Character" button: marks the char as confirmed (removes _isNew flag, keeps negative ID for serializer)
@@ -951,8 +965,8 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
                               onPin={handlePin}
                               onConfirmCreate={handleConfirmCreate}
                               dragHandleProps={drag.dragHandleProps}
-                              shouldOpen={openCharId === char.id}
-                              onOpened={onOpenCharHandled}
+                              shouldOpen={openCharId === char.id || localOpenCharId === char.id}
+                              onOpened={() => { onOpenCharHandled?.(); setLocalOpenCharId(null); }}
                             />
                           </div>
                         )}

@@ -917,6 +917,9 @@ export default function StratPanel({
   const [tab, setTab] = useState('overview');
   const [openCharId, setOpenCharId] = useState(null);
   const [search, setSearch] = useState('');
+  // Faction settlement lists are collapsed by default for readability.
+  // A faction is added to this Set when the user expands it.
+  const [expandedFactions, setExpandedFactions] = useState(() => new Set());
   const [showNewRegion, setShowNewRegion] = useState(false);
   const [newRegionSeedColor, setNewRegionSeedColor] = useState(null);
   const [winConditions, setWinConditions] = useState(() => {
@@ -991,6 +994,13 @@ export default function StratPanel({
   useEffect(() => {
     if (selectedItem?.category === 'settlement') setTab('settlements');
     if (selectedItem?.category === 'character') setTab('characters');
+  }, [selectedItem?.id]);
+
+  // Auto-expand a faction's settlement list when one of its settlements is selected
+  useEffect(() => {
+    if (selectedItem?.category === 'settlement' && selectedItem.faction) {
+      setExpandedFactions(prev => prev.has(selectedItem.faction) ? prev : new Set(prev).add(selectedItem.faction));
+    }
   }, [selectedItem?.id]);
 
   const handleDoubleClickItem = (item) => {
@@ -1662,7 +1672,7 @@ export default function StratPanel({
               selectedRegionInfo={selectedRegionInfo} />
           )}
 
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm py-1.5 -mx-2 px-2 border-b border-slate-800/60">
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search region or faction…"
             className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
             <button onClick={() => setShowNewRegion((v) => !v)}
@@ -1703,14 +1713,20 @@ export default function StratPanel({
             reordered.splice(destination.index, 0, moved);
             onReorderSettlements(factionName, reordered.map((s) => s.id));
           }}>
-              {byFaction.map(([factionName, setts]) =>
+              {byFaction.map(([factionName, setts]) => {
+                const isExpanded = expandedFactions.has(factionName);
+                return (
             <div key={factionName}>
                   <div className="flex items-center gap-1.5 px-1 py-0.5 mb-0.5">
+                    <button onClick={() => setExpandedFactions(prev => { const next = new Set(prev); next.has(factionName) ? next.delete(factionName) : next.add(factionName); return next; })} className="text-slate-500 hover:text-slate-300 shrink-0">
+                      {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    </button>
                     <FactionDot factionColors={factionColors} factionName={factionName} />
                     <span className="text-[10px] font-semibold text-slate-400">{settlementNames?.[factionName] || factionName}</span>
                     <span className="text-[9px] text-slate-600 font-mono">({setts.length})</span>
                     <span className="text-[8px] text-slate-700 italic ml-1">drag to reorder • 1st = capital</span>
                   </div>
+                  {isExpanded && (
                   <Droppable droppableId={factionName}>
                     {(provided) =>
                 <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-0.5 ml-2">
@@ -1762,8 +1778,10 @@ export default function StratPanel({
                       </div>
                 }
                   </Droppable>
+                  )}
                 </div>
-            )}
+                );
+              })}
             </DragDropContext>
           }
         </>}
