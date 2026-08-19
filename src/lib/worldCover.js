@@ -116,8 +116,21 @@ export async function fetchLercTile(level, row, col) {
  *
  * @returns {Promise<{data:Uint8Array, pxW, pxH, covWest, covNorth, res, level, cols, rows}>}
  */
-export async function fetchCoverage(bbox, mapW, mapH, onProgress) {
-  const level = chooseLevel(bbox, mapW, mapH);
+export async function fetchCoverage(bbox, mapW, mapH, onProgress, levelOverride) {
+  let level;
+  if (levelOverride != null && levelOverride >= 0 && levelOverride < ESA_LEVEL_RES.length) {
+    // User-selected level: honour it but coarsen if the tile count is huge
+    level = levelOverride;
+    const tileCount = (l) => {
+      const tw = ESA_LEVEL_RES[l] * TILE_PX;
+      const cols = Math.floor((bbox.east - ORIGIN_X) / tw) - Math.floor((bbox.west - ORIGIN_X) / tw) + 1;
+      const rows = Math.floor((ORIGIN_Y - bbox.south) / tw) - Math.floor((ORIGIN_Y - bbox.north) / tw) + 1;
+      return Math.max(1, cols) * Math.max(1, rows);
+    };
+    while (level > 0 && tileCount(level) > MAX_TILES) level--;
+  } else {
+    level = chooseLevel(bbox, mapW, mapH);
+  }
   const { colMin, colMax, rowMin, rowMax, tileDeg } = tileBounds(bbox, level);
   const cols = colMax - colMin + 1;
   const rows = rowMax - rowMin + 1;

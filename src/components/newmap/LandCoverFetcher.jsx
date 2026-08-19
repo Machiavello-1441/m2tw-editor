@@ -3,7 +3,7 @@ import { Download, ChevronDown, ChevronRight, Eye, EyeOff, Globe2 } from 'lucide
 import { GROUND_TYPE_PALETTE, LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { GT } from '@/lib/autoGroundTypes';
 import {
-  ESA_CLASSES, ESA_CLASS_GROUPS,
+  ESA_CLASSES, ESA_CLASS_GROUPS, ESA_LEVEL_RES,
   fetchCoverage, compositeLandCover,
 } from '@/lib/worldCover';
 
@@ -33,6 +33,8 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
   const [status, setStatus] = useState('');
   const [progress, setProgress] = useState(0);
   const [fetching, setFetching] = useState(false);
+  // 'auto' lets chooseLevel pick; a number forces a specific ESA LOD level.
+  const [levelOverride, setLevelOverride] = useState('auto');
 
   const groundRef = useRef(groundLayer);
   useEffect(() => { groundRef.current = groundLayer; }, [groundLayer]);
@@ -54,7 +56,8 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
       const gDef = LAYER_DEFS.find(d => d.id === 'ground');
       const { width: gW, height: gH } = getLayerDimensions(gDef, mapWidth, mapHeight);
 
-      const coverage = await fetchCoverage(bbox, gW, gH, (p) => setProgress(p));
+      const lvlArg = levelOverride === 'auto' ? undefined : parseInt(levelOverride);
+      const coverage = await fetchCoverage(bbox, gW, gH, (p) => setProgress(p), lvlArg);
       setStatus(`Compositing onto ground layer… (${coverage.cols}×${coverage.rows} tiles @ level ${coverage.level})`);
 
       const classColor = {};
@@ -141,6 +144,28 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Level selector — finer levels give sharper detail at the cost of
+              more tiles. 'Auto' matches the ground-layer resolution. */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-slate-500 shrink-0">ESA Level</span>
+            <select
+              value={levelOverride}
+              onChange={e => setLevelOverride(e.target.value)}
+              disabled={fetching}
+              className="flex-1 h-5 text-[9px] bg-slate-800 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-amber-500 disabled:opacity-50">
+              <option value="auto">Auto (match ground res)</option>
+              {ESA_LEVEL_RES.map((res, l) => (
+                <option key={l} value={l}>Level {l} — ~{Math.round(res * 111000)}m/px</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setLevelOverride('auto')}
+              disabled={fetching || levelOverride === 'auto'}
+              className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400 hover:bg-slate-600 border border-slate-600 transition-colors disabled:opacity-30">
+              Auto
+            </button>
           </div>
 
           <button
