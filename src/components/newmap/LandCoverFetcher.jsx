@@ -47,7 +47,14 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
     setStatus('Fetching ESA WorldCover tiles (decoding LERC)…');
     setProgress(0);
     try {
-      const coverage = await fetchCoverage(bbox, mapWidth, mapHeight, (p) => setProgress(p));
+      // Compute ground-layer dimensions first so we fetch ESA at the ground
+      // layer's native resolution (2× map +1), not the coarser map resolution.
+      // Fetching at the map resolution produces blocky 2×2 squares because each
+      // coverage pixel maps to four ground pixels.
+      const gDef = LAYER_DEFS.find(d => d.id === 'ground');
+      const { width: gW, height: gH } = getLayerDimensions(gDef, mapWidth, mapHeight);
+
+      const coverage = await fetchCoverage(bbox, gW, gH, (p) => setProgress(p));
       setStatus(`Compositing onto ground layer… (${coverage.cols}×${coverage.rows} tiles @ level ${coverage.level})`);
 
       const classColor = {};
@@ -57,9 +64,6 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
       }
 
       const base = groundRef.current.imageData;
-      // Ensure ground layer is at the canonical ground dimensions (2× map +1)
-      const gDef = LAYER_DEFS.find(d => d.id === 'ground');
-      const { width: gW, height: gH } = getLayerDimensions(gDef, mapWidth, mapHeight);
       const fixedBase = ensureDimensions(base, gW, gH);
       const { imageData, painted } = compositeLandCover(coverage, fixedBase, bbox, classColor, hidden);
       onLayerUpdate('ground', { imageData, visible: true, opacity: 1, dirty: true });

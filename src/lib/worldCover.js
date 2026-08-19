@@ -34,7 +34,7 @@ export const ESA_LEVEL_RES = [
 const TILE_PX = 256;        // each tile is 256×256 px
 const ORIGIN_X = -180;      // tileInfo.origin.x
 const ORIGIN_Y = 84;        // tileInfo.origin.y (top)
-const MAX_TILES = 64;       // cap concurrent-tile footprint so a huge bbox stays fast
+const MAX_TILES = 256;      // cap concurrent-tile footprint so a huge bbox stays fast
 
 const CONCURRENCY = 8;
 
