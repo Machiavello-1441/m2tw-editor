@@ -497,6 +497,7 @@ export default function NewMapEditor() {
                     layers={layers}
                     onToggleVisible={handleToggleVisible}
                     onOpacityChange={handleOpacityChange}
+                    onLayerUpdate={handleLayerUpdate}
                     onProceed={() => { setPhase('edit'); setSideTab('workflow'); }}
                   />
                 )}

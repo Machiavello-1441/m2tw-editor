@@ -1,5 +1,6 @@
 import React from 'react';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import HeightmapAdjustPanel from './HeightmapAdjustPanel';
 
 const LAYER_LABELS = {
   heights:  'Heightmap',
@@ -11,7 +12,7 @@ const LAYER_LABELS = {
   topo_ref: 'Topo Reference',
 };
 
-export default function LayerPreviewPanel({ layers, onToggleVisible, onOpacityChange, onProceed }) {
+export default function LayerPreviewPanel({ layers, onToggleVisible, onOpacityChange, onOpacityCommit, onLayerUpdate, onProceed }) {
   const layerIds = Object.keys(layers).filter(id => layers[id]?.imageData);
 
   return (
@@ -51,6 +52,9 @@ export default function LayerPreviewPanel({ layers, onToggleVisible, onOpacityCh
                 className="w-full h-1 accent-amber-400"
                 disabled={!visible}
               />
+              {id === 'heights' && (
+                <HeightmapAdjustPanel layer={layer} onLayerUpdate={onLayerUpdate} />
+              )}
             </div>
           );
         })}
