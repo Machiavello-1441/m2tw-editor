@@ -97,6 +97,9 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
           <p className="text-[9px] text-slate-500 pt-1.5 leading-relaxed">
             Fetch ESA WorldCover 2021 land-cover classes (decoded from LERC tiles — exact class values, not colour-matched) and map each class to an M2TW ground type, then paint the ground layer.
           </p>
+          <p className="text-[9px] text-slate-500 leading-relaxed">
+            The {ESA_CLASSES.length} Land Cover Classes, which are: {ESA_CLASSES.map(c => `${c.code}: ${c.label}`).join('; ')}.
+          </p>
 
           {/* Class → ground-type mapping */}
           <div className="space-y-1">
@@ -114,29 +117,34 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
                       const gtId = classMap[c.code];
                       const isHidden = hidden.has(c.code);
                       return (
-                        <div key={c.code} className="flex items-center gap-1.5 px-1.5 py-1 bg-slate-900">
-                          <span className="text-[9px] font-mono text-slate-500 w-6 shrink-0">{c.code}</span>
-                          <span className="text-[9px] text-slate-300 flex-1 truncate">{c.label}</span>
-                          <span className="text-[9px] text-slate-600">→</span>
-                          <div className="w-3 h-3 rounded-sm shrink-0 border border-slate-600" style={{ backgroundColor: GT_COLOR[gtId] ?? '#888' }} />
-                          <select
-                            value={gtId}
-                            onChange={e => setClassMap(m => ({ ...m, [c.code]: e.target.value }))}
-                            className="h-5 text-[9px] bg-slate-800 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-amber-500 max-w-[104px]">
-                            {GROUND_TYPE_PALETTE.map(p => (
-                              <option key={p.id} value={p.id}>{p.label}</option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={() => setHidden(prev => {
-                              const next = new Set(prev);
-                              if (next.has(c.code)) next.delete(c.code); else next.add(c.code);
-                              return next;
-                            })}
-                            title={isHidden ? 'Include class' : 'Exclude class'}
-                            className={`shrink-0 ${isHidden ? 'text-slate-600' : 'text-slate-400'} hover:text-white transition-colors`}>
-                            {isHidden ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
-                          </button>
+                        <div key={c.code} className="px-1.5 py-1 bg-slate-900 space-y-1">
+                          {/* Line 1: code + label */}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-mono text-slate-500 w-6 shrink-0">{c.code}</span>
+                            <span className="text-[9px] text-slate-300 flex-1 truncate">{c.label}</span>
+                            <button
+                              onClick={() => setHidden(prev => {
+                                const next = new Set(prev);
+                                if (next.has(c.code)) next.delete(c.code); else next.add(c.code);
+                                return next;
+                              })}
+                              title={isHidden ? 'Include class' : 'Exclude class'}
+                              className={`shrink-0 ${isHidden ? 'text-slate-600' : 'text-slate-400'} hover:text-white transition-colors`}>
+                              {isHidden ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
+                            </button>
+                          </div>
+                          {/* Line 2: colour swatch + ground-type selector */}
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-sm shrink-0 border border-slate-600" style={{ backgroundColor: GT_COLOR[gtId] ?? '#888' }} />
+                            <select
+                              value={gtId}
+                              onChange={e => setClassMap(m => ({ ...m, [c.code]: e.target.value }))}
+                              className="flex-1 h-5 text-[9px] bg-slate-800 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-amber-500">
+                              {GROUND_TYPE_PALETTE.map(p => (
+                                <option key={p.id} value={p.id}>{p.label}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       );
                     })}
@@ -148,18 +156,20 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
 
           {/* Level selector — finer levels give sharper detail at the cost of
               more tiles. 'Auto' matches the ground-layer resolution. */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-slate-500 shrink-0">ESA Level</span>
-            <select
-              value={levelOverride}
-              onChange={e => setLevelOverride(e.target.value)}
-              disabled={fetching}
-              className="flex-1 h-5 text-[9px] bg-slate-800 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-amber-500 disabled:opacity-50">
-              <option value="auto">Auto (match ground res)</option>
-              {ESA_LEVEL_RES.map((res, l) => (
-                <option key={l} value={l}>Level {l} — ~{Math.round(res * 111000)}m/px</option>
-              ))}
-            </select>
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-slate-500 shrink-0">ESA Level</span>
+              <select
+                value={levelOverride}
+                onChange={e => setLevelOverride(e.target.value)}
+                disabled={fetching}
+                className="flex-1 h-5 text-[9px] bg-slate-800 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-amber-500 disabled:opacity-50">
+                <option value="auto">Auto (match ground res)</option>
+                {ESA_LEVEL_RES.map((res, l) => (
+                  <option key={l} value={l}>Level {l} — ~{Math.round(res * 111000)}m/px</option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={() => setLevelOverride('auto')}
               disabled={fetching || levelOverride === 'auto'}
