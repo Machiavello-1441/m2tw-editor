@@ -196,24 +196,49 @@ export function compositeLandCover(coverage, groundData, bbox, classColor, hidde
   const mercSouth = Math.log(Math.tan(Math.PI / 4 + bbox.south * Math.PI / 360));
   const dLng = bbox.east - bbox.west;
 
+  // Bilinear interpolation of the four nearest coverage pixels' colours.
+  // The ESA service upsamples tiles at high LOD levels, producing 2×2 blocks
+  // of identical values; nearest-neighbour sampling reproduces those blocks
+  // exactly. Blending the four neighbours' colours smooths the block edges
+  // while preserving homogeneous areas (where all four corners match).
+  // Nodata / hidden pixels contribute zero weight so they don't bleed.
+  const pixelColor = (cx, cy) => {
+    if (cx < 0 || cx >= pxW || cy < 0 || cy >= pxH) return null;
+    const cls = cov[cy * pxW + cx] | 0;
+    if (cls === 0 || hidden.has(cls)) return null;
+    return classColor[cls] ?? null;
+  };
+
   let painted = 0;
   for (let gy = 0; gy < gH; gy++) {
     const merc = mercNorth - (gy / (gH - 1)) * (mercNorth - mercSouth);
     const lat = (2 * Math.atan(Math.exp(merc)) - Math.PI / 2) * 180 / Math.PI;
-    const cy = Math.floor((covNorth - lat) / res);
-    if (cy < 0 || cy >= pxH) continue;
+    const fy = (covNorth - lat) / res;
+    const cy0 = Math.floor(fy);
+    const ty = fy - cy0;
     const lngBase = bbox.west;
     for (let gx = 0; gx < gW; gx++) {
       const i = (gy * gW + gx) * 4;
       if (_SEA_KEYS.has(`${od[i]},${od[i + 1]},${od[i + 2]}`)) continue;
       const lng = lngBase + (gx / (gW - 1)) * dLng;
-      const cx = Math.floor((lng - covWest) / res);
-      if (cx < 0 || cx >= pxW) continue;
-      const cls = cov[cy * pxW + cx] | 0;
-      if (cls === 0 || hidden.has(cls)) continue;
-      const c = classColor[cls];
-      if (!c) continue;
-      od[i] = c[0]; od[i + 1] = c[1]; od[i + 2] = c[2]; od[i + 3] = 255;
+      const fx = (lng - covWest) / res;
+      const cx0 = Math.floor(fx);
+      const tx = fx - cx0;
+
+      const c00 = pixelColor(cx0, cy0);
+      const c10 = pixelColor(cx0 + 1, cy0);
+      const c01 = pixelColor(cx0, cy0 + 1);
+      const c11 = pixelColor(cx0 + 1, cy0 + 1);
+      if (!c00 && !c10 && !c01 && !c11) continue;
+
+      let r = 0, g = 0, b = 0, w = 0;
+      const add = (c, wt) => { if (!c) return; r += c[0] * wt; g += c[1] * wt; b += c[2] * wt; w += wt; };
+      add(c00, (1 - tx) * (1 - ty));
+      add(c10, tx * (1 - ty));
+      add(c01, (1 - tx) * ty);
+      add(c11, tx * ty);
+      if (w === 0) continue;
+      od[i] = Math.round(r / w); od[i + 1] = Math.round(g / w); od[i + 2] = Math.round(b / w); od[i + 3] = 255;
       painted++;
     }
   }

@@ -445,6 +445,19 @@ export default function NewMapEditor() {
                             onChange={e => setBox(b => ({ ...b, rotation: parseFloat(e.target.value) || 0 }))}
                             className="w-full bg-slate-700 border border-slate-600 rounded px-1.5 py-1 text-[10px] text-slate-100 font-mono focus:outline-none focus:border-amber-500" />
                         </div>
+                        {(() => {
+                          const latC = (box.north + box.south) / 2;
+                          const cosLat = Math.cos(latC * Math.PI / 180);
+                          const mW = (box.east - box.west) * 111320 * cosLat / mapWidth;
+                          const mH = (box.north - box.south) * 110540 / mapHeight;
+                          const fmt = (m) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
+                          return (
+                            <div className="text-[9px] text-slate-500 space-y-0.5 pt-1 border-t border-slate-700">
+                              <p>Pixel size (map): <span className="font-mono text-slate-300">{fmt(mW)} × {fmt(mH)}</span></p>
+                              <p>Pixel size (ground): <span className="font-mono text-slate-300">{fmt(mW / 2)} × {fmt(mH / 2)}</span></p>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                     {phase === 'resolution' && (
