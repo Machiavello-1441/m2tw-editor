@@ -98,25 +98,103 @@
   image-rendering: crisp-edges;
 }
 
-/* Ensure inputs/selects/textareas show white text in dark mode */
+/* ════════════════════════════════════════════════════════════════════════
+   Design normalization layer — uniforms text contrast, button visibility,
+   focus states and chrome across the whole app (which uses hardcoded slate
+   utility classes in many components).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Text contrast remaps ─────────────────────────────────────────────
+   The dimmest slate tones are nearly invisible on slate-900/950 panels.
+   Lift each one a step while preserving the visual hierarchy. */
+.dark .text-slate-600 { color: rgb(126 139 158); }   /* was #475569 — hints/disabled */
+.dark .text-slate-500 { color: rgb(140 153 172); }   /* was #64748b — secondary labels */
+.dark .text-slate-400 { color: rgb(163 176 194); }   /* was #94a3b8 — body/labels */
+
+/* Placeholder text readable everywhere */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: rgb(120 133 152);
+  opacity: 1;
+}
+
+/* Ensure inputs/selects/textareas show light text in dark mode */
 .dark input,
 .dark select,
 .dark textarea {
   color: hsl(var(--foreground));
 }
 
-/* Make ghost/outline buttons always readable, not just on hover */
+/* ── 2. Button visibility & uniformity ──────────────────────────────────── */
+
+/* Ghost/outline buttons always readable, not just on hover */
 .dark button[class*="border-slate-6"],
 .dark button[class*="text-slate-4"],
 .dark button[class*="text-slate-5"] {
   opacity: 1;
 }
 
-/* Subtle opacity-0 group-hover buttons — give them a minimum baseline visibility */
+/* Icon-only buttons styled with the dimmest tones — give them a clear
+   resting state and a consistent hover response */
+.dark button[class*="text-slate-6"]:not(:disabled):hover,
+.dark button[class*="text-slate-5"]:not(:disabled):hover {
+  color: rgb(226 232 240);
+}
+
+/* Subtle opacity-0 group-hover buttons — minimum baseline visibility */
 .dark .group button.opacity-0 {
-  opacity: 0.15;
+  opacity: 0.2;
 }
 .dark .group:hover button.opacity-0,
 .dark .group button.opacity-0:hover {
   opacity: 1;
 }
+
+/* Disabled buttons: uniform dimming (some use /30, some /50) */
+.dark button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── 3. Consistent focus states ──────────────────────────────────────────
+   Keyboard focus is uniform across every button, link and form control. */
+.dark button:focus-visible,
+.dark a:focus-visible,
+.dark [role="button"]:focus-visible {
+  outline: 2px solid rgb(245 158 11 / 0.7);
+  outline-offset: 1px;
+}
+.dark input:focus-visible,
+.dark select:focus-visible,
+.dark textarea:focus-visible {
+  outline: none;
+  border-color: rgb(245 158 11 / 0.8);
+}
+
+/* ── 4. Uniform chrome ──────────────────────────────────────────────────── */
+
+/* Consistent dark scrollbars app-wide */
+.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.dark ::-webkit-scrollbar-track { background: rgb(15 23 42); }
+.dark ::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85);
+  border-radius: 5px;
+  border: 2px solid rgb(15 23 42);
+}
+.dark ::-webkit-scrollbar-thumb:hover { background: rgb(71 85 105); }
+.dark * { scrollbar-color: rgb(51 65 85) rgb(15 23 42); scrollbar-width: thin; }
+
+/* Consistent text selection color */
+.dark ::selection {
+  background: rgb(245 158 11 / 0.35);
+  color: rgb(248 250 252);
+}
+
+/* Number-input spinners are inconsistent across panels — hide for a clean,
+   uniform look (values are typed or slid) */
+.dark input[type="number"]::-webkit-inner-spin-button,
+.dark input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.dark input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
