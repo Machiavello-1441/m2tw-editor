@@ -19,6 +19,7 @@ import { useReferenceLayers, ReferenceLayerControls } from '../components/newmap
 import { autoGenerateGroundTypesAsync, autoGenerateClimates, fillSolidColor } from '@/lib/autoGroundTypes';
 import { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import { computeTiles } from '@/lib/osmTiles';
+import { computeWorkArea } from '@/lib/rotatedBbox';
 
 const PHASES = [
   { id: 'browse',     label: 'Select Area',     icon: MousePointer },
@@ -118,6 +119,14 @@ export default function NewMapEditor() {
         rotation: 0,
       } : null);
 
+  // When the box is rotated, all layers are generated/edited on the
+  // axis-aligned ENVELOPE of the rotated rectangle (stays aligned with the
+  // OSM basemap); the rotation is applied at export.
+  const { workBbox, workWidth, workHeight, rotated } = React.useMemo(
+    () => computeWorkArea(bbox, mapWidth, mapHeight),
+    [bbox, mapWidth, mapHeight]
+  );
+
   const handleLayerUpdate = useCallback((layerId, data) => {
     setLayers(prev => ({ ...prev, [layerId]: { ...prev[layerId], ...data } }));
   }, []);
@@ -137,7 +146,7 @@ export default function NewMapEditor() {
     if (!file) return;
     const url = URL.createObjectURL(file);
     const def = LAYER_DEFS.find(d => d.id === layerId);
-    const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
+    const { width, height } = getLayerDimensions(def, workWidth, workHeight);
 
     const drawToLayer = (source) => {
       const canvas = document.createElement('canvas');
@@ -189,7 +198,7 @@ export default function NewMapEditor() {
     ? (bbox.east - bbox.west) / ((mercLat(bbox.north) - mercLat(bbox.south)) * (180 / Math.PI))
     : 1;
 
-  const tiles = React.useMemo(() => computeTiles(bbox), [bbox]);
+  const tiles = React.useMemo(() => computeTiles(workBbox), [workBbox]);
   const handleTileClick = useCallback((tileIndex) => {
     window.dispatchEvent(new CustomEvent('osm-tile-refetch', { detail: { tileIndex } }));
   }, []);
@@ -254,7 +263,7 @@ export default function NewMapEditor() {
     if (!climateDef) return;
     const { r, g, b } = hexToRgb(climateDef.color);
     const def = LAYER_DEFS.find(d => d.id === 'climates');
-    const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
+    const { width, height } = getLayerDimensions(def, workWidth, workHeight);
     const result = fillSolidColor(width, height, r, g, b);
     handleLayerUpdate('climates', { imageData: result, visible: true, opacity: 1, dirty: true });
   };
@@ -265,10 +274,10 @@ export default function NewMapEditor() {
   const handlePortPicked = useCallback((latlng) => {
     if (!portTarget) { setPortTarget(null); return; }
     const layer = layers.regions;
-    if (!bbox || !layer?.imageData) { setPortTarget(null); return; }
+    if (!workBbox || !layer?.imageData) { setPortTarget(null); return; }
     const w = layer.imageData.width, h = layer.imageData.height;
-    const px = Math.round(((latlng.lng - bbox.west) / (bbox.east - bbox.west)) * (w - 1));
-    const py = Math.round(((bbox.north - latlng.lat) / (bbox.north - bbox.south)) * (h - 1));
+    const px = Math.round(((latlng.lng - workBbox.west) / (workBbox.east - workBbox.west)) * (w - 1));
+    const py = Math.round(((workBbox.north - latlng.lat) / (workBbox.north - workBbox.south)) * (h - 1));
     if (px < 0 || py < 0 || px >= w || py >= h) { setPortTarget(null); return; }
 
     const s = settlementsRef.current.find(x => x === portTarget);
@@ -301,7 +310,7 @@ export default function NewMapEditor() {
       return next;
     });
     setPortTarget(null);
-  }, [portTarget, bbox, layers, handleLayerUpdate]);
+  }, [portTarget, workBbox, layers, handleLayerUpdate]);
 
   const handleRemovePort = useCallback((settlement) => {
     const layer = layers.regions;
@@ -483,6 +492,12 @@ export default function NewMapEditor() {
                           <p>regions/features: <span className="font-mono text-slate-200">{mapWidth}×{mapHeight}</span></p>
                           <p>heights/ground: <span className="font-mono text-slate-200">{mapWidth*2+1}×{mapHeight*2+1}</span></p>
                         </div>
+                        {rotated && (
+                          <div className="bg-purple-900/20 border border-purple-500/30 rounded p-2 text-[9px] text-purple-300 leading-relaxed">
+                            <p className="font-semibold">Rotated box ({Math.round(bbox.rotation)}°)</p>
+                            <p>Layers are generated on the enclosing area ({workWidth}×{workHeight}) so they stay aligned with the basemap. The rotation is applied at export, producing your {mapWidth}×{mapHeight} rotated map.</p>
+                          </div>
+                        )}
                         <button onClick={confirmResolution}
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-[11px] bg-amber-600 border border-amber-500 text-white hover:bg-amber-500 transition-colors font-semibold">
                           Confirm &amp; Generate →
@@ -496,9 +511,9 @@ export default function NewMapEditor() {
                   <>
                     <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-2">Step 3 — Generate Layers</p>
                     <BboxLayerGenerator
-                      bbox={bbox}
-                      mapWidth={mapWidth}
-                      mapHeight={mapHeight}
+                      bbox={workBbox}
+                      mapWidth={workWidth}
+                      mapHeight={workHeight}
                       onLayerUpdate={handleLayerUpdate}
                       onDone={() => setPhase('preview')}
                     />
@@ -549,8 +564,8 @@ export default function NewMapEditor() {
                       onToggleVisible={handleToggleVisible}
                       onOpacityChange={handleOpacityChange}
                       onImport={handleImportFile}
-                      mapWidth={mapWidth}
-                      mapHeight={mapHeight}
+                      mapWidth={workWidth}
+                      mapHeight={workHeight}
                       compact
                     />
                   </div>
@@ -576,18 +591,18 @@ export default function NewMapEditor() {
                   groundRanges={groundRanges}
                   onGroundRangesChange={setGroundRanges}
                   onLayerUpdate={handleLayerUpdate}
-                  bbox={bbox}
-                  mapWidth={mapWidth}
-                  mapHeight={mapHeight}
+                  bbox={workBbox}
+                  mapWidth={workWidth}
+                  mapHeight={workHeight}
                 />
                 {workflowStep === 'regions' && (
                   <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2 space-y-3">
                     <RegionsWorkshop
-                      bbox={bbox}
+                      bbox={workBbox}
                       layers={layers}
                       onLayerUpdate={handleLayerUpdate}
-                      mapWidth={mapWidth}
-                      mapHeight={mapHeight}
+                      mapWidth={workWidth}
+                      mapHeight={workHeight}
                       settlements={settlements}
                       onSettlementsChange={setSettlements}
                       onAssetReady={registerExtraAsset}
@@ -597,9 +612,9 @@ export default function NewMapEditor() {
                       onRemovePort={handleRemovePort}
                     />
                     <OsmHistoricTagFetcher
-                      bbox={bbox}
-                      mapW={mapWidth}
-                      mapH={mapHeight}
+                      bbox={workBbox}
+                      mapW={workWidth}
+                      mapH={workHeight}
                       onAssetReady={registerExtraAsset}
                       onToggleOverlay={handleToggleHistoricOverlay}
                       visibleOverlays={historicOverlays}
@@ -618,6 +633,8 @@ export default function NewMapEditor() {
                   layers={layers}
                   mapWidth={mapWidth}
                   mapHeight={mapHeight}
+                  baseBbox={bbox}
+                  workBbox={workBbox}
                   extraAssets={extraAssets}
                   settlements={settlements}
                   historicTagStates={historicTagStates}
@@ -641,7 +658,7 @@ export default function NewMapEditor() {
             selection={selection}
             onSelectionUpdate={handleSelectionUpdate}
             onPickColor={setColor}
-            bboxBounds={bbox}
+            bboxBounds={workBbox}
             refLayers={refLayers}
             box={box}
             onBoxChange={setBox}
@@ -656,8 +673,8 @@ export default function NewMapEditor() {
             coords={coords}
             activeLayerId={activeLayerId}
             layers={layers}
-            mapWidth={mapWidth}
-            mapHeight={mapHeight}
+            mapWidth={workWidth}
+            mapHeight={workHeight}
           />
 
           {tiles.length > 1 && (

@@ -13,6 +13,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { rotatePointMerc, mercY } from '@/lib/rotatedBbox';
 
 // Small square SVG handle
 function makeHandle(map, latlng, color, cursor, onDrag) {
@@ -49,15 +50,11 @@ function makeCircleHandle(map, latlng, color, cursor, onDrag) {
   return marker;
 }
 
+// Shape-preserving rotation on the Mercator display — a rotated rectangle
+// stays rectangular on screen instead of getting skewed.
 function rotateLatLng(center, latlng, angleDeg) {
-  const rad = (angleDeg * Math.PI) / 180;
-  const cos = Math.cos(rad), sin = Math.sin(rad);
-  const dlat = latlng.lat - center.lat;
-  const dlng = latlng.lng - center.lng;
-  return L.latLng(
-    center.lat + dlat * cos - dlng * sin,
-    center.lng + dlat * sin + dlng * cos
-  );
+  const p = rotatePointMerc(center.lat, center.lng, latlng.lat, latlng.lng, angleDeg);
+  return L.latLng(p.lat, p.lng);
 }
 
 export default function SelectionBox({ box, onChange }) {
@@ -130,7 +127,8 @@ export default function SelectionBox({ box, onChange }) {
     // Rotation handle — above center
     const rotHandlePos = rotateLatLng(center, L.latLng(north + (north - south) * 0.18, centerLng), rotation);
     const rotMarker = makeCircleHandle(map, rotHandlePos, '#a78bfa', 'crosshair', (newPos) => {
-      const dy = newPos.lat - centerLat;
+      // Angle measured in Mercator space so it matches the on-screen rotation
+      const dy = mercY(newPos.lat) - mercY(centerLat);
       const dx = newPos.lng - centerLng;
       const angle = (Math.atan2(dx, dy) * 180) / Math.PI;
       onChange({ ...box, rotation: angle });
