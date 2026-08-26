@@ -9,6 +9,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import BannersTab, { BANNERS_GLOBAL_KEY } from '@/components/factions/BannersTab';
 import { parseBannersXml, serialiseBannersXml } from '@/components/minorfiles/banners/bannersParser';
 import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsBinCodec';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
 import DescriptionsTab from '@/components/factions/DescriptionsTab';
 import MiscTab, { hasFactionNavyEntry, insertFactionNavyEntry } from '@/components/factions/MiscTab';
 import FactionSymbolsTab from '@/components/factions/FactionSymbolsTab';
@@ -54,7 +55,9 @@ function autoInsertNavyEntry(name) {
 }
 
 const VANILLA_FACTION_LIMIT = 31;
-const LS_KEY = 'm2tw_sm_factions_raw';
+// Canonical key — the same one the Home page writes descr_sm_factions.txt to
+// (via RefDataContext), so files loaded on Home appear here without re-upload.
+const LS_KEY = 'm2tw_factions_file';
 const LS_CULT = 'm2tw_cultures_list';
 const LS_REL = 'm2tw_religions_list';
 const LS_UNITS = 'm2tw_edu_units_list';
@@ -588,15 +591,61 @@ export default function FactionsEditor() {
   const [menuStringsLoaded, setMenuStringsLoaded] = useState(false);
 
   useEffect(() => {
+    // ── Reconcile files loaded on the Home page into the keys this editor uses ──
+    // Home stores each file under a canonical key; this editor historically read
+    // different keys, forcing a re-upload. Populate the editor's keys from Home's
+    // (only when the editor's own key is empty, so manual uploads are preserved).
     try {
-      const r = localStorage.getItem(LS_KEY);
-      if (r) {
-        setFactions(parseDescrSmFactions(r));
-        // Keep RefDataContext key in sync on mount too
-        if (!localStorage.getItem('m2tw_factions_file')) {
-          try { localStorage.setItem('m2tw_factions_file', r); } catch {}
+      // Cultures / religions / EDU units — Home stores raw text; parse into lists.
+      const cultRaw = localStorage.getItem('m2tw_cultures_file');
+      if (cultRaw && !localStorage.getItem(LS_CULT)) {
+        const list = parseCultures(cultRaw);
+        if (list.length) localStorage.setItem(LS_CULT, JSON.stringify(list));
+      }
+      const relRaw = localStorage.getItem('m2tw_religions_file');
+      if (relRaw && !localStorage.getItem(LS_REL)) {
+        const list = parseReligions(relRaw);
+        if (list.length) localStorage.setItem(LS_REL, JSON.stringify(list));
+      }
+      const eduRaw = localStorage.getItem('m2tw_units_file');
+      if (eduRaw && !localStorage.getItem(LS_UNITS)) {
+        const list = parseEduUnits(eduRaw);
+        if (list.length) localStorage.setItem(LS_UNITS, JSON.stringify(list));
+      }
+      // Banners — Home writes raw XML to m2tw_banners_file; BannersTab reads BANNERS_GLOBAL_KEY.
+      const bannersRaw = localStorage.getItem('m2tw_banners_file');
+      if (bannersRaw && !localStorage.getItem(BANNERS_GLOBAL_KEY)) {
+        localStorage.setItem(BANNERS_GLOBAL_KEY, bannersRaw);
+      }
+      // Strings.bin — Home stores every .strings.bin in the shared store (keyed by
+      // filename). Build the global keys this editor expects from the relevant entries.
+      const store = getStringsBinStore();
+      const findBin = (needle) => {
+        const key = Object.keys(store).find((k) => k.toLowerCase().includes(needle));
+        return key ? store[key] : null;
+      };
+      if (!localStorage.getItem('m2tw_strings_bin_global')) {
+        const expanded = findBin('expanded');
+        if (expanded?.entries?.length) {
+          localStorage.setItem('m2tw_strings_bin_global', JSON.stringify({
+            entries: expanded.entries, magic1: expanded.magic1 ?? 2, magic2: expanded.magic2 ?? 2048,
+          }));
         }
       }
+      if (!localStorage.getItem(LS_MENU_STRINGS)) {
+        const menu = findBin('menu');
+        if (menu?.entries?.length) {
+          localStorage.setItem(LS_MENU_STRINGS, JSON.stringify({
+            entries: menu.entries, magic1: menu.magic1 ?? 2, magic2: menu.magic2 ?? 2048,
+          }));
+        }
+      }
+    } catch {}
+
+    // ── Load everything from the (now reconciled) editor keys ──
+    try {
+      const r = localStorage.getItem(LS_KEY);
+      if (r) setFactions(parseDescrSmFactions(r));
     } catch {}
     try {const r = localStorage.getItem(LS_CULT);if (r) setCultures(JSON.parse(r));} catch {}
     try {const r = localStorage.getItem(LS_REL);if (r) setReligions(JSON.parse(r));} catch {}
@@ -611,8 +660,6 @@ export default function FactionsEditor() {
     const text = await file.text();
     try {
       localStorage.setItem(LS_KEY, text);
-      // Also sync to RefDataContext key so Unit Editor / ModelDB factions stay up-to-date
-      localStorage.setItem('m2tw_factions_file', text);
     } catch {}
     const parsed = parseDescrSmFactions(text);
     setFactions(parsed);
