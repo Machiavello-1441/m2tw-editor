@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Rectangle, useMapEvents, ImageOverlay, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Rectangle, useMapEvents, ImageOverlay, useMap, Marker } from 'react-leaflet';
+import L from 'leaflet';
 import { hexToRgb } from '@/lib/mapLayerStore';
 import { ReferenceLayerTiles } from './ReferenceLayers';
 import OhmOverlay from './OhmOverlay';
@@ -267,19 +268,31 @@ export default function MapCanvas({
 
       {/* Tile grid overlay — clickable rectangles for per-tile OSM re-fetch */}
       {showTileGrid && tiles.map((tile, i) => (
-        <Rectangle
-          key={`tile-${i}`}
-          bounds={[[tile.south, tile.west], [tile.north, tile.east]]}
-          pathOptions={{
-            color: '#3b82f6',
-            weight: 1,
-            fillOpacity: 0.05,
-            dashArray: '4 2',
-          }}
-          eventHandlers={{
-            click: () => onTileClick?.(i),
-          }}
-        />
+        <React.Fragment key={`tile-${i}`}>
+          <Rectangle
+            bounds={[[tile.south, tile.west], [tile.north, tile.east]]}
+            pathOptions={{
+              color: '#3b82f6',
+              weight: 1,
+              fillOpacity: 0.05,
+              dashArray: '4 2',
+            }}
+            eventHandlers={{
+              click: () => onTileClick?.(i),
+            }}
+          />
+          {/* Tile number label in the top-left corner */}
+          <Marker
+            position={[tile.north, tile.west]}
+            interactive={false}
+            icon={L.divIcon({
+              className: '',
+              html: `<div style="background:rgba(30,58,138,0.9);color:#fff;font-size:10px;font-weight:700;line-height:1;padding:2px 5px;border-radius:3px;border:1px solid rgba(96,165,250,0.9);pointer-events:none;white-space:nowrap;font-family:ui-monospace,monospace;">${i + 1}</div>`,
+              iconSize: [22, 16],
+              iconAnchor: [0, 0],
+            })}
+          />
+        </React.Fragment>
       ))}
 
       {/* CotaMap-style interactive selection box */}
