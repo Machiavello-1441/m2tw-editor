@@ -201,7 +201,9 @@ export default function NewMapEditor() {
   const tiles = React.useMemo(() => computeTiles(workBbox), [workBbox]);
   const handleTileClick = useCallback((tileIndex) => {
     window.dispatchEvent(new CustomEvent('osm-tile-refetch', { detail: { tileIndex } }));
-  }, []);
+    // Also route tile clicks to the historic tag fetcher (per-tile mode)
+    window.dispatchEvent(new CustomEvent('historic-tile-clicked', { detail: { tileIndex, tile: tiles[tileIndex] } }));
+  }, [tiles]);
 
   const handleWidthChange = (val) => {
     const w = Math.max(1, parseInt(val) || 0);
@@ -620,6 +622,7 @@ export default function NewMapEditor() {
                       visibleOverlays={historicOverlays}
                       tagStates={historicTagStates}
                       onTagStatesChange={setHistoricTagStates}
+                      tiles={tiles}
                     />
                   </div>
                 )}

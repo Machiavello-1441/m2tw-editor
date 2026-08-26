@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronRight, Download, Eye, EyeOff } from 'lucide-react';
 
 // ── Historic tags to fetch ───────────────────────────────────────────────────
@@ -110,32 +110,35 @@ function latLonToPixel(lat, lon, bbox, W, H) {
  * Each feature is a single pixel (or small cross for visibility).
  * Returns { imageData, points: [{px, py, name, type}] }
  */
-function renderToImageData(elements, bbox, mapW, mapH, color) {
-  const imageData = new ImageData(mapW, mapH);
-  const [r, g, b] = color;
+// Convert fetched elements to points in full-map pixel space (bbox = whole work area)
+function elementsToPoints(elements, bbox, mapW, mapH) {
   const points = [];
-
-  const setPixel = (px, py) => {
-    if (px < 0 || py < 0 || px >= mapW || py >= mapH) return;
-    const i = (py * mapW + px) * 4;
-    imageData.data[i] = r; imageData.data[i + 1] = g; imageData.data[i + 2] = b; imageData.data[i + 3] = 255;
-  };
-
   for (const el of elements) {
     const center = elementCentroid(el);
     if (!center) continue;
     const pos = latLonToPixel(center.lat, center.lon, bbox, mapW, mapH);
     if (!pos) continue;
-    const { px, py } = pos;
-
-    // Single pixel dot at exact coordinates
-    setPixel(px, py);
-
     const name = el.tags?.name || el.tags?.['name:en'] || '';
-    points.push({ px, py, name, osmId: el.id });
+    points.push({ px: pos.px, py: pos.py, name, osmId: el.id });
   }
+  return points;
+}
 
-  return { imageData, points };
+// Render an array of points into a pixel-perfect ImageData
+function pointsToImageData(points, mapW, mapH, color) {
+  const imageData = new ImageData(mapW, mapH);
+  const [r, g, b] = color;
+  for (const p of points) {
+    if (p.px < 0 || p.py < 0 || p.px >= mapW || p.py >= mapH) continue;
+    const i = (p.py * mapW + p.px) * 4;
+    imageData.data[i] = r; imageData.data[i + 1] = g; imageData.data[i + 2] = b; imageData.data[i + 3] = 255;
+  }
+  return imageData;
+}
+
+function renderToImageData(elements, bbox, mapW, mapH, color) {
+  const points = elementsToPoints(elements, bbox, mapW, mapH);
+  return { imageData: pointsToImageData(points, mapW, mapH, color), points };
 }
 
 function imageDataToDataUrl(imageData) {
@@ -161,7 +164,7 @@ function downloadText(text, filename) {
 // ── Component ────────────────────────────────────────────────────────────────
 export default function OsmHistoricTagFetcher({
   bbox, mapW, mapH, onAssetReady, onToggleOverlay, visibleOverlays = {},
-  tagStates, onTagStatesChange,
+  tagStates, onTagStatesChange, tiles = [],
 }) {
   // tagStates is lifted to parent; use local fallback if not provided
   const [localTagStates, setLocalTagStates] = useState({});
@@ -171,65 +174,162 @@ export default function OsmHistoricTagFetcher({
   const [expanded, setExpanded] = useState(true);
   const [openGroups, setOpenGroups] = useState({});
   const [search, setSearch] = useState('');
+  // 'whole' = one Overpass query for the entire bbox; 'tile' = fetch per OSM tile
+  const [fetchMode, setFetchMode] = useState('whole');
+  // Tag key armed to fetch on the next map-tile click (per-tile mode)
+  const [pendingTagKey, setPendingTagKey] = useState(null);
 
   const bboxStr = bbox ? `${bbox.south},${bbox.west},${bbox.north},${bbox.east}` : '';
   const getKey = t => `${t.key}=${t.value}`;
 
   const anyRunning = Object.values(effectiveTagStates).some(s => s?.status === 'running');
 
+  // Keep a ref to the latest tag states so per-tile fetches can merge without stale closures
+  const tagStatesRef = useRef(effectiveTagStates);
+  useEffect(() => { tagStatesRef.current = effectiveTagStates; }, [effectiveTagStates]);
+
+  // Commit a finished tag state (points + imageData) and register download assets
+  const commitState = (k, tag, points, imageData, count, color) => {
+    setTagStates(s => {
+      const next = { ...s, [k]: { status: 'done', count, imageData, points, color, label: tag.label } };
+      if (onAssetReady) {
+        onAssetReady({
+          filename: `${k.replace('=', '_')}.png`,
+          type: 'png',
+          getData: () => imageDataToDataUrl(imageData),
+        });
+        const allDone = Object.entries(next).filter(([, st]) => st?.status === 'done');
+        const lines = ['; OSM Historic Features — Bulk Export', `; Map size: ${mapW}x${mapH}`, ''];
+        allDone.forEach(([dk, ds]) => {
+          lines.push(`; === ${ds.label} (${dk}) — ${ds.count} features ===`);
+          (ds.points || []).forEach(p => {
+            const name = p.name ? `"${p.name}"` : '"(no name)"';
+            lines.push(`${ds.label}; x${p.px}; y${p.py}; name: ${name}`);
+          });
+          lines.push('');
+        });
+        onAssetReady({ filename: 'historic_features.txt', type: 'txt', getData: () => lines.join('\n') });
+      }
+      return next;
+    });
+  };
+
+  // Whole-area fetch (one Overpass query for the entire bbox)
   const fetchTag = async (tag) => {
     if (!bbox || !mapW || !mapH) return;
     const k = getKey(tag);
     const color = tagColor(tag.key, tag.value);
     setTagStates(s => ({ ...s, [k]: { ...(s[k] ?? {}), status: 'running', color } }));
     setFetchProgress(p => ({ ...p, [k]: 0 }));
-
     let pct = 0;
     const interval = setInterval(() => {
       pct = Math.min(pct + Math.random() * 8 + 2, 90);
       setFetchProgress(p => ({ ...p, [k]: pct }));
     }, 300);
-
     try {
       const elements = await fetchElements(tag.key, tag.value, bboxStr);
       clearInterval(interval);
       setFetchProgress(p => ({ ...p, [k]: 100 }));
       const { imageData, points } = renderToImageData(elements, bbox, mapW, mapH, color);
-      const newState = { status: 'done', count: elements.length, imageData, points, color, label: tag.label };
-      setTagStates(s => {
-        const next = { ...s, [k]: newState };
-        // Register individual PNG asset
-        if (onAssetReady) {
-          onAssetReady({
-            filename: `${k.replace('=', '_')}.png`,
-            type: 'png',
-            getData: () => imageDataToDataUrl(imageData),
-          });
-          // Re-register bulk TXT with all done states so far
-          const allDone = Object.entries(next).filter(([, st]) => st?.status === 'done');
-          const lines = ['; OSM Historic Features — Bulk Export', `; Map size: ${mapW}x${mapH}`, ''];
-          allDone.forEach(([dk, ds]) => {
-            lines.push(`; === ${ds.label} (${dk}) — ${ds.count} features ===`);
-            (ds.points || []).forEach(p => {
-              const name = p.name ? `"${p.name}"` : '"(no name)"';
-              lines.push(`${ds.label}; x${p.px}; y${p.py}; name: ${name}`);
-            });
-            lines.push('');
-          });
-          onAssetReady({
-            filename: 'historic_features.txt',
-            type: 'txt',
-            getData: () => lines.join('\n'),
-          });
-        }
-        return next;
-      });
+      commitState(k, tag, points, imageData, elements.length, color);
     } catch (e) {
       clearInterval(interval);
       setFetchProgress(p => ({ ...p, [k]: 0 }));
       setTagStates(s => ({ ...s, [k]: { ...s[k], status: `error: ${e.message}` } }));
     }
   };
+
+  // Merge a tile's worth of points into an existing tag's overlay (dedup by OSM id)
+  const mergeTilePoints = (k, color, newPoints, tileCount) => {
+    const existing = tagStatesRef.current[k];
+    const existingPoints = existing?.points || [];
+    const seen = new Set(existingPoints.map(p => p.osmId));
+    const merged = [...existingPoints];
+    for (const p of newPoints) {
+      if (!seen.has(p.osmId)) { seen.add(p.osmId); merged.push(p); }
+    }
+    const imageData = pointsToImageData(merged, mapW, mapH, color);
+    const totalCount = (existing?.count || 0) + tileCount;
+    return { merged, imageData, totalCount };
+  };
+
+  // Fetch a single tag for a single tile bbox, merging into the existing overlay
+  const fetchTagForTile = async (tag, tile) => {
+    if (!bbox || !mapW || !mapH) return;
+    const k = getKey(tag);
+    const color = tagColor(tag.key, tag.value);
+    const tileBboxStr = `${tile.south},${tile.west},${tile.north},${tile.east}`;
+    setTagStates(s => ({ ...s, [k]: { ...(s[k] ?? {}), status: 'running', color } }));
+    setFetchProgress(p => ({ ...p, [k]: 0 }));
+    let pct = 0;
+    const interval = setInterval(() => {
+      pct = Math.min(pct + Math.random() * 8 + 2, 90);
+      setFetchProgress(p => ({ ...p, [k]: pct }));
+    }, 300);
+    try {
+      const elements = await fetchElements(tag.key, tag.value, tileBboxStr);
+      clearInterval(interval);
+      setFetchProgress(p => ({ ...p, [k]: 100 }));
+      const newPoints = elementsToPoints(elements, bbox, mapW, mapH);
+      const { merged, imageData, totalCount } = mergeTilePoints(k, color, newPoints, elements.length);
+      commitState(k, tag, merged, imageData, totalCount, color);
+    } catch (e) {
+      clearInterval(interval);
+      setFetchProgress(p => ({ ...p, [k]: 0 }));
+      setTagStates(s => ({ ...s, [k]: { ...s[k], status: `error: ${e.message}` } }));
+    }
+  };
+
+  // Fetch a single tag for every tile sequentially (reliable for large areas)
+  const fetchAllTiles = async (tag) => {
+    if (!bbox || !mapW || !mapH || !tiles?.length) return;
+    const k = getKey(tag);
+    const color = tagColor(tag.key, tag.value);
+    setTagStates(s => ({ ...s, [k]: { ...(s[k] ?? {}), status: 'running', color } }));
+    setFetchProgress(p => ({ ...p, [k]: 0 }));
+    const interval = setInterval(() => {
+      setFetchProgress(p => ({ ...p, [k]: Math.min((p[k] ?? 0) + 1.5, 95) }));
+    }, 300);
+    try {
+      const existing = tagStatesRef.current[k];
+      const merged = [...(existing?.points || [])];
+      const seen = new Set(merged.map(p => p.osmId));
+      let totalCount = existing?.count || 0;
+      for (let i = 0; i < tiles.length; i++) {
+        const tile = tiles[i];
+        const tileBboxStr = `${tile.south},${tile.west},${tile.north},${tile.east}`;
+        const elements = await fetchElements(tag.key, tag.value, tileBboxStr);
+        const pts = elementsToPoints(elements, bbox, mapW, mapH);
+        for (const p of pts) {
+          if (!seen.has(p.osmId)) { seen.add(p.osmId); merged.push(p); }
+        }
+        totalCount += elements.length;
+        setFetchProgress(p => ({ ...p, [k]: Math.round(((i + 1) / tiles.length) * 100) }));
+      }
+      clearInterval(interval);
+      setFetchProgress(p => ({ ...p, [k]: 100 }));
+      const imageData = pointsToImageData(merged, mapW, mapH, color);
+      commitState(k, tag, merged, imageData, totalCount, color);
+    } catch (e) {
+      clearInterval(interval);
+      setFetchProgress(p => ({ ...p, [k]: 0 }));
+      setTagStates(s => ({ ...s, [k]: { ...s[k], status: `error: ${e.message}` } }));
+    }
+  };
+
+  // Listen for tile clicks from the map (per-tile mode): fetch the armed tag for that tile
+  useEffect(() => {
+    const handler = (e) => {
+      const { tile } = e.detail || {};
+      if (!tile || !pendingTagKey) return;
+      const tag = ALL_TAG_GROUPS.flatMap(g => g.tags).find(t => getKey(t) === pendingTagKey);
+      if (!tag) return;
+      setPendingTagKey(null);
+      fetchTagForTile(tag, tile);
+    };
+    window.addEventListener('historic-tile-clicked', handler);
+    return () => window.removeEventListener('historic-tile-clicked', handler);
+  }, [pendingTagKey]);
 
   const downloadTag = (k, label) => {
     const st = tagStates[k];
@@ -294,6 +394,29 @@ export default function OsmHistoricTagFetcher({
           <p className="text-[9px] text-slate-500 pt-1.5 leading-relaxed">
             Fetch OSM historic features as pixel-perfect transparent PNG layers sized exactly to your regions map. Download individually or bulk-export all PNGs + a coordinate text file.
           </p>
+
+          {/* Fetch mode toggle */}
+          <div className="flex items-center gap-1 bg-slate-800/60 rounded p-0.5">
+            {['whole', 'tile'].map(m => (
+              <button key={m} onClick={() => setFetchMode(m)}
+                className={`flex-1 px-2 py-1 rounded text-[9px] font-semibold transition-colors ${
+                  fetchMode === m ? 'bg-blue-700 text-white' : 'text-slate-400 hover:text-slate-200'
+                }`}>
+                {m === 'whole' ? 'Whole area' : 'Per tile'}
+              </button>
+            ))}
+          </div>
+          {fetchMode === 'tile' && (
+            <p className="text-[9px] text-amber-300 leading-relaxed">
+              Click a tag's <strong>↓</strong> button, then click a tile on the map to fetch that tile only. Results accumulate. Use <strong>⟳</strong> to fetch every tile sequentially.
+            </p>
+          )}
+          {pendingTagKey && (
+            <div className="flex items-center justify-between gap-1 bg-amber-900/30 border border-amber-600/40 rounded px-2 py-1">
+              <span className="text-[9px] text-amber-300">Click a tile to fetch {pendingTagKey}…</span>
+              <button onClick={() => setPendingTagKey(null)} className="text-[9px] text-amber-200 hover:text-white">Cancel</button>
+            </div>
+          )}
 
           {/* Bulk download */}
           {doneCount > 0 && (
@@ -395,12 +518,25 @@ export default function OsmHistoricTagFetcher({
                              </button>
                             )}
 
-                            {/* Fetch button */}
+                            {/* Fetch all tiles (per-tile mode only) */}
+                            {fetchMode === 'tile' && (
+                              <button
+                                onClick={() => fetchAllTiles(tag)}
+                                disabled={anyRunning || !bbox || !mapW || !tiles.length}
+                                title="Fetch every tile sequentially"
+                                className="shrink-0 flex items-center justify-center w-5 h-5 rounded bg-indigo-800/40 text-indigo-300 hover:bg-indigo-700/50 transition-colors disabled:opacity-30 text-[9px] font-bold">
+                                ⟳
+                              </button>
+                            )}
+                            {/* Fetch button — whole area, or arm for a tile click in per-tile mode */}
                             <button
-                              onClick={() => fetchTag(tag)}
+                              onClick={() => fetchMode === 'tile' ? setPendingTagKey(k) : fetchTag(tag)}
                               disabled={anyRunning || !bbox || !mapW}
-                              title={isDone ? 'Re-fetch' : 'Fetch from OSM'}
+                              title={fetchMode === 'tile'
+                                ? (pendingTagKey === k ? 'Click a tile on the map' : 'Fetch a single tile')
+                                : (isDone ? 'Re-fetch' : 'Fetch from OSM')}
                               className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors disabled:opacity-30 text-[8px] font-bold ${
+                                pendingTagKey === k ? 'bg-amber-600 text-white animate-pulse' :
                                 isDone ? 'bg-green-800/40 text-green-300 hover:bg-green-700/50' :
                                 isErr  ? 'bg-red-800/40 text-red-300 hover:bg-red-700/50' :
                                          'bg-blue-800/40 text-blue-300 hover:bg-blue-700/50'
