@@ -207,6 +207,8 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
   const [hiddenTags, setHiddenTags] = useState(new Set());
   // custom RGB input values for the currently-open picker
   const [customRgb, setCustomRgb] = useState({ r: '', g: '', b: '' });
+  // Tile chosen for per-tile fetching; null = fetch all tiles (default)
+  const [selectedTileIndex, setSelectedTileIndex] = useState(null);
 
   const hasLayer = !!groundLayer?.imageData;
   const bboxStr = bbox ? `${bbox.south},${bbox.west},${bbox.north},${bbox.east}` : '';
@@ -226,6 +228,9 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
   // ref to always-current groundLayer so the tiled loop can read latest painted state
   const groundLayerRef = React.useRef(groundLayer);
   React.useEffect(() => { groundLayerRef.current = groundLayer; }, [groundLayer]);
+  // ref to always-current tag states so single-tile fetches can merge without stale closures
+  const tagStatesRef = React.useRef(tagStates);
+  React.useEffect(() => { tagStatesRef.current = tagStates; }, [tagStates]);
   // store the original ground layer before any tags were applied (for repaint on toggle)
   const baseLayerRef = React.useRef(null);
   React.useEffect(() => {
@@ -339,6 +344,39 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
     repaintFromBase(hiddenTags, newTagStates);
   };
 
+  /** Apply a single tag to a single tile, merging into any existing elements. */
+  const applyTagToTile = async (tag, tileIndex) => {
+    if (!hasLayer || !bbox) return;
+    const k = getTagKey(tag);
+    const allTiles = computeTiles(bbox);
+    const tile = allTiles[tileIndex];
+    if (!tile) return;
+    const gtId = tagStatesRef.current[k]?.gtId ?? tag.defaultGt;
+    const color = tagStatesRef.current[k]?.customColor ?? GT[gtId] ?? [96, 160, 64];
+
+    // Capture base layer before first tag application
+    if (Object.keys(tagStatesRef.current).filter(tk => tagStatesRef.current[tk]?.status?.startsWith('done')).length === 0) {
+      baseLayerRef.current = groundLayerRef.current?.imageData ?? null;
+    }
+
+    setTagStates(s => ({ ...s, [k]: { ...s[k], status: 'running', gtId } }));
+    setFetchProgress(p => ({ ...p, [k]: { pct: 0, tilesDone: 0, tilesTotal: 1 } }));
+
+    const elements = await fetchTile(tag.key, tag.value, tile);
+    setFetchProgress(p => ({ ...p, [k]: { pct: 100, tilesDone: 1, tilesTotal: 1 } }));
+
+    const prev = tagStatesRef.current[k];
+    const prevTileElements = prev?.tileElements ? [...prev.tileElements] : new Array(allTiles.length).fill(null);
+    while (prevTileElements.length < allTiles.length) prevTileElements.push(null);
+    prevTileElements[tileIndex] = elements;
+    const mergedElements = prevTileElements.flat();
+
+    const newState = { ...prev, status: `done ${mergedElements.length}`, elements: mergedElements, tileElements: prevTileElements, gtId };
+    const newTagStates = { ...tagStatesRef.current, [k]: newState };
+    setTagStates(newTagStates);
+    repaintFromBase(hiddenTags, newTagStates);
+  };
+
   // Listen for tile re-fetch requests from the map overlay
   const refetchTileRef = React.useRef(refetchTile);
   React.useEffect(() => { refetchTileRef.current = refetchTile; });
@@ -409,6 +447,35 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
           <p className="text-[9px] text-slate-500 pt-1.5 leading-relaxed">
             Click a tag to assign a ground type, then apply it to paint those OSM polygons onto the ground layer.
           </p>
+
+          {/* Tile selector — pick a single tile to fetch, or leave on "All tiles" */}
+          {hasLayer && bbox && (() => {
+            const allTiles = computeTiles(bbox);
+            if (allTiles.length <= 1) return null;
+            return (
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-[9px] text-slate-400 shrink-0">Fetch:</label>
+                  <select
+                    value={selectedTileIndex ?? ''}
+                    onChange={e => setSelectedTileIndex(e.target.value === '' ? null : Number(e.target.value))}
+                    className="flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-[10px] text-slate-200 focus:outline-none focus:border-amber-500">
+                    <option value="">All tiles ({allTiles.length})</option>
+                    {allTiles.map((t, i) => (
+                      <option key={i} value={i}>
+                        Tile {i + 1} — N{t.north.toFixed(2)} S{t.south.toFixed(2)} W{t.west.toFixed(2)} E{t.east.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedTileIndex != null && (
+                  <p className="text-[9px] text-amber-300 leading-relaxed">
+                    Single-tile mode: Apply fetches only Tile {selectedTileIndex + 1}. Results merge with previously fetched tiles.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Search */}
           <input
@@ -504,12 +571,15 @@ export default function OsmTagOverlayEditor({ bbox, groundLayer, onLayerUpdate, 
                                 className={`w-4 h-4 rounded-sm border shrink-0 transition-all ${isPickerOpen ? 'border-amber-400 ring-1 ring-amber-400/50' : 'border-slate-600 hover:border-slate-400'}`}
                                 style={{ backgroundColor: tagStates[k]?.customColor ? `rgb(${tagStates[k].customColor.join(',')})` : (GT_COLOR[gtId] ?? '#888') }}
                               />
-                              {/* Apply / Re-apply button */}
+                              {/* Apply / Re-apply button — single tile if selected, else all tiles */}
                               <button
-                                onClick={() => applyTag(tag)}
+                                onClick={() => selectedTileIndex != null ? applyTagToTile(tag, selectedTileIndex) : applyTag(tag)}
                                 disabled={anyRunning || !hasLayer || !bbox}
-                                title={isDone ? 'Re-apply' : 'Apply to ground layer'}
+                                title={selectedTileIndex != null
+                                  ? `Apply Tile ${selectedTileIndex + 1} only`
+                                  : (isDone ? 'Re-apply (all tiles)' : 'Apply to ground layer')}
                                 className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors disabled:opacity-30 ${
+                                  selectedTileIndex != null ? 'bg-indigo-800/40 text-indigo-300 hover:bg-indigo-700/50' :
                                   isDone ? 'bg-green-800/40 text-green-300 hover:bg-green-700/50' :
                                   isErr  ? 'bg-red-800/40 text-red-300 hover:bg-red-700/50' :
                                            'bg-blue-800/40 text-blue-300 hover:bg-blue-700/50'
