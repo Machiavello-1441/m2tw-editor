@@ -178,6 +178,8 @@ export default function OsmHistoricTagFetcher({
   const [fetchMode, setFetchMode] = useState('whole');
   // Tag key armed to fetch on the next map-tile click (per-tile mode)
   const [pendingTagKey, setPendingTagKey] = useState(null);
+  // Tile chosen from the dropdown to fetch directly (per-tile mode); null = click map
+  const [selectedTileIndex, setSelectedTileIndex] = useState(null);
 
   const bboxStr = bbox ? `${bbox.south},${bbox.west},${bbox.north},${bbox.east}` : '';
   const getKey = t => `${t.key}=${t.value}`;
@@ -407,9 +409,26 @@ export default function OsmHistoricTagFetcher({
             ))}
           </div>
           {fetchMode === 'tile' && (
-            <p className="text-[9px] text-amber-300 leading-relaxed">
-              Click a tag's <strong>↓</strong> button, then click a tile on the map to fetch that tile only. Results accumulate. Use <strong>⟳</strong> to fetch every tile sequentially.
-            </p>
+            <>
+              <p className="text-[9px] text-amber-300 leading-relaxed">
+                Pick a tile below, then click a tag's <strong>↓</strong> to fetch that tile. Or leave it on "click map" and click a tile on the map. Results accumulate. Use <strong>⟳</strong> to fetch every tile sequentially.
+              </p>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[9px] text-slate-400 shrink-0">Tile:</label>
+                <select
+                  value={selectedTileIndex ?? ''}
+                  onChange={e => setSelectedTileIndex(e.target.value === '' ? null : Number(e.target.value))}
+                  disabled={!tiles.length}
+                  className="flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-[10px] text-slate-200 focus:outline-none focus:border-amber-500 disabled:opacity-40">
+                  <option value="">click map…</option>
+                  {tiles.map((t, i) => (
+                    <option key={i} value={i}>
+                      Tile {i + 1} — N{t.north.toFixed(2)} S{t.south.toFixed(2)} W{t.west.toFixed(2)} E{t.east.toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
           {pendingTagKey && (
             <div className="flex items-center justify-between gap-1 bg-amber-900/30 border border-amber-600/40 rounded px-2 py-1">
@@ -528,12 +547,19 @@ export default function OsmHistoricTagFetcher({
                                 ⟳
                               </button>
                             )}
-                            {/* Fetch button — whole area, or arm for a tile click in per-tile mode */}
+                            {/* Fetch button — whole area, or fetch the selected tile / arm for map click in per-tile mode */}
                             <button
-                              onClick={() => fetchMode === 'tile' ? setPendingTagKey(k) : fetchTag(tag)}
+                              onClick={() => {
+                                if (fetchMode !== 'tile') { fetchTag(tag); return; }
+                                if (selectedTileIndex != null && tiles[selectedTileIndex]) {
+                                  fetchTagForTile(tag, tiles[selectedTileIndex]);
+                                } else {
+                                  setPendingTagKey(k);
+                                }
+                              }}
                               disabled={anyRunning || !bbox || !mapW}
                               title={fetchMode === 'tile'
-                                ? (pendingTagKey === k ? 'Click a tile on the map' : 'Fetch a single tile')
+                                ? (selectedTileIndex != null ? `Fetch tile ${selectedTileIndex + 1}` : (pendingTagKey === k ? 'Click a tile on the map' : 'Arm, then click a tile'))
                                 : (isDone ? 'Re-fetch' : 'Fetch from OSM')}
                               className={`shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors disabled:opacity-30 text-[8px] font-bold ${
                                 pendingTagKey === k ? 'bg-amber-600 text-white animate-pulse' :
