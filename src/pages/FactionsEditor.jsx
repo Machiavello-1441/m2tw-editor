@@ -10,6 +10,7 @@ import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsB
 import DuplicateFactionModal from '@/components/factions/DuplicateFactionModal';
 import FactionZipExport from '@/components/factions/FactionZipExport';
 import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership } from '@/components/factions/factionBulkDuplicate';
+import { getFile, setFile } from '@/lib/bigFileStore';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import DescriptionsTab from '@/components/factions/DescriptionsTab';
 import MiscTab, { hasFactionNavyEntry, insertFactionNavyEntry } from '@/components/factions/MiscTab';
@@ -21,7 +22,7 @@ const LS_MENU_STRINGS = 'm2tw_menu_strings_bin';
 /** Inject {UI_FACTION_X} and {UI_FACTION_X_DESCRIPTION} into menu strings if missing */
 function injectMenuStringsForFaction(factionName, displayName) {
   try {
-    const raw = localStorage.getItem(LS_MENU_STRINGS);
+    const raw = getFile(LS_MENU_STRINGS);
     if (!raw) return;
     const parsed = JSON.parse(raw);
     const entries = parsed.entries || [];
@@ -38,7 +39,7 @@ function injectMenuStringsForFaction(factionName, displayName) {
       changed = true;
     }
     if (changed) {
-      localStorage.setItem(LS_MENU_STRINGS, JSON.stringify({ ...parsed, entries }));
+      setFile(LS_MENU_STRINGS, JSON.stringify({ ...parsed, entries }));
       window.dispatchEvent(new CustomEvent('menu-strings-updated'));
     }
   } catch {}
@@ -46,11 +47,11 @@ function injectMenuStringsForFaction(factionName, displayName) {
 
 function autoInsertNavyEntry(name) {
   try {
-    const data = localStorage.getItem(LS_OFFMAP);
+    const data = getFile(LS_OFFMAP);
     if (!data) return;
     if (hasFactionNavyEntry(data, name)) return;
     const updated = insertFactionNavyEntry(data, name);
-    localStorage.setItem(LS_OFFMAP, updated);
+    setFile(LS_OFFMAP, updated);
     window.dispatchEvent(new CustomEvent('offmap-models-updated'));
   } catch {}
 }
@@ -614,9 +615,9 @@ export default function FactionsEditor() {
         if (list.length) localStorage.setItem(LS_UNITS, JSON.stringify(list));
       }
       // Banners — Home writes raw XML to m2tw_banners_file; BannersTab reads BANNERS_GLOBAL_KEY.
-      const bannersRaw = localStorage.getItem('m2tw_banners_file');
-      if (bannersRaw && !localStorage.getItem(BANNERS_GLOBAL_KEY)) {
-        localStorage.setItem(BANNERS_GLOBAL_KEY, bannersRaw);
+      const bannersRaw = getFile('m2tw_banners_file');
+      if (bannersRaw && !getFile(BANNERS_GLOBAL_KEY)) {
+        setFile(BANNERS_GLOBAL_KEY, bannersRaw);
       }
       // Strings.bin — Home stores every .strings.bin in the shared store (keyed by
       // filename). Build the global keys this editor expects from the relevant entries.
@@ -625,18 +626,18 @@ export default function FactionsEditor() {
         const key = Object.keys(store).find((k) => k.toLowerCase().includes(needle));
         return key ? store[key] : null;
       };
-      if (!localStorage.getItem('m2tw_strings_bin_global')) {
+      if (!getFile('m2tw_strings_bin_global')) {
         const expanded = findBin('expanded');
         if (expanded?.entries?.length) {
-          localStorage.setItem('m2tw_strings_bin_global', JSON.stringify({
+          setFile('m2tw_strings_bin_global', JSON.stringify({
             entries: expanded.entries, magic1: expanded.magic1 ?? 2, magic2: expanded.magic2 ?? 2048,
           }));
         }
       }
-      if (!localStorage.getItem(LS_MENU_STRINGS)) {
+      if (!getFile(LS_MENU_STRINGS)) {
         const menu = findBin('menu');
         if (menu?.entries?.length) {
-          localStorage.setItem(LS_MENU_STRINGS, JSON.stringify({
+          setFile(LS_MENU_STRINGS, JSON.stringify({
             entries: menu.entries, magic1: menu.magic1 ?? 2, magic2: menu.magic2 ?? 2048,
           }));
         }
@@ -651,9 +652,9 @@ export default function FactionsEditor() {
     try {const r = localStorage.getItem(LS_CULT);if (r) setCultures(JSON.parse(r));} catch {}
     try {const r = localStorage.getItem(LS_REL);if (r) setReligions(JSON.parse(r));} catch {}
     try {const r = localStorage.getItem(LS_UNITS);if (r) setEduUnits(JSON.parse(r));} catch {}
-    try {if (localStorage.getItem(BANNERS_GLOBAL_KEY)) setBannersLoaded(true);} catch {}
-    try {if (localStorage.getItem('m2tw_strings_bin_global')) setStringsLoaded(true);} catch {}
-    try {if (localStorage.getItem(LS_MENU_STRINGS)) setMenuStringsLoaded(true);} catch {}
+    try {if (getFile(BANNERS_GLOBAL_KEY)) setBannersLoaded(true);} catch {}
+    try {if (getFile('m2tw_strings_bin_global')) setStringsLoaded(true);} catch {}
+    try {if (getFile(LS_MENU_STRINGS)) setMenuStringsLoaded(true);} catch {}
   }, []);
 
   const loadFactions = useCallback(async (e) => {
@@ -698,7 +699,7 @@ export default function FactionsEditor() {
   const loadBannersXml = useCallback(async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
-    localStorage.setItem(BANNERS_GLOBAL_KEY, text);
+    setFile(BANNERS_GLOBAL_KEY, text);
     setBannersLoaded(true);
     window.dispatchEvent(new CustomEvent('banners-xml-loaded'));
     e.target.value = '';
@@ -709,7 +710,7 @@ export default function FactionsEditor() {
     const buf = await file.arrayBuffer();
     const parsed = parseStringsBin(buf);
     if (parsed?.entries) {
-      localStorage.setItem('m2tw_strings_bin_global', JSON.stringify({
+      setFile('m2tw_strings_bin_global', JSON.stringify({
         entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2
       }));
       setStringsLoaded(true);
@@ -723,7 +724,7 @@ export default function FactionsEditor() {
     const buf = await file.arrayBuffer();
     const parsed = parseStringsBin(buf);
     if (parsed?.entries) {
-      localStorage.setItem(LS_MENU_STRINGS, JSON.stringify({
+      setFile(LS_MENU_STRINGS, JSON.stringify({
         entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2
       }));
       setMenuStringsLoaded(true);
@@ -930,7 +931,7 @@ export default function FactionsEditor() {
           {factions && <FactionZipExport getFactionsText={() => serialiseDescrSmFactions(factions)} />}
           {bannersLoaded && (
             <Button variant="outline" size="sm" className="text-[10px] h-7 text-slate-200 border-slate-600 hover:bg-slate-700" onClick={() => {
-              const data = localStorage.getItem(BANNERS_GLOBAL_KEY);
+              const data = getFile(BANNERS_GLOBAL_KEY);
               if (!data) return;
               const blob = new Blob([data], { type: 'text/plain' });
               const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'descr_banners_new.xml'; a.click();
@@ -941,7 +942,7 @@ export default function FactionsEditor() {
           {menuStringsLoaded && (
             <Button variant="outline" size="sm" className="text-[10px] h-7 text-slate-200 border-slate-600 hover:bg-slate-700" onClick={() => {
               try {
-                const raw = localStorage.getItem(LS_MENU_STRINGS);
+                const raw = getFile(LS_MENU_STRINGS);
                 if (!raw) return;
                 const { entries, magic1, magic2 } = JSON.parse(raw);
                 const buf = encodeStringsBin(entries, magic1, magic2);

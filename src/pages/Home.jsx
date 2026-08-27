@@ -10,6 +10,7 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
+import { setFile } from '@/lib/bigFileStore';
 import DataFolderPicker from '../components/home/DataFolderPicker';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
@@ -487,7 +488,7 @@ export default function Home() {
         loadEDB(text, file.name);
       } else if (storeKeys[key]) {
         try {
-          localStorage.setItem(storeKeys[key], text);
+          setFile(storeKeys[key], text);
           if (nameKeys[key]) localStorage.setItem(nameKeys[key], file.name);
           // Also store in sessionStorage for editors that need it
           if (key === 'religions') sessionStorage.setItem('m2tw_religions_raw', text);
@@ -560,7 +561,7 @@ export default function Home() {
         // Store EDU in localStorage for campaign map editor
         if (key === 'unit') {
           try {
-            localStorage.setItem('m2tw_units_file', text);
+            setFile('m2tw_units_file', text);
             sessionStorage.setItem('m2tw_edu_raw', text);
           } catch {}
         }

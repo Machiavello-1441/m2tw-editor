@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Upload, Download, Copy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsBinCodec';
+import { getFile, setFile } from '@/lib/bigFileStore';
 
 const GLOBAL_STRINGS_KEY = 'm2tw_strings_bin_global';
 
@@ -20,7 +21,7 @@ export default function DescriptionsTab({ factionName }) {
       // Store all entries globally
       setAllEntries(parsed.entries);
       setMagicValues({ magic1: parsed.magic1, magic2: parsed.magic2 });
-      localStorage.setItem(GLOBAL_STRINGS_KEY, JSON.stringify({
+      setFile(GLOBAL_STRINGS_KEY, JSON.stringify({
         entries: parsed.entries,
         magic1: parsed.magic1,
         magic2: parsed.magic2
@@ -49,7 +50,7 @@ export default function DescriptionsTab({ factionName }) {
     entry.key === key ? { ...entry, value: newValue } : entry
     );
     setAllEntries(updatedEntries);
-    localStorage.setItem(GLOBAL_STRINGS_KEY, JSON.stringify({
+    setFile(GLOBAL_STRINGS_KEY, JSON.stringify({
       entries: updatedEntries,
       magic1: magicValues.magic1,
       magic2: magicValues.magic2
@@ -60,7 +61,7 @@ export default function DescriptionsTab({ factionName }) {
     // Load global strings.bin data
     const loadStrings = () => {
       try {
-        const stored = localStorage.getItem(GLOBAL_STRINGS_KEY);
+        const stored = getFile(GLOBAL_STRINGS_KEY);
         if (stored) {
           const { entries, magic1, magic2 } = JSON.parse(stored);
           setAllEntries(entries);
@@ -142,7 +143,7 @@ export default function DescriptionsTab({ factionName }) {
     const updated = [...filtered, ...newEntries];
     setAllEntries(updated);
     setStringsBinEntries(newEntries);
-    localStorage.setItem(GLOBAL_STRINGS_KEY, JSON.stringify({
+    setFile(GLOBAL_STRINGS_KEY, JSON.stringify({
       entries: updated, magic1: magicValues.magic1, magic2: magicValues.magic2
     }));
     window.dispatchEvent(new CustomEvent('strings-bin-updated'));

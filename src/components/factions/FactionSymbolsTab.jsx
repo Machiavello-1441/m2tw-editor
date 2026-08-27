@@ -7,6 +7,7 @@ const SYMBOL_GROUPS = [
   {
     label: 'Symbol 24',
     folder: 'data\\menu\\symbols\\fe_buttons_24',
+    base: 24,
     slots: [
       { key: 'symbol24',        suffix: '',        filename: (f) => `symbol24_${f}.tga` },
       { key: 'symbol24_grey',   suffix: '_grey',   filename: (f) => `symbol24_${f}_grey.tga` },
@@ -17,6 +18,7 @@ const SYMBOL_GROUPS = [
   {
     label: 'Symbol 48',
     folder: 'data\\menu\\symbols\\fe_buttons_48',
+    base: 48,
     slots: [
       { key: 'symbol48',        suffix: '',        filename: (f) => `symbol48_${f}.tga` },
       { key: 'symbol48_grey',   suffix: '_grey',   filename: (f) => `symbol48_${f}_grey.tga` },
@@ -34,13 +36,14 @@ const SYMBOL_GROUPS = [
   {
     label: 'Symbol 80',
     folder: 'data\\menu\\symbols\\fe_symbols_80',
+    base: 80,
     slots: [
       { key: 'symbol80', suffix: '', filename: (f) => `${f}.tga` },
     ],
   },
 ];
 
-function SymbolSlot({ label, filename, imageUrl, onLoad }) {
+function SymbolSlot({ label, filename, imageUrl, onLoad, size }) {
   const inputRef = useRef();
 
   const handleFile = useCallback(async (e) => {
@@ -53,10 +56,10 @@ function SymbolSlot({ label, filename, imageUrl, onLoad }) {
   }, [onLoad]);
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center gap-1.5" style={size ? { width: Math.max(size, 64) } : undefined}>
       <div
-        className="relative w-full aspect-square rounded border border-slate-600 bg-slate-900 flex items-center justify-center cursor-pointer group overflow-hidden"
-        style={{ minWidth: 48, minHeight: 48 }}
+        className={`relative rounded border border-slate-600 bg-slate-900 flex items-center justify-center cursor-pointer group overflow-hidden ${size ? '' : 'w-full aspect-square'}`}
+        style={size ? { width: size, height: size } : { minWidth: 48, minHeight: 48 }}
         onClick={() => inputRef.current?.click()}
         title={`Load ${filename}`}
       >
@@ -78,10 +81,14 @@ function SymbolSlot({ label, filename, imageUrl, onLoad }) {
 export default function FactionSymbolsTab({ factionName }) {
   // Store dataURLs keyed by slot key
   const [images, setImages] = useState({});
+  // Per-group preview size multiplier (default x4)
+  const [multipliers, setMultipliers] = useState({});
 
   const setImage = useCallback((key, url) => {
     setImages(prev => ({ ...prev, [key]: url }));
   }, []);
+
+  const getMult = (label) => multipliers[label] ?? 4;
 
   return (
     <div className="space-y-5">
@@ -94,11 +101,25 @@ export default function FactionSymbolsTab({ factionName }) {
 
       {SYMBOL_GROUPS.map((group) => (
         <div key={group.label} className="space-y-2">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-300">{group.label}</p>
-            <p className="text-[9px] text-slate-500 font-mono">{group.folder}</p>
+          <div className="flex items-end justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold text-slate-300">{group.label}</p>
+              <p className="text-[9px] text-slate-500 font-mono">{group.folder}</p>
+            </div>
+            {group.base && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[9px] text-slate-500">Preview size</span>
+                <select
+                  value={getMult(group.label)}
+                  onChange={(e) => setMultipliers((m) => ({ ...m, [group.label]: +e.target.value }))}
+                  className="h-6 text-[10px] px-1 rounded border border-slate-600 bg-slate-800 text-slate-200"
+                >
+                  {[1, 2, 3, 4, 6, 8].map((x) => <option key={x} value={x}>x{x}</option>)}
+                </select>
+              </div>
+            )}
           </div>
-          <div className={`grid gap-3 ${group.slots.length === 4 ? 'grid-cols-4' : 'grid-cols-2'}`}>
+          <div className={group.base ? 'flex flex-wrap gap-3' : `grid gap-3 ${group.slots.length === 4 ? 'grid-cols-4' : 'grid-cols-2'}`}>
             {group.slots.map((slot) => (
               <SymbolSlot
                 key={slot.key}
@@ -106,6 +127,7 @@ export default function FactionSymbolsTab({ factionName }) {
                 filename={slot.filename(factionName)}
                 imageUrl={images[slot.key] || null}
                 onLoad={(url) => setImage(slot.key, url)}
+                size={group.base ? group.base * getMult(group.label) : null}
               />
             ))}
           </div>

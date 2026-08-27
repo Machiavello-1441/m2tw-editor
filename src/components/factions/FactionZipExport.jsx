@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Package } from 'lucide-react';
 import { encodeStringsBin } from '@/components/strings/stringsBinCodec';
 import { BANNERS_GLOBAL_KEY } from './BannersTab';
+import { getFile } from '@/lib/bigFileStore';
 
 const entriesToTxt = (entries) =>
   entries.map((e) => `{${String(e.key).replace(/[{}]/g, '')}}${e.value}`).join('\n');
@@ -23,7 +24,7 @@ export default function FactionZipExport({ getFactionsText }) {
       if (factionsText) zip.file('data/descr_sm_factions.txt', factionsText);
 
       const addLs = (path, key) => {
-        try { const v = localStorage.getItem(key); if (v) zip.file(path, v); } catch {}
+        try { const v = getFile(key); if (v) zip.file(path, v); } catch {}
       };
       addLs('data/descr_banners_new.xml', BANNERS_GLOBAL_KEY);
       addLs('data/descr_offmap_models.txt', 'm2tw_offmap_models');
@@ -37,7 +38,7 @@ export default function FactionZipExport({ getFactionsText }) {
       // Strings — export both the .strings.bin and a plain .txt version
       const addBin = (baseName, key) => {
         try {
-          const raw = localStorage.getItem(key);
+          const raw = getFile(key);
           if (!raw) return;
           const { entries, magic1, magic2 } = JSON.parse(raw);
           if (!entries?.length) return;

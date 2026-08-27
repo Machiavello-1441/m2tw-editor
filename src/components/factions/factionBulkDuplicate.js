@@ -8,6 +8,7 @@ import {
   parseDescrCharacter, serialiseDescrCharacter,
   parseDescrModelStrat, serialiseDescrModelStrat,
 } from '@/components/minorfiles/stratmap/stratCharParser';
+import { getFile, setFile } from '@/lib/bigFileStore';
 
 const EXPANDED_KEY = 'm2tw_strings_bin_global';
 const MENU_KEY = 'm2tw_menu_strings_bin';
@@ -21,7 +22,7 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 function readStore(key) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getFile(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return { entries: parsed.entries || [], magic1: parsed.magic1 ?? 2, magic2: parsed.magic2 ?? 2048 };
@@ -112,7 +113,7 @@ export function duplicateFactionStrings(srcName, dstName, payload = {}) {
 
     const filtered = entries.filter((e) => !bare(e.key).includes(DST));
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ entries: [...filtered, ...newEntries], magic1, magic2 }));
+      setFile(storageKey, JSON.stringify({ entries: [...filtered, ...newEntries], magic1, magic2 }));
       if (eventName) window.dispatchEvent(new CustomEvent(eventName));
     } catch {}
   };
@@ -127,7 +128,7 @@ export function duplicateFactionStrings(srcName, dstName, payload = {}) {
     const store = readStore(EXPANDED_KEY) || { entries: [], magic1: 2, magic2: 2048 };
     for (const k of missing) store.entries.push({ key: k, value: overrides[k] });
     try {
-      localStorage.setItem(EXPANDED_KEY, JSON.stringify(store));
+      setFile(EXPANDED_KEY, JSON.stringify(store));
       window.dispatchEvent(new CustomEvent('strings-bin-updated'));
     } catch {}
   }
@@ -140,7 +141,7 @@ export function duplicateFactionStrings(srcName, dstName, payload = {}) {
 export function duplicateStratmapCharacters(srcName, dstName) {
   let charTypes = 0, stratTextures = 0;
   try {
-    const raw = localStorage.getItem(CHAR_KEY);
+    const raw = getFile(CHAR_KEY);
     if (raw) {
       const data = parseDescrCharacter(raw);
       for (const t of data.types) {
@@ -152,14 +153,14 @@ export function duplicateStratmapCharacters(srcName, dstName) {
       }
       if (charTypes > 0) {
         const out = serialiseDescrCharacter(data);
-        localStorage.setItem(CHAR_KEY, out);
+        setFile(CHAR_KEY, out);
         try { sessionStorage.setItem('m2tw_descr_character_raw', out); } catch {}
         window.dispatchEvent(new CustomEvent('load-descr-character', { detail: out }));
       }
     }
   } catch {}
   try {
-    const raw = localStorage.getItem(STRAT_KEY);
+    const raw = getFile(STRAT_KEY);
     if (raw) {
       const models = parseDescrModelStrat(raw);
       for (const m of models) {
@@ -171,7 +172,7 @@ export function duplicateStratmapCharacters(srcName, dstName) {
       }
       if (stratTextures > 0) {
         const out = serialiseDescrModelStrat(models);
-        localStorage.setItem(STRAT_KEY, out);
+        setFile(STRAT_KEY, out);
         try { sessionStorage.setItem('m2tw_descr_model_strat_raw', out); } catch {}
         window.dispatchEvent(new CustomEvent('load-descr-model-strat', { detail: out }));
       }
@@ -186,7 +187,7 @@ export function duplicateStratmapCharacters(srcName, dstName) {
  */
 export function duplicateFactionNames(srcName, dstName) {
   try {
-    const raw = localStorage.getItem(NAMES_KEY);
+    const raw = getFile(NAMES_KEY);
     if (!raw) return false;
     const lines = raw.split('\n');
     const facRe = /^\s*faction\s*:\s*(\S+)/i;
@@ -204,7 +205,7 @@ export function duplicateFactionNames(srcName, dstName) {
     const newBlock = [...block];
     newBlock[0] = newBlock[0].replace(new RegExp(escapeRe(srcName)), dstName);
     const out = [...lines.slice(0, end), '', ...newBlock, ...lines.slice(end)].join('\n');
-    localStorage.setItem(NAMES_KEY, out);
+    setFile(NAMES_KEY, out);
     try { sessionStorage.setItem('m2tw_descr_names_raw', out); } catch {}
     window.dispatchEvent(new CustomEvent('load-character-names', { detail: { raw: out } }));
     return true;
@@ -217,7 +218,7 @@ export function duplicateFactionNames(srcName, dstName) {
  */
 export function duplicateEduOwnership(srcName, dstName) {
   try {
-    const raw = localStorage.getItem(EDU_KEY);
+    const raw = getFile(EDU_KEY);
     if (!raw) return 0;
     let count = 0;
     const lines = raw.split('\n').map((line) => {
@@ -236,7 +237,7 @@ export function duplicateEduOwnership(srcName, dstName) {
     });
     if (count > 0) {
       const out = lines.join('\n');
-      localStorage.setItem(EDU_KEY, out);
+      setFile(EDU_KEY, out);
       try { sessionStorage.setItem('m2tw_edu_raw', out); } catch {}
     }
     return count;
@@ -249,7 +250,7 @@ export function duplicateEduOwnership(srcName, dstName) {
  */
 export function copyBannerEntries(srcName, dstName) {
   try {
-    const srcBannersData = localStorage.getItem(BANNERS_GLOBAL_KEY);
+    const srcBannersData = getFile(BANNERS_GLOBAL_KEY);
     if (!srcBannersData) return;
     const parsed = parseBannersXml(srcBannersData);
     const srcNameLower = srcName.toLowerCase();
@@ -289,7 +290,7 @@ export function copyBannerEntries(srcName, dstName) {
     copySectionTextures('royalBanner', true);
 
     const newXml = serialiseBannersXml(parsed);
-    localStorage.setItem(BANNERS_GLOBAL_KEY, newXml);
+    setFile(BANNERS_GLOBAL_KEY, newXml);
     window.dispatchEvent(new CustomEvent('banners-xml-loaded'));
   } catch (err) {
     console.error('Failed to copy banners:', err);

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Download, Settings, CheckCircle, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getFile, setFile } from '@/lib/bigFileStore';
 
 const LS_KEY = 'm2tw_offmap_models';
 
@@ -85,7 +86,7 @@ export default function MiscTab({ factionName }) {
 
   const syncFromStorage = useCallback(() => {
     try {
-      const data = localStorage.getItem(LS_KEY);
+      const data = getFile(LS_KEY);
       if (data) {
         setFileData(data);
         setNavyEntry(parseFactionNavy(data, factionName));
@@ -105,7 +106,7 @@ export default function MiscTab({ factionName }) {
     const text = await file.text();
     setFileData(text);
     setNavyEntry(parseFactionNavy(text, factionName));
-    localStorage.setItem(LS_KEY, text);
+    setFile(LS_KEY, text);
     e.target.value = '';
   }, [factionName]);
 
@@ -122,7 +123,7 @@ export default function MiscTab({ factionName }) {
     const updated = insertFactionNavyEntry(fileData, factionName);
     setFileData(updated);
     setNavyEntry(parseFactionNavy(updated, factionName));
-    localStorage.setItem(LS_KEY, updated);
+    setFile(LS_KEY, updated);
   };
 
   const updateNavyRow = (type, rowValue) => {
@@ -130,7 +131,7 @@ export default function MiscTab({ factionName }) {
     setNavyEntry(updated);
     const newText = serializeFactionNavy(fileData, factionName, updated);
     setFileData(newText);
-    localStorage.setItem(LS_KEY, newText);
+    setFile(LS_KEY, newText);
   };
 
   const present = fileData ? hasFactionNavyEntry(fileData, factionName) : false;

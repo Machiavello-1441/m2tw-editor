@@ -3,6 +3,7 @@ import { Download, FileText, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { parseBannersXml, serialiseBannersXml } from '@/components/minorfiles/banners/bannersParser';
+import { getFile, setFile } from '@/lib/bigFileStore';
 
 export const BANNERS_GLOBAL_KEY = 'm2tw_banners_xml_global';
 
@@ -53,7 +54,7 @@ export default function BannersTab({ factionName }) {
   // Read from and write to the single global banners XML
   const loadFromGlobal = useCallback(() => {
     try {
-      const data = localStorage.getItem(BANNERS_GLOBAL_KEY);
+      const data = getFile(BANNERS_GLOBAL_KEY);
       if (data) {
         setParsedData(parseBannersXml(data));
       } else {
@@ -70,7 +71,7 @@ export default function BannersTab({ factionName }) {
 
   const saveUpdated = (updated) => {
     const text = serialiseBannersXml(updated);
-    localStorage.setItem(BANNERS_GLOBAL_KEY, text);
+    setFile(BANNERS_GLOBAL_KEY, text);
     setParsedData(updated);
   };
 
