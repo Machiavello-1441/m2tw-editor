@@ -140,8 +140,10 @@ export function duplicateFactionStrings(srcName, dstName, payload = {}) {
  */
 export function duplicateStratmapCharacters(srcName, dstName) {
   let charTypes = 0, stratTextures = 0;
+  let charLoaded = false, stratLoaded = false;
   try {
     const raw = getFile(CHAR_KEY);
+    charLoaded = !!raw;
     if (raw) {
       const data = parseDescrCharacter(raw);
       for (const t of data.types) {
@@ -161,6 +163,7 @@ export function duplicateStratmapCharacters(srcName, dstName) {
   } catch {}
   try {
     const raw = getFile(STRAT_KEY);
+    stratLoaded = !!raw;
     if (raw) {
       const models = parseDescrModelStrat(raw);
       for (const m of models) {
@@ -178,7 +181,7 @@ export function duplicateStratmapCharacters(srcName, dstName) {
       }
     }
   } catch {}
-  return { charTypes, stratTextures };
+  return { charTypes, stratTextures, charLoaded, stratLoaded };
 }
 
 /**
@@ -188,7 +191,7 @@ export function duplicateStratmapCharacters(srcName, dstName) {
 export function duplicateFactionNames(srcName, dstName) {
   try {
     const raw = getFile(NAMES_KEY);
-    if (!raw) return false;
+    if (!raw) return { ok: false, loaded: false };
     const lines = raw.split('\n');
     const facRe = /^\s*faction\s*:\s*(\S+)/i;
     let start = -1, end = lines.length, endSet = false;
@@ -196,11 +199,11 @@ export function duplicateFactionNames(srcName, dstName) {
       const m = lines[i].match(facRe);
       if (!m) continue;
       const f = m[1].replace(/,+$/, '').toLowerCase();
-      if (f === dstName.toLowerCase()) return false; // already exists
+      if (f === dstName.toLowerCase()) return { ok: false, loaded: true }; // already exists
       if (f === srcName.toLowerCase() && start === -1) { start = i; continue; }
       if (start !== -1 && !endSet) { end = i; endSet = true; }
     }
-    if (start === -1) return false;
+    if (start === -1) return { ok: false, loaded: true };
     const block = lines.slice(start, end);
     const newBlock = [...block];
     newBlock[0] = newBlock[0].replace(new RegExp(escapeRe(srcName)), dstName);
@@ -208,8 +211,8 @@ export function duplicateFactionNames(srcName, dstName) {
     setFile(NAMES_KEY, out);
     try { sessionStorage.setItem('m2tw_descr_names_raw', out); } catch {}
     window.dispatchEvent(new CustomEvent('load-character-names', { detail: { raw: out } }));
-    return true;
-  } catch { return false; }
+    return { ok: true, loaded: true };
+  } catch { return { ok: false, loaded: true }; }
 }
 
 /**
@@ -219,7 +222,7 @@ export function duplicateFactionNames(srcName, dstName) {
 export function duplicateEduOwnership(srcName, dstName) {
   try {
     const raw = getFile(EDU_KEY);
-    if (!raw) return 0;
+    if (!raw) return { count: 0, loaded: false };
     let count = 0;
     const lines = raw.split('\n').map((line) => {
       const m = line.match(/^(\s*ownership\s+)(.*)$/i);
@@ -240,8 +243,8 @@ export function duplicateEduOwnership(srcName, dstName) {
       setFile(EDU_KEY, out);
       try { sessionStorage.setItem('m2tw_edu_raw', out); } catch {}
     }
-    return count;
-  } catch { return 0; }
+    return { count, loaded: true };
+  } catch { return { count: 0, loaded: true }; }
 }
 
 /**

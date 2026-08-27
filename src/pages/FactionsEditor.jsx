@@ -11,6 +11,7 @@ import DuplicateFactionModal from '@/components/factions/DuplicateFactionModal';
 import FactionZipExport from '@/components/factions/FactionZipExport';
 import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership } from '@/components/factions/factionBulkDuplicate';
 import { getFile, setFile } from '@/lib/bigFileStore';
+import { useToast } from '@/components/ui/use-toast';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import DescriptionsTab from '@/components/factions/DescriptionsTab';
 import MiscTab, { hasFactionNavyEntry, insertFactionNavyEntry } from '@/components/factions/MiscTab';
@@ -574,6 +575,7 @@ function FactionDetail({ faction, onChange, cultures, religions, eduUnits, onSav
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function FactionsEditor() {
+  const { toast } = useToast();
   const [factions, setFactions] = useState(null);
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [search, setSearch] = useState('');
@@ -832,11 +834,24 @@ export default function FactionsEditor() {
     // Bulk duplication across all related files
     copyBannerEntries(src.name, newFactionName);
     duplicateFactionStrings(src.name, newFactionName, payload);
-    duplicateStratmapCharacters(src.name, newFactionName);
-    duplicateFactionNames(src.name, newFactionName);
-    duplicateEduOwnership(src.name, newFactionName);
+    const charRes = duplicateStratmapCharacters(src.name, newFactionName);
+    const namesRes = duplicateFactionNames(src.name, newFactionName);
+    const eduRes = duplicateEduOwnership(src.name, newFactionName);
     autoInsertNavyEntry(newFactionName);
     injectMenuStringsForFaction(newFactionName, payload.displayName || newFactionName);
+
+    // Report what was (and couldn't be) duplicated
+    const done = [];
+    const missing = [];
+    if (charRes.charLoaded) done.push(`${charRes.charTypes} character types`); else missing.push('descr_character.txt');
+    if (charRes.stratLoaded) done.push(`${charRes.stratTextures} strat textures`); else missing.push('descr_model_strat.txt');
+    if (namesRes.loaded) done.push(namesRes.ok ? 'names block' : 'names block (already exists / source not found)'); else missing.push('descr_names.txt');
+    if (eduRes.loaded) done.push(`${eduRes.count} unit ownerships`); else missing.push('export_descr_unit.txt');
+    toast({
+      variant: missing.length ? 'destructive' : 'default',
+      title: `Duplicated ${src.name} → ${newFactionName}`,
+      description: `Copied: ${done.join(', ') || 'nothing'}.${missing.length ? ` Not loaded (re-load from Home): ${missing.join(', ')}` : ''}`,
+    });
 
     setDuplicateModalOpen(false);
     setDuplicateSourceIdx(null);
