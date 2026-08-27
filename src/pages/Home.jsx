@@ -114,6 +114,7 @@ const DATA_FILE_MAP = {
   'descr_mount.txt': 'mount',
   'export_descr_guilds.txt': 'guilds',
   'descr_character.txt': 'char',
+  'descr_offmap_models.txt': 'offmap',
   'descr_model_strat.txt': 'strat_model',
   'descr_models_strat.txt': 'strat_model',
   'descr_banners_new.xml': 'banners',
@@ -191,6 +192,7 @@ export default function Home() {
       religions: ls('m2tw_religions_file') ? 'ok' : 'idle',
       modeldb: 'idle',
       char: ls('m2tw_descr_character') ? 'ok' : 'idle',
+      offmap: ls('m2tw_offmap_models') ? 'ok' : 'idle',
       strat_model: ls('m2tw_descr_model_strat') ? 'ok' : 'idle',
       banners: ls('m2tw_banners_file') ? 'ok' : 'idle',
       sd_strategy: ls('m2tw_strategy_sd_xml') ? 'ok' : 'idle',
@@ -284,6 +286,7 @@ export default function Home() {
     conditionalRemove('m2tw_anc_file',           fileNames.has('export_descr_ancillaries.txt'));
     conditionalRemove('m2tw_export_units_file',  fileNames.has('export_units.txt'));
     conditionalRemove('m2tw_descr_character',    fileNames.has('descr_character.txt'));
+    conditionalRemove('m2tw_offmap_models',      fileNames.has('descr_offmap_models.txt'));
     conditionalRemove('m2tw_descr_model_strat',  fileNames.has('descr_model_strat.txt') || fileNames.has('descr_models_strat.txt'));
     conditionalRemove('m2tw_sm_factions',        fileNames.has('descr_sm_factions.txt'));
     conditionalRemove('m2tw_banners_file',      fileNames.has('descr_banners_new.xml'));
@@ -324,6 +327,7 @@ export default function Home() {
       religions: 'm2tw_religions_file',
       // files stored for minor files editor
       char: 'm2tw_descr_character',
+      offmap: 'm2tw_offmap_models',
       strat_model: 'm2tw_descr_model_strat',
       banners: 'm2tw_banners_file',
       sd_strategy: 'm2tw_strategy_sd_xml',
@@ -520,6 +524,9 @@ export default function Home() {
           if (key === 'strat_model') {
             sessionStorage.setItem('m2tw_descr_model_strat_raw', text);
             window.dispatchEvent(new CustomEvent('load-descr-model-strat', { detail: text }));
+          }
+          if (key === 'offmap') {
+            window.dispatchEvent(new CustomEvent('offmap-models-updated'));
           }
           if (key === 'banners') {
             sessionStorage.setItem('m2tw_banners_raw', text);
@@ -1031,6 +1038,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
               <FileStatus label="Names" hint="descr_names.txt" status={fileStatus.names} />
               <FileStatus label="Rebel Factions" hint="descr_rebel_factions.txt" status={fileStatus.rebel_fac} />
               <FileStatus label="Religions" hint="descr_religions.txt" status={fileStatus.religions} />
+              <FileStatus label="Offmap Models" hint="descr_offmap_models.txt" status={fileStatus.offmap} />
               <FileStatus label="Guilds" hint="export_descr_guilds.txt" status={fileStatus.guilds} />
               <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />
             </div>

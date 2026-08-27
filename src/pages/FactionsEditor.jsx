@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import BannersTab, { BANNERS_GLOBAL_KEY } from '@/components/factions/BannersTab';
-import { parseBannersXml, serialiseBannersXml } from '@/components/minorfiles/banners/bannersParser';
 import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsBinCodec';
+import DuplicateFactionModal from '@/components/factions/DuplicateFactionModal';
+import FactionZipExport from '@/components/factions/FactionZipExport';
+import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership } from '@/components/factions/factionBulkDuplicate';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import DescriptionsTab from '@/components/factions/DescriptionsTab';
 import MiscTab, { hasFactionNavyEntry, insertFactionNavyEntry } from '@/components/factions/MiscTab';
@@ -787,17 +788,7 @@ export default function FactionsEditor() {
 
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [duplicateSourceIdx, setDuplicateSourceIdx] = useState(null);
-  const [duplicateName, setDuplicateName] = useState('');
-  const [duplicateStrings, setDuplicateStrings] = useState({
-    displayName: '',
-    adjective: '',
-    sourceAdjective: '',
-    leaderTitle: '',
-    heirTitle: '',
-    strengths: '',
-    weaknesses: '',
-    customUnit: ''
-  });
+  const [duplicateDefaultName, setDuplicateDefaultName] = useState('');
 
   const openDuplicateModal = (i) => {
     const src = factions[i];
@@ -807,28 +798,17 @@ export default function FactionsEditor() {
     while (factions.some((f) => f.name === newName)) {
       newName = `${baseName}_copy${++counter}`;
     }
-    setDuplicateName(newName);
+    setDuplicateDefaultName(newName);
     setDuplicateSourceIdx(i);
-    setDuplicateStrings({
-      displayName: '',
-      adjective: '',
-      sourceAdjective: '',
-      leaderTitle: '',
-      heirTitle: '',
-      strengths: '',
-      weaknesses: '',
-      customUnit: ''
-    });
     setDuplicateModalOpen(true);
   };
 
-  const confirmDuplicate = () => {
-    if (!duplicateName.trim() || duplicateSourceIdx === null) return;
+  const confirmDuplicate = (payload) => {
+    if (!payload?.newName?.trim() || duplicateSourceIdx === null) return;
     const src = factions[duplicateSourceIdx];
-    const newFactionName = duplicateName.trim();
+    const newFactionName = payload.newName.trim();
     const nameUpper = newFactionName.toUpperCase();
-    const { displayName, adjective, sourceAdjective, leaderTitle, heirTitle, strengths, weaknesses, customUnit } = duplicateStrings;
-    
+
     const dup = {
       ...src,
       name: newFactionName,
@@ -841,217 +821,24 @@ export default function FactionsEditor() {
       standard_index: 0,
       horde_units: []
     };
-    const updated = [...factions, dup];
+    // Insert directly below the source faction (not at the bottom)
+    const updated = [...factions];
+    updated.splice(duplicateSourceIdx + 1, 0, dup);
     setFactions(updated);
-    setSelectedIdx(updated.length - 1);
-    
-    // Copy banner texture entries from source faction to new faction
-    try {
-      const srcBannersData = localStorage.getItem(BANNERS_GLOBAL_KEY);
-      if (srcBannersData) {
-        const parsed = parseBannersXml(srcBannersData);
-        const srcNameLower = src.name.toLowerCase();
-        const newFactionLower = newFactionName.toLowerCase();
-        
-        const copySectionTextures = (section, isMeshSection) => {
-          const sectionData = parsed[section];
-          if (isMeshSection) {
-            if (Array.isArray(sectionData)) {
-              sectionData.forEach((banner) => {
-                const sourceTextures = banner.meshesAndTextures.filter(t => 
-                  t.faction.toLowerCase() === srcNameLower
-                );
-                if (sourceTextures.length === 0) return;
-                const existingTextureIndices = banner.meshesAndTextures
-                  .map((t, i) => t.faction.toLowerCase() === newFactionLower ? i : -1)
-                  .filter(i => i !== -1);
-                let newTextures = [...banner.meshesAndTextures];
-                existingTextureIndices.forEach(idx => { newTextures[idx] = null; });
-                newTextures = newTextures.filter(t => t !== null);
-                sourceTextures.forEach(sourceTex => {
-                  newTextures.push({
-                    faction: newFactionName,
-                    mesh: sourceTex.mesh || '',
-                    diffuseMap: sourceTex.diffuseMap,
-                    translucencyMap: sourceTex.translucencyMap
-                  });
-                });
-                banner.meshesAndTextures = newTextures;
-              });
-            } else if (sectionData) {
-              const banner = sectionData;
-              const sourceTextures = banner.meshesAndTextures.filter(t => 
-                t.faction.toLowerCase() === srcNameLower
-              );
-              if (sourceTextures.length === 0) return;
-              const existingTextureIndices = banner.meshesAndTextures
-                .map((t, i) => t.faction.toLowerCase() === newFactionLower ? i : -1)
-                .filter(i => i !== -1);
-              let newTextures = [...banner.meshesAndTextures];
-              existingTextureIndices.forEach(idx => { newTextures[idx] = null; });
-              newTextures = newTextures.filter(t => t !== null);
-              sourceTextures.forEach(sourceTex => {
-                newTextures.push({
-                  faction: newFactionName,
-                  mesh: sourceTex.mesh || '',
-                  diffuseMap: sourceTex.diffuseMap,
-                  translucencyMap: sourceTex.translucencyMap
-                });
-              });
-              banner.meshesAndTextures = newTextures;
-            }
-          } else {
-            sectionData.forEach((banner) => {
-              const sourceTextures = banner.textures.filter(t => 
-                t.faction.toLowerCase() === srcNameLower
-              );
-              if (sourceTextures.length === 0) return;
-              const existingTextureIndices = banner.textures
-                .map((t, i) => t.faction.toLowerCase() === newFactionLower ? i : -1)
-                .filter(i => i !== -1);
-              let newTextures = [...banner.textures];
-              existingTextureIndices.forEach(idx => { newTextures[idx] = null; });
-              newTextures = newTextures.filter(t => t !== null);
-              sourceTextures.forEach(sourceTex => {
-                newTextures.push({
-                  faction: newFactionName,
-                  diffuseMap: sourceTex.diffuseMap,
-                  translucencyMap: sourceTex.translucencyMap
-                });
-              });
-              banner.textures = newTextures;
-            });
-          }
-        };
-        
-        copySectionTextures('factionBanners', false);
-        copySectionTextures('holyBanners', true);
-        copySectionTextures('unitBanners', true);
-        copySectionTextures('royalBanner', true);
-        
-        const newXaml = serialiseBannersXml(parsed);
-        localStorage.setItem(BANNERS_GLOBAL_KEY, newXaml);
-        window.dispatchEvent(new CustomEvent('banners-xml-loaded'));
-      }
-    } catch (err) {
-      console.error('Failed to copy banners:', err);
-    }
-    
-    // Duplicate strings.bin entries from source faction
-    try {
-      const storedData = localStorage.getItem('m2tw_strings_bin_global');
-      let storedEntries = [];
-      let magic1 = 2;
-      let magic2 = 2048;
-      
-      if (storedData) {
-        try {
-          const parsed = JSON.parse(storedData);
-          storedEntries = parsed.entries || parsed;
-          magic1 = parsed.magic1 || 2;
-          magic2 = parsed.magic2 || 2048;
-        } catch {
-          storedEntries = [];
-        }
-      }
-      
-      const srcNameUpper = src.name.toUpperCase();
-      const srcNameLower = src.name.toLowerCase();
-      const srcAdj = (sourceAdjective || '').trim();
-      const newAdj = (adjective || '').trim();
-      
-      // Find all source faction's string entries
-      const srcEntries = storedEntries.filter(entry => {
-        const keyUpper = entry.key.toUpperCase();
-        return keyUpper.includes(srcNameUpper);
-      });
-      
-      // Create new entries by replacing source faction name with new faction name in keys
-      const newEntries = srcEntries.map(entry => {
-        // Replace faction name in the KEY (e.g., {MILAN} -> {MANTUA})
-        const newKey = entry.key.replace(new RegExp(srcNameUpper, 'g'), nameUpper);
-        
-        // Start with the original value
-        let newValue = entry.value;
-        
-        // Replace source adjective with new adjective EXACTLY as entered (case-sensitive)
-        if (srcAdj && newAdj) {
-          // Exact case-sensitive replacement
-          newValue = newValue.replace(new RegExp(srcAdj, 'g'), newAdj);
-        }
-        
-        // Replace faction name references in the VALUE using displayName
-        if (displayName) {
-          newValue = newValue
-            .replace(new RegExp(src.name, 'gi'), displayName)
-            .replace(new RegExp(srcNameLower, 'gi'), displayName.toLowerCase());
-        }
-        
-        // Apply user's custom edits for specific fields - these override any previous replacements
-        if (newKey === `{${nameUpper}}` && displayName.trim()) {
-          newValue = displayName.trim();
-        }
-        else if (newKey === `{EMT_${nameUpper}_FACTION_LEADER_TITLE}` && leaderTitle.trim()) {
-          newValue = leaderTitle.trim();
-        }
-        else if (newKey === `{EMT_${nameUpper}_FACTION_HEIR_TITLE}` && heirTitle.trim()) {
-          newValue = heirTitle.trim();
-        }
-        else if (newKey === `{EMT_${nameUpper}_FACTION_LEADER_NAME}` && leaderTitle.trim()) {
-          newValue = `${leaderTitle.trim()} %S`;
-        }
-        else if (newKey === `{EMT_${nameUpper}_FACTION_HEIR_NAME}` && heirTitle.trim()) {
-          newValue = `${heirTitle.trim()} %S`;
-        }
-        else if (newKey === `{${nameUpper}_STRENGTH}`) {
-          // Use custom strengths text if provided, otherwise keep the replaced value
-          newValue = strengths.trim() || newValue;
-        }
-        else if (newKey === `{${nameUpper}_WEAKNESS}`) {
-          // Use custom weaknesses text if provided, otherwise keep the replaced value
-          newValue = weaknesses.trim() || newValue;
-        }
-        else if (newKey === `{${nameUpper}_UNIT}`) {
-          // Use custom unit text if provided, otherwise keep the replaced value
-          newValue = customUnit.trim() || newValue;
-        }
-        
-        return { key: newKey, value: newValue };
-      });
-      
-      // Remove any existing entries for this new faction name
-      const filtered = storedEntries.filter(entry => {
-        const keyUpper = entry.key.toUpperCase();
-        return !keyUpper.includes(nameUpper);
-      });
-      
-      // Add the duplicated entries and save with proper structure
-      const updated = [...filtered, ...newEntries];
-      localStorage.setItem('m2tw_strings_bin_global', JSON.stringify({
-        entries: updated,
-        magic1,
-        magic2
-      }));
-      window.dispatchEvent(new CustomEvent('strings-bin-updated'));
-    } catch (err) {
-      console.error('Failed to duplicate strings:', err);
-    }
-    
+    setSelectedIdx(duplicateSourceIdx + 1);
+    try { localStorage.setItem(LS_KEY, serialiseDescrSmFactions(updated)); } catch {}
+
+    // Bulk duplication across all related files
+    copyBannerEntries(src.name, newFactionName);
+    duplicateFactionStrings(src.name, newFactionName, payload);
+    duplicateStratmapCharacters(src.name, newFactionName);
+    duplicateFactionNames(src.name, newFactionName);
+    duplicateEduOwnership(src.name, newFactionName);
     autoInsertNavyEntry(newFactionName);
-    injectMenuStringsForFaction(newFactionName, duplicateStrings.displayName || newFactionName);
+    injectMenuStringsForFaction(newFactionName, payload.displayName || newFactionName);
+
     setDuplicateModalOpen(false);
     setDuplicateSourceIdx(null);
-    setDuplicateName('');
-    setDuplicateStrings({
-      displayName: '',
-      adjective: '',
-      sourceAdjective: '',
-      leaderTitle: '',
-      heirTitle: '',
-      strengths: '',
-      weaknesses: '',
-      customUnit: ''
-    });
   };
 
   const onDragEnd = (result) => {
@@ -1140,6 +927,7 @@ export default function FactionsEditor() {
               <Download className="w-3 h-3 mr-1" /> Export factions
             </Button>
           }
+          {factions && <FactionZipExport getFactionsText={() => serialiseDescrSmFactions(factions)} />}
           {bannersLoaded && (
             <Button variant="outline" size="sm" className="text-[10px] h-7 text-slate-200 border-slate-600 hover:bg-slate-700" onClick={() => {
               const data = localStorage.getItem(BANNERS_GLOBAL_KEY);
@@ -1254,119 +1042,13 @@ export default function FactionsEditor() {
         </div>
       }
 
-      {/* Duplicate Modal */}
-      <Dialog open={duplicateModalOpen} onOpenChange={setDuplicateModalOpen}>
-        <DialogContent className="bg-slate-900 border-slate-600 max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-slate-200">Duplicate Faction</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-3">
-            <div>
-              <label className="text-[10px] text-slate-300 block mb-2">New Faction Name</label>
-              <Input
-                value={duplicateName}
-                onChange={(e) => setDuplicateName(e.target.value)}
-                placeholder="e.g. mongols_copy"
-                className="h-8 text-[11px] px-2 bg-slate-700 border-slate-600 text-slate-100"
-                onKeyDown={(e) => e.key === 'Enter' && confirmDuplicate()}
-              />
-            </div>
-            
-            <div className="border-t border-slate-700 pt-3">
-              <p className="text-[10px] text-slate-400 mb-3">String Entries (for .strings.bin)</p>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[9px] text-slate-400 block mb-1">Source Faction Adjective</label>
-                  <Input
-                    value={duplicateStrings.sourceAdjective || ''}
-                    onChange={(e) => setDuplicateStrings(s => ({ ...s, sourceAdjective: e.target.value }))}
-                    placeholder="e.g. Milanese"
-                    className="h-7 text-[10px] px-2 bg-slate-700 border-slate-600 text-slate-100"
-                  />
-                  <p className="text-[9px] text-slate-500 mt-1">Adjective to replace from source</p>
-                </div>
-                <div>
-                  <label className="text-[9px] text-slate-400 block mb-1">New Faction Adjective</label>
-                  <Input
-                    value={duplicateStrings.adjective}
-                    onChange={(e) => setDuplicateStrings(s => ({ ...s, adjective: e.target.value }))}
-                    placeholder="e.g. Mantuan"
-                    className="h-7 text-[10px] px-2 bg-slate-700 border-slate-600 text-slate-100"
-                  />
-                  <p className="text-[9px] text-slate-500 mt-1">New adjective to use</p>
-                </div>
-              </div>
-              
-              <div className="mt-3">
-                <label className="text-[9px] text-slate-400 block mb-1">Faction Display Name</label>
-                <Input
-                  value={duplicateStrings.displayName}
-                  onChange={(e) => setDuplicateStrings(s => ({ ...s, displayName: e.target.value }))}
-                  placeholder="e.g. Marquisate of Mantua"
-                  className="h-7 text-[10px] px-2 bg-slate-700 border-slate-600 text-slate-100"
-                />
-                <p className="text-[9px] text-slate-500 mt-1">Used for keys like &#123;MANTUA&#125; and display text</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <div>
-                  <label className="text-[9px] text-slate-400 block mb-1">Leader Title (optional)</label>
-                  <Input
-                    value={duplicateStrings.leaderTitle}
-                    onChange={(e) => setDuplicateStrings(s => ({ ...s, leaderTitle: e.target.value }))}
-                    placeholder="e.g. Great Khan"
-                    className="h-7 text-[10px] px-2 bg-slate-700 border-slate-600 text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="text-[9px] text-slate-400 block mb-1">Heir Title (optional)</label>
-                  <Input
-                    value={duplicateStrings.heirTitle}
-                    onChange={(e) => setDuplicateStrings(s => ({ ...s, heirTitle: e.target.value }))}
-                    placeholder="e.g. Khan"
-                    className="h-7 text-[10px] px-2 bg-slate-700 border-slate-600 text-slate-100"
-                  />
-                </div>
-              </div>
-              
-              <div className="mt-3">
-                <label className="text-[9px] text-slate-400 block mb-1">Custom Strengths (optional)</label>
-                <textarea
-                  value={duplicateStrings.strengths}
-                  onChange={(e) => setDuplicateStrings(s => ({ ...s, strengths: e.target.value }))}
-                  placeholder="e.g. Expert horse archers, fast movement"
-                  className="w-full h-16 bg-slate-700 border border-slate-600 rounded p-2 text-[10px] text-slate-100 resize-none"
-                />
-              </div>
-              
-              <div className="mt-3">
-                <label className="text-[9px] text-slate-400 block mb-1">Custom Weaknesses (optional)</label>
-                <textarea
-                  value={duplicateStrings.weaknesses}
-                  onChange={(e) => setDuplicateStrings(s => ({ ...s, weaknesses: e.target.value }))}
-                  placeholder="e.g. Weak in siege defense"
-                  className="w-full h-16 bg-slate-700 border border-slate-600 rounded p-2 text-[10px] text-slate-100 resize-none"
-                />
-              </div>
-              
-              <div className="mt-3">
-                <label className="text-[9px] text-slate-400 block mb-1">Custom Unit Name (optional)</label>
-                <Input
-                  value={duplicateStrings.customUnit}
-                  onChange={(e) => setDuplicateStrings(s => ({ ...s, customUnit: e.target.value }))}
-                  placeholder="e.g. Keshik Guard"
-                  className="h-7 text-[10px] px-2 bg-slate-700 border-slate-600 text-slate-100"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <button onClick={() => setDuplicateModalOpen(false)} className="px-3 py-1.5 text-[10px] rounded border border-slate-600 text-slate-300 hover:bg-slate-700">Cancel</button>
-            <button onClick={confirmDuplicate} className="px-3 py-1.5 text-[10px] rounded bg-blue-700 hover:bg-blue-600 text-white font-semibold">Duplicate</button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DuplicateFactionModal
+        open={duplicateModalOpen}
+        onOpenChange={setDuplicateModalOpen}
+        sourceFaction={duplicateSourceIdx !== null && factions ? factions[duplicateSourceIdx] : null}
+        defaultName={duplicateDefaultName}
+        onConfirm={confirmDuplicate}
+      />
     </div>);
 
 }
