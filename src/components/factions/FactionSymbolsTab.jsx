@@ -81,14 +81,10 @@ function SymbolSlot({ label, filename, imageUrl, onLoad, size }) {
 export default function FactionSymbolsTab({ factionName }) {
   // Store dataURLs keyed by slot key
   const [images, setImages] = useState({});
-  // Per-group preview size multiplier (default x4)
-  const [multipliers, setMultipliers] = useState({});
 
   const setImage = useCallback((key, url) => {
     setImages(prev => ({ ...prev, [key]: url }));
   }, []);
-
-  const getMult = (label) => multipliers[label] ?? 4;
 
   return (
     <div className="space-y-5">
@@ -101,25 +97,11 @@ export default function FactionSymbolsTab({ factionName }) {
 
       {SYMBOL_GROUPS.map((group) => (
         <div key={group.label} className="space-y-2">
-          <div className="flex items-end justify-between gap-2">
-            <div>
-              <p className="text-[11px] font-semibold text-slate-300">{group.label}</p>
-              <p className="text-[9px] text-slate-500 font-mono">{group.folder}</p>
-            </div>
-            {group.base && (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[9px] text-slate-500">Preview size</span>
-                <select
-                  value={getMult(group.label)}
-                  onChange={(e) => setMultipliers((m) => ({ ...m, [group.label]: +e.target.value }))}
-                  className="h-6 text-[10px] px-1 rounded border border-slate-600 bg-slate-800 text-slate-200"
-                >
-                  {[1, 2, 3, 4, 6, 8].map((x) => <option key={x} value={x}>x{x}</option>)}
-                </select>
-              </div>
-            )}
+          <div>
+            <p className="text-[11px] font-semibold text-slate-300">{group.label}</p>
+            <p className="text-[9px] text-slate-500 font-mono">{group.folder}</p>
           </div>
-          <div className={group.base ? 'flex flex-wrap gap-3' : `grid gap-3 ${group.slots.length === 4 ? 'grid-cols-4' : 'grid-cols-2'}`}>
+          <div className={`grid gap-3 ${group.slots.length === 4 ? 'grid-cols-4' : 'grid-cols-2'}`}>
             {group.slots.map((slot) => (
               <SymbolSlot
                 key={slot.key}
@@ -127,7 +109,6 @@ export default function FactionSymbolsTab({ factionName }) {
                 filename={slot.filename(factionName)}
                 imageUrl={images[slot.key] || null}
                 onLoad={(url) => setImage(slot.key, url)}
-                size={group.base ? group.base * getMult(group.label) : null}
               />
             ))}
           </div>

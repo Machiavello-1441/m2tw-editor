@@ -262,11 +262,17 @@ export default function SymbolGenerator({ factionName }) {
   const [fitMode, setFitMode]         = useState('contain');
   const [rollMask, setRollMask]       = useState(null);   // HTMLImageElement + _preview
   const [selectMask, setSelectMask]   = useState(null);
+  const [multiplier, setMultiplier]   = useState(4);
 
-  // Per-set resolution configs
+  // Per-set resolution configs (default = native × 4)
   const [setConfigs, setSetConfigs] = useState(() =>
-    Object.fromEntries(DEFAULT_SETS.map(s => [s.key, { w: s.minW, h: s.minH }]))
+    Object.fromEntries(DEFAULT_SETS.map(s => [s.key, { w: s.minW * 4, h: s.minH * 4 }]))
   );
+
+  const applyMultiplier = (mult) => {
+    setMultiplier(mult);
+    setSetConfigs(Object.fromEntries(DEFAULT_SETS.map(s => [s.key, { w: s.minW * mult, h: s.minH * mult }])));
+  };
 
   const fileRef = useRef();
 
@@ -401,6 +407,17 @@ export default function SymbolGenerator({ factionName }) {
                 ? 'border-amber-500 bg-amber-500/10 text-amber-300'
                 : 'border-slate-600 text-slate-400 hover:text-slate-200'}`}
             >{m.label}</button>
+          ))}
+          <span className="w-px bg-slate-700 mx-1 self-stretch" />
+          {[1, 2, 4, 8].map(x => (
+            <button
+              key={x}
+              onClick={() => applyMultiplier(x)}
+              title={`Output resolution × ${x} (e.g. 90×90 → ${90 * x}×${90 * x})`}
+              className={`text-[10px] px-2 py-1 rounded border transition-colors ${multiplier === x
+                ? 'border-amber-500 bg-amber-500/10 text-amber-300'
+                : 'border-slate-600 text-slate-400 hover:text-slate-200'}`}
+            >x {x}</button>
           ))}
         </div>
       </div>
