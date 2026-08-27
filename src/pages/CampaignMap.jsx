@@ -23,6 +23,7 @@ import { latLngToPixel, paintBoundary } from '../components/newmap/boundaryRaste
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
 import { setLayer, getLayer, getAllLayers, hasAnyLayer } from '../lib/mapLayerStore';
+import { getFile } from '../lib/bigFileStore';
 
 const INITIAL_PAINT = {
   active: false,
@@ -72,7 +73,9 @@ export default function CampaignMap() {
   // Strat overlay state — initialize from sessionStorage if available
   const [stratData, setStratDataRaw] = useState(() => {
     try {
-      const raw = sessionStorage.getItem('m2tw_strat_raw');
+      // Fall back to the copy stored by the Home page loader so navigating here
+      // after a fresh page load doesn't require re-importing the campaign folder.
+      const raw = sessionStorage.getItem('m2tw_strat_raw') || localStorage.getItem('m2tw_campaign_strat');
       if (raw && raw.length < 20_000_000) { // guard against absurdly large files
         const p = parseDescrStrat(raw);
         // Merge any persisted overlay items (includes newly added items from previous session)
@@ -109,7 +112,7 @@ export default function CampaignMap() {
   });
   const [settlementNames, setSettlementNamesRaw] = useState(() => {
     try {
-      const raw = sessionStorage.getItem('m2tw_names_raw');
+      const raw = sessionStorage.getItem('m2tw_names_raw') || getFile('m2tw_names_raw');
       if (raw) return parseSettlementNames(raw);
     } catch {}
     return null;
@@ -127,7 +130,7 @@ export default function CampaignMap() {
       const savedOverlay = sessionStorage.getItem('m2tw_overlay_items_json');
       if (savedOverlay) return JSON.parse(savedOverlay);
       // Fall back to parsing strat raw
-      const raw = sessionStorage.getItem('m2tw_strat_raw');
+      const raw = sessionStorage.getItem('m2tw_strat_raw') || localStorage.getItem('m2tw_campaign_strat');
       if (raw && raw.length < 20_000_000) { const p = parseDescrStrat(raw); return p.items || []; }
     } catch (e) {
       console.error('[CampaignMap] Failed to restore overlayItems:', e);
@@ -271,21 +274,19 @@ export default function CampaignMap() {
         }
       }
     } catch {}
-    // Auto-restore settlement names from the strings-bin store for the ACTIVE
-    // campaign only. Without matching the campaign name we would silently
-    // import another campaign's regions (e.g. americas_* when working on
-    // imperial_campaign), producing entries that don't exist in this mod.
+    // Auto-restore settlement names from the strings-bin store. Prefer the
+    // file matching the ACTIVE campaign; if the campaign name isn't known yet
+    // (strat not parsed at mount), fall back to any *_regions_and_settlement_names
+    // file in the store — only one campaign is loaded from Home at a time.
     try {
-      if (!sessionStorage.getItem('m2tw_names_raw')) {
+      if (!sessionStorage.getItem('m2tw_names_raw') && !getFile('m2tw_names_raw')) {
         const store = getStringsBinStore();
         const activeCampaign = (stratData?.campaignName || '').toLowerCase();
         const pickPrefix = activeCampaign ? `${activeCampaign}_regions_and_settlement_names` : '';
-        let matched = null;
-        if (pickPrefix) {
-          for (const fname of Object.keys(store)) {
-            if (fname.toLowerCase().startsWith(pickPrefix)) { matched = store[fname]; break; }
-          }
-        }
+        const candidates = Object.keys(store).filter(f => f.toLowerCase().includes('_regions_and_settlement_names'));
+        let matchedName = pickPrefix ? candidates.find(f => f.toLowerCase().startsWith(pickPrefix)) : null;
+        if (!matchedName && candidates.length > 0) matchedName = candidates[0];
+        const matched = matchedName ? store[matchedName] : null;
         if (matched?.entries?.length) {
           const namesMap = {};
           for (const { key, value } of matched.entries) if (key) namesMap[key] = value;

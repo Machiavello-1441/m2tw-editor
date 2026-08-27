@@ -37,6 +37,7 @@ function categorizeFile(file) {
     return 'images_ui';
   }
   if (TEXT_FILENAMES.has(name)) return 'text';
+  if (name.endsWith('_regions_and_settlement_names.txt')) return 'text';
   return null;
 }
 

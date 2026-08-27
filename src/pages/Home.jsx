@@ -456,6 +456,14 @@ export default function Home() {
         continue;
       }
 
+      // Settlement/region display names (data\text\[campaign]_regions_and_settlement_names.txt)
+      if (name.endsWith('_regions_and_settlement_names.txt')) {
+        const txt = await readText(file);
+        try { sessionStorage.setItem('m2tw_names_raw', txt); } catch {}
+        setFile('m2tw_names_raw', txt);
+        continue;
+      }
+
       const key = DATA_FILE_MAP[name];
       if (!key) continue;
 
