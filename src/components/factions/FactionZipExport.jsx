@@ -5,6 +5,7 @@ import { Package } from 'lucide-react';
 import { encodeStringsBin } from '@/components/strings/stringsBinCodec';
 import { BANNERS_GLOBAL_KEY } from './BannersTab';
 import { getFile } from '@/lib/bigFileStore';
+import { getAllSymbols } from '@/lib/factionSymbolStore';
 
 const entriesToTxt = (entries) =>
   entries.map((e) => `{${String(e.key).replace(/[{}]/g, '')}}${e.value}`).join('\n');
@@ -48,6 +49,13 @@ export default function FactionZipExport({ getFactionsText }) {
       };
       addBin('expanded.txt', 'm2tw_strings_bin_global');
       addBin('menu_english.txt', 'm2tw_menu_strings_bin');
+
+      // Faction symbol TGAs (uploaded previews + generated sets)
+      try {
+        for (const [path, s] of Object.entries(getAllSymbols())) {
+          if (s?.buffer) zip.file(path, s.buffer);
+        }
+      } catch {}
 
       const blob = await zip.generateAsync({ type: 'blob' });
       const a = document.createElement('a');

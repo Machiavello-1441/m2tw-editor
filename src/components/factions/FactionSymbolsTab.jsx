@@ -1,6 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Image } from 'lucide-react';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
+import { getSymbol, setSymbol } from '@/lib/factionSymbolStore';
 import SymbolGenerator from './SymbolGenerator';
 
 const SYMBOL_GROUPS = [
@@ -51,7 +52,7 @@ function SymbolSlot({ label, filename, imageUrl, onLoad, size }) {
     if (!file) return;
     const buffer = await file.arrayBuffer();
     const url = decodeTgaToDataUrl(buffer);
-    if (url) onLoad(url);
+    if (url) onLoad(url, buffer);
     e.target.value = '';
   }, [onLoad]);
 
@@ -78,9 +79,24 @@ function SymbolSlot({ label, filename, imageUrl, onLoad, size }) {
   );
 }
 
+const pathFor = (group, slot, factionName) =>
+  `${group.folder.replace(/\\/g, '/')}/${slot.filename(factionName)}`;
+
 export default function FactionSymbolsTab({ factionName }) {
-  // Store dataURLs keyed by slot key
+  // Store dataURLs keyed by slot key — restored from the shared symbol store
+  // so previews survive switching factions (kept until a bulk download).
   const [images, setImages] = useState({});
+
+  useEffect(() => {
+    const restored = {};
+    for (const group of SYMBOL_GROUPS) {
+      for (const slot of group.slots) {
+        const s = getSymbol(pathFor(group, slot, factionName));
+        if (s?.dataUrl) restored[slot.key] = s.dataUrl;
+      }
+    }
+    setImages(restored);
+  }, [factionName]);
 
   const setImage = useCallback((key, url) => {
     setImages(prev => ({ ...prev, [key]: url }));
@@ -108,7 +124,10 @@ export default function FactionSymbolsTab({ factionName }) {
                 label={slot.key}
                 filename={slot.filename(factionName)}
                 imageUrl={images[slot.key] || null}
-                onLoad={(url) => setImage(slot.key, url)}
+                onLoad={(url, buffer) => {
+                  setSymbol(pathFor(group, slot, factionName), url, buffer);
+                  setImage(slot.key, url);
+                }}
               />
             ))}
           </div>
@@ -116,7 +135,7 @@ export default function FactionSymbolsTab({ factionName }) {
       ))}
 
       <p className="text-[10px] text-slate-600 italic pt-1">
-        Click any slot to load the corresponding .tga file. Previews are view-only and not saved to disk.
+        Click any slot to load the corresponding .tga file. Loaded symbols stay in memory and are included in the bulk zip download.
       </p>
     </div>
   );

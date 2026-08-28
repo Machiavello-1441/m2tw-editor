@@ -12,6 +12,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, Download, Wand2, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { setSymbol } from '@/lib/factionSymbolStore';
 import JSZip from 'jszip';
 
 // ---------------------------------------------------------------------------
@@ -320,11 +321,14 @@ export default function SymbolGenerator({ factionName }) {
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').putImageData(filtered, 0, 0);
         result[id] = canvas.toDataURL('image/png');
+        // Persist the TGA in the shared symbol store so it survives faction
+        // switches and is included in the bulk zip export
+        setSymbol(`${set.folder}/${tgaFilename(factionName, set.key, variant)}`, result[id], tgaArrayBuffer(filtered));
       }
     }
     setGenerated(result);
     setGenerating(false);
-  }, [sourceImg, fitMode, setConfigs, rollMask, selectMask]);
+  }, [sourceImg, fitMode, setConfigs, rollMask, selectMask, factionName]);
 
   const downloadOne = useCallback((set, variant) => {
     const id = `${set.key}_${variant}`;

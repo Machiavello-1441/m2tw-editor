@@ -9,6 +9,7 @@ import {
   parseDescrModelStrat, serialiseDescrModelStrat,
 } from '@/components/minorfiles/stratmap/stratCharParser';
 import { getFile, setFile } from '@/lib/bigFileStore';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
 
 const EXPANDED_KEY = 'm2tw_strings_bin_global';
 const MENU_KEY = 'm2tw_menu_strings_bin';
@@ -36,6 +37,13 @@ function readStore(key) {
 export function lookupSourceStrings(srcName) {
   const SRC = (srcName || '').toUpperCase();
   const stores = [readStore(EXPANDED_KEY), readStore(MENU_KEY)].filter(Boolean);
+  // Also search every .strings.bin loaded from Home (the adjective may live in
+  // a bin other than expanded/menu, e.g. shared.txt or campaign descriptions)
+  try {
+    for (const f of Object.values(getStringsBinStore())) {
+      if (f?.entries?.length) stores.push({ entries: f.entries });
+    }
+  } catch {}
   const find = (bk) => {
     for (const s of stores) {
       const e = s.entries.find((x) => bare(x.key) === bk);
@@ -53,7 +61,7 @@ export function lookupSourceStrings(srcName) {
   };
   return {
     displayName: find(SRC),
-    adjective: find(`${SRC}_ADJECTIVE`) || find(`EMT_${SRC}_ADJECTIVE`) || findFuzzy([SRC, 'ADJECTIVE']),
+    adjective: find(`${SRC}_ADJECTIVE`) || find(`EMT_${SRC}_ADJECTIVE`) || findFuzzy([SRC, 'ADJ']),
     leaderTitle: find(`EMT_${SRC}_FACTION_LEADER_TITLE`),
     formerLeaderTitle: find(`EMT_${SRC}_FORMER_FACTION_LEADER_TITLE`),
     heirTitle: find(`EMT_${SRC}_FACTION_HEIR_TITLE`),
@@ -206,20 +214,22 @@ export function duplicateFactionNames(srcName, dstName) {
     const raw = getFile(NAMES_KEY);
     if (!raw) return { ok: false, loaded: false };
     const lines = raw.split('\n');
-    const facRe = /^\s*faction\s*:\s*(\S+)/i;
+    // faction lines can list multiple factions: "faction: normans, sicily"
+    const facRe = /^\s*faction\s*:\s*(.+)$/i;
+    const SRC = srcName.toLowerCase(), DST = dstName.toLowerCase();
     let start = -1, end = lines.length, endSet = false;
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(facRe);
       if (!m) continue;
-      const f = m[1].replace(/,+$/, '').toLowerCase();
-      if (f === dstName.toLowerCase()) return { ok: false, loaded: true }; // already exists
-      if (f === srcName.toLowerCase() && start === -1) { start = i; continue; }
+      const facs = m[1].split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (facs.includes(DST)) return { ok: false, loaded: true }; // already exists
+      if (facs.includes(SRC) && start === -1) { start = i; continue; }
       if (start !== -1 && !endSet) { end = i; endSet = true; }
     }
     if (start === -1) return { ok: false, loaded: true };
     const block = lines.slice(start, end);
     const newBlock = [...block];
-    newBlock[0] = newBlock[0].replace(new RegExp(escapeRe(srcName)), dstName);
+    newBlock[0] = `faction: ${dstName}`;
     const out = [...lines.slice(0, end), '', ...newBlock, ...lines.slice(end)].join('\n');
     setFile(NAMES_KEY, out);
     try { sessionStorage.setItem('m2tw_descr_names_raw', out); } catch {}
@@ -237,15 +247,19 @@ export function duplicateEduOwnership(srcName, dstName) {
     const raw = getFile(EDU_KEY);
     if (!raw) return { count: 0, loaded: false };
     let count = 0;
+    const SRC = srcName.toLowerCase(), DST = dstName.toLowerCase();
+    // Handles both "ownership" and "era N" lines; inserts the new faction
+    // directly after the source one (e.g. "france, milan" → "france, milan, mantua")
     const lines = raw.split('\n').map((line) => {
-      const m = line.match(/^(\s*ownership\s+)(.*)$/i);
+      const m = line.match(/^(\s*(?:ownership|era\s+\d+)\s+)(.*)$/i);
       if (!m) return line;
       let rest = m[2], comment = '';
       const ci = rest.indexOf(';');
       if (ci !== -1) { comment = rest.slice(ci); rest = rest.slice(0, ci); }
       const facs = rest.split(',').map((s) => s.trim()).filter(Boolean);
-      if (facs.includes(srcName) && !facs.includes(dstName)) {
-        facs.push(dstName);
+      const srcIdx = facs.findIndex((f) => f.toLowerCase() === SRC);
+      if (srcIdx !== -1 && !facs.some((f) => f.toLowerCase() === DST)) {
+        facs.splice(srcIdx + 1, 0, dstName);
         count++;
         return m[1] + facs.join(', ') + (comment ? ' ' + comment : '');
       }
