@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { lookupSourceStrings } from './factionBulkDuplicate';
 
-const EMPTY = { displayName: '', adjective: '', leaderTitle: '', heirTitle: '', strengths: '', weaknesses: '', customUnit: '' };
+const EMPTY = { displayName: '', adjective: '', leaderTitle: '', formerLeaderTitle: '', heirTitle: '', strengths: '', weaknesses: '', customUnit: '' };
 
 function FieldPair({ label, sourceValue, value, onChange, placeholder, textarea }) {
   return (
@@ -112,6 +112,8 @@ export default function DuplicateFactionModal({ open, onOpenChange, sourceFactio
               onChange={set('displayName')} placeholder="e.g. Marquisate of Mantua" />
             <FieldPair label="Leader Title" sourceValue={srcInfo?.leaderTitle} value={vals.leaderTitle}
               onChange={set('leaderTitle')} placeholder="e.g. Marquis" />
+            <FieldPair label="Former Leader Title" sourceValue={srcInfo?.formerLeaderTitle} value={vals.formerLeaderTitle}
+              onChange={set('formerLeaderTitle')} placeholder="e.g. Late Marquis" />
             <FieldPair label="Heir Title" sourceValue={srcInfo?.heirTitle} value={vals.heirTitle}
               onChange={set('heirTitle')} placeholder="e.g. Prince" />
             <FieldPair label="Strengths" sourceValue={srcInfo?.strengths} value={vals.strengths}

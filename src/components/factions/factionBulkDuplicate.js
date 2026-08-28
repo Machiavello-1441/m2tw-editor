@@ -43,10 +43,19 @@ export function lookupSourceStrings(srcName) {
     }
     return '';
   };
+  // Fuzzy fallback: any key mentioning both the faction and ADJECTIVE
+  const findFuzzy = (parts) => {
+    for (const s of stores) {
+      const e = s.entries.find((x) => { const bk = bare(x.key); return parts.every((p) => bk.includes(p)); });
+      if (e) return e.value;
+    }
+    return '';
+  };
   return {
     displayName: find(SRC),
-    adjective: find(`${SRC}_ADJECTIVE`) || find(`EMT_${SRC}_ADJECTIVE`),
+    adjective: find(`${SRC}_ADJECTIVE`) || find(`EMT_${SRC}_ADJECTIVE`) || findFuzzy([SRC, 'ADJECTIVE']),
     leaderTitle: find(`EMT_${SRC}_FACTION_LEADER_TITLE`),
+    formerLeaderTitle: find(`EMT_${SRC}_FORMER_FACTION_LEADER_TITLE`),
     heirTitle: find(`EMT_${SRC}_FACTION_HEIR_TITLE`),
     strengths: find(`${SRC}_STRENGTH`),
     weaknesses: find(`${SRC}_WEAKNESS`),
@@ -65,6 +74,7 @@ export function duplicateFactionStrings(srcName, dstName, payload = {}) {
   const adjective = (payload.adjective || '').trim();
   const sourceAdjective = (payload.sourceAdjective || '').trim();
   const leaderTitle = (payload.leaderTitle || '').trim();
+  const formerLeaderTitle = (payload.formerLeaderTitle || '').trim();
   const heirTitle = (payload.heirTitle || '').trim();
   const strengths = (payload.strengths || '').trim();
   const weaknesses = (payload.weaknesses || '').trim();
@@ -76,6 +86,9 @@ export function duplicateFactionStrings(srcName, dstName, payload = {}) {
   if (leaderTitle) {
     overrides[`EMT_${DST}_FACTION_LEADER_TITLE`] = leaderTitle;
     overrides[`EMT_${DST}_FACTION_LEADER_NAME`] = `${leaderTitle} %S`;
+  }
+  if (formerLeaderTitle) {
+    overrides[`EMT_${DST}_FORMER_FACTION_LEADER_TITLE`] = formerLeaderTitle;
   }
   if (heirTitle) {
     overrides[`EMT_${DST}_FACTION_HEIR_TITLE`] = heirTitle;
