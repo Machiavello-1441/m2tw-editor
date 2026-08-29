@@ -244,9 +244,14 @@ export function duplicateFactionNames(srcName, dstName) {
  */
 export function duplicateEduOwnership(srcName, dstName) {
   try {
-    const raw = getFile(EDU_KEY);
-    if (!raw) return { count: 0, loaded: false };
-    let count = 0;
+    let raw = getFile(EDU_KEY);
+    if (!raw) {
+      // Fallback: Home also mirrors the raw EDU into sessionStorage
+      try { raw = sessionStorage.getItem('m2tw_edu_raw'); } catch {}
+      if (raw) setFile(EDU_KEY, raw);
+    }
+    if (!raw) return { count: 0, already: 0, srcLines: 0, loaded: false };
+    let count = 0, already = 0, srcLines = 0;
     const SRC = srcName.toLowerCase(), DST = dstName.toLowerCase();
     // Handles both "ownership" and "era N" lines; inserts the new faction
     // directly after the source one (e.g. "france, milan" → "france, milan, mantua")
@@ -258,20 +263,20 @@ export function duplicateEduOwnership(srcName, dstName) {
       if (ci !== -1) { comment = rest.slice(ci); rest = rest.slice(0, ci); }
       const facs = rest.split(',').map((s) => s.trim()).filter(Boolean);
       const srcIdx = facs.findIndex((f) => f.toLowerCase() === SRC);
-      if (srcIdx !== -1 && !facs.some((f) => f.toLowerCase() === DST)) {
-        facs.splice(srcIdx + 1, 0, dstName);
-        count++;
-        return m[1] + facs.join(', ') + (comment ? ' ' + comment : '');
-      }
-      return line;
+      if (srcIdx === -1) return line;
+      srcLines++;
+      if (facs.some((f) => f.toLowerCase() === DST)) { already++; return line; }
+      facs.splice(srcIdx + 1, 0, dstName);
+      count++;
+      return m[1] + facs.join(', ') + (comment ? ' ' + comment : '');
     });
     if (count > 0) {
       const out = lines.join('\n');
       setFile(EDU_KEY, out);
       try { sessionStorage.setItem('m2tw_edu_raw', out); } catch {}
     }
-    return { count, loaded: true };
-  } catch { return { count: 0, loaded: true }; }
+    return { count, already, srcLines, loaded: true };
+  } catch { return { count: 0, already: 0, srcLines: 0, loaded: true }; }
 }
 
 /**

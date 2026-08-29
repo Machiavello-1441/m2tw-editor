@@ -846,7 +846,11 @@ export default function FactionsEditor() {
     if (charRes.charLoaded) done.push(`${charRes.charTypes} character types`); else missing.push('descr_character.txt');
     if (charRes.stratLoaded) done.push(`${charRes.stratTextures} strat textures`); else missing.push('descr_model_strat.txt');
     if (namesRes.loaded) done.push(namesRes.ok ? 'names block' : 'names block (already exists / source not found)'); else missing.push('descr_names.txt');
-    if (eduRes.loaded) done.push(`${eduRes.count} unit ownerships`); else missing.push('export_descr_unit.txt');
+    if (eduRes.loaded) {
+      if (eduRes.count > 0) done.push(`${eduRes.count} unit ownerships`);
+      else if (eduRes.already > 0) done.push(`unit ownerships (already on ${eduRes.already} lines)`);
+      else done.push(`unit ownerships: "${src.name}" not found on any ownership/era line (${eduRes.srcLines} matches)`);
+    } else missing.push('export_descr_unit.txt');
     toast({
       variant: missing.length ? 'destructive' : 'default',
       title: `Duplicated ${src.name} → ${newFactionName}`,
