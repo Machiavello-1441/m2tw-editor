@@ -6,6 +6,7 @@ import { encodeStringsBin } from '@/components/strings/stringsBinCodec';
 import { BANNERS_GLOBAL_KEY } from './BannersTab';
 import { getFile } from '@/lib/bigFileStore';
 import { getAllSymbols } from '@/lib/factionSymbolStore';
+import { toUtf16leBytes } from '@/lib/utf16';
 
 const entriesToTxt = (entries) =>
   entries.map((e) => `{${String(e.key).replace(/[{}]/g, '')}}${e.value}`).join('\n');
@@ -44,7 +45,8 @@ export default function FactionZipExport({ getFactionsText }) {
           const { entries, magic1, magic2 } = JSON.parse(raw);
           if (!entries?.length) return;
           zip.file(`data/text/${baseName}.strings.bin`, encodeStringsBin(entries, magic1 ?? 2, magic2 ?? 2048));
-          zip.file(`data/text/${baseName}`, entriesToTxt(entries));
+          // M2TW data/text files must be UTF-16LE with BOM, not UTF-8
+          zip.file(`data/text/${baseName}`, toUtf16leBytes(entriesToTxt(entries)));
         } catch {}
       };
       addBin('expanded.txt', 'm2tw_strings_bin_global');

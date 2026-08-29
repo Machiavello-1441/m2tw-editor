@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2, Globe2, Layers, FolderOpen } from 'lucide-react';
 import JSZip from 'jszip';
+import { toUtf16leBytes } from '@/lib/utf16';
 import ValidationDashboard from '../components/export/ValidationDashboard';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 import CampaignPackagePicker from '../components/export/CampaignPackagePicker';
@@ -183,7 +184,8 @@ export default function Export() {
     if (campaigns.length > 0) {
       // Merge all campaign descriptions into one file
       const allDescs = campaigns.map(c => c.descriptions || '').join('\n');
-      dataFolder.folder('text').file('campaign_descriptions.txt', `¬\n${allDescs}`.replace(/\n/g, '\r\n'));
+      // M2TW data/text files must be UTF-16LE with BOM, not UTF-8
+      dataFolder.folder('text').file('campaign_descriptions.txt', toUtf16leBytes(`¬\n${allDescs}`.replace(/\n/g, '\r\n')));
     }
 
     // Bundle user-selected extra files (campaign package files)
