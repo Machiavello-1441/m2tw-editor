@@ -1,6 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Info, ChevronDown, ChevronRight, Search } from 'lucide-react';
-import { parseWinConditions } from './stratParser';
+import { Info, ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown } from 'lucide-react';
+import { parseWinConditions, parseDescrStrat } from './stratParser';
+import { insertFactionIntoStrat, moveFactionInStrat } from './factionBlockOps';
+
+const defaultWinCond = () => ({
+  holdRegions: [], takeRegions: 15, outlive: [],
+  short: { holdRegions: [], takeRegions: 5, outlive: [] },
+});
 
 const AI_LABELS = ['default', 'catholic', 'papal_faction', 'slave_faction'];
 const ECONOMIC_AI = ['balanced', 'religious', 'trader', 'comfortable', 'bureaucrat', 'craftsman', 'sailor', 'fortified'];
@@ -69,7 +75,7 @@ function InfoTooltip({ text }) {
   );
 }
 
-function SearchableSelect({ value, options, onChange, infoMap, className }) {
+function SearchableSelect({ value, options, onChange, infoMap, className, placeholder }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
@@ -79,7 +85,7 @@ function SearchableSelect({ value, options, onChange, infoMap, className }) {
         onClick={() => setOpen(v => !v)}
         className={`w-full flex items-center justify-between h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 ${className || ''}`}
       >
-        <span className="truncate">{value || '—'}</span>
+        <span className="truncate">{value || placeholder || '—'}</span>
         <ChevronDown className="w-3 h-3 text-slate-500 shrink-0" />
       </button>
       {open && (
@@ -113,7 +119,7 @@ function SearchableSelect({ value, options, onChange, infoMap, className }) {
   );
 }
 
-function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate, factionMovies, onMoviesChange }) {
+function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate, factionMovies, onMoviesChange, onMove, isFirst, isLast }) {
   const [expanded, setExpanded] = useState(false);
 
   const f = faction;
@@ -140,6 +146,22 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate, fa
         {(fWithMovies.deadUntilResurrected || fWithMovies.deadUntilEmerged) && <span className="text-[8px] text-red-500/60 font-mono">dead</span>}
         {fWithMovies.reEmergent && <span className="text-[8px] text-orange-500/60 font-mono">re_emergent</span>}
         {fWithMovies.undiscovered && <span className="text-[8px] text-blue-500/60 font-mono">undiscovered</span>}
+        {onMove && (
+          <span className="flex gap-0.5 shrink-0">
+            <button
+              onClick={e => { e.stopPropagation(); onMove(f.name, -1); }}
+              disabled={isFirst}
+              title="Move faction block up in descr_strat.txt"
+              className="p-0.5 rounded text-slate-500 hover:text-amber-400 hover:bg-slate-700/60 disabled:opacity-30"
+            ><ArrowUp className="w-3 h-3" /></button>
+            <button
+              onClick={e => { e.stopPropagation(); onMove(f.name, 1); }}
+              disabled={isLast}
+              title="Move faction block down in descr_strat.txt"
+              className="p-0.5 rounded text-slate-500 hover:text-amber-400 hover:bg-slate-700/60 disabled:opacity-30"
+            ><ArrowDown className="w-3 h-3" /></button>
+          </span>
+        )}
       </div>
 
       {expanded && (
@@ -404,10 +426,10 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
 // ── Win Conditions editor ─────────────────────────────────────────────────────
 function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames, allFactionNames }) {
   const [search, setSearch] = useState('');
-  const [addRegionVal, setAddRegionVal] = useState({});
   if (!winConditions) return <p className="text-[10px] text-slate-600 italic">Load descr_win_conditions.txt to edit</p>;
 
   const factions = Object.keys(winConditions);
+  const missing = (allFactionNames || []).filter(f => !winConditions[f]);
 
   const setCondField = (faction, field, val) => {
     onWinConditionsChange({ ...winConditions, [faction]: { ...winConditions[faction], [field]: val } });
@@ -430,6 +452,29 @@ function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames
 
   return (
     <div className="space-y-2">
+      {missing.length > 0 && (
+        <div className="rounded border border-amber-500/30 bg-amber-900/10 p-2 space-y-1">
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] text-amber-400 font-semibold uppercase">Factions without victory conditions</p>
+            {missing.length > 1 && (
+              <button
+                onClick={() => onWinConditionsChange({ ...winConditions, ...Object.fromEntries(missing.map(f => [f, defaultWinCond()])) })}
+                className="text-[9px] px-1.5 py-0.5 rounded bg-amber-600/20 border border-amber-500/40 text-amber-300 hover:bg-amber-600/40">
+                Add all
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {missing.map(f => (
+              <button key={f}
+                onClick={() => onWinConditionsChange({ ...winConditions, [f]: defaultWinCond() })}
+                className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600/40 text-slate-300 hover:text-amber-300 hover:border-amber-500/40 font-mono">
+                + {f}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter factions…"
         className="w-full h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
       <div className="space-y-2">
@@ -456,17 +501,12 @@ function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames
                       </span>
                     ))}
                   </div>
-                  <div className="flex gap-1">
-                    <select
-                      value={addRegionVal[`${faction}_long`] || ''}
-                      onChange={e => setAddRegionVal(v => ({...v, [`${faction}_long`]: e.target.value}))}
-                      className="flex-1 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                      <option value="">— add region —</option>
-                      {(regionNames || []).filter(r => !(cond.holdRegions || []).includes(r)).map(r => <option key={r}>{r}</option>)}
-                    </select>
-                    <button onClick={() => { addHoldRegion(faction, addRegionVal[`${faction}_long`], false); setAddRegionVal(v => ({...v, [`${faction}_long`]: ''})); }}
-                      className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
-                  </div>
+                  <SearchableSelect
+                    value=""
+                    placeholder="— add region (search) —"
+                    options={(regionNames || []).filter(r => !(cond.holdRegions || []).includes(r))}
+                    onChange={r => addHoldRegion(faction, r, false)}
+                  />
                 </div>
                 <div>
                   <span className="text-[9px] text-slate-500">outlive</span>
@@ -502,17 +542,12 @@ function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames
                       </span>
                     ))}
                   </div>
-                  <div className="flex gap-1">
-                    <select
-                      value={addRegionVal[`${faction}_short`] || ''}
-                      onChange={e => setAddRegionVal(v => ({...v, [`${faction}_short`]: e.target.value}))}
-                      className="flex-1 h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                      <option value="">— add region —</option>
-                      {(regionNames || []).filter(r => !(cond.short?.holdRegions || []).includes(r)).map(r => <option key={r}>{r}</option>)}
-                    </select>
-                    <button onClick={() => { addHoldRegion(faction, addRegionVal[`${faction}_short`], true); setAddRegionVal(v => ({...v, [`${faction}_short`]: ''})); }}
-                      className="text-[9px] px-1 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+</button>
-                  </div>
+                  <SearchableSelect
+                    value=""
+                    placeholder="— add region (search) —"
+                    options={(regionNames || []).filter(r => !(cond.short?.holdRegions || []).includes(r))}
+                    onChange={r => addHoldRegion(faction, r, true)}
+                  />
                 </div>
                 <div>
                   <span className="text-[9px] text-slate-500">outlive</span>
@@ -565,6 +600,44 @@ export default function FactionsCampaignTab({
     onFactionMoviesChange?.({ ...(factionMovies || {}), [factionName]: movies });
   };
 
+  // Re-parse a modified raw descr_strat text, preserving computed settlement
+  // positions (matched by region name) and unsaved new items (negative IDs).
+  const applyRawChange = (newRaw) => {
+    const parsed = parseDescrStrat(newRaw);
+    const posByRegion = {};
+    for (const it of (stratData?.items || [])) {
+      if (it.category === 'settlement' && it.x != null) posByRegion[it.region] = { x: it.x, y: it.y };
+    }
+    const items = (parsed.items || []).map(i =>
+      i.category === 'settlement' && posByRegion[i.region]
+        ? { ...i, x: posByRegion[i.region].x, y: posByRegion[i.region].y }
+        : i
+    );
+    const negatives = (stratData?.items || []).filter(i => i.id < 0);
+    try { sessionStorage.setItem('m2tw_strat_raw', newRaw); } catch {}
+    onStratDataChange({ ...parsed, items: [...items, ...negatives] });
+  };
+
+  // Factions defined in descr_sm_factions.txt but not yet in descr_strat
+  const addableFactions = useMemo(() => {
+    const existing = new Set((stratData?.factions || []).map(f => f.name));
+    return Object.keys(factionColors || {}).filter(n => !existing.has(n)).sort();
+  }, [factionColors, stratData?.factions]);
+
+  const handleAddFaction = (name) => {
+    if (!stratData?.raw || !name) return;
+    applyRawChange(insertFactionIntoStrat(stratData.raw, name));
+    // Every faction gets victory conditions
+    if (winConditions && !winConditions[name]) {
+      onWinConditionsChange({ ...winConditions, [name]: defaultWinCond() });
+    }
+  };
+
+  const handleMoveFaction = (name, dir) => {
+    if (!stratData?.raw) return;
+    applyRawChange(moveFactionInStrat(stratData.raw, name, dir));
+  };
+
   const filteredFactions = useMemo(() =>
     (stratData?.factions || []).filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase())),
     [stratData?.factions, search]
@@ -588,6 +661,21 @@ export default function FactionsCampaignTab({
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {subTab === 'factions' && (
           <>
+            <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2 space-y-1">
+              <p className="text-[9px] text-slate-500 uppercase font-semibold">Add faction from descr_sm_factions</p>
+              {addableFactions.length > 0 ? (
+                <SearchableSelect
+                  value=""
+                  placeholder="— select faction to add —"
+                  options={addableFactions}
+                  onChange={handleAddFaction}
+                />
+              ) : (
+                <p className="text-[10px] text-slate-600 italic">
+                  {factionColors ? 'All descr_sm_factions factions are already in the campaign' : 'Load descr_sm_factions.txt first'}
+                </p>
+              )}
+            </div>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search factions…"
               className="w-full h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
             {filteredFactions.length === 0 && <p className="text-[10px] text-slate-600 italic text-center py-2">No faction blocks in descr_strat.txt</p>}
@@ -602,6 +690,9 @@ export default function FactionsCampaignTab({
                   onUpdate={handleFactionUpdate}
                   factionMovies={factionMovies}
                   onMoviesChange={handleMoviesChange}
+                  onMove={handleMoveFaction}
+                  isFirst={f.name === stratData.factions?.[0]?.name}
+                  isLast={f.name === stratData.factions?.[stratData.factions.length - 1]?.name}
                 />
               ))}
             </div>
