@@ -546,6 +546,48 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   const lines = stratData.raw.split('\n');
   const replacements = [];
 
+  // ── Patch existing characters/resources/forts FIRST — before ANY splice
+  // (ai_label insertion, dead flags, relatives, diplomacy, playable blocks)
+  // shifts line numbers. Patching later with stale _lineNum values wrote fort
+  // lines onto the wrong lines, leaving duplicated/corrupted entries at the
+  // end of the file.
+  const fortCommentChanges = [];
+  for (const item of overlayItems) {
+    if (item.id < 0) continue; // new items handled below
+    const orig = stratData.items?.find(o => o.id === item.id);
+    if (!orig) continue;
+
+    if (item.category === 'character' && orig._lineNum !== undefined) {
+      lines[orig._lineNum] = serializeCharLine(item);
+    }
+
+    if (item.category === 'resource' && orig._lineNum !== undefined) {
+      lines[orig._lineNum] = `resource\t${item.type},\t${item.x},\t${item.y}`;
+    }
+
+    if (item.category === 'fortification' && orig._lineNum !== undefined) {
+      lines[orig._lineNum] = item.type === 'watchtower'
+        ? `watchtower\t${item.x} ${item.y}`
+        : `fort\t${item.x} ${item.y}${item.fortType ? ` ${item.fortType}` : ''}${item.culture ? ` culture ${item.culture}` : ''}`;
+      // Handle the comment line that sits just before the fort line.
+      const prevRaw = lines[orig._lineNum - 1] || '';
+      const hadComment = /^;;;\s+/.test(prevRaw);
+      if (item.comment && hadComment) {
+        lines[orig._lineNum - 1] = `;;; ${item.comment}`;
+      } else if (item.comment && !hadComment) {
+        fortCommentChanges.push({ lineNum: orig._lineNum, action: 'insert', text: `;;; ${item.comment}` });
+      } else if (!item.comment && hadComment) {
+        fortCommentChanges.push({ lineNum: orig._lineNum - 1, action: 'remove' });
+      }
+    }
+  }
+  // Apply comment-line insertions/removals in reverse line order
+  fortCommentChanges.sort((a, b) => b.lineNum - a.lineNum);
+  for (const change of fortCommentChanges) {
+    if (change.action === 'insert') lines.splice(change.lineNum, 0, change.text);
+    else if (change.action === 'remove') lines.splice(change.lineNum, 1);
+  }
+
   // ── Patch global campaign settings ──────────────────────────────────────
   const pl = (regex, newLine) => {
     const idx = lines.findIndex(l => regex.test(l.replace(/;.*$/, '').trim()));
@@ -733,58 +775,8 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // ── Patch existing characters/resources/forts FIRST (before any splices that shift line numbers) ──
-  // Fort comment lines live on their own line (";;; comment") just before the
-  // fort line. Inserting/removing them shifts line numbers, so we collect those
-  // changes and apply them in reverse order after the loop.
-  const fortCommentChanges = [];
-  for (const item of overlayItems) {
-    if (item.id < 0) continue; // new items handled below
-    const orig = stratData.items?.find(o => o.id === item.id);
-    if (!orig) continue;
-
-    if (item.category === 'character' && orig._lineNum !== undefined) {
-      lines[orig._lineNum] = serializeCharLine(item);
-    }
-
-    // Always regenerate the full line for resources and forts. The previous
-    // approach only patched x/y and skipped when orig matched item — but
-    // onSaveItem updates stratData.items too, so orig===item and changes were
-    // never detected. Regenerating the full line from `item` captures type,
-    // culture, comment, AND coordinate changes reliably.
-    if (item.category === 'resource' && orig._lineNum !== undefined) {
-      lines[orig._lineNum] = `resource\t${item.type},\t${item.x},\t${item.y}`;
-    }
-
-    if (item.category === 'fortification' && orig._lineNum !== undefined) {
-      // Regenerate the fort/watchtower line WITHOUT inline comment — comments
-      // are now emitted on their own line (";;; comment") just before the fort.
-      lines[orig._lineNum] = item.type === 'watchtower'
-        ? `watchtower\t${item.x} ${item.y}`
-        : `fort\t${item.x} ${item.y}${item.fortType ? ` ${item.fortType}` : ''}${item.culture ? ` culture ${item.culture}` : ''}`;
-      // Handle the comment line that sits just before the fort line.
-      const prevRaw = lines[orig._lineNum - 1] || '';
-      const hadComment = /^;;;\s+/.test(prevRaw);
-      if (item.comment && hadComment) {
-        // Replace existing comment line
-        lines[orig._lineNum - 1] = `;;; ${item.comment}`;
-      } else if (item.comment && !hadComment) {
-        // Insert new comment line before the fort line
-        fortCommentChanges.push({ lineNum: orig._lineNum, action: 'insert', text: `;;; ${item.comment}` });
-      } else if (!item.comment && hadComment) {
-        // Remove the now-empty comment line
-        fortCommentChanges.push({ lineNum: orig._lineNum - 1, action: 'remove' });
-      }
-    }
-  }
-
-  // Apply fort comment-line insertions/removals in reverse line order so that
-  // earlier line numbers are not shifted by later splices.
-  fortCommentChanges.sort((a, b) => b.lineNum - a.lineNum);
-  for (const change of fortCommentChanges) {
-    if (change.action === 'insert') lines.splice(change.lineNum, 0, change.text);
-    else if (change.action === 'remove') lines.splice(change.lineNum, 1);
-  }
+  // (Existing characters/resources/forts are patched at the TOP of this
+  // function, before any line-shifting splices.)
 
   // origIds: IDs that existed in the ORIGINAL file (positive IDs from parsing).
   // New items added by the user have negative IDs (id: -(Date.now())).
@@ -1058,6 +1050,40 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   for (const { start, end, newLines } of replacements) {
     result.splice(start, end - start + 1, ...newLines);
   }
+
+  // ── Tail cleanup ──────────────────────────────────────────────────────────
+  // 1. Remove every "script" + filename pair wherever it sits (it must only
+  //    appear once, at the very end of the file).
+  const scriptFileName = stratData.scriptFile || 'campaign_script.txt';
+  for (let i = result.length - 1; i >= 0; i--) {
+    const c = result[i].replace(/;.*$/, '').trim();
+    if (/^script$/i.test(c)) {
+      let j = i + 1;
+      while (j < result.length && !result[j].replace(/;.*$/, '').trim()) j++;
+      if (j < result.length) result.splice(j, 1);
+      result.splice(i, 1);
+    }
+  }
+  // 2. Deduplicate fort/watchtower lines (same type + coordinates) — stale
+  //    duplicates at the end of the regions section crash the game. Keep the
+  //    first occurrence, drop the rest (with their ";;; comment" line).
+  const seenForts = new Set();
+  for (let i = 0; i < result.length; i++) {
+    const c = result[i].replace(/;.*$/, '').trim();
+    const m = c.match(/^(fort|watchtower)\s+(\d+)\s+(\d+)/i);
+    if (!m) continue;
+    const key = `${m[1].toLowerCase()} ${m[2]} ${m[3]}`;
+    if (seenForts.has(key)) {
+      result.splice(i, 1);
+      if (i - 1 >= 0 && /^;;;\s+/.test(result[i - 1])) { result.splice(i - 1, 1); i--; }
+      i--;
+    } else {
+      seenForts.add(key);
+    }
+  }
+  // 3. Close the file with the script directive at the very end.
+  while (result.length && !result[result.length - 1].trim()) result.pop();
+  result.push('', 'script', scriptFileName);
 
   return result.join('\n');
 }
