@@ -1006,29 +1006,33 @@ export default function FactionsEditor() {
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                className={`w-full flex items-center gap-2 px-3 py-2 border-b border-border/60 ${selectedIdx === originalIdx ? 'bg-accent' : 'hover:bg-accent'} ${snapshot.isDragging ? 'bg-accent shadow-lg' : ''}`}
+                                className={`w-full border-b border-border/60 ${selectedIdx === originalIdx ? 'bg-accent' : 'hover:bg-accent'} ${snapshot.isDragging ? 'bg-accent shadow-lg' : ''}`}
                                 style={{ ...provided.draggableProps.style }}
                               >
-                                <div {...provided.dragHandleProps} className="cursor-grab text-slate-500 hover:text-slate-300">
-                                  <GripVertical className="w-3 h-3" />
-                                </div>
-                                <button onClick={() => setSelectedIdx(originalIdx)} className="flex items-center gap-2 flex-1 text-left">
-                                  <div className="flex gap-1 shrink-0">
-                                    <div className="w-3 h-3 rounded-sm border border-slate-600" style={{ background: rgbToHex(f.primary_colour) }} />
-                                    <div className="w-3 h-3 rounded-sm border border-slate-600" style={{ background: rgbToHex(f.secondary_colour) }} />
+                                <div className="flex items-center gap-2 px-3 py-2">
+                                  <div {...provided.dragHandleProps} className="cursor-grab text-slate-500 hover:text-slate-300">
+                                    <GripVertical className="w-3 h-3" />
                                   </div>
-                                  <span className="flex-1 text-[11px] font-mono truncate text-slate-100">{f.name}</span>
-                                </button>
-                                <div className="flex gap-1 shrink-0">
-                                  <button onClick={(e) => {e.stopPropagation();openDuplicateModal(originalIdx);}}
-                              className="text-blue-300 hover:text-blue-200 p-1" title="Duplicate">
-                                    <Copy className="w-3 h-3" />
-                                  </button>
-                                  <button onClick={(e) => {e.stopPropagation();deleteFaction(originalIdx);}}
-                              className="text-red-400 hover:text-red-300 p-1" title="Delete">
-                                    <Trash2 className="w-3 h-3" />
+                                  <button onClick={() => setSelectedIdx(originalIdx)} className="flex items-center gap-2 flex-1 text-left min-w-0">
+                                    <div className="flex gap-1 shrink-0">
+                                      <div className="w-3 h-3 rounded-sm border border-slate-600" style={{ background: rgbToHex(f.primary_colour) }} />
+                                      <div className="w-3 h-3 rounded-sm border border-slate-600" style={{ background: rgbToHex(f.secondary_colour) }} />
+                                    </div>
+                                    <span className="flex-1 text-[11px] font-mono truncate text-slate-100">{f.name}</span>
                                   </button>
                                 </div>
+                                {selectedIdx === originalIdx && (
+                                  <div className="flex gap-1.5 px-3 pb-2">
+                                    <Button variant="outline" size="sm" className="flex-1 h-6 text-[10px] text-blue-300 border-blue-700/60 hover:bg-blue-900/30 hover:text-blue-200"
+                                      onClick={(e) => {e.stopPropagation();openDuplicateModal(originalIdx);}}>
+                                      <Copy className="w-3 h-3 mr-1" /> Duplicate
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="flex-1 h-6 text-[10px] text-red-400 border-red-700/60 hover:bg-red-900/30 hover:text-red-300"
+                                      onClick={(e) => {e.stopPropagation();deleteFaction(originalIdx);}}>
+                                      <Trash2 className="w-3 h-3 mr-1" /> Delete
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </Draggable>
