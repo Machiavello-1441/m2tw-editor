@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Upload, Download, Plus, X, Search, Copy } from 'lucide-react';
+import { Upload, Download, Plus, X, Search, Copy, GitMerge } from 'lucide-react';
+import MergeNamesModal from './MergeNamesModal';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import { useModData } from '@/components/shared/ModDataContext';
@@ -330,6 +331,20 @@ export default function CharacterNamesTab() {
     setDupTargetFaction('');
   };
 
+  // ─── Merge factions' names into the selected one ───────────────────────────
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const confirmMerge = (preview) => {
+    setDescrNames(prev => ({
+      ...prev,
+      [selectedFaction]: {
+        characters: preview.characters.list,
+        surnames: preview.surnames.list,
+        females: preview.females.list,
+      }
+    }));
+    setShowMergeModal(false);
+  };
+
   const noneLoaded = factionList.length === 0;
 
   return (
@@ -409,7 +424,22 @@ export default function CharacterNamesTab() {
                 <Copy className="w-3 h-3" /> Duplicate Names
               </button>
             )}
+            {selectedFaction && (
+              <button onClick={() => setShowMergeModal(true)}
+                className="w-full flex items-center gap-1 px-2 py-1 rounded text-[10px] border border-dashed border-amber-600/40 text-amber-400 hover:text-amber-300 hover:border-amber-400 transition-colors mt-1">
+                <GitMerge className="w-3 h-3" /> Merge Names Into This
+              </button>
+            )}
           </div>
+
+          {showMergeModal && (
+            <MergeNamesModal
+              target={selectedFaction}
+              descrNames={descrNames}
+              onConfirm={confirmMerge}
+              onClose={() => setShowMergeModal(false)}
+            />
+          )}
 
           {/* Duplicate modal */}
           {showDupModal && (
