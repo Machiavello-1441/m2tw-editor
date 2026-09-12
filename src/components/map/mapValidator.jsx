@@ -1,6 +1,7 @@
 /**
  * M2TW Campaign Map Validator
  */
+import { checkMapFeatures } from './mapFeaturesChecks';
 
 function getPixel(data, width, x, y) {
   const i = (y * width + x) * 4;
@@ -30,11 +31,6 @@ function getBlockingFeature(r, g, b) {
   if (isVolcano(r, g, b)) return 'volcano';
   return null;
 }
-
-const KNOWN_FEATURE_COLORS = [
-  [0, 0, 255], [0, 255, 255], [255, 255, 255],
-  [255, 255, 0], [0, 255, 0], [255, 0, 0],
-];
 
 // Impassable map_ground_types.tga tiles — a city (black) or port (white) marker
 // must never sit on one of these.
@@ -74,47 +70,25 @@ export function validateLayers(layers, step = 4) {
   const features = layers['features'];
   const regions  = layers['regions'];
 
-  // Check 1: Rivers/fords on sea heights
+  // Check 1: Fords on sea heights (rivers running into the sea are legitimate)
   if (heights?.data && features?.data) {
     const w = features.width, h = features.height;
     for (let y = 0; y < h; y += step) {
       for (let x = 0; x < w; x += step) {
         const [fr, fg, fb] = getPixel(features.data, w, x, y);
-        const isR = isRiver(fr, fg, fb);
-        const isF = isFord(fr, fg, fb);
-        if (!isR && !isF) continue;
+        if (!isFord(fr, fg, fb)) continue;
         const hx = Math.round(x * (heights.width / w));
         const hy = Math.round(y * (heights.height / h));
         const [hr, hg, hb] = getPixel(heights.data, heights.width, hx, hy);
-        if (isSeaHeight(hr, hg, hb)) {
-          // Fords crossing the sea are invalid; rivers often legitimately run
-          // into the sea, so those stay a warning.
-          if (isF) push('error', 'features', `Ford on sea height at (${x},${y})`, x, y);
-          else     push('warning', 'features', `River on sea height at (${x},${y})`, x, y);
-        }
+        if (isSeaHeight(hr, hg, hb)) push('error', 'features', `Ford on sea height at (${x},${y})`, x, y);
       }
     }
   }
 
-  // Check 2: Unknown feature colours
-  if (features?.data) {
-    const w = features.width, h = features.height;
-    const unknownSet = new Set();
-    for (let y = 0; y < h; y += step) {
-      for (let x = 0; x < w; x += step) {
-        const [r, g, b] = getPixel(features.data, w, x, y);
-        if (isFeatureBg(r, g, b)) continue;
-        const isKnown = KNOWN_FEATURE_COLORS.some(([kr,kg,kb]) => colorDist(r,g,b,kr,kg,kb) < 20);
-        if (!isKnown) {
-          const key = `${r},${g},${b}`;
-          if (!unknownSet.has(key)) {
-            unknownSet.add(key);
-            push('warning', 'features', `Unknown feature colour rgb(${r},${g},${b}) at (${x},${y})`, x, y);
-          }
-        }
-      }
-    }
-  }
+  // Check 2: map_features.tga topology — invalid colours, blue crossroads,
+  // 2×2 river blocks, orphan white sources, isolated river pixels, and river
+  // networks without a white source. Full-resolution, exact-colour scan.
+  if (features?.data) checkMapFeatures(features, push);
 
   // Check 3: City/port markers in sea region
   if (regions?.data && heights?.data) {
