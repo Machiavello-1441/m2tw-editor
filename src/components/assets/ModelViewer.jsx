@@ -93,7 +93,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
   const [showWireframe, setShowWireframe] = useState(false);
   const [lightingPreset, setLightingPreset] = useState('default');
   const [poseRotations, setPoseRotations] = useState({});  // { boneIdx: { rx, ry, rz } }
-  const [sidebarTab, setSidebarTab] = useState('view');    // 'view' | 'pose'
+  const [sidebarTab, setSidebarTab] = useState('skin');    // 'view' | 'pose'
   const [meshInfos, setMeshInfos] = useState([]); // [{ name, visible, textureFile }]
   const [hasSkeleton, setHasSkeleton] = useState(false);
   const [superGroups, setSuperGroups] = useState([]);

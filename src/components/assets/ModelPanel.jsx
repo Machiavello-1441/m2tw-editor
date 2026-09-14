@@ -45,7 +45,10 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     setAutoSkin({ main, attach: resolveFile(attachPath), normal: resolveFile(f.normalTex) });
   }, [entry, factionIdx]);
 
-  const loadFile = async (file) => {
+  // `replace` is set when the model comes from the modeldb dropdown: that picks
+  // ONE model to look at, so it takes over the view instead of stacking a tab on
+  // top of whatever was open. Files added by hand keep stacking.
+  const loadFile = async (file, replace = false) => {
     const buf = await file.arrayBuffer();
     const ext = file.name.split('.').pop().toLowerCase();
     let result;
@@ -82,10 +85,8 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
       : result.meshes.reduce((s, m) => s + m.numVertices, 0);
     const totalFaces = result.meshes.reduce((s, m) => s + m.numFaces, 0);
 
-    setFiles(prev => {
-      const next = prev.filter(f => f.name !== file.name);
-      return [...next, { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf, ms3dFull }];
-    });
+    const record = { name: file.name, parsed: result, sourceFormat: result.sourceFormat, totalVerts, totalFaces, rawBuffer: buf, ms3dFull };
+    setFiles(prev => (replace ? [record] : [record, ...prev.filter(f => f.name !== file.name)]));
     setSelected(0);
   };
 
@@ -103,7 +104,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     setFactionIdx(0);
     const en = db?.entries?.find(x => x.name === name);
     const file = (en?.meshes || []).map(m => resolveFile(m.path)).find(Boolean);
-    if (file) await loadFile(file);
+    if (file) await loadFile(file, true);
   };
 
   const addFiles = async (fileList) => {
