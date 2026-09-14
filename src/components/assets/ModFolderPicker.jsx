@@ -15,7 +15,7 @@ export default function ModFolderPicker({ folder, onPick }) {
         onClick={() => ref.current?.click()}
         className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
       >
-        <FolderOpen className="w-3 h-3" /> {folder ? 'Pick another folder…' : 'Pick data folder…'}
+        <FolderOpen className="w-3 h-3" /> {folder ? 'Pick another unit_models folder…' : 'Pick the unit_models folder…'}
       </button>
       <input
         ref={ref} type="file" className="hidden" multiple webkitdirectory="" directory=""

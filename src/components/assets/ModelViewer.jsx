@@ -66,7 +66,7 @@ function buildSuperGroups(meshNames, groupComments) {
   return result;
 }
 
-export default function ModelViewer({ parsedMesh, skeletonData, groupComments, modelName = '', onLoadModel, className = '' }) {
+export default function ModelViewer({ parsedMesh, skeletonData, groupComments, modelName = '', onLoadModel, autoSkin = null, className = '' }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -75,7 +75,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
   const meshObjsRef = useRef([]);      // THREE.Mesh objects
   const skeletonObjRef = useRef(null); // skeleton line group
   const animIdRef = useRef(null);
-  const isRotatingRef = useRef(true);
+  const isRotatingRef = useRef(false);
   const isDraggingRef = useRef(false);
 
   const lightsRef = useRef({ ambient: null, dir: null, fill: null });
@@ -88,9 +88,9 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
   const jointPosRef = useRef(null);       // reusable Vector3 array for joint positions
   const groupVertMapsRef = useRef([]);    // pre-computed per-group vertex index maps
 
-  const [isRotating, setIsRotating] = useState(true);
+  const [isRotating, setIsRotating] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(false);
-  const [showWireframe, setShowWireframe] = useState(true);
+  const [showWireframe, setShowWireframe] = useState(false);
   const [lightingPreset, setLightingPreset] = useState('default');
   const [poseRotations, setPoseRotations] = useState({});  // { boneIdx: { rx, ry, rz } }
   const [sidebarTab, setSidebarTab] = useState('view');    // 'view' | 'pose'
@@ -689,6 +689,14 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
       normalMapFile: normalFile ? normalFile.name : info.normalMapFile,
     })));
   }, []);
+
+  // The faction skin picked in the top bar is applied automatically, and again
+  // whenever a different model is loaded.
+  useEffect(() => {
+    if (autoSkin?.main && meshObjsRef.current.length) {
+      handleApplySkin(autoSkin.main, autoSkin.attach, autoSkin.normal);
+    }
+  }, [autoSkin, parsedMesh, handleApplySkin]);
 
   // ── randomiser ──────────────────────────────────────────────────────────
   // Variants of one part share a slot name up to a trailing number —

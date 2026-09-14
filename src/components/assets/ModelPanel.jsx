@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
 import { parseMeshFile, probeModelBytes } from '@/lib/m2MeshCodec';
 import { parseCasFile } from '@/lib/m2CasCodec';
 import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
 import ModelViewer from './ModelViewer';
 import { Button } from '@/components/ui/button';
-import ModFolderPicker from './ModFolderPicker';
+import ModelBrowserBar from './ModelBrowserBar';
+import { modeldbStore } from '@/lib/modeldbStore';
 import { indexFolder, getFolderIndex, loadFolderModeldb, resolveFile } from '@/lib/modFolderStore';
 import { Upload, Download, Info, ArrowLeftRight, Box, AlertTriangle, X } from 'lucide-react';
 
@@ -22,8 +23,27 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
   const [files, setFiles] = useState([]);
   const [selected, setSelected] = useState(0);
   const [folder, setFolder] = useState(() => getFolderIndex());
+  const [db, setDb] = useState(() => modeldbStore.get());
+  const [entryName, setEntryName] = useState('');
+  const [factionIdx, setFactionIdx] = useState(0);
+  const [autoSkin, setAutoSkin] = useState(null);
 
   const current = files[selected] || null;
+  const entry = useMemo(
+    () => db?.entries?.find(en => en.name === entryName) || null,
+    [db, entryName]
+  );
+
+  // The chosen faction's skin is resolved out of the folder and handed to the
+  // viewer, which applies it as soon as the model is on screen.
+  useEffect(() => {
+    const f = entry?.factions?.[factionIdx];
+    if (!f) { setAutoSkin(null); return; }
+    const attachPath = (entry.attachFactions || []).find(x => x.faction === f.faction)?.diffTex || '';
+    const main = resolveFile(f.texture);
+    if (!main) { setAutoSkin(null); return; }
+    setAutoSkin({ main, attach: resolveFile(attachPath), normal: resolveFile(f.normalTex) });
+  }, [entry, factionIdx]);
 
   const loadFile = async (file) => {
     const buf = await file.arrayBuffer();
@@ -69,26 +89,30 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     setSelected(0);
   };
 
-  // A whole mod folder: index it, read its modeldb, and open the first model
-  // it names, so the Skin tab has everything it needs from one pick.
+  // Index the unit_models folder and read its modeldb — nothing is opened until
+  // a model entry is picked from the top bar.
   const pickFolder = async (fileList) => {
     const idx = indexFolder(fileList);
     setFolder(idx);
-    const db = await loadFolderModeldb(idx);
-    const first = (db?.entries || [])
-      .map(en => resolveFile(en.meshes?.[0]?.path))
-      .find(Boolean);
-    if (first) await loadFile(first);
+    setEntryName(''); setFactionIdx(0);
+    setDb(await loadFolderModeldb(idx));
+  };
+
+  const selectEntry = async (name) => {
+    setEntryName(name);
+    setFactionIdx(0);
+    const en = db?.entries?.find(x => x.name === name);
+    const file = (en?.meshes || []).map(m => resolveFile(m.path)).find(Boolean);
+    if (file) await loadFile(file);
+  };
+
+  const addFiles = async (fileList) => {
+    for (const f of fileList) await loadFile(f);
   };
 
   const handleDrop = async (e) => {
     e.preventDefault();
     for (const f of e.dataTransfer.files) await loadFile(f);
-  };
-
-  const handleInput = async (e) => {
-    for (const f of e.target.files) await loadFile(f);
-    e.target.value = '';
   };
 
   const exportMs3d = () => {
@@ -113,39 +137,39 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
 
   return (
     <div className="flex flex-col gap-3 h-full">
+      <ModelBrowserBar
+        folder={folder}
+        onPickFolder={pickFolder}
+        db={db}
+        entryName={entryName}
+        onEntryChange={selectEntry}
+        entry={entry}
+        factionIdx={factionIdx}
+        onFactionChange={setFactionIdx}
+        accept={accept}
+        onFiles={addFiles}
+      />
+
       {/* When no model loaded: drop zone centered */}
       {!current && (
-        <div className="flex flex-col items-center gap-3">
-          <label
-            className="w-full max-w-md cursor-pointer border-2 border-dashed border-slate-600 rounded-xl p-6 text-center hover:border-blue-500 transition-colors"
-            onDragOver={e => e.preventDefault()}
-            onDrop={handleDrop}
-          >
-            <input type="file" className="hidden" multiple accept={accept} onChange={handleInput} />
-            <Box className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-            <p className="text-sm text-slate-300">{label}</p>
-            <p className="text-[11px] text-slate-500 mt-1">{hint}</p>
-          </label>
-          <div className="w-full max-w-md text-[11px]">
-            <ModFolderPicker folder={folder} onPick={pickFolder} />
-          </div>
+        <div
+          className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-700 rounded-xl p-6 text-center"
+          onDragOver={e => e.preventDefault()}
+          onDrop={handleDrop}
+        >
+          <Box className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+          <p className="text-sm text-slate-300">
+            {folder ? 'Pick a model from the list above' : label}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-1">{hint}</p>
         </div>
       )}
 
       {/* When model loaded: 3D preview fills space, info panel on top */}
       {current && (
         <>
-          {/* Compact top bar: drop new + file tabs + info + export */}
+          {/* Compact second bar: file tabs + info + export */}
           <div className="flex items-center gap-2 flex-wrap text-[11px]">
-            <label
-              className="shrink-0 cursor-pointer border border-dashed border-slate-600 rounded-lg px-3 py-1.5 text-center hover:border-blue-500 transition-colors"
-              onDragOver={e => e.preventDefault()}
-              onDrop={handleDrop}
-            >
-              <input type="file" className="hidden" multiple accept={accept} onChange={handleInput} />
-              <span className="flex items-center gap-1.5 text-slate-400 text-[11px]"><Box className="w-3 h-3" /> Drop / Add</span>
-            </label>
-
             {files.map((f, i) => (
               <div key={f.name} className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors ${i === selected ? 'bg-blue-700 border-blue-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'}`}>
                 <button onClick={() => setSelected(i)} className="truncate max-w-[120px]">{f.name}</button>
@@ -206,6 +230,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
               parsedMesh={current.parsed}
               modelName={current.name}
               onLoadModel={loadFile}
+              autoSkin={autoSkin}
               skeletonData={current.ms3dFull || null}
               groupComments={current.ms3dFull?.groupComments || null}
               className="w-full h-full"
