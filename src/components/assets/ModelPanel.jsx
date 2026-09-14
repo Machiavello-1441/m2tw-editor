@@ -144,6 +144,19 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
             {current.ms3dFull?.joints?.length > 0 && (
               <span className="text-green-400">{current.ms3dFull.joints.length}j</span>
             )}
+            {current.parsed.bones?.length > 0 && (
+              <span className="text-green-400" title={current.parsed.bones.join('\n')}>
+                {current.parsed.bones.length} bones
+              </span>
+            )}
+            {current.parsed.lodName && (
+              <span className="text-slate-500 font-mono">{current.parsed.lodName}</span>
+            )}
+            {current.parsed.textures?.length > 0 && (
+              <span className="text-violet-400" title={current.parsed.textures.join('\n')}>
+                {current.parsed.textures.length} tex
+              </span>
+            )}
 
             <div className="h-4 w-px bg-slate-700 mx-1" />
 
