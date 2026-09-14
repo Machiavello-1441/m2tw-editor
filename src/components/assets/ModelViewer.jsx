@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { loadTextureBuffer } from '@/lib/textureLoader';
+import { buildSheetAtlas } from '@/lib/skinAtlas';
 import ModelViewerSidebar from './ModelViewerSidebar';
+import ModeldbSkinPanel from './ModeldbSkinPanel';
 import PoseEditor from './PoseEditor';
 import { buildBindPoseMatrices, computePosedMatrices, skinVertices, getJointWorldPositions } from '@/lib/skeletonPoser';
 
@@ -63,7 +65,7 @@ function buildSuperGroups(meshNames, groupComments) {
   return result;
 }
 
-export default function ModelViewer({ parsedMesh, skeletonData, groupComments, className = '' }) {
+export default function ModelViewer({ parsedMesh, skeletonData, groupComments, modelName = '', className = '' }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -196,7 +198,12 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       wf.name = meshName + '_wire';
       obj.add(wf);
 
-      infos.push({ name: meshName, visible: true, textureFile: null, normalMapFile: null, specularMapFile: null });
+      infos.push({
+        name: meshName, visible: true,
+        groupType: mesh.groupType || meshName,
+        optional: !!mesh.optional,
+        textureFile: null, normalMapFile: null, specularMapFile: null,
+      });
     });
 
     meshObjsRef.current = meshObjects;
@@ -647,6 +654,68 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
     setPoseRotations({});
   }, []);
 
+  // ── modeldb skin: one atlas across every group ──────────────────────────
+  const handleApplySkin = useCallback(async (mainFile, attachFile, normalFile) => {
+    const atlas = await buildSheetAtlas(mainFile, attachFile);
+    if (!atlas) return;
+
+    const makeTex = (canvas) => {
+      const t = new THREE.CanvasTexture(canvas);
+      t.flipY = false;
+      t.repeat.set(0.5, 1); // UVs run 0..2 across the sheet pair
+      t.needsUpdate = true;
+      return t;
+    };
+    const diffuse = makeTex(atlas);
+    const normalAtlas = normalFile ? await buildSheetAtlas(normalFile, normalFile) : null;
+    const normal = normalAtlas ? makeTex(normalAtlas) : null;
+
+    meshObjsRef.current.forEach(obj => {
+      if (obj.material.map) obj.material.map.dispose();
+      obj.material.map = diffuse;
+      if (normal) {
+        if (obj.material.normalMap) obj.material.normalMap.dispose();
+        obj.material.normalMap = normal;
+      }
+      obj.material.color.set(0xffffff);
+      obj.material.needsUpdate = true;
+      obj.children.forEach(c => { if (c.isLineSegments) c.visible = false; });
+    });
+
+    setMeshInfos(prev => prev.map(info => ({
+      ...info,
+      textureFile: mainFile.name,
+      normalMapFile: normalFile ? normalFile.name : info.normalMapFile,
+    })));
+  }, []);
+
+  // ── randomiser: one variant per group slot, as the engine picks them ────
+  const handleRandomize = useCallback(() => {
+    setMeshInfos(prev => {
+      const bySlot = new Map();
+      prev.forEach((info, idx) => {
+        const slot = info.groupType || info.name;
+        if (!bySlot.has(slot)) bySlot.set(slot, []);
+        bySlot.get(slot).push(idx);
+      });
+
+      const visible = new Array(prev.length).fill(false);
+      for (const indices of bySlot.values()) {
+        const optional = indices.filter(i => prev[i].optional);
+        const required = indices.filter(i => !prev[i].optional);
+        required.forEach(i => { visible[i] = true; });
+        // A slot's optional variants are alternatives — show exactly one.
+        const pool = optional.length ? optional : (required.length ? [] : indices);
+        if (pool.length) visible[pool[Math.floor(Math.random() * pool.length)]] = true;
+      }
+
+      prev.forEach((_, i) => {
+        if (meshObjsRef.current[i]) meshObjsRef.current[i].visible = visible[i];
+      });
+      return prev.map((info, i) => ({ ...info, visible: visible[i] }));
+    });
+  }, []);
+
   return (
     <div className={`flex ${className}`}>
       {/* Preview container */}
@@ -656,26 +725,38 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, c
       </div>
 
       {/* Sidebar with tabs */}
-      <div className="w-52 border-l border-slate-700 bg-slate-900 flex flex-col shrink-0">
+      <div className="w-60 border-l border-slate-700 bg-slate-900 flex flex-col shrink-0">
         {/* Tab switcher */}
-        {hasSkeleton && (
-          <div className="flex border-b border-slate-700">
-            <button
-              onClick={() => setSidebarTab('view')}
-              className={`flex-1 text-[11px] py-1.5 text-center transition-colors ${
-                sidebarTab === 'view' ? 'bg-slate-800 text-blue-300 border-b-2 border-blue-500' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >View</button>
+        <div className="flex border-b border-slate-700">
+          <button
+            onClick={() => setSidebarTab('view')}
+            className={`flex-1 text-[11px] py-1.5 text-center transition-colors ${
+              sidebarTab === 'view' ? 'bg-slate-800 text-blue-300 border-b-2 border-blue-500' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >View</button>
+          <button
+            onClick={() => setSidebarTab('skin')}
+            className={`flex-1 text-[11px] py-1.5 text-center transition-colors ${
+              sidebarTab === 'skin' ? 'bg-slate-800 text-violet-300 border-b-2 border-violet-500' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >Skin</button>
+          {hasSkeleton && (
             <button
               onClick={() => setSidebarTab('pose')}
               className={`flex-1 text-[11px] py-1.5 text-center transition-colors ${
                 sidebarTab === 'pose' ? 'bg-slate-800 text-yellow-300 border-b-2 border-yellow-500' : 'text-slate-400 hover:text-slate-200'
               }`}
             >Pose</button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {sidebarTab === 'view' ? (
+        {sidebarTab === 'skin' ? (
+          <ModeldbSkinPanel
+            modelName={modelName}
+            onApplySkin={handleApplySkin}
+            onRandomize={handleRandomize}
+          />
+        ) : sidebarTab === 'view' ? (
           <ModelViewerSidebar
             isRotating={isRotating}
             onToggleRotation={() => setIsRotating(r => !r)}

@@ -186,6 +186,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
           <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900 min-h-0">
             <ModelViewer
               parsedMesh={current.parsed}
+              modelName={current.name}
               skeletonData={current.ms3dFull || null}
               groupComments={current.ms3dFull?.groupComments || null}
               className="w-full h-full"
