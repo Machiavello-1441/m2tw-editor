@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Download, Plus, Trash2, ExternalLink, Search, Info, RefreshCw, X, Image, ChevronDown, ChevronRight, CheckSquare, Square, Zap, FileText, AlertCircle } from 'lucide-react';
+import { Box } from 'lucide-react';
 import { parseEDU } from '../components/units/EDUParser';
+import UnitCardPreview from '../components/unitcards/UnitCardPreview';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -494,6 +496,7 @@ export default function UnitCardGenerator() {
   const [showInfo, setShowInfo]     = useState(false);
   const [showPoses, setShowPoses]   = useState(false);
   const [importMsg, setImportMsg]   = useState('');
+  const [showPreview, setShowPreview] = useState(true);
 
   const factions  = useMemo(() => parseFactionList(), []);
 
@@ -727,15 +730,26 @@ export default function UnitCardGenerator() {
 
         {/* Right: entry edit panel */}
         {editEntry && (
-          <div className="w-80 shrink-0 flex flex-col overflow-hidden border-l border-border bg-card">
+          <div className="w-[26rem] shrink-0 flex flex-col overflow-hidden border-l border-border bg-card">
             <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
               <p className="text-[11px] font-semibold text-foreground">
                 {isEditing ? `Edit — #${editEntry.portraitFilename || '…'}` : 'New Entry'}
               </p>
-              <button onClick={() => setEditEntry(null)} className="text-slate-500 hover:text-slate-300">
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setShowPreview(v => !v)}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded border transition-colors ${showPreview ? 'bg-blue-600/20 border-blue-500/40 text-blue-300' : 'border-slate-600/40 text-slate-500 hover:text-slate-300'}`}>
+                  <Box className="w-3 h-3" /> 3D
+                </button>
+                <button onClick={() => setEditEntry(null)} className="text-slate-500 hover:text-slate-300">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
+            {showPreview && (
+              <div className="h-72 shrink-0 border-b border-border bg-slate-900 overflow-hidden">
+                <UnitCardPreview modelFile={editEntry.modelFile} />
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto p-3">
               <EntryForm
                 entry={editEntry}

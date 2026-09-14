@@ -160,7 +160,7 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
                   <button
                     key={m.path + i}
                     onClick={() => viewLod(m.path)}
-                    disabled={!folder}
+                    disabled={!folder || !onLoadModel}
                     className="w-full flex items-center gap-1.5 px-1.5 py-1 rounded bg-slate-800/60 hover:bg-slate-700 text-left transition-colors disabled:opacity-40"
                     title={m.path}
                   >
