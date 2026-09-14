@@ -5,6 +5,7 @@ import { buildSheetAtlas } from '@/lib/skinAtlas';
 import ModelViewerSidebar from './ModelViewerSidebar';
 import ModeldbSkinPanel from './ModeldbSkinPanel';
 import PoseEditor from './PoseEditor';
+import AnimPlaybackPanel from './AnimPlaybackPanel';
 import { buildBindPoseMatrices, computePosedMatrices, skinVertices, getJointWorldPositions } from '@/lib/skeletonPoser';
 
 const LIGHTING_PRESETS = {
@@ -758,6 +759,14 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
               }`}
             >Pose</button>
           )}
+          {hasSkeleton && (
+            <button
+              onClick={() => setSidebarTab('anim')}
+              className={`flex-1 text-[11px] py-1.5 text-center transition-colors ${
+                sidebarTab === 'anim' ? 'bg-slate-800 text-green-300 border-b-2 border-green-500' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >Anim</button>
+          )}
         </div>
 
         {sidebarTab === 'skin' ? (
@@ -793,6 +802,12 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
             onSpecularMapFile={handleSpecularMapFile}
             onRemoveSpecularMap={handleRemoveSpecularMap}
             onScreenshot={handleScreenshot}
+          />
+        ) : sidebarTab === 'anim' ? (
+          <AnimPlaybackPanel
+            joints={skeletonData?.joints || []}
+            onPoseChange={setPoseRotations}
+            onReset={handleResetPose}
           />
         ) : (
           <PoseEditor
