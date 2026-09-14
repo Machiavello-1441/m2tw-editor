@@ -1,24 +1,16 @@
 /**
- * M2TW Binary Model Codecs
+ * MS3D codec + legacy M2TW writers.
  *
- * ── .mesh (battle unit models, data/unit_models/) ────────────────────────────
- *   uint32  version  (= 20 / 0x14 for most M2TW files)
- *   uint32  numSubMeshes
- *   per SubMesh:
- *     uint32        nameLen
- *     char[nameLen] name (ASCII)
- *     uint32        numVerts
- *     per Vert (32 bytes): float3 pos, float3 normal, float2 uv
- *     uint32        numFaces
- *     per Face:     uint16[3] indices
- *     float4        boundingSphere (cx, cy, cz, radius)
+ * NOTE: the `.mesh` and `.cas` READERS that used to live here were built on a
+ * spec that matches no real game file (`.mesh` was assumed to be a flat
+ * "uint32 version, uint32 submesh count, 32-byte vertices" struct; `.cas` was
+ * assumed to open with "uint32 numVerts, uint32 numFaces" and no header). In
+ * reality a `.mesh` is a boost::serialization archive and a `.cas` is a 3ds-max
+ * scene export that opens with its exporter version as a float. Both are now
+ * decoded properly in `@/lib/m2MeshCodec` and `@/lib/m2CasCodec` — use those.
  *
- * ── .cas (strat map models, data/world/maps/…) ───────────────────────────────
- *   uint32  numVerts
- *   uint32  numFaces
- *   per Vert (32 bytes): float3 pos, float3 normal, float2 uv
- *   per Face:     uint16[3] indices
- *   (no magic header)
+ * `encodeMeshFile` / `encodeCasFile` below still write the old invented layout
+ * and are kept only for the existing MS3D → native export buttons.
  *
  * ── MS3D spec (http://paulbourke.net/dataformats/ms3d/ms3dspec.txt) ──────────
  *   Vertex: uint8 flags, float3 pos, int8 boneId, uint8 refCount  = 15 bytes

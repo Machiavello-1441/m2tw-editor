@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { parseMeshFile, parseCasFile, meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
+import { meshesToMs3d, parseMs3d, encodeMeshFile, encodeCasFile } from '@/lib/casCodec';
+import { parseMeshFile, probeModelBytes } from '@/lib/m2MeshCodec';
+import { parseCasFile } from '@/lib/m2CasCodec';
 import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
 import ModelViewer from './ModelViewer';
 import { Button } from '@/components/ui/button';
@@ -32,12 +34,13 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
       // Also parse with full ms3d codec to get skeleton + group comments
       const full = parseMs3dFull(buf);
       if (full && !full.error) ms3dFull = full;
-    } else if (ext === 'mesh') {
-      result = parseMeshFile(buf);
-      result.sourceFormat = 'mesh';
-    } else if (ext === 'cas') {
-      result = parseCasFile(buf);
-      result.sourceFormat = 'cas';
+    } else if (ext === 'mesh' || ext === 'cas') {
+      // Trust the bytes, not the extension: a .mesh is known by the boost
+      // signature it opens with and a .cas by its exporter version float, so a
+      // mis-named file is drawn correctly instead of refused.
+      const kind = probeModelBytes(buf) || ext;
+      result = kind === 'cas' ? parseCasFile(buf, file.name) : parseMeshFile(buf, file.name);
+      result.sourceFormat = kind;
     } else {
       return;
     }
@@ -48,7 +51,12 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
       return;
     }
 
-    const totalVerts = result.meshes.reduce((s, m) => s + m.numVertices, 0);
+    // .mesh/.cas groups all index ONE shared vertex pool, so the pool is
+    // counted once — summing per group would multiply it by the group count.
+    const shared = result.sourceFormat === 'mesh' || result.sourceFormat === 'cas';
+    const totalVerts = shared
+      ? (result.meshes[0]?.numVertices ?? 0)
+      : result.meshes.reduce((s, m) => s + m.numVertices, 0);
     const totalFaces = result.meshes.reduce((s, m) => s + m.numFaces, 0);
 
     setFiles(prev => {
