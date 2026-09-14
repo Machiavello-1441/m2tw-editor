@@ -125,7 +125,7 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
     applySkin(idx);
   };
 
-  const canRandomise = variants.slots.length > 0 || variants.optional > 0;
+  const canRandomise = (parsedMesh?.meshes?.length || 0) > 1;
 
   return (
     <ScrollArea className="flex-1 min-h-0">
@@ -222,18 +222,10 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
           >
             <Dices className="w-3 h-3" /> Randomise Mesh Groups
           </button>
-          {canRandomise ? (
-            <p className="text-[9px] text-slate-500 leading-snug">
-              {variants.slots.length
-                ? `Varies: ${variants.slots.map(([s, n]) => `${s} (${n})`).join(', ')}`
-                : `${variants.optional} optional group(s) toggle on and off.`}
-            </p>
-          ) : (
-            <p className="text-[9px] text-amber-400 leading-snug">
-              This model has nothing to vary — every group is required and none share a
-              numbered name, so the engine always draws all {parsedMesh?.meshes?.length || 0} of them.
-            </p>
-          )}
+          <p className="text-[9px] text-slate-500 leading-snug">
+            Picks exactly one group per part slot, like the engine does per soldier.
+            {variants.slots.length > 0 && ` Varies: ${variants.slots.map(([s, n]) => `${s} (${n})`).join(', ')}.`}
+          </p>
         </div>
 
         {status && (

@@ -690,11 +690,10 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
   }, []);
 
   // ── randomiser ──────────────────────────────────────────────────────────
-  // A group's flag says whether the engine always draws it (0) or may leave it
-  // off for a given soldier (1). Variants of one part share a slot name up to a
-  // trailing number — shield0/shield1 — so within a slot exactly one optional
-  // variant is drawn; a slot with a single optional group is a coin flip, which
-  // is what makes a rank of soldiers differ from each other.
+  // Variants of one part share a slot name up to a trailing number —
+  // shield0/shield1 — and the engine draws exactly ONE of them per soldier.
+  // So each slot gets a single randomly picked group and every other group in
+  // that slot is hidden, instead of leaving the whole model switched on.
   const handleRandomize = useCallback(() => {
     setMeshInfos(prev => {
       const slotOf = (info) =>
@@ -709,22 +708,22 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
 
       const visible = new Array(prev.length).fill(false);
       for (const indices of bySlot.values()) {
-        indices.filter(i => !prev[i].optional).forEach(i => { visible[i] = true; });
-        const optional = indices.filter(i => prev[i].optional);
-        if (optional.length > 1) {
-          visible[optional[Math.floor(Math.random() * optional.length)]] = true;
-        } else if (optional.length === 1) {
-          visible[optional[0]] = Math.random() < 0.5;
-        }
+        visible[indices[Math.floor(Math.random() * indices.length)]] = true;
       }
-      // Never end up with an empty model.
-      if (!visible.some(Boolean) && prev.length) visible[0] = true;
 
       prev.forEach((_, i) => {
         if (meshObjsRef.current[i]) meshObjsRef.current[i].visible = visible[i];
       });
       return prev.map((info, i) => ({ ...info, visible: visible[i] }));
     });
+  }, []);
+
+  // ── show / hide every group at once ─────────────────────────────────────
+  const handleSetAllVisible = useCallback((value) => {
+    setMeshInfos(prev => prev.map((info, i) => {
+      if (meshObjsRef.current[i]) meshObjsRef.current[i].visible = value;
+      return { ...info, visible: value };
+    }));
   }, []);
 
   return (
@@ -785,6 +784,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
             meshInfos={meshInfos}
             superGroups={superGroups}
             onToggleVisibility={handleToggleVisibility}
+            onSetAllVisible={handleSetAllVisible}
             onToggleSuperGroup={handleToggleSuperGroup}
             onTextureFile={handleTextureFile}
             onRemoveTexture={handleRemoveTexture}

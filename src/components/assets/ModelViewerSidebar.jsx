@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import MeshVisibilityChecklist from './MeshVisibilityChecklist';
 import { Camera, RotateCw, Pause, Eye, EyeOff, Bone, ImageIcon, X, ChevronRight, ChevronDown, Grid3x3, Sun, Wrench } from 'lucide-react';
 
 export default function ModelViewerSidebar({
@@ -9,7 +10,7 @@ export default function ModelViewerSidebar({
   showWireframe, onToggleWireframe,
   lightingPreset, onLightingChange, lightingPresets,
   onFixNormals,
-  meshInfos, superGroups, onToggleVisibility, onToggleSuperGroup,
+  meshInfos, superGroups, onToggleVisibility, onSetAllVisible, onToggleSuperGroup,
   onTextureFile, onRemoveTexture,
   onNormalMapFile, onRemoveNormalMap,
   onSpecularMapFile, onRemoveSpecularMap,
@@ -101,6 +102,13 @@ export default function ModelViewerSidebar({
           <Camera className="w-3 h-3" /> Screenshot
         </Button>
       </div>
+
+      {/* Per-mesh checkboxes */}
+      <MeshVisibilityChecklist
+        meshInfos={meshInfos}
+        onToggleVisibility={onToggleVisibility}
+        onSetAllVisible={onSetAllVisible}
+      />
 
       {/* Mesh groups */}
       <div className="flex-1 min-h-0 flex flex-col">
