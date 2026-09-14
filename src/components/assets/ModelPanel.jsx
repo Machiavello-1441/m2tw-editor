@@ -5,6 +5,8 @@ import { parseCasFile } from '@/lib/m2CasCodec';
 import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
 import ModelViewer from './ModelViewer';
 import { Button } from '@/components/ui/button';
+import ModFolderPicker from './ModFolderPicker';
+import { indexFolder, getFolderIndex, loadFolderModeldb, resolveFile } from '@/lib/modFolderStore';
 import { Upload, Download, Info, ArrowLeftRight, Box, AlertTriangle, X } from 'lucide-react';
 
 function downloadBuffer(buf, filename) {
@@ -19,6 +21,7 @@ function downloadBuffer(buf, filename) {
 function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
   const [files, setFiles] = useState([]);
   const [selected, setSelected] = useState(0);
+  const [folder, setFolder] = useState(() => getFolderIndex());
 
   const current = files[selected] || null;
 
@@ -66,6 +69,18 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
     setSelected(0);
   };
 
+  // A whole mod folder: index it, read its modeldb, and open the first model
+  // it names, so the Skin tab has everything it needs from one pick.
+  const pickFolder = async (fileList) => {
+    const idx = indexFolder(fileList);
+    setFolder(idx);
+    const db = await loadFolderModeldb(idx);
+    const first = (db?.entries || [])
+      .map(en => resolveFile(en.meshes?.[0]?.path))
+      .find(Boolean);
+    if (first) await loadFile(first);
+  };
+
   const handleDrop = async (e) => {
     e.preventDefault();
     for (const f of e.dataTransfer.files) await loadFile(f);
@@ -111,6 +126,9 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
             <p className="text-sm text-slate-300">{label}</p>
             <p className="text-[11px] text-slate-500 mt-1">{hint}</p>
           </label>
+          <div className="w-full max-w-md text-[11px]">
+            <ModFolderPicker folder={folder} onPick={pickFolder} />
+          </div>
         </div>
       )}
 
@@ -187,6 +205,7 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
             <ModelViewer
               parsedMesh={current.parsed}
               modelName={current.name}
+              onLoadModel={loadFile}
               skeletonData={current.ms3dFull || null}
               groupComments={current.ms3dFull?.groupComments || null}
               className="w-full h-full"

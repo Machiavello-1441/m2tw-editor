@@ -65,7 +65,7 @@ function buildSuperGroups(meshNames, groupComments) {
   return result;
 }
 
-export default function ModelViewer({ parsedMesh, skeletonData, groupComments, modelName = '', className = '' }) {
+export default function ModelViewer({ parsedMesh, skeletonData, groupComments, modelName = '', onLoadModel, className = '' }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -765,6 +765,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
           <ModeldbSkinPanel
             modelName={modelName}
             parsedMesh={parsedMesh}
+            onLoadModel={onLoadModel}
             onApplySkin={handleApplySkin}
             onRandomize={handleRandomize}
           />

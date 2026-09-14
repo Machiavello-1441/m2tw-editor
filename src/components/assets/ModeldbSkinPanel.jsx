@@ -1,23 +1,27 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { parseModeldb } from '@/lib/modeldbCodec';
 import { modeldbStore } from '@/lib/modeldbStore';
+import { indexFolder, getFolderIndex, resolveFile, loadFolderModeldb } from '@/lib/modFolderStore';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Dices, Bone, FolderOpen, Check, AlertTriangle } from 'lucide-react';
+import ModFolderPicker from './ModFolderPicker';
+import { Upload, Dices, Bone, Check, AlertTriangle, Eye } from 'lucide-react';
 
 const baseName = (p) => (p || '').split(/[\\/]/).pop().toLowerCase();
+/** Variants of a part share a name up to a trailing number: shield0, shield1. */
+const slotOf = (m) => (m.groupType || m.name || '').toLowerCase().replace(/[\s_]*\d+$/, '');
 
 /**
- * Ties the loaded .mesh to its battle_models.modeldb entry: faction skin
- * selection (the two texture sheets + normal map the entry names), the
- * per-group randomiser, and the skeletons the entry declares.
+ * Ties the loaded model to its battle_models.modeldb entry: browse the entry's
+ * LOD files, apply a faction's skin, randomise the parts, and see which
+ * skeletons the entry declares. Everything is resolved out of one picked mod
+ * folder.
  */
-export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, onRandomize }) {
+export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, onRandomize, onLoadModel }) {
   const [db, setDb] = useState(() => modeldbStore.get());
+  const [folder, setFolder] = useState(() => getFolderIndex());
   const [entryName, setEntryName] = useState('');
   const [factionIdx, setFactionIdx] = useState(0);
-  const [texFiles, setTexFiles] = useState({});
-  const [status, setStatus] = useState(null); // { ok: bool, text }
-  const dirRef = useRef(null);
+  const [status, setStatus] = useState(null); // { ok, text }
 
   useEffect(() => {
     const onLoaded = (e) => setDb(e.detail);
@@ -30,8 +34,7 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
     if (!db?.entries?.length || !modelName) return;
     const target = baseName(modelName);
     const hit = db.entries.find(en => (en.meshes || []).some(m => baseName(m.path) === target));
-    setEntryName(hit ? hit.name : '');
-    setFactionIdx(0);
+    if (hit) { setEntryName(hit.name); setFactionIdx(0); }
   }, [db, modelName]);
 
   const entry = useMemo(
@@ -41,57 +44,74 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
   const faction = entry?.factions?.[factionIdx] || null;
   const attachTex = useMemo(() => {
     if (!entry || !faction) return '';
-    const a = (entry.attachFactions || []).find(f => f.faction === faction.faction);
-    return a?.diffTex || '';
+    return (entry.attachFactions || []).find(f => f.faction === faction.faction)?.diffTex || '';
   }, [entry, faction]);
 
-  const loadModeldb = async (file) => {
-    if (!file) return;
-    const text = await file.text();
+  const variants = useMemo(() => {
+    const slots = new Map();
+    for (const m of parsedMesh?.meshes || []) {
+      const s = slotOf(m);
+      slots.set(s, (slots.get(s) || 0) + 1);
+    }
+    return {
+      slots: [...slots.entries()].filter(([, n]) => n > 1),
+      optional: (parsedMesh?.meshes || []).filter(m => m.optional).length,
+    };
+  }, [parsedMesh]);
+
+  const parseModeldbFile = async (file) => {
     try {
-      const parsed = parseModeldb(text);
+      const parsed = parseModeldb(await file.text());
       modeldbStore.set(parsed);
-      setStatus({ ok: true, text: `${parsed.entries.length} entries loaded` });
+      setDb(parsed);
+      setStatus({ ok: true, text: `${parsed.entries.length} modeldb entries loaded` });
     } catch (err) {
       setStatus({ ok: false, text: `modeldb parse failed: ${err.message}` });
     }
   };
 
-  const addTextures = (fileList) => {
-    setTexFiles(prev => {
-      const next = { ...prev };
-      for (const f of fileList) {
-        if (/\.(texture|tga|dds)$/i.test(f.name)) next[f.name.toLowerCase()] = f;
-      }
-      return next;
-    });
+  const pickFolder = async (fileList) => {
+    const idx = indexFolder(fileList);
+    setFolder(idx);
+    if (!idx.modeldbFile) {
+      setStatus({ ok: false, text: 'No battle_models.modeldb in that folder — load it below.' });
+      return;
+    }
+    const parsed = await loadFolderModeldb(idx);
+    setDb(parsed);
+    setStatus({ ok: true, text: `${parsed.entries.length} modeldb entries loaded` });
+  };
+
+  const viewLod = async (lodPath) => {
+    const file = resolveFile(lodPath);
+    if (!file) {
+      setStatus({ ok: false, text: `${baseName(lodPath)} is not in the picked folder` });
+      return;
+    }
+    await onLoadModel(file);
+    setStatus({ ok: true, text: `Opened ${baseName(lodPath)}` });
   };
 
   const applySkin = async (fIdx = factionIdx) => {
     const f = entry?.factions?.[fIdx];
     if (!f) return;
-    const a = (entry.attachFactions || []).find(x => x.faction === f.faction);
-    const want = {
-      main: baseName(f.texture),
-      attach: baseName(a?.diffTex || ''),
-      normal: baseName(f.normalTex),
-    };
+    const attach = (entry.attachFactions || []).find(x => x.faction === f.faction)?.diffTex || '';
     const missing = [];
-    const pick = (name) => {
-      if (!name) return null;
-      const file = texFiles[name];
-      if (!file) missing.push(name);
-      return file || null;
+    const pick = (path) => {
+      if (!path) return null;
+      const file = resolveFile(path);
+      if (!file) missing.push(baseName(path));
+      return file;
     };
-    const main = pick(want.main);
-    const attach = pick(want.attach);
-    const normal = pick(want.normal);
+    const main = pick(f.texture);
+    const attachFile = pick(attach);
+    const normal = pick(f.normalTex);
 
     if (!main) {
-      setStatus({ ok: false, text: `Missing texture file(s): ${missing.join(', ')}` });
+      setStatus({ ok: false, text: `Texture not found in folder: ${missing.join(', ')}` });
       return;
     }
-    await onApplySkin(main, attach, normal);
+    await onApplySkin(main, attachFile, normal);
     setStatus(missing.length
       ? { ok: false, text: `Applied ${f.faction}, but not found: ${missing.join(', ')}` }
       : { ok: true, text: `Applied ${f.faction} skin` });
@@ -105,24 +125,20 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
     applySkin(idx);
   };
 
-  const texCount = Object.keys(texFiles).length;
-  const optionalCount = (parsedMesh?.meshes || []).filter(m => m.optional).length;
-  const rigged = !!parsedMesh?.skinWeights;
+  const canRandomise = variants.slots.length > 0 || variants.optional > 0;
 
   return (
     <ScrollArea className="flex-1 min-h-0">
       <div className="p-2.5 space-y-3 text-[11px]">
-        {/* ── modeldb ── */}
-        <div className="space-y-1">
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">battle_models.modeldb</p>
-          <label className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer transition-colors">
-            <input type="file" className="hidden" accept=".modeldb,.txt"
-              onChange={(e) => { loadModeldb(e.target.files[0]); e.target.value = ''; }} />
-            <Upload className="w-3 h-3" /> {db ? `Reload (${db.entries.length})` : 'Load modeldb…'}
-          </label>
-        </div>
+        <ModFolderPicker folder={folder} onPick={pickFolder} />
 
-        {/* ── entry + faction ── */}
+        <label className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer transition-colors">
+          <input type="file" className="hidden" accept=".modeldb,.txt"
+            onChange={(e) => { if (e.target.files[0]) parseModeldbFile(e.target.files[0]); e.target.value = ''; }} />
+          <Upload className="w-3 h-3" /> {db ? `Reload modeldb (${db.entries.length})` : 'Load modeldb file…'}
+        </label>
+
+        {/* ── entry + its LOD files ── */}
         {db?.entries?.length > 0 && (
           <div className="space-y-1.5">
             <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Model Entry</p>
@@ -132,86 +148,92 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
               className="w-full bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-slate-200 text-[10px]"
             >
               <option value="">— pick an entry —</option>
-              {db.entries.map(en => (
-                <option key={en.name} value={en.name}>{en.name}</option>
-              ))}
+              {db.entries.map(en => <option key={en.name} value={en.name}>{en.name}</option>)}
             </select>
 
             {entry && (
-              <>
+              <div className="space-y-1">
                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold pt-1">
-                  Faction Skin ({entry.factions.length})
+                  LOD Models ({entry.meshes.length})
                 </p>
-                <select
-                  value={factionIdx}
-                  onChange={(e) => setFactionIdx(Number(e.target.value))}
-                  className="w-full bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-slate-200 text-[10px]"
-                >
-                  {entry.factions.map((f, i) => (
-                    <option key={f.faction + i} value={i}>{f.faction}</option>
-                  ))}
-                </select>
-
-                {faction && (
-                  <div className="bg-slate-800/60 rounded p-1.5 space-y-0.5 text-[9px] font-mono text-slate-400">
-                    <p className="truncate" title={faction.texture}>main: {baseName(faction.texture) || '—'}</p>
-                    <p className="truncate" title={attachTex}>attach: {baseName(attachTex) || '—'}</p>
-                    <p className="truncate" title={faction.normalTex}>normal: {baseName(faction.normalTex) || '—'}</p>
-                  </div>
-                )}
-              </>
+                {entry.meshes.map((m, i) => (
+                  <button
+                    key={m.path + i}
+                    onClick={() => viewLod(m.path)}
+                    disabled={!folder}
+                    className="w-full flex items-center gap-1.5 px-1.5 py-1 rounded bg-slate-800/60 hover:bg-slate-700 text-left transition-colors disabled:opacity-40"
+                    title={m.path}
+                  >
+                    <Eye className="w-3 h-3 shrink-0 text-blue-400" />
+                    <span className="truncate font-mono text-[9px] text-slate-300">{baseName(m.path)}</span>
+                    <span className="ml-auto text-[9px] text-slate-500 shrink-0">{m.dist}</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}
 
-        {/* ── texture pool ── */}
-        <div className="space-y-1">
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-            Texture Files ({texCount})
-          </p>
-          <label className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer transition-colors">
-            <input type="file" className="hidden" multiple accept=".texture,.tga,.dds"
-              onChange={(e) => { addTextures(e.target.files); e.target.value = ''; }} />
-            <Upload className="w-3 h-3" /> Add texture files…
-          </label>
-          <button
-            onClick={() => dirRef.current?.click()}
-            className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
-          >
-            <FolderOpen className="w-3 h-3" /> Add a whole folder…
-          </button>
-          <input ref={dirRef} type="file" className="hidden" multiple webkitdirectory="" directory=""
-            onChange={(e) => { addTextures(e.target.files); e.target.value = ''; }} />
-        </div>
+        {/* ── faction skin ── */}
+        {entry && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+              Faction Skin ({entry.factions.length})
+            </p>
+            <select
+              value={factionIdx}
+              onChange={(e) => setFactionIdx(Number(e.target.value))}
+              className="w-full bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-slate-200 text-[10px]"
+            >
+              {entry.factions.map((f, i) => (
+                <option key={f.faction + i} value={i}>{f.faction}</option>
+              ))}
+            </select>
+            {faction && (
+              <div className="bg-slate-800/60 rounded p-1.5 space-y-0.5 text-[9px] font-mono text-slate-400">
+                <p className="truncate" title={faction.texture}>main: {baseName(faction.texture) || '—'}</p>
+                <p className="truncate" title={attachTex}>attach: {baseName(attachTex) || '—'}</p>
+                <p className="truncate" title={faction.normalTex}>normal: {baseName(faction.normalTex) || '—'}</p>
+              </div>
+            )}
+            <button
+              onClick={() => applySkin()}
+              disabled={!faction || !folder}
+              className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 transition-colors disabled:opacity-40"
+            >
+              <Check className="w-3 h-3" /> Apply Skin
+            </button>
+            <button
+              onClick={randomSkin}
+              disabled={!entry.factions.length || !folder}
+              className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-40"
+            >
+              <Dices className="w-3 h-3" /> Random Faction Skin
+            </button>
+          </div>
+        )}
 
-        {/* ── actions ── */}
+        {/* ── part randomiser ── */}
         <div className="space-y-1 pt-1 border-t border-slate-700">
           <button
-            onClick={() => applySkin()}
-            disabled={!faction || texCount === 0}
-            className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 transition-colors disabled:opacity-40"
-          >
-            <Check className="w-3 h-3" /> Apply Skin
-          </button>
-          <button
-            onClick={randomSkin}
-            disabled={!entry?.factions?.length || texCount === 0}
-            className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-40"
-          >
-            <Dices className="w-3 h-3" /> Random Faction Skin
-          </button>
-          <button
             onClick={onRandomize}
-            className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-yellow-600/25 text-yellow-300 hover:bg-yellow-600/40 transition-colors"
-            title="One variant per group slot, as the engine picks them per soldier"
+            disabled={!canRandomise}
+            className="w-full flex items-center gap-1.5 px-2 py-1 rounded bg-yellow-600/25 text-yellow-300 hover:bg-yellow-600/40 transition-colors disabled:opacity-40"
           >
             <Dices className="w-3 h-3" /> Randomise Mesh Groups
           </button>
-          <p className="text-[9px] text-slate-500 leading-snug">
-            {optionalCount
-              ? `${optionalCount} of ${parsedMesh?.meshes?.length || 0} groups are optional — those are the ones that vary.`
-              : 'This model has no optional groups, so every group is always drawn.'}
-          </p>
+          {canRandomise ? (
+            <p className="text-[9px] text-slate-500 leading-snug">
+              {variants.slots.length
+                ? `Varies: ${variants.slots.map(([s, n]) => `${s} (${n})`).join(', ')}`
+                : `${variants.optional} optional group(s) toggle on and off.`}
+            </p>
+          ) : (
+            <p className="text-[9px] text-amber-400 leading-snug">
+              This model has nothing to vary — every group is required and none share a
+              numbered name, so the engine always draws all {parsedMesh?.meshes?.length || 0} of them.
+            </p>
+          )}
         </div>
 
         {status && (
@@ -236,13 +258,10 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
                 )}
               </div>
             ))}
-            <p className="text-[9px] text-slate-500 leading-snug">
-              Animations for these live in <span className="font-mono">data/animations/&lt;name&gt;/</span>.
-            </p>
-            <p className={`text-[9px] leading-snug ${rigged ? 'text-green-400' : 'text-amber-400'}`}>
-              {rigged
-                ? `Rigging read: ${parsedMesh.weightsPerVertex} weights per vertex over ${parsedMesh.bones?.length || 0} bones. Load a skeleton .cas to drive it.`
-                : 'No rigging streams were found in this .mesh, so it cannot be posed.'}
+            <p className={`text-[9px] leading-snug ${parsedMesh?.skinWeights ? 'text-green-400' : 'text-amber-400'}`}>
+              {parsedMesh?.skinWeights
+                ? `Rigging read: ${parsedMesh.weightsPerVertex} weights per vertex over ${parsedMesh.bones?.length || 0} bones.`
+                : 'No rigging streams in this model, so it cannot be posed.'}
             </p>
           </div>
         )}
