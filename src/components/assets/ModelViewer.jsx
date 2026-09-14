@@ -689,25 +689,36 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
     })));
   }, []);
 
-  // ── randomiser: one variant per group slot, as the engine picks them ────
+  // ── randomiser ──────────────────────────────────────────────────────────
+  // A group's flag says whether the engine always draws it (0) or may leave it
+  // off for a given soldier (1). Variants of one part share a slot name up to a
+  // trailing number — shield0/shield1 — so within a slot exactly one optional
+  // variant is drawn; a slot with a single optional group is a coin flip, which
+  // is what makes a rank of soldiers differ from each other.
   const handleRandomize = useCallback(() => {
     setMeshInfos(prev => {
+      const slotOf = (info) =>
+        (info.groupType || info.name || '').toLowerCase().replace(/[\s_]*\d+$/, '');
+
       const bySlot = new Map();
       prev.forEach((info, idx) => {
-        const slot = info.groupType || info.name;
+        const slot = slotOf(info);
         if (!bySlot.has(slot)) bySlot.set(slot, []);
         bySlot.get(slot).push(idx);
       });
 
       const visible = new Array(prev.length).fill(false);
       for (const indices of bySlot.values()) {
+        indices.filter(i => !prev[i].optional).forEach(i => { visible[i] = true; });
         const optional = indices.filter(i => prev[i].optional);
-        const required = indices.filter(i => !prev[i].optional);
-        required.forEach(i => { visible[i] = true; });
-        // A slot's optional variants are alternatives — show exactly one.
-        const pool = optional.length ? optional : (required.length ? [] : indices);
-        if (pool.length) visible[pool[Math.floor(Math.random() * pool.length)]] = true;
+        if (optional.length > 1) {
+          visible[optional[Math.floor(Math.random() * optional.length)]] = true;
+        } else if (optional.length === 1) {
+          visible[optional[0]] = Math.random() < 0.5;
+        }
       }
+      // Never end up with an empty model.
+      if (!visible.some(Boolean) && prev.length) visible[0] = true;
 
       prev.forEach((_, i) => {
         if (meshObjsRef.current[i]) meshObjsRef.current[i].visible = visible[i];
@@ -753,6 +764,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
         {sidebarTab === 'skin' ? (
           <ModeldbSkinPanel
             modelName={modelName}
+            parsedMesh={parsedMesh}
             onApplySkin={handleApplySkin}
             onRandomize={handleRandomize}
           />

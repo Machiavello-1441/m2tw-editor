@@ -69,6 +69,9 @@ export function toViewerMeshes(decoded) {
   return {
     format: decoded.format,
     meshes,
+    skinIndices: decoded.skinIndices || null,
+    skinWeights: decoded.skinWeights || null,
+    weightsPerVertex: decoded.weightsPerVertex || 0,
     bones: decoded.bones || [],
     lodName: decoded.lodName || '',
     textures: decoded.textures || [],

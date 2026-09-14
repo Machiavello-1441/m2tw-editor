@@ -11,7 +11,7 @@ const baseName = (p) => (p || '').split(/[\\/]/).pop().toLowerCase();
  * selection (the two texture sheets + normal map the entry names), the
  * per-group randomiser, and the skeletons the entry declares.
  */
-export default function ModeldbSkinPanel({ modelName, onApplySkin, onRandomize }) {
+export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, onRandomize }) {
   const [db, setDb] = useState(() => modeldbStore.get());
   const [entryName, setEntryName] = useState('');
   const [factionIdx, setFactionIdx] = useState(0);
@@ -106,6 +106,8 @@ export default function ModeldbSkinPanel({ modelName, onApplySkin, onRandomize }
   };
 
   const texCount = Object.keys(texFiles).length;
+  const optionalCount = (parsedMesh?.meshes || []).filter(m => m.optional).length;
+  const rigged = !!parsedMesh?.skinWeights;
 
   return (
     <ScrollArea className="flex-1 min-h-0">
@@ -205,6 +207,11 @@ export default function ModeldbSkinPanel({ modelName, onApplySkin, onRandomize }
           >
             <Dices className="w-3 h-3" /> Randomise Mesh Groups
           </button>
+          <p className="text-[9px] text-slate-500 leading-snug">
+            {optionalCount
+              ? `${optionalCount} of ${parsedMesh?.meshes?.length || 0} groups are optional — those are the ones that vary.`
+              : 'This model has no optional groups, so every group is always drawn.'}
+          </p>
         </div>
 
         {status && (
@@ -230,9 +237,12 @@ export default function ModeldbSkinPanel({ modelName, onApplySkin, onRandomize }
               </div>
             ))}
             <p className="text-[9px] text-slate-500 leading-snug">
-              These are the skeleton names the entry declares — the animations live in
-              <span className="font-mono"> data/animations/&lt;name&gt;/</span>. Posing this .mesh also needs its
-              bone-weight streams, which aren’t decoded yet.
+              Animations for these live in <span className="font-mono">data/animations/&lt;name&gt;/</span>.
+            </p>
+            <p className={`text-[9px] leading-snug ${rigged ? 'text-green-400' : 'text-amber-400'}`}>
+              {rigged
+                ? `Rigging read: ${parsedMesh.weightsPerVertex} weights per vertex over ${parsedMesh.bones?.length || 0} bones. Load a skeleton .cas to drive it.`
+                : 'No rigging streams were found in this .mesh, so it cannot be posed.'}
             </p>
           </div>
         )}

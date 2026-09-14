@@ -41,6 +41,8 @@ const STREAM_STRIDE = {
 const POSITION_STREAM = 0;
 const NORMAL_STREAM = 3;
 const UV_STREAM = 4;
+/** Bone indices and their weights: a pair out of these four, four bytes each. */
+const SKIN_STREAMS = [8, 9, 13, 14];
 
 /** How far ahead of a finished stream the next one's header may sit. The gap
  *  is boost's own bookkeeping; the longest measured is 40 bytes. */
@@ -159,7 +161,7 @@ function readStreams(a, out) {
   a.obj();
   const verts = a.count('vertices');
   a.u16();
-  a.u32(); // weights per vertex (2 in every file measured)
+  out.weightsPerVertex = a.u32(); // 2 in every file measured
 
   const packed = {};
   for (;;) {
@@ -197,6 +199,51 @@ function readStreams(a, out) {
     out.normals = unpackNormals(packed[NORMAL_STREAM], verts);
   } else {
     out.notes.push('no normal stream; normals were derived from the faces');
+  }
+
+  unpackSkin(packed, verts, out);
+}
+
+/**
+ * The rigging: four bytes a vertex in each of two streams, one holding bone
+ * indices and one holding their weights. The stream NUMBERS do not say which is
+ * which (8/9 and 13/14 both appear), so tell them apart by content — weights
+ * are a partition of 255 and therefore sum to about 255 per vertex, while
+ * indices do not. Only the first `weightsPerVertex` slots of each vertex carry
+ * meaning; the rest are padding.
+ */
+function unpackSkin(packed, verts, out) {
+  const candidates = SKIN_STREAMS.filter(t => packed[t] && packed[t].length >= verts * 4);
+  if (!candidates.length || !verts) return;
+
+  let weightType = null;
+  for (const t of candidates) {
+    const raw = packed[t];
+    let total = 0;
+    for (let v = 0; v < verts; v++) {
+      total += raw[v * 4] + raw[v * 4 + 1] + raw[v * 4 + 2] + raw[v * 4 + 3];
+    }
+    const avg = total / verts;
+    if (avg > 200 && avg < 300) { weightType = t; break; }
+  }
+  const indexType = candidates.find(t => t !== weightType);
+  if (weightType === null || indexType === undefined) {
+    out.notes.push('the vertex rigging streams could not be told apart, so no skin data was read');
+    return;
+  }
+
+  const perVertex = Math.min(Math.max(out.weightsPerVertex || 2, 1), 4);
+  const idxRaw = packed[indexType];
+  const wRaw = packed[weightType];
+  out.skinIndices = new Uint8Array(verts * 4);
+  out.skinWeights = new Float32Array(verts * 4);
+  for (let v = 0; v < verts; v++) {
+    let sum = 0;
+    for (let c = 0; c < perVertex; c++) sum += wRaw[v * 4 + c];
+    for (let c = 0; c < perVertex; c++) {
+      out.skinIndices[v * 4 + c] = idxRaw[v * 4 + c];
+      out.skinWeights[v * 4 + c] = sum ? wRaw[v * 4 + c] / sum : (c === 0 ? 1 : 0);
+    }
   }
 }
 
@@ -343,6 +390,7 @@ export function readMesh(buffer, source = 'model.mesh') {
   const out = {
     source, format: 'mesh',
     positions: new Float32Array(0), normals: null, uvs: null,
+    skinIndices: null, skinWeights: null, weightsPerVertex: 0,
     groups: [], bones: [], lodName: '', trailer: 0, notes: [], textures: [],
   };
   readHeader(a);
