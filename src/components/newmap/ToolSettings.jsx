@@ -1,6 +1,7 @@
 import React from 'react';
 import { Paintbrush, Eraser, Pipette, Square, Minus } from 'lucide-react';
-import { CLIMATE_PALETTE, GROUND_TYPE_PALETTE, FEATURES_PALETTE, LAYER_DEFS } from '@/lib/mapLayerStore';
+import { GROUND_TYPE_PALETTE, FEATURES_PALETTE, LAYER_DEFS } from '@/lib/mapLayerStore';
+import { useClimatePalette } from '@/lib/climateStore';
 
 // Heights grayscale quick presets
 const HEIGHT_PALETTE = [
@@ -22,6 +23,7 @@ const ALL_TOOLS = [
 
 export default function ToolSettings({ activeTool, onSetTool, brushSize, onBrushSize, color, onColor, activeLayerId, regionName, onRegionName, inline }) {
   const layerDef = LAYER_DEFS.find(d => d.id === activeLayerId);
+  const CLIMATE_PALETTE = useClimatePalette();
   const TOOLS = activeLayerId === 'features'
     ? ALL_TOOLS
     : ALL_TOOLS.filter(t => t.id !== 'river');

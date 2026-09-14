@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { CheckCircle, Circle, ChevronRight, Wand2, AlertCircle, Paintbrush, Upload } from 'lucide-react';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
-import { CLIMATE_PALETTE, LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
+import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
+import { useClimatePalette } from '@/lib/climateStore';
+import CustomClimatesPanel from '@/components/newmap/CustomClimatesPanel';
 import GroundTypeRangeEditor, { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import RiverChecker from '@/components/newmap/RiverChecker';
 import OsmTagOverlayEditor from '@/components/newmap/OsmTagOverlayEditor';
@@ -32,8 +34,10 @@ export default function WorkflowPanel({
   onLayerUpdate,
   bbox,
   mapWidth, mapHeight,
+  onAssetReady,
 }) {
   const currentIdx = STEPS.findIndex(s => s.id === currentStepId);
+  const CLIMATE_PALETTE = useClimatePalette();
   const [showRangeEditor, setShowRangeEditor] = useState(false);
   const [selectedFillClimate, setSelectedFillClimate] = useState(CLIMATE_PALETTE[0].id);
 
@@ -226,6 +230,8 @@ export default function WorkflowPanel({
                         Fill Entire Map
                       </button>
                     </div>
+
+                    <CustomClimatesPanel onAssetReady={onAssetReady} />
 
                     <KoppenClimateFetcher
                       bbox={bbox}

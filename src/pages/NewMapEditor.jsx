@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { getLayerDimensions, LAYER_DEFS, CLIMATE_PALETTE, hexToRgb } from '@/lib/mapLayerStore';
+import { getLayerDimensions, LAYER_DEFS, hexToRgb } from '@/lib/mapLayerStore';
+import { getClimatePalette } from '@/lib/climateStore';
 import {
   Map, Download, Crop, Edit3, MousePointer, Layers,
   GitBranch, Anchor, Grid3x3
@@ -261,7 +262,7 @@ export default function NewMapEditor() {
   };
 
   const handleFillClimate = (climateId) => {
-    const climateDef = CLIMATE_PALETTE.find(p => p.id === climateId);
+    const climateDef = getClimatePalette().find(p => p.id === climateId);
     if (!climateDef) return;
     const { r, g, b } = hexToRgb(climateDef.color);
     const def = LAYER_DEFS.find(d => d.id === 'climates');
@@ -596,6 +597,7 @@ export default function NewMapEditor() {
                   bbox={workBbox}
                   mapWidth={workWidth}
                   mapHeight={workHeight}
+                  onAssetReady={registerExtraAsset}
                 />
                 {workflowStep === 'regions' && (
                   <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2 space-y-3">
