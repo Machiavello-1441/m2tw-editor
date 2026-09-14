@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pencil, PaintBucket, RotateCcw, Save, Download, Pipette } from 'lucide-react';
+import { Pencil, PaintBucket, RotateCcw, Save, Download, Pipette, SprayCan } from 'lucide-react';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { LAYER_PRESETS } from './paintPresets';
 
@@ -104,6 +104,7 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
               {[
                 { id: 'pencil',  Icon: Pencil,      title: 'Pencil' },
                 { id: 'bucket',  Icon: PaintBucket,  title: 'Flood fill' },
+                { id: 'spray',   Icon: SprayCan,      title: 'Spray (scattered pixels)' },
                 { id: 'pipette', Icon: Pipette,       title: 'Pick colour' },
               ].map(({ id, Icon, title }) => (
                 <button key={id} title={title}
@@ -114,10 +115,10 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
               ))}
             </div>
 
-            {/* Brush size (pencil only) */}
-            {tool === 'pencil' && (
+            {/* Brush size (pencil + spray) */}
+            {(tool === 'pencil' || tool === 'spray') && (
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-slate-500">Brush</span>
+                <span className="text-[10px] text-slate-500">{tool === 'spray' ? 'Spray' : 'Brush'}</span>
                 <input type="range" min={1} max={20} value={brushSize}
                   onChange={e => onPaintChange({ ...paintState, brushSize: parseInt(e.target.value) })}
                   className="w-16 accent-amber-500" />

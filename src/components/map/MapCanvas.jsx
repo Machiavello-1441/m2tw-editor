@@ -316,6 +316,24 @@ function PaintCanvas({
       }
       ctx.restore();
     }
+    // Spray: outline the circular area the scattered pixels will land in
+    if (cur && paintState?.active && paintState.tool === 'spray') {
+      const { gW, gH } = getGridDims();
+      const cpx = Math.floor(cur.fracX * gW), cpy = Math.floor(cur.fracY * gH);
+      const { paintColor, brushSize = 1 } = paintState;
+      const c = cellRect(gW, gH, cpx, cpy);
+      const radius = (brushSize / 2) * c.w;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(c.x + c.w / 2, c.y + c.h / 2, Math.max(2, radius), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${paintColor.r},${paintColor.g},${paintColor.b},0.2)`;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
   }, [map, osmBbox, mapW, mapH, showPixelGrid, paintState, getGridDims]);
   drawCanvasRef.current = drawCanvas;
 
@@ -339,6 +357,17 @@ function PaintCanvas({
     } else if (tool === 'pipette') {
       const i = (ly * layer.width + lx) * 4;
       onPaint('pipette', layerId, { r: layer.data[i], g: layer.data[i+1], b: layer.data[i+2] }, null, null);
+    } else if (tool === 'spray') {
+      // Scatter a handful of random pixels inside a circle of diameter brushSize
+      const radius = Math.max(0.5, (brushSize || 1) / 2);
+      const count = Math.max(1, Math.round(Math.PI * radius * radius * 0.12));
+      const patches = [];
+      for (let n = 0; n < count; n++) {
+        const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * radius;
+        const px2 = Math.round(lx + Math.cos(a) * d), py2 = Math.round(ly + Math.sin(a) * d);
+        if (px2 >= 0 && py2 >= 0 && px2 < layer.width && py2 < layer.height) patches.push({ x: px2, y: py2 });
+      }
+      if (patches.length) onPaint('pencil', layerId, paintColor, patches, null);
     } else {
       const half = Math.floor((brushSize || 1) / 2);
       const patches = [];
@@ -361,6 +390,7 @@ function PaintCanvas({
       map.dragging.disable();
       if (paintState.tool === 'bucket') doPaint(e.clientX, e.clientY, 'bucket');
       else if (paintState.tool === 'pipette') doPaint(e.clientX, e.clientY, 'pipette');
+      else if (paintState.tool === 'spray') doPaint(e.clientX, e.clientY, 'spray');
       else doPaint(e.clientX, e.clientY, 'pencil');
     }
   }, [paintState, doPaint, map]);
@@ -377,13 +407,14 @@ function PaintCanvas({
     cursorPosRef.current = pos && pos.fracX >= 0 && pos.fracX <= 1 && pos.fracY >= 0 && pos.fracY <= 1 ? pos : null;
 
     // Throttle paint calls via RAF
-    if (isPainting.current && paintState?.active && paintState.tool === 'pencil') {
+    if (isPainting.current && paintState?.active && (paintState.tool === 'pencil' || paintState.tool === 'spray')) {
+      const tool = paintState.tool;
       pendingPaint.current = { x: e.clientX, y: e.clientY };
       if (!rafRef.current) {
         rafRef.current = requestAnimationFrame(() => {
           rafRef.current = null;
           if (pendingPaint.current) {
-            doPaint(pendingPaint.current.x, pendingPaint.current.y, 'pencil');
+            doPaint(pendingPaint.current.x, pendingPaint.current.y, tool);
             pendingPaint.current = null;
           }
           drawCanvas();
