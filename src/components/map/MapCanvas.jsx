@@ -202,7 +202,14 @@ function PaintCanvas({
     resize();
     map.on('resize', resize);
     map.on('move zoom', onMoveZoom);
+    // Leaflet only listens to window resizes; the container also changes size
+    // when the toolbar above grows/shrinks (e.g. presets open). Without this,
+    // the canvas backing store keeps its old size and gets CSS-stretched, so
+    // the brush preview goes oval/rectangular and drifts from the pointer.
+    const ro = new ResizeObserver(() => { map.invalidateSize({ animate: false }); resize(); });
+    ro.observe(container);
     return () => {
+      ro.disconnect();
       map.off('resize', resize);
       map.off('move zoom', onMoveZoom);
     };
