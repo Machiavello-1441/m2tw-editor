@@ -12,6 +12,7 @@ import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
 import { setFile } from '@/lib/bigFileStore';
 import DataFolderPicker from '../components/home/DataFolderPicker';
+import { DESCR_CLIMATES_KEY, AERIAL_RAW_KEY, MOD_CLIMATES_EVT } from '@/lib/modClimates';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
   FileText, Package, ArrowRight, Info, Castle, Image, Map } from
@@ -96,6 +97,7 @@ function parseDescrAerialGroundTypes(text) {
 // Files we look for in the data\ folder (matched by filename only, regardless of subfolder)
 const DATA_FILE_MAP = {
   'descr_aerial_map_ground_types.txt': 'aerial_ground_types',
+  'descr_climates.txt': 'climates',
   'export_descr_buildings.txt': 'edb',
   'descr_sm_factions.txt': 'fac',
   'descr_sm_resources.txt': 'res',
@@ -184,6 +186,7 @@ export default function Home() {
       anctxt: ls('m2tw_anctxt_file') ? 'ok' : 'idle',
       expunits: ls('m2tw_export_units_file') ? 'ok' : 'idle',
       aerial_ground_types: ls('m2tw_aerial_ground_types') ? 'ok' : 'idle',
+      climates: ls(DESCR_CLIMATES_KEY) ? 'ok' : 'idle',
       strings_bin: stringsCount > 0 ? 'ok' : 'idle',
       anc_images: 'idle',
       unit_images: 'idle',
@@ -489,8 +492,15 @@ export default function Home() {
       if (key === 'aerial_ground_types') {
         const parsed = parseDescrAerialGroundTypes(text);
         try {localStorage.setItem('m2tw_aerial_ground_types', JSON.stringify(parsed));} catch {}
+        try {localStorage.setItem(AERIAL_RAW_KEY, text);} catch {}
         window._m2tw_aerial_ground_types = parsed;
+        window.dispatchEvent(new Event(MOD_CLIMATES_EVT));
         setFileStatus((prev) => ({ ...prev, aerial_ground_types: 'ok' }));
+        continue;
+      } else if (key === 'climates') {
+        try {localStorage.setItem(DESCR_CLIMATES_KEY, text);} catch {}
+        window.dispatchEvent(new Event(MOD_CLIMATES_EVT));
+        setFileStatus((prev) => ({ ...prev, climates: 'ok' }));
         continue;
       } else if (key === 'edb') {
         loadEDB(text, file.name);
@@ -1047,6 +1057,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
               <FileStatus label="Names" hint="descr_names.txt" status={fileStatus.names} />
               <FileStatus label="Rebel Factions" hint="descr_rebel_factions.txt" status={fileStatus.rebel_fac} />
               <FileStatus label="Religions" hint="descr_religions.txt" status={fileStatus.religions} />
+              <FileStatus label="Climates" hint="descr_climates.txt + aerial ground types" status={fileStatus.climates} />
               <FileStatus label="Offmap Models" hint="descr_offmap_models.txt" status={fileStatus.offmap} />
               <FileStatus label="Guilds" hint="export_descr_guilds.txt" status={fileStatus.guilds} />
               <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />

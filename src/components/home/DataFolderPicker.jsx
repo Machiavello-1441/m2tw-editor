@@ -17,7 +17,7 @@ const TEXT_FILENAMES = new Set([
   'export_descr_character_traits.txt','export_descr_ancillaries.txt','export_units.txt',
   'descr_cultures.txt','descr_names.txt','descr_rebel_factions.txt','descr_religions.txt',
   'export_descr_guilds.txt','battle_models.modeldb','descr_skeleton.txt','descr_mount.txt',
-  'descr_aerial_map_ground_types.txt','descr_strat.txt','descr_regions.txt',
+  'descr_aerial_map_ground_types.txt','descr_climates.txt','descr_strat.txt','descr_regions.txt',
   'descr_mercenaries.txt','descr_win_conditions.txt','campaign_script.txt',
   'descr_event.txt','descr_sounds_music_types.txt','descr_terrain.txt',
   'descr_offmap_models.txt','descr_banners_new.xml','descr_character.txt',

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pencil, PaintBucket, RotateCcw, Save, Download, Pipette, SprayCan } from 'lucide-react';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { LAYER_PRESETS } from './paintPresets';
+import { useModClimatePresets } from '@/lib/modClimates';
 
 function swatchBg(r, g, b) { return `rgb(${r},${g},${b})`; }
 function isLight(r, g, b) { return r * 0.299 + g * 0.587 + b * 0.114 > 128; }
@@ -44,7 +45,9 @@ function HeightsControls({ paintColor, onColorChange }) {
 }
 
 function PresetPicker({ layerId, paintColor, onColorChange }) {
-  const presets = LAYER_PRESETS[layerId];
+  // Climates come from the mod's own descr_climates.txt when loaded from Home
+  const modClimates = useModClimatePresets();
+  const presets = layerId === 'climates' ? modClimates : LAYER_PRESETS[layerId];
   if (!presets) return null;
   return (
     <div className="flex flex-wrap gap-1 items-center">
