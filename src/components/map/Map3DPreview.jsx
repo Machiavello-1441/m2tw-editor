@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Globe } from 'lucide-react';
+import GroundTextureLoader from './GroundTextureLoader';
 
 // M2TW ground_types map pixel colour → ground type name (matches descr_aerial_map_ground_types.txt keys)
 const GROUND_COLOR_TO_TYPE = {
@@ -17,9 +18,15 @@ const GROUND_COLOR_TO_TYPE = {
   '98,65,65':    'mountains_low',
   '0,255,128':   'swamp',
   '255,255,255': 'beach',
-  '64,64,64':    'impassable',
-  '0,0,64':      'sea',
+  '0,0,64':      'impassable_sea',
+  '64,0,0':      'ocean',
+  '128,0,0':     'sea_deep',
+  '196,0,0':     'sea_shallow',
 };
+
+// The four water ground types — kept out of the land surface entirely so the
+// red sea pixels of map_ground_types never show through the water plane.
+const SEA_GROUND_KEYS = new Set(['0,0,64', '64,0,0', '128,0,0', '196,0,0']);
 
 // Fallback solid colors when no texture is available
 const GROUND_PRESETS = {
@@ -27,7 +34,7 @@ const GROUND_PRESETS = {
   '96,160,64':   { color: [85, 170, 55]   },
   '101,124,0':   { color: [100, 130, 20]  },
   '0,0,0':       { color: [140, 160, 140]  },
-  '64,64,64':    { color: [190, 160, 160]  },
+  '64,64,64':    { color: [80, 80, 80]    },
   '0,64,0':      { color: [22, 65, 22]    },
   '0,128,0':     { color: [30, 110, 30]   },
   '128,128,64':  { color: [160, 150, 90]  },
@@ -35,8 +42,10 @@ const GROUND_PRESETS = {
   '98,65,65':    { color: [125, 85, 75]   },
   '0,255,128':   { color: [55, 195, 125]  },
   '255,255,255': { color: [230, 215, 150] },
-  '64,64,64':    { color: [80, 80, 80]    },
-  '0,0,64':      { color: [20, 30, 100]   },
+  '0,0,64':      { color: [16, 34, 78]    },
+  '64,0,0':      { color: [16, 44, 96]    },
+  '128,0,0':     { color: [22, 58, 118]   },
+  '196,0,0':     { color: [34, 82, 145]   },
 };
 
 function buildColorLookup() {
@@ -240,7 +249,20 @@ export default function Map3DPreview({ layers }) {
   const [showLegend,      setShowLegend]     = useState(false);
   const [status,          setStatus]         = useState('idle');
 
-  const hasGroundTextures = !!(window._m2tw_ground_textures && Object.keys(window._m2tw_ground_textures).length > 0);
+  // Bumped whenever tile textures are (re)loaded so the scene rebuilds with them.
+  const [texVersion, setTexVersion] = useState(0);
+  const [texCount, setTexCount] = useState(() => Object.keys(window._m2tw_ground_textures || {}).length);
+
+  // descr_aerial_map_ground_types.txt is parsed on the Home page; recover it
+  // from localStorage when this tab is opened in a fresh page load.
+  if (!window._m2tw_aerial_ground_types) {
+    try {
+      const cached = localStorage.getItem('m2tw_aerial_ground_types');
+      if (cached) window._m2tw_aerial_ground_types = JSON.parse(cached);
+    } catch {}
+  }
+
+  const hasGroundTextures = texCount > 0;
   const hasAerialDef      = !!(window._m2tw_aerial_ground_types);
 
   useEffect(() => {
@@ -293,7 +315,11 @@ export default function Map3DPreview({ layers }) {
 
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x1a2535);
-      scene.fog = new THREE.FogExp2(0x1a2535, 0.0005);
+      // Fog density must scale with the map: a fixed 0.0005 swallowed large
+      // maps completely (the camera sits ~mapH away, so the whole terrain fell
+      // inside the fog). Tie it to the map diagonal so it only softens the far
+      // edge regardless of map size.
+      scene.fog = new THREE.FogExp2(0x1a2535, 0.35 / Math.hypot(mapW, mapH));
 
       const cw = mountRef.current.clientWidth;
       const ch = mountRef.current.clientHeight;
@@ -328,9 +354,17 @@ export default function Map3DPreview({ layers }) {
           const py = Math.min(Math.round((j / stepsY) * (mapH - 1)), mapH - 1);
           const pidx = (py * mapW + px) * 4;
           const r = heightsData[pidx], g = heightsData[pidx + 1], b = heightsData[pidx + 2];
-          const sea  = isSeaPixel(r, g, b);
+          // Water is whatever the heights map marks blue OR the ground-types
+          // map marks as one of the four sea types. Using heights alone left
+          // sea tiles at land elevation, so the terrain poked through the water
+          // plane in stripes (the red/blue banding on the sea).
+          let sea = isSeaPixel(r, g, b);
+          if (!sea && groundData) {
+            const gidx = pidx;
+            sea = SEA_GROUND_KEYS.has(`${groundData[gidx]},${groundData[gidx + 1]},${groundData[gidx + 2]}`);
+          }
           const gray = sea ? 0 : (r + g + b) / 3;
-          const ht   = sea ? -heightScale * 0.04 : (gray / 255) * heightScale;
+          const ht   = sea ? -heightScale * 0.12 : (gray / 255) * heightScale;
           positions.setY(j * vertW + i, ht);
         }
       }
@@ -348,7 +382,9 @@ export default function Map3DPreview({ layers }) {
       seaGeom.rotateX(-Math.PI / 2);
       const seaMat  = new THREE.MeshLambertMaterial({ color: 0x1a3d6e, transparent: true, opacity: 0.9 });
       const seaMesh = new THREE.Mesh(seaGeom, seaMat);
-      seaMesh.position.y = -heightScale * 0.01;
+      // Sits clearly above the sea floor (‑0.12) so the two surfaces can't
+      // z-fight, and below land level so coastlines stay visible.
+      seaMesh.position.y = -heightScale * 0.04;
       scene.add(seaMesh);
 
       scene.add(new THREE.AmbientLight(0xffffff, 0.55));
@@ -400,7 +436,12 @@ export default function Map3DPreview({ layers }) {
       clearTimeout(buildTimeout);
       if (cleanupRef.current) { cleanupRef.current(); cleanupRef.current = null; }
     };
-  }, [layers, heightScale, showFeatures, featuresOpacity, showRegions, regionsOpacity, regionsMode, useTextures, season]); // eslint-disable-line
+    // Depend on the layer DATA, not the `layers` object: the parent recreates
+    // that object on every render, which tore down and rebuilt the scene
+    // constantly — the reason orbit / zoom / pan stopped responding.
+  }, [layers.heights?.data, layers.ground?.data, layers.features?.data, layers.regions?.data,
+      heightScale, showFeatures, featuresOpacity, showRegions, regionsOpacity, regionsMode,
+      useTextures, season, texVersion]); // eslint-disable-line
 
   const hasData = !!(layers.heights?.data);
 
@@ -447,9 +488,17 @@ export default function Map3DPreview({ layers }) {
                 className="w-3 h-3 accent-primary" />
               <span className={useTextures ? 'text-slate-300' : 'text-slate-500'}>
                 Ground tile textures
-                {(!hasGroundTextures || !hasAerialDef) && <span className="text-slate-600"> (not loaded)</span>}
+                {hasGroundTextures
+                  ? <span className="text-slate-600"> ({texCount})</span>
+                  : <span className="text-slate-600"> (not loaded)</span>}
               </span>
             </label>
+            <GroundTextureLoader onLoaded={(n) => { setTexCount(n); setTexVersion(v => v + 1); }} />
+            {!hasAerialDef && (
+              <p className="text-[10px] text-amber-400 leading-snug">
+                Load descr_aerial_map_ground_types.txt on the Home page to map tiles to ground types.
+              </p>
+            )}
             {useTextures && hasGroundTextures && (
               <div className="flex items-center gap-2 ml-5">
                 <span className="text-slate-500 text-[10px]">Season:</span>
