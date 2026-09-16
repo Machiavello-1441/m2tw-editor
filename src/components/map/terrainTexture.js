@@ -10,7 +10,7 @@
  * The tile repeats every `span` ground pixels (texture_density).
  * Pairs with no texture fall back to a flat ground-type colour.
  */
-import { parseAerialGroundTypes, spanForDensity, resolveGroundTexture, GROUND_ALIASES } from '@/lib/aerialGroundTypes';
+import { parseAerialGroundTypes, resolveGroundTexture, GROUND_ALIASES } from '@/lib/aerialGroundTypes';
 import { parseDescrClimatesColours, DESCR_CLIMATES_KEY, AERIAL_RAW_KEY } from '@/lib/modClimates';
 import { CLIMATE_PALETTE, GROUND_TYPE_PALETTE, hexToRgb } from '@/lib/mapLayerStore';
 import { getCustomClimates, descrName } from '@/lib/climateStore';
@@ -148,7 +148,7 @@ export async function buildTileCache({ groundData, gW, gH, climatesData, cW, cH,
     if (img) { tiles[pair] = img; matched++; }
   }
 
-  return { ...dims, span: spanForDensity(density), tiles, density, matched };
+  return { ...dims, tiles, density, matched };
 }
 
 /**
@@ -156,16 +156,16 @@ export async function buildTileCache({ groundData, gW, gH, climatesData, cW, cH,
  * `gx`/`gy` are the integer ground pixel; `i`/`j` are the (fractional)
  * supersampled coordinates inside that pixel.
  *
- * Each map_ground_types pixel acts as a UV selector: it picks the tile for its
- * (climate × ground) pair, and the FULL tile is drawn once inside that single
- * ground pixel. The previous density-span tiling only showed a 1/span slice of
- * the tile per pixel, which assembled into the 2×2-style blocky pattern.
+ * Each map pixel selects the TGA for its climate × ground pair, while global
+ * map coordinates provide continuous UVs. This repeats each TGA seamlessly
+ * across the whole matching area instead of restarting it in every pixel.
  */
-export function sampleTile(cache, groundKey, gx, gy, i, j) {
+export function sampleTile(cache, groundKey, gx, gy, i, j, tileSize = 8) {
   const tile = cache.tiles[`${climateKeyAt(cache, gx, gy)}|${groundKey}`];
   if (!tile) return null;
-  const u = i - Math.floor(i);
-  const v = j - Math.floor(j);
+  const size = Math.max(1, tileSize);
+  const u = ((i / size) % 1 + 1) % 1;
+  const v = ((j / size) % 1 + 1) % 1;
   const tx = Math.min(tile.w - 1, Math.floor(u * tile.w));
   const ty = Math.min(tile.h - 1, Math.floor(v * tile.h));
   const t = (ty * tile.w + tx) * 4;

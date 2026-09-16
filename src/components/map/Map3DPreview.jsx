@@ -102,7 +102,7 @@ async function buildTerrainCanvas(
   regData, rW, rH,
   showFeatures, featuresOpacity,
   showRegions, regionsOpacity, regionsMode,
-  useTextures, tileCache, colorLookup
+  useTextures, tileCache, colorLookup, textureSize
 ) {
   // Supersample when tiling real textures: one texel per map pixel meant each
   // tile only showed `texture_density` pixels of itself, which is what made the
@@ -132,7 +132,7 @@ async function buildTerrainCanvas(
         const key = `${gr},${gg},${gb}`;
 
         const texel = (useTextures && tileCache)
-          ? sampleTile(tileCache, key, i, gy, oi / ss, oj / ss)
+          ? sampleTile(tileCache, key, i, gy, oi / ss, oj / ss, textureSize)
           : null;
         if (texel) {
           cr = texel[0]; cg = texel[1]; cb = texel[2];
@@ -230,6 +230,7 @@ export default function Map3DPreview({ layers }) {
   const [regionsMode,     setRegionsMode]    = useState('full');
   const [useTextures,     setUseTextures]    = useState(false);
   const [season,          setSeason]         = useState('summer');
+  const [textureSize,     setTextureSize]    = useState(8);
   const [showLegend,      setShowLegend]     = useState(false);
   const [status,          setStatus]         = useState('idle');
 
@@ -303,7 +304,7 @@ export default function Map3DPreview({ layers }) {
         regionsData,  regW,  regH,
         showFeatures, featuresOpacity,
         showRegions,  regionsOpacity, regionsMode,
-        useTextures, tileCache, colorLookup
+        useTextures, tileCache, colorLookup, textureSize
       );
       if (cancelled || !mountRef.current) return;
 
@@ -451,7 +452,7 @@ export default function Map3DPreview({ layers }) {
     // constantly — the reason orbit / zoom / pan stopped responding.
   }, [layers.heights?.data, layers.ground?.data, layers.features?.data, layers.regions?.data, layers.climates?.data,
       heightScale, showFeatures, featuresOpacity, showRegions, regionsOpacity, regionsMode,
-      useTextures, season, texVersion]); // eslint-disable-line
+      useTextures, season, textureSize, texVersion]); // eslint-disable-line
 
   const hasData = !!(layers.heights?.data);
 
@@ -514,13 +515,22 @@ export default function Map3DPreview({ layers }) {
               </p>
             )}
             {useTextures && hasGroundTextures && (
-              <div className="flex items-center gap-2 ml-5">
-                <span className="text-slate-500 text-[10px]">Season:</span>
-                <select value={season} onChange={e => setSeason(e.target.value)}
-                  className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-[10px] text-slate-300">
-                  <option value="summer">Summer</option>
-                  <option value="winter">Winter</option>
-                </select>
+              <div className="ml-5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 text-[10px]">Season:</span>
+                  <select value={season} onChange={e => setSeason(e.target.value)}
+                    className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-[10px] text-slate-300">
+                    <option value="summer">Summer</option>
+                    <option value="winter">Winter</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 w-16 shrink-0 text-[10px]">Tile size</span>
+                  <input type="range" min={2} max={64} value={textureSize}
+                    onChange={e => setTextureSize(Number(e.target.value))}
+                    className="flex-1 h-1 accent-primary" />
+                  <span className="text-slate-400 w-9 text-right text-[10px]">{textureSize}px</span>
+                </div>
               </div>
             )}
           </div>
