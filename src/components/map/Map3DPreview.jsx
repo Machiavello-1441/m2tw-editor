@@ -411,10 +411,6 @@ export default function Map3DPreview({ layers }) {
       const animate = () => {
         animId = requestAnimationFrame(animate);
         controls.update();
-        // OrbitControls can pan its target below the map even with a polar-angle
-        // limit. Clamp both target and camera to the base-map elevation.
-        controls.target.y = Math.max(0, controls.target.y);
-        camera.position.y = Math.max(0.01, camera.position.y);
         renderer.render(scene, camera);
       };
       animate();
