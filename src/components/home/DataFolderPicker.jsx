@@ -31,7 +31,7 @@ function categorizeFile(file) {
 
   if (name.endsWith('.strings.bin') || (name.endsWith('.bin') && path.includes('/text/'))) return 'strings_bin';
   if (path.includes('/maps/campaign/') || path.includes('/maps/base/')) {
-    if (name.endsWith('.tga') || name.endsWith('.txt')) return 'campaign';
+    if (name.endsWith('.tga') || name.endsWith('.txt') || name === 'descr_faction_movies.xml') return 'campaign';
     return null;
   }
   if (name.endsWith('.tga')) {
@@ -129,7 +129,7 @@ export default function DataFolderPicker({ onLoad, loading }) {
     setChecked(initChecked);
     setCheckedFiles(initCheckedFiles);
     setScanned({ byCategory, allFiles: files, directCampaigns, customCampaigns, uiFolders });
-    const allCampaigns = [...directCampaigns, ...customCampaigns];
+    const allCampaigns = [...directCampaigns, ...customCampaigns.map(name => `custom/${name}`)];
     setSelectedCampaigns(allCampaigns.length > 0 ? new Set([allCampaigns[0]]) : new Set());
     setSelectedUiFolders(new Set(uiFolders));
     setExpanded({});
@@ -190,7 +190,7 @@ export default function DataFolderPicker({ onLoad, loading }) {
         s += files.filter(f => {
           const path = (f.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
           const customMatch = path.match(/\/maps\/campaign\/custom\/([^/]+)\//);
-          if (customMatch) return selectedCampaigns.has(customMatch[1]);
+          if (customMatch) return selectedCampaigns.has(`custom/${customMatch[1]}`);
           const directMatch = path.match(/\/maps\/campaign\/([^/]+)\//);
           if (directMatch && directMatch[1] !== 'custom') return selectedCampaigns.has(directMatch[1]);
           return true;
@@ -218,7 +218,7 @@ export default function DataFolderPicker({ onLoad, loading }) {
         for (const file of files) {
           const path = (file.webkitRelativePath || '').toLowerCase().replace(/\\/g, '/');
           const customMatch = path.match(/\/maps\/campaign\/custom\/([^/]+)\//);
-          if (customMatch) { if (selectedCampaigns.has(customMatch[1])) campaignFiles.push(file); continue; }
+          if (customMatch) { if (selectedCampaigns.has(`custom/${customMatch[1]}`)) campaignFiles.push(file); continue; }
           const directMatch = path.match(/\/maps\/campaign\/([^/]+)\//);
           if (directMatch && directMatch[1] !== 'custom') { if (selectedCampaigns.has(directMatch[1])) campaignFiles.push(file); continue; }
           baseFiles.push(file);
@@ -236,7 +236,7 @@ export default function DataFolderPicker({ onLoad, loading }) {
         toLoad.push(...files.filter(f => checkedFiles.has(fkey(f))));
       }
     }
-    onLoad(toLoad, [...(scanned.directCampaigns || []), ...(scanned.customCampaigns || [])], [...selectedCampaigns]);
+    onLoad(toLoad, [...(scanned.directCampaigns || []), ...(scanned.customCampaigns || [])], [...selectedCampaigns], checked.campaign ? scanned.allFiles : null);
   };
 
   const totalSelected = countSelected();
@@ -394,8 +394,8 @@ export default function DataFolderPicker({ onLoad, loading }) {
                                 return (
                                   <div key={folder}>
                                     <div className="flex items-center gap-2">
-                                      <input type="radio" name="campaign_select" checked={selectedCampaigns.has(folder)}
-                                        onChange={() => toggleCampaign(folder)} className="accent-primary w-3 h-3 shrink-0" />
+                                      <input type="radio" name="campaign_select" checked={selectedCampaigns.has(`custom/${folder}`)}
+                                        onChange={() => toggleCampaign(`custom/${folder}`)} className="accent-primary w-3 h-3 shrink-0" />
                                       <span className="text-[11px] font-mono text-foreground flex-1">custom/{folder}/</span>
                                       <span className="text-[10px] text-muted-foreground">{folderFiles.length} files</span>
                                       <button onClick={() => toggleExpandCampaign(`custom:${folder}`)} className="text-muted-foreground hover:text-foreground">

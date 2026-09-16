@@ -6,6 +6,7 @@ import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, par
 import { exportTGA, downloadBlob } from './tgaExporter';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { encodeStringsBin } from '../strings/stringsBinCodec';
+import { readNamesFile } from '@/components/map/settlementNamesIO';
 import JSZip from 'jszip';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
 import RegionColorDetector from './RegionColorDetector';
@@ -972,6 +973,7 @@ export default function StratPanel({
   });
 
   const [overviewTab, setOverviewTab] = useState('files');
+  const [loadError, setLoadError] = useState('');
 
   // ── M2EX wasteland detection ─────────────────────────────────────────────
   // Wasteland regions are an M2EX-patch feature. A wasteland province uses the
@@ -1021,7 +1023,9 @@ export default function StratPanel({
 
   const loadFile = async (e, type) => {
     const file = e.target.files?.[0];if (!file) return;
-    const text = await file.text();
+    setLoadError('');
+    try {
+    const text = type === 'names' ? await readNamesFile(file) : await file.text();
     if (type === 'strat') onStratLoad(text, file.name);else
     if (type === 'regions') onRegionsLoad(text);else
     if (type === 'names') onNamesLoad(text);else
@@ -1045,6 +1049,7 @@ export default function StratPanel({
       setCampaignDescription(text);
       try {sessionStorage.setItem('m2tw_campaign_description', text);localStorage.setItem('m2tw_campaign_description', text);} catch {}
     }
+    } catch (error) { setLoadError(error.message || 'Could not read this file.'); }
     e.target.value = '';
   };
 
@@ -1168,7 +1173,8 @@ export default function StratPanel({
     // Settlement names as .strings.bin
     if (settlementNames && Object.keys(settlementNames).length > 0) {
       const entries = Object.entries(settlementNames).map(([key, value]) => ({ key, value }));
-      const binBuf = encodeStringsBin(entries);
+      const meta = JSON.parse(sessionStorage.getItem('m2tw_names_bin_meta') || '{}');
+      const binBuf = encodeStringsBin(entries, meta.magic1 ?? 2, meta.magic2 ?? 2048);
       zip.file(`data/text/${campaignName}_regions_and_settlement_names.txt.strings.bin`, binBuf);
     }
     // Campaign descriptions as .strings.bin
@@ -1286,6 +1292,7 @@ export default function StratPanel({
           {/* Campaign Files sub-tab */}
           {overviewTab === 'files' && <div className="rounded-lg border border-slate-700/40 bg-slate-900/30 p-2.5 space-y-1.5">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Campaign Files</p>
+            {loadError && <p role="alert" className="text-[10px] text-destructive">{loadError}</p>}
 
             {/* ── M2EX encart — wasteland regions ───────────────────────────── */}
             {/* Shown after descr_strat.txt import whenever wasteland regions are

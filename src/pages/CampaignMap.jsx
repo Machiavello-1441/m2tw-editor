@@ -24,6 +24,9 @@ import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
 import { setLayer, getLayer, getAllLayers, hasAnyLayer } from '../lib/mapLayerStore';
 import { getFile } from '../lib/bigFileStore';
+import CampaignSelector from '@/components/map/CampaignSelector';
+import useCampaignSelection from '@/components/map/useCampaignSelection';
+import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
 
 const INITIAL_PAINT = {
   active: false,
@@ -257,10 +260,7 @@ export default function CampaignMap() {
 
   // Auto-load files pre-staged from Home page (keep them in window for re-navigation)
   React.useEffect(() => {
-    const cached = window._m2tw_map_files;
-    if (cached && cached.length > 0) {
-      handleFolderImport({ files: cached, target: { value: '' } });
-    }
+    // Campaign selection below loads the staged files only once per workspace.
 
     // Auto-restore names display map from sessionStorage only (no localStorage cross-session)
     try {
@@ -277,27 +277,6 @@ export default function CampaignMap() {
         }
       }
     } catch {}
-    // Auto-restore settlement names from the strings-bin store. Prefer the
-    // file matching the ACTIVE campaign; if the campaign name isn't known yet
-    // (strat not parsed at mount), fall back to any *_regions_and_settlement_names
-    // file in the store — only one campaign is loaded from Home at a time.
-    try {
-      if (!sessionStorage.getItem('m2tw_names_raw') && !getFile('m2tw_names_raw')) {
-        const store = getStringsBinStore();
-        const activeCampaign = (stratData?.campaignName || '').toLowerCase();
-        const pickPrefix = activeCampaign ? `${activeCampaign}_regions_and_settlement_names` : '';
-        const candidates = Object.keys(store).filter(f => f.toLowerCase().includes('_regions_and_settlement_names'));
-        let matchedName = pickPrefix ? candidates.find(f => f.toLowerCase().startsWith(pickPrefix)) : null;
-        if (!matchedName && candidates.length > 0) matchedName = candidates[0];
-        const matched = matchedName ? store[matchedName] : null;
-        if (matched?.entries?.length) {
-          const namesMap = {};
-          for (const { key, value } of matched.entries) if (key) namesMap[key] = value;
-          setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
-        }
-      }
-    } catch {}
-
     const handler = (e) => {
       if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
     };
@@ -343,7 +322,7 @@ export default function CampaignMap() {
 
   // ── Bulk folder import ─────────────────────────────────────────────────────
   const handleFolderImport = useCallback(async (e) => {
-    const files = Array.from(e.files || e.target?.files || []);
+    const files = Array.from(e.files || e.target?.files || []).sort((a, b) => Number(a.name.endsWith('_regions_and_settlement_names.txt')) - Number(b.name.endsWith('_regions_and_settlement_names.txt')));
     try { if (e.target) e.target.value = ''; } catch {}
 
     for (const file of files) {
@@ -409,10 +388,10 @@ export default function CampaignMap() {
         try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {}
         setFactionColorsRaw(parseDescrSmFactions(text));
       }
-      if (name.endsWith('_regions_and_settlement_names.txt')) {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_names_raw', text); } catch {}
-        setSettlementNamesRaw(parseSettlementNames(text));
+      if (/_regions_and_settlement_names\.(txt|txt\.strings\.bin|strings\.bin|bin)$/i.test(name)) {
+        const names = await loadNamesMap(file);
+        setSettlementNamesRaw(prev => ({ ...(prev || {}), ...names }));
+        continue;
       }
       // Auto-parse .strings.bin files from data/text/ folder
       if (name.endsWith('.strings.bin') || name.endsWith('_names.bin')) {
@@ -425,8 +404,6 @@ export default function CampaignMap() {
           if (name.toLowerCase().includes('names') && !name.toLowerCase().includes('settlement') && !name.toLowerCase().includes('region')) {
             setNamesDisplayMap(prev => ({ ...prev, ...namesMap }));
             try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify({ ...namesMap })); } catch {}
-          } else {
-            setSettlementNamesRaw(prev => ({ ...(prev || {}), ...namesMap }));
           }
         }
       }
@@ -488,6 +465,17 @@ export default function CampaignMap() {
         'descr_terrain.txt': 'm2tw_terrain_raw',
         'descr_win_conditions.txt': 'm2tw_win_conditions_raw',
       };
+      const campaignExtraMap = {
+        'descr_event.txt': ['m2tw_campaign_events_raw', 'm2tw_campaign_events'],
+        'descr_events.txt': ['m2tw_campaign_events_raw', 'm2tw_campaign_events'],
+        'description.txt': ['m2tw_campaign_description', 'm2tw_campaign_description'],
+        'descr_disasters.txt': ['m2tw_disasters_raw', 'm2tw_campaign_disasters'],
+      };
+      if (campaignExtraMap[name]) {
+        const text = await file.text();
+        const [sessionKey, localKey] = campaignExtraMap[name];
+        sessionStorage.setItem(sessionKey, text); localStorage.setItem(localKey, text);
+      }
       if (extraSessionMap[name]) {
         const text = await file.text();
         try { sessionStorage.setItem(extraSessionMap[name], text); } catch {}
@@ -520,17 +508,22 @@ export default function CampaignMap() {
       }
     }
 
+    const importedCampaign = e.campaignName || parseDescrStrat(sessionStorage.getItem('m2tw_strat_raw') || '').campaignName;
+    if (importedCampaign) {
+      const originalNames = storedCampaignNames(importedCampaign);
+      setSettlementNamesRaw(prev => ({ ...originalNames, ...(prev || {}) }));
+    }
     // ── Trigger DB import in background ──────────────────────────────────────
     const stratText = sessionStorage.getItem('m2tw_strat_raw');
     const regionsText = sessionStorage.getItem('m2tw_regions_raw');
     const factionsText = sessionStorage.getItem('m2tw_factions_raw');
     if (stratText || regionsText || factionsText) {
       setImportProgress({ step: 0, total: 5 });
-      importCampaignToDatabase({
+      await importCampaignToDatabase({
         stratText,
         regionsText,
         factionsText,
-        campaignName: 'imperial_campaign',
+        campaignName: importedCampaign || 'imperial_campaign',
         onProgress: (step, total) => setImportProgress({ step, total }),
       }).then(() => {
         setTimeout(() => setImportProgress(null), 2000);
@@ -540,6 +533,30 @@ export default function CampaignMap() {
       });
     }
   }, []);
+
+  const campaignSelection = useCampaignSelection(
+    { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, factionColors, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, eduUnits, namesDisplayMap, savedSnapshot: savedSnapshot.current },
+    (saved) => {
+      setLayers(saved?.layers || Object.fromEntries(LAYER_DEFS.map(d => [d.id, { visible: d.defaultVisible, opacity: d.defaultOpacity }])));
+      setStratDataRaw(saved?.stratData || null); setRegionsDataRaw(saved?.regionsData || null);
+      setSettlementNamesRaw(saved?.settlementNames || null); setOverlayItems(saved?.overlayItems || []);
+      setEditedSettlements(saved?.editedSettlements || {}); setDirtyLayers(saved?.dirtyLayers || new Set());
+      setOverlayDirty(saved?.overlayDirty || false); setOsmBbox(saved?.osmBbox || null);
+      setMercenaryPools(saved?.mercenaryPools || []); setMusicTypes(saved?.musicTypes || []);
+      if (saved) {
+        setFactionColorsRaw(saved.factionColors); setRebelFactions(saved.rebelFactions); setReligions(saved.religions);
+        setNaturalRes(saved.naturalResources); setCultures(saved.cultures); setDescrNames(saved.descrNames);
+        setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList); setEduUnits(saved.eduUnits); setNamesDisplayMap(saved.namesDisplayMap);
+      }
+      savedSnapshot.current = saved?.savedSnapshot || null;
+      setSelectedItem(null); setSelectedRegion(null); setPendingPlace(null); setPendingRelocate(null);
+      setRegionWizard(null); setPendingCoordPick(null); setPaintState(INITIAL_PAINT); setOverlayMap(null);
+    },
+    handleFolderImport
+  );
+  useEffect(() => {
+    if (!campaignSelection.loading && settlementNames) persistNames(settlementNames);
+  }, [settlementNames, campaignSelection.loading]);
 
   // ── Painting ───────────────────────────────────────────────────────────────
   // Debounce handle for bitmap rebuilds during painting. Using a timeout
@@ -834,7 +851,15 @@ export default function CampaignMap() {
       const layer = layers['regions'];
       const idx = (ry * layer.width + rx) * 4;
       const r = layer.data[idx], g = layer.data[idx + 1], b = layer.data[idx + 2];
-      // Try DB first, fall back to in-memory regionsData
+      // The selected campaign's in-memory regions take priority over the shared DB.
+      const currentRegion = regionsData?.find(reg => reg.r === r && reg.g === g && reg.b === b);
+      if (currentRegion) {
+        setSelectedRegion(currentRegion); setActiveTab('strat');
+        const settlement = overlayItems.find(i => i.category === 'settlement' && i.region === currentRegion.regionName);
+        setSelectedItem(settlement || null);
+        return;
+      }
+      if (regionsData) return; // Never select another campaign's DB region by a reused colour.
       base44.entities.Region.filter({ color_r: r, color_g: g, color_b: b }).then(results => {
         if (results?.length) {
           // Normalize to same shape as regionsData for RegionEditorPanel
@@ -1276,19 +1301,18 @@ export default function CampaignMap() {
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-200">
+    <div className="h-screen flex flex-col bg-slate-950 text-slate-200 relative">
+      {campaignSelection.loading && <div className="absolute inset-0 top-9 z-50 bg-background/90 flex items-center justify-center text-foreground">Loading campaign files…</div>}
       {/* Toolbar */}
       <div className="h-9 border-b border-slate-800 flex items-center px-3 gap-2 shrink-0 bg-slate-900/80">
         <Map className="w-3.5 h-3.5 text-primary shrink-0" />
         <span className="text-xs font-semibold">Campaign Map Editor</span>
         <span className="text-[10px] text-slate-500 font-mono hidden lg:block">— M2TW map_*.tga + descr_strat.txt</span>
 
-        {/* Bulk folder import */}
-        <label className="ml-auto cursor-pointer flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-slate-800 border border-slate-600/40 text-slate-300 hover:bg-slate-700 transition-colors">
-          <FolderOpen className="w-3 h-3" />
-          Import folder
-          <input ref={folderInputRef} type="file" className="hidden" webkitdirectory="" directory="" multiple onChange={handleFolderImport} />
-        </label>
+        <CampaignSelector value={campaignSelection.active} loading={campaignSelection.loading} error={campaignSelection.error} onChange={(id) => {
+          clearTimeout(bitmapTimerRef.current); pendingBitmapRef.current = {};
+          campaignSelection.select(id);
+        }} />
 
         {/* OSM / Topo layer controls */}
         <div className="flex items-center gap-1 border-l border-slate-700 pl-2 ml-1">
@@ -1500,9 +1524,9 @@ export default function CampaignMap() {
 
           {/* Tab content */}
           <div className="flex-1 overflow-hidden">
-            {activeTab === 'strat' && (
+            {activeTab === 'strat' && !campaignSelection.loading && (
               <div className="h-full overflow-hidden">
-                <StratPanel
+                <StratPanel key={campaignSelection.active}
                   stratData={stratData}
                   regionsData={regionsData}
                   settlementNames={settlementNames}

@@ -11,6 +11,8 @@ import { Link } from 'react-router-dom';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
 import { setFile } from '@/lib/bigFileStore';
+import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
+import { readNamesFile } from '@/components/map/settlementNamesIO';
 import DataFolderPicker from '../components/home/DataFolderPicker';
 import { DESCR_CLIMATES_KEY, AERIAL_RAW_KEY, MOD_CLIMATES_EVT } from '@/lib/modClimates';
 import {
@@ -240,12 +242,13 @@ export default function Home() {
     r.readAsText(file);
   });
 
-  const handleDataFolderFromPicker = async (files, campaignFolders, selectedCampaigns) => {
+  const handleDataFolderFromPicker = async (files, campaignFolders, selectedCampaigns, allFiles) => {
     setLoadingData(true);
     setLoadProgress({ current: 0, total: files.length, name: '', phase: 'Loading' });
     setLoadResult({ ok: 0, errors: [] });
     try {
       const result = await processDataFiles(files, tickProgress);
+      if (allFiles) indexCampaignLibrary(allFiles, selectedCampaigns?.[0]);
       setLoadResult(result);
       if (result.errors.length > 0) {
         toast({
@@ -394,7 +397,7 @@ export default function Home() {
           resourceTgaFiles.push(file);
         } else if (pathLower.includes('/pips/') || pathLower.includes('/religion/')) {
           religionPipFiles.push(file);
-        } else if (pathLower.includes('/maps/base/')) {
+        } else if (pathLower.includes('/maps/base/') || pathLower.includes('/maps/campaign/')) {
           baseMapFiles.push(file);
         } else if (pathLower.includes('/terrain/aerial_map/ground_types/')) {
           groundTypeTgaFiles.push(file);
@@ -461,7 +464,7 @@ export default function Home() {
 
       // Settlement/region display names (data\text\[campaign]_regions_and_settlement_names.txt)
       if (name.endsWith('_regions_and_settlement_names.txt')) {
-        const txt = await readText(file);
+        const txt = await readNamesFile(file);
         try { sessionStorage.setItem('m2tw_names_raw', txt); } catch {}
         setFile('m2tw_names_raw', txt);
         continue;
@@ -695,7 +698,7 @@ export default function Home() {
     // Auto-load base map files
     if (baseMapFiles.length > 0) {
       tick(`base map · ${baseMapFiles.length} files staged`);
-      window._m2tw_map_files = (window._m2tw_map_files || []).concat(baseMapFiles);
+      window._m2tw_map_files = baseMapFiles;
       window.dispatchEvent(new CustomEvent('m2tw-map-folder-loaded', { detail: { files: baseMapFiles, source: 'base' } }));
       setMapFileCount((prev) => prev + baseMapFiles.length);
       setFileStatus((prev) => ({ ...prev, base_map: 'ok' }));
