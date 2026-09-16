@@ -102,7 +102,7 @@ async function buildTerrainCanvas(
   regData, rW, rH,
   showFeatures, featuresOpacity,
   showRegions, regionsOpacity, regionsMode,
-  useTextures, tileCache, colorLookup, climatesData
+  useTextures, tileCache, colorLookup
 ) {
   // Supersample when tiling real textures: one texel per map pixel meant each
   // tile only showed `texture_density` pixels of itself, which is what made the
@@ -132,7 +132,7 @@ async function buildTerrainCanvas(
         const key = `${gr},${gg},${gb}`;
 
         const texel = (useTextures && tileCache)
-          ? sampleTile(tileCache, climatesData, key, gSrc, oi / ss, oj / ss)
+          ? sampleTile(tileCache, key, i, gy, oi / ss, oj / ss)
           : null;
         if (texel) {
           cr = texel[0]; cg = texel[1]; cb = texel[2];
@@ -262,7 +262,13 @@ export default function Map3DPreview({ layers }) {
 
     const { data: heightsData, width: mapW, height: mapH } = heightsLayer;
     const groundData   = layers.ground?.data;
+    // map_ground_types / map_climates are 2×+1 the heights map in M2TW — they
+    // must be sampled at their OWN resolution, not the heightmap's.
+    const groundW      = layers.ground?.width  ?? mapW;
+    const groundH      = layers.ground?.height ?? mapH;
     const climatesData = layers.climates?.data;
+    const climW        = layers.climates?.width  ?? groundW;
+    const climH        = layers.climates?.height ?? groundH;
     const featuresData = layers.features?.data;
     const featW        = layers.features?.width  ?? 0;
     const featH        = layers.features?.height ?? 0;
@@ -278,7 +284,8 @@ export default function Map3DPreview({ layers }) {
       let tileCache = null;
       if (useTextures && hasGroundTextures && groundData) {
         tileCache = await buildTileCache({
-          groundData, climatesData, w: mapW, h: mapH, season,
+          groundData, gW: groundW, gH: groundH,
+          climatesData, cW: climW, cH: climH, season,
           groundTextures: window._m2tw_ground_textures,
         });
       }
@@ -287,12 +294,12 @@ export default function Map3DPreview({ layers }) {
       const colorLookup = buildColorLookup();
 
       const terrainCanvas = await buildTerrainCanvas(
-        groundData, mapW, mapH,
+        groundData, groundW, groundH,
         featuresData, featW, featH,
         regionsData,  regW,  regH,
         showFeatures, featuresOpacity,
         showRegions,  regionsOpacity, regionsMode,
-        useTextures, tileCache, colorLookup, climatesData
+        useTextures, tileCache, colorLookup
       );
       if (cancelled || !mountRef.current) return;
 
@@ -350,7 +357,9 @@ export default function Map3DPreview({ layers }) {
           // plane in stripes (the red/blue banding on the sea).
           let sea = isSeaPixel(r, g, b);
           if (!sea && groundData) {
-            const gidx = pidx;
+            const gx = Math.min(groundW - 1, Math.round(px * (groundW - 1) / (mapW - 1)));
+            const gy = Math.min(groundH - 1, Math.round(py * (groundH - 1) / (mapH - 1)));
+            const gidx = (gy * groundW + gx) * 4;
             sea = SEA_GROUND_KEYS.has(`${groundData[gidx]},${groundData[gidx + 1]},${groundData[gidx + 2]}`);
           }
           const gray = sea ? 0 : (r + g + b) / 3;
