@@ -104,15 +104,25 @@ async function buildTerrainCanvas(
   showRegions, regionsOpacity, regionsMode,
   useTextures, tileCache, colorLookup, climatesData
 ) {
+  // Supersample when tiling real textures: one texel per map pixel meant each
+  // tile only showed `texture_density` pixels of itself, which is what made the
+  // terrain look like coloured squares. 4096 keeps us inside GPU texture limits.
+  const ss = (useTextures && tileCache)
+    ? Math.max(1, Math.min(6, Math.floor(4096 / Math.max(gW, gH))))
+    : 1;
+  const oW = gW * ss, oH = gH * ss;
+
   const canvas = document.createElement('canvas');
-  canvas.width = gW; canvas.height = gH;
+  canvas.width = oW; canvas.height = oH;
   const ctx = canvas.getContext('2d');
-  const out = ctx.createImageData(gW, gH);
+  const out = ctx.createImageData(oW, oH);
   const d = out.data;
 
-  for (let j = 0; j < gH; j++) {
-    for (let i = 0; i < gW; i++) {
-      const dBase = (j * gW + i) * 4;
+  for (let oj = 0; oj < oH; oj++) {
+    for (let oi = 0; oi < oW; oi++) {
+      const i = Math.floor(oi / ss);
+      const j = Math.floor(oj / ss);
+      const dBase = (oj * oW + oi) * 4;
       let cr = 60, cg = 110, cb = 55;
 
       if (groundData) {
@@ -122,7 +132,7 @@ async function buildTerrainCanvas(
         const key = `${gr},${gg},${gb}`;
 
         const texel = (useTextures && tileCache)
-          ? sampleTile(tileCache, climatesData, key, gSrc, i, j)
+          ? sampleTile(tileCache, climatesData, key, gSrc, oi / ss, oj / ss)
           : null;
         if (texel) {
           cr = texel[0]; cg = texel[1]; cb = texel[2];
@@ -139,14 +149,15 @@ async function buildTerrainCanvas(
 
   if (featData && showFeatures && fW > 0 && fH > 0 && featuresOpacity > 0) {
     const fa = featuresOpacity / 100;
-    for (let j = 0; j < gH; j++) {
-      for (let i = 0; i < gW; i++) {
+    for (let oj = 0; oj < oH; oj++) {
+      for (let oi = 0; oi < oW; oi++) {
+        const i = Math.floor(oi / ss), j = Math.floor(oj / ss);
         const fx = Math.min(Math.floor(i / 2), fW - 1);
         const fy = Math.min(fH - 1 - Math.floor(j / 2), fH - 1);
         const fSrc = (fy * fW + fx) * 4;
         const feat = detectFeature(featData[fSrc], featData[fSrc + 1], featData[fSrc + 2]);
         if (feat) {
-          const dBase = (j * gW + i) * 4;
+          const dBase = (oj * oW + oi) * 4;
           const c = FEATURE_BASE_RGBA[feat];
           d[dBase]     = Math.round(d[dBase]     * (1 - fa) + c[0] * fa);
           d[dBase + 1] = Math.round(d[dBase + 1] * (1 - fa) + c[1] * fa);
@@ -158,15 +169,16 @@ async function buildTerrainCanvas(
 
   if (regData && showRegions && rW > 0 && rH > 0 && regionsOpacity > 0) {
     const ra = regionsOpacity / 100;
-    for (let j = 0; j < gH; j++) {
-      for (let i = 0; i < gW; i++) {
+    for (let oj = 0; oj < oH; oj++) {
+      for (let oi = 0; oi < oW; oi++) {
+        const i = Math.floor(oi / ss), j = Math.floor(oj / ss);
         const rx = Math.min(Math.floor(i / 2), rW - 1);
         const ry = Math.min(rH - 1 - Math.floor(j / 2), rH - 1);
         const rSrc = (ry * rW + rx) * 4;
         const rr = regData[rSrc], rg = regData[rSrc + 1], rb = regData[rSrc + 2];
         const isBlack = rr < 15 && rg < 15 && rb < 15;
         const isWhite = rr > 240 && rg > 240 && rb > 240;
-        const dBase = (j * gW + i) * 4;
+        const dBase = (oj * oW + oi) * 4;
 
         if (isBlack || isWhite) {
           const c = isBlack ? [255, 220, 0] : [0, 220, 255];
@@ -347,8 +359,12 @@ export default function Map3DPreview({ layers }) {
       geom.computeVertexNormals();
 
       const terrainTex = new THREE.CanvasTexture(terrainCanvas);
-      terrainTex.minFilter = THREE.NearestFilter;
-      terrainTex.magFilter = THREE.NearestFilter;
+      // Nearest magnification turned every texel into a hard square on screen.
+      // Linear + mipmaps keeps the tiled texture detail readable at any zoom.
+      terrainTex.minFilter = THREE.LinearMipmapLinearFilter;
+      terrainTex.magFilter = THREE.LinearFilter;
+      terrainTex.generateMipmaps = true;
+      terrainTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       terrainTex.flipY = false;
       const terrainMat  = new THREE.MeshLambertMaterial({ map: terrainTex });
       scene.add(new THREE.Mesh(geom, terrainMat));

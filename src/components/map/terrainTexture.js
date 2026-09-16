@@ -68,7 +68,13 @@ export async function buildTileCache({ groundData, climatesData, w, h, season, g
   return { span: spanForDensity(density), tiles, climateByColour, density };
 }
 
-/** Per-pixel lookup used while filling the terrain canvas. */
+/**
+ * Per-pixel lookup used while filling the terrain canvas.
+ * `i`/`j` are map-pixel coordinates and may be FRACTIONAL: the canvas is
+ * supersampled, so a single map pixel covers several texels of the tile. Using
+ * integers here is what made the terrain look like flat coloured squares —
+ * each tile only ever showed density×density of its pixels.
+ */
 export function sampleTile(cache, climatesData, groundKey, srcIdx, i, j) {
   const cKey = climatesData
     ? `${climatesData[srcIdx]},${climatesData[srcIdx + 1]},${climatesData[srcIdx + 2]}`
@@ -76,8 +82,10 @@ export function sampleTile(cache, climatesData, groundKey, srcIdx, i, j) {
   const tile = cache.tiles[`${cache.climateByColour[cKey] || ''}|${groundKey}`];
   if (!tile) return null;
   const span = cache.span;
-  const tx = Math.min(tile.w - 1, Math.floor(((i % span) / span) * tile.w));
-  const ty = Math.min(tile.h - 1, Math.floor(((j % span) / span) * tile.h));
+  const u = (i % span + span) % span / span;
+  const v = (j % span + span) % span / span;
+  const tx = Math.min(tile.w - 1, Math.floor(u * tile.w));
+  const ty = Math.min(tile.h - 1, Math.floor(v * tile.h));
   const t = (ty * tile.w + tx) * 4;
   return [tile.data[t], tile.data[t + 1], tile.data[t + 2]];
 }
