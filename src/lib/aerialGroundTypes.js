@@ -39,7 +39,8 @@ export function parseAerialGroundTypes(text) {
       continue;
     }
     if (/^texture_density/i.test(line)) continue;
-    pending = line.split(/\s+/)[0].toLowerCase();
+    const climateMatch = line.match(/^climate\s+([^\s{]+)/i);
+    pending = (climateMatch?.[1] || line.split(/\s+/)[0]).toLowerCase();
   }
   return { density, climates };
 }
@@ -49,10 +50,11 @@ export const spanForDensity = (density) => Math.max(1, 8 / (density || 1));
 
 // map_ground_types pixel colour → the ground-type row names it may appear under
 export const GROUND_ALIASES = {
-  '0,128,128':   ['cultivated_low', 'fertile_low', 'farmland_low'],
-  '96,160,64':   ['cultivated_medium', 'fertile_medium', 'farmland_medium'],
-  '101,124,0':   ['cultivated_high', 'fertile_high', 'farmland_high'],
-  '0,0,0':       ['wilderness', 'scrub', 'grass'],
+  '0,128,128':   ['fertility_low', 'fertile_low', 'cultivated_low'],
+  '96,160,64':   ['fertility_medium', 'fertile_medium', 'cultivated_medium'],
+  '101,124,0':   ['fertility_high', 'fertile_high', 'cultivated_high'],
+  // M2TW renders wilderness with the climate's fertility_low aerial texture.
+  '0,0,0':       ['fertility_low', 'wilderness', 'scrub', 'grass'],
   '64,64,64':    ['impassable_land', 'impassable'],
   '0,64,0':      ['forest_dense', 'dense_forest'],
   '0,128,0':     ['forest_sparse', 'sparse_forest', 'forest'],
