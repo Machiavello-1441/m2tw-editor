@@ -166,8 +166,20 @@ export function sampleTile(cache, groundKey, gx, gy, i, j, tileSize = 8) {
   const size = Math.max(1, tileSize);
   const u = ((i / size) % 1 + 1) % 1;
   const v = ((j / size) % 1 + 1) % 1;
-  const tx = Math.min(tile.w - 1, Math.floor(u * tile.w));
-  const ty = Math.min(tile.h - 1, Math.floor(v * tile.h));
-  const t = (ty * tile.w + tx) * 4;
-  return [tile.data[t], tile.data[t + 1], tile.data[t + 2]];
+  // Bilinear filtering keeps the source TGA looking like a surface texture
+  // when it is minified onto the terrain instead of exposing individual texels.
+  const x = u * tile.w;
+  const y = v * tile.h;
+  const x0 = Math.floor(x) % tile.w;
+  const y0 = Math.floor(y) % tile.h;
+  const x1 = (x0 + 1) % tile.w;
+  const y1 = (y0 + 1) % tile.h;
+  const fx = x - Math.floor(x);
+  const fy = y - Math.floor(y);
+  const at = (px, py, channel) => tile.data[(py * tile.w + px) * 4 + channel];
+  return [0, 1, 2].map(channel => {
+    const top = at(x0, y0, channel) * (1 - fx) + at(x1, y0, channel) * fx;
+    const bottom = at(x0, y1, channel) * (1 - fx) + at(x1, y1, channel) * fx;
+    return Math.round(top * (1 - fy) + bottom * fy);
+  });
 }

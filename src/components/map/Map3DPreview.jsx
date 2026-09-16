@@ -379,10 +379,10 @@ export default function Map3DPreview({ layers }) {
       geom.computeVertexNormals();
 
       const terrainTex = new THREE.CanvasTexture(terrainCanvas);
-      // Mipmaps for minification (kills the grain when zoomed out), but NEAREST
-      // magnification so the baked tile texels stay crisp when zoomed in.
+      // Smooth filtering makes the baked aerial-map TGAs read as continuous
+      // terrain skins rather than enlarged source pixels at close range.
       terrainTex.minFilter = THREE.LinearMipmapLinearFilter;
-      terrainTex.magFilter = THREE.NearestFilter;
+      terrainTex.magFilter = THREE.LinearFilter;
       terrainTex.generateMipmaps = true;
       terrainTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       terrainTex.flipY = false;
@@ -526,7 +526,7 @@ export default function Map3DPreview({ layers }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400 w-16 shrink-0 text-[10px]">Tile size</span>
-                  <input type="range" min={2} max={64} value={textureSize}
+                  <input type="range" min={2} max={128} value={textureSize}
                     onChange={e => setTextureSize(Number(e.target.value))}
                     className="flex-1 h-1 accent-primary" />
                   <span className="text-slate-400 w-9 text-right text-[10px]">{textureSize}px</span>
