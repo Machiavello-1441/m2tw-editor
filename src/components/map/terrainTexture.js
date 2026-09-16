@@ -10,7 +10,7 @@
  * The tile repeats every `span` ground pixels (texture_density).
  * Pairs with no texture fall back to a flat ground-type colour.
  */
-import { parseAerialGroundTypes, spanForDensity, resolveGroundTexture } from '@/lib/aerialGroundTypes';
+import { parseAerialGroundTypes, spanForDensity, resolveGroundTexture, GROUND_ALIASES } from '@/lib/aerialGroundTypes';
 import { parseDescrClimatesColours, DESCR_CLIMATES_KEY, AERIAL_RAW_KEY } from '@/lib/modClimates';
 import { CLIMATE_PALETTE, GROUND_TYPE_PALETTE, hexToRgb } from '@/lib/mapLayerStore';
 import { getCustomClimates, descrName } from '@/lib/climateStore';
@@ -132,8 +132,15 @@ export async function buildTileCache({ groundData, gW, gH, climatesData, cW, cH,
     // Preferred: the filename the aerial file lists on this ground row.
     const texName = resolveGroundTexture(block, gKey, season, groundId);
     let url = texName ? groundTextures[texKey(texName)] : null;
-    // Fallback: the engine's own naming convention <climate>_<season>_<ground>.tga
-    if (!url) url = groundTextures[`${blockName}_${season}_${groundId}`.toLowerCase()];
+    // Fallback: the engine's own naming convention <climate>_<season>_<ground>.tga,
+    // trying the palette id and every known alias for this ground colour.
+    if (!url) {
+      const aliases = [groundId, ...(GROUND_ALIASES[gKey] || [])].filter(Boolean);
+      for (const a of aliases) {
+        url = groundTextures[`${blockName}_${season}_${a}`.toLowerCase()];
+        if (url) break;
+      }
+    }
     if (!url) continue;
 
     byFile[url] = byFile[url] || loadImageData(url);

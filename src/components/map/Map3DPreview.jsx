@@ -236,6 +236,9 @@ export default function Map3DPreview({ layers }) {
   // Bumped whenever tile textures are (re)loaded so the scene rebuilds with them.
   const [texVersion, setTexVersion] = useState(0);
   const [texCount, setTexCount] = useState(() => Object.keys(window._m2tw_ground_textures || {}).length);
+  // How many (climate × ground) pairs on the map actually resolved to a tile.
+  // When 0, the texture checkbox is on but every pixel falls back to flat colours.
+  const [matchedCount, setMatchedCount] = useState(0);
 
   // descr_aerial_map_ground_types.txt is parsed on the Home page; recover it
   // from localStorage when this tab is opened in a fresh page load.
@@ -290,6 +293,7 @@ export default function Map3DPreview({ layers }) {
         });
       }
       if (cancelled || !mountRef.current) return;
+      setMatchedCount(tileCache ? (tileCache.matched || 0) : 0);
 
       const colorLookup = buildColorLookup();
 
@@ -329,7 +333,10 @@ export default function Map3DPreview({ layers }) {
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.07;
-      controls.minDistance   = 10;
+      // Keep the camera above the terrain: a min distance scaled to the map
+      // stops zooming through the surface, and the polar cap keeps it from
+      // orbiting below the horizon.
+      controls.minDistance   = Math.max(10, span / 40);
       controls.maxDistance   = mapW * 4;
       controls.maxPolarAngle = Math.PI / 2.05;
 
@@ -491,9 +498,13 @@ export default function Map3DPreview({ layers }) {
                 className="w-3 h-3 accent-primary" />
               <span className={useTextures ? 'text-slate-300' : 'text-slate-500'}>
                 Ground tile textures
-                {hasGroundTextures
-                  ? <span className="text-slate-600"> ({texCount})</span>
-                  : <span className="text-slate-600"> (not loaded)</span>}
+                {!hasGroundTextures
+                  ? <span className="text-slate-600"> (not loaded)</span>
+                  : !useTextures
+                    ? <span className="text-slate-600"> ({texCount})</span>
+                    : matchedCount > 0
+                      ? <span className="text-green-500"> ({texCount} · {matchedCount} matched)</span>
+                      : <span className="text-amber-500"> ({texCount} · none matched)</span>}
               </span>
             </label>
             <GroundTextureLoader onLoaded={(n) => { setTexCount(n); setTexVersion(v => v + 1); }} />
