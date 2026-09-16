@@ -230,7 +230,7 @@ export default function Map3DPreview({ layers }) {
   const [regionsMode,     setRegionsMode]    = useState('full');
   const [useTextures,     setUseTextures]    = useState(false);
   const [season,          setSeason]         = useState('summer');
-  const [textureSize,     setTextureSize]    = useState(8);
+  const [textureSize,     setTextureSize]    = useState(128);
   const [showLegend,      setShowLegend]     = useState(false);
   const [status,          setStatus]         = useState('idle');
 
@@ -379,10 +379,10 @@ export default function Map3DPreview({ layers }) {
       geom.computeVertexNormals();
 
       const terrainTex = new THREE.CanvasTexture(terrainCanvas);
-      // Smooth filtering makes the baked aerial-map TGAs read as continuous
-      // terrain skins rather than enlarged source pixels at close range.
+      // Mipmaps smooth distant terrain; nearest magnification preserves the
+      // source TGA detail when inspecting the terrain at close range.
       terrainTex.minFilter = THREE.LinearMipmapLinearFilter;
-      terrainTex.magFilter = THREE.LinearFilter;
+      terrainTex.magFilter = THREE.NearestFilter;
       terrainTex.generateMipmaps = true;
       terrainTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       terrainTex.flipY = false;
@@ -526,10 +526,10 @@ export default function Map3DPreview({ layers }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400 w-16 shrink-0 text-[10px]">Tile size</span>
-                  <input type="range" min={2} max={128} value={textureSize}
+                  <input type="range" min={16} max={2048} step={16} value={textureSize}
                     onChange={e => setTextureSize(Number(e.target.value))}
                     className="flex-1 h-1 accent-primary" />
-                  <span className="text-slate-400 w-9 text-right text-[10px]">{textureSize}px</span>
+                  <span className="text-slate-400 w-12 text-right text-[10px]">{textureSize}px</span>
                 </div>
               </div>
             )}
