@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Globe } from 'lucide-react';
 import GroundTextureLoader from './GroundTextureLoader';
+import { buildTileCache, sampleTile } from './terrainTexture';
 
 // M2TW ground_types map pixel colour → ground type name (matches descr_aerial_map_ground_types.txt keys)
 const GROUND_COLOR_TO_TYPE = {
@@ -95,41 +96,13 @@ function texBasename(texName) {
   return filename.replace(/\.tga$/i, '').toLowerCase();
 }
 
-// aerialGroundTypes: { [typeName]: { summer: 'file.tga', winter: 'file.tga' } }  (from parser)
-// groundTextures: { [basenameNoExt]: dataUrl }  (loaded from disk)
-async function preloadGroundTiles(groundData, gW, gH, groundTextures, aerialGroundTypes, season) {
-  if (!groundTextures || !aerialGroundTypes || !groundData) return {};
-
-  const uniqueKeys = new Set();
-  for (let i = 0; i < gW * gH; i++) {
-    const b = i * 4;
-    uniqueKeys.add(`${groundData[b]},${groundData[b + 1]},${groundData[b + 2]}`);
-  }
-
-  const tileCache = {};
-  for (const key of uniqueKeys) {
-    const typeName = GROUND_COLOR_TO_TYPE[key];
-    if (!typeName) continue;
-    const entry = aerialGroundTypes[typeName];
-    if (!entry) continue;
-    const texName = (season === 'winter' && entry.winter) ? entry.winter : entry.summer;
-    if (!texName) continue;
-    const lookupKey = texBasename(texName);
-    const dataUrl = groundTextures[lookupKey];
-    if (!dataUrl) continue;
-    const tileData = await loadImageData(dataUrl);
-    if (tileData) tileCache[key] = tileData;
-  }
-  return tileCache;
-}
-
 async function buildTerrainCanvas(
   groundData, gW, gH,
   featData, fW, fH,
   regData, rW, rH,
   showFeatures, featuresOpacity,
   showRegions, regionsOpacity, regionsMode,
-  useTextures, tileCache, colorLookup
+  useTextures, tileCache, colorLookup, climatesData
 ) {
   const canvas = document.createElement('canvas');
   canvas.width = gW; canvas.height = gH;
@@ -148,12 +121,11 @@ async function buildTerrainCanvas(
         const gr = groundData[gSrc], gg = groundData[gSrc + 1], gb = groundData[gSrc + 2];
         const key = `${gr},${gg},${gb}`;
 
-        if (useTextures && tileCache[key]) {
-          const tile = tileCache[key];
-          const tx = i % tile.w;
-          const ty = j % tile.h;
-          const tSrc = (ty * tile.w + tx) * 4;
-          cr = tile.data[tSrc]; cg = tile.data[tSrc + 1]; cb = tile.data[tSrc + 2];
+        const texel = (useTextures && tileCache)
+          ? sampleTile(tileCache, climatesData, key, gSrc, i, j)
+          : null;
+        if (texel) {
+          cr = texel[0]; cg = texel[1]; cb = texel[2];
         } else {
           const p = colorLookup[key];
           if (p) { cr = p.color[0]; cg = p.color[1]; cb = p.color[2]; }
@@ -278,6 +250,7 @@ export default function Map3DPreview({ layers }) {
 
     const { data: heightsData, width: mapW, height: mapH } = heightsLayer;
     const groundData   = layers.ground?.data;
+    const climatesData = layers.climates?.data;
     const featuresData = layers.features?.data;
     const featW        = layers.features?.width  ?? 0;
     const featH        = layers.features?.height ?? 0;
@@ -290,14 +263,12 @@ export default function Map3DPreview({ layers }) {
     const buildTimeout = setTimeout(async () => {
       if (!mountRef.current || cancelled) return;
 
-      let tileCache = {};
-      if (useTextures && hasGroundTextures && hasAerialDef && groundData) {
-        tileCache = await preloadGroundTiles(
-          groundData, mapW, mapH,
-          window._m2tw_ground_textures,
-          window._m2tw_aerial_ground_types,
-          season
-        );
+      let tileCache = null;
+      if (useTextures && hasGroundTextures && groundData) {
+        tileCache = await buildTileCache({
+          groundData, climatesData, w: mapW, h: mapH, season,
+          groundTextures: window._m2tw_ground_textures,
+        });
       }
       if (cancelled || !mountRef.current) return;
 
@@ -309,7 +280,7 @@ export default function Map3DPreview({ layers }) {
         regionsData,  regW,  regH,
         showFeatures, featuresOpacity,
         showRegions,  regionsOpacity, regionsMode,
-        useTextures, tileCache, colorLookup
+        useTextures, tileCache, colorLookup, climatesData
       );
       if (cancelled || !mountRef.current) return;
 
@@ -323,11 +294,15 @@ export default function Map3DPreview({ layers }) {
 
       const cw = mountRef.current.clientWidth;
       const ch = mountRef.current.clientHeight;
-      const camera = new THREE.PerspectiveCamera(55, cw / ch, 0.1, 100000);
+      // near/far tuned to the map's own scale — a 0.1→100000 range on an
+      // 1800-unit map wasted nearly all depth-buffer precision, which is what
+      // produced the horizontal clipping bands across the terrain and sea.
+      const span = Math.hypot(mapW, mapH);
+      const camera = new THREE.PerspectiveCamera(55, cw / ch, span / 500, span * 8);
       camera.position.set(0, mapH * 0.7, mapH * 0.75);
       camera.lookAt(0, 0, 0);
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(cw, ch);
       mountRef.current.appendChild(renderer.domElement);
@@ -439,7 +414,7 @@ export default function Map3DPreview({ layers }) {
     // Depend on the layer DATA, not the `layers` object: the parent recreates
     // that object on every render, which tore down and rebuilt the scene
     // constantly — the reason orbit / zoom / pan stopped responding.
-  }, [layers.heights?.data, layers.ground?.data, layers.features?.data, layers.regions?.data,
+  }, [layers.heights?.data, layers.ground?.data, layers.features?.data, layers.regions?.data, layers.climates?.data,
       heightScale, showFeatures, featuresOpacity, showRegions, regionsOpacity, regionsMode,
       useTextures, season, texVersion]); // eslint-disable-line
 

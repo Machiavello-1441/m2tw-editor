@@ -65,6 +65,9 @@ export default function CampaignMap() {
   const [overlayDirty, setOverlayDirty] = useState(false);
   const [paintState, setPaintState] = useState(INITIAL_PAINT);
   const [activeTab, setActiveTab] = useState('strat');
+  // 3D view fully replaces the 2D map body (it used to be a tab overlaid on top
+  // of the live Leaflet map, so the zoom controls kept driving the 2D canvas).
+  const [show3D, setShow3D] = useState(false);
   const [, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [showPixelGrid, setShowPixelGrid] = useState(false);
   const [showTooltip, setShowTooltip] = useState(true);
@@ -1270,7 +1273,6 @@ export default function CampaignMap() {
   const tabs = [
     { id: 'strat',      label: 'Strat',    Icon: Globe },
     { id: 'validation', label: 'Validate', Icon: CheckSquare },
-    { id: '3d',         label: '3D',       Icon: Box },
   ];
 
   return (
@@ -1423,6 +1425,8 @@ export default function CampaignMap() {
         hasUnsaved={dirtyLayers.size > 0 || overlayDirty}
         hasSavedSnapshot={savedSnapshot.current !== null}
         dirtyLayers={dirtyLayers}
+        show3D={show3D}
+        onToggle3D={() => setShow3D(v => !v)}
       />
 
       {/* Coastline Tracer panel */}
@@ -1437,8 +1441,13 @@ export default function CampaignMap() {
         </div>
       )}
 
-      {/* Body */}
-      <div className="flex-1 flex min-h-0">
+      {/* Body — 3D view replaces the map entirely so nothing renders underneath */}
+      {show3D && (
+        <div className="flex-1 min-h-0 relative">
+          <Map3DPreview layers={layers} />
+        </div>
+      )}
+      <div className={show3D ? 'hidden' : 'flex-1 flex min-h-0'}>
         {/* Canvas */}
         <div className="flex-1 relative min-w-0">
           <MapCanvas
@@ -1619,18 +1628,6 @@ export default function CampaignMap() {
         </div>
       </div>
 
-      {/* 3D Preview — full-screen overlay when active */}
-      {activeTab === '3d' && (
-        <div className="absolute inset-0 z-10" style={{ top: '6.5rem' }}>
-          <Map3DPreview layers={layers} />
-          <button
-            onClick={() => setActiveTab('layers')}
-            className="absolute top-3 right-3 z-20 flex items-center gap-1 px-3 py-1.5 rounded bg-slate-800/90 border border-slate-600/50 text-slate-200 text-xs font-semibold hover:bg-slate-700 transition-colors"
-          >
-            ✕ Close 3D
-          </button>
-        </div>
-      )}
     </div>
   );
 }

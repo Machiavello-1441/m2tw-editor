@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pencil, PaintBucket, RotateCcw, Save, Download, Pipette, SprayCan } from 'lucide-react';
+import { Pencil, PaintBucket, RotateCcw, Save, Download, Pipette, SprayCan, Box } from 'lucide-react';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { LAYER_PRESETS } from './paintPresets';
 import { useModClimatePresets } from '@/lib/modClimates';
@@ -67,7 +67,7 @@ function PresetPicker({ layerId, paintColor, onColorChange }) {
   );
 }
 
-export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onRevert, onExport, hasUnsaved, hasSavedSnapshot, dirtyLayers }) {
+export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onRevert, onExport, hasUnsaved, hasSavedSnapshot, dirtyLayers, show3D, onToggle3D }) {
   const { active, layerId, paintColor, tool, brushSize } = paintState;
   const [showPresets, setShowPresets] = useState(false);
 
@@ -87,6 +87,18 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
         >
           <Pencil className="w-3.5 h-3.5" />
           {active ? 'Painting ON' : 'Paint mode'}
+        </button>
+
+        <button
+          onClick={onToggle3D}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-all ${
+            show3D
+              ? 'bg-blue-500/20 border-blue-500/60 text-blue-300'
+              : 'bg-slate-800 border-slate-600/40 text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Box className="w-3.5 h-3.5" />
+          {show3D ? '3D view ON' : '3D view'}
         </button>
 
         {active && (
