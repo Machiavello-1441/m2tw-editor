@@ -108,7 +108,7 @@ async function buildTerrainCanvas(
   // tile only showed `texture_density` pixels of itself, which is what made the
   // terrain look like coloured squares. 4096 keeps us inside GPU texture limits.
   const ss = (useTextures && tileCache)
-    ? Math.max(1, Math.min(6, Math.floor(4096 / Math.max(gW, gH))))
+    ? Math.max(1, Math.min(12, Math.floor(8192 / Math.max(gW, gH))))
     : 1;
   const oW = gW * ss, oH = gH * ss;
 
@@ -326,8 +326,11 @@ export default function Map3DPreview({ layers }) {
       controls.maxDistance   = mapW * 4;
       controls.maxPolarAngle = Math.PI / 2.05;
 
-      const stepsX = Math.min(mapW - 1, 512);
-      const stepsY = Math.min(mapH - 1, 512);
+      // One vertex per source pixel: the old 512-step decimation resampled the
+      // heightmap and dropped every 1-pixel island / thin isthmus, which made
+      // the coastline look inflated and misaligned the ground tiles.
+      const stepsX = Math.min(mapW - 1, 2048);
+      const stepsY = Math.min(mapH - 1, 2048);
       const vertW  = stepsX + 1;
       const vertH  = stepsY + 1;
 
@@ -359,10 +362,10 @@ export default function Map3DPreview({ layers }) {
       geom.computeVertexNormals();
 
       const terrainTex = new THREE.CanvasTexture(terrainCanvas);
-      // Nearest magnification turned every texel into a hard square on screen.
-      // Linear + mipmaps keeps the tiled texture detail readable at any zoom.
+      // Mipmaps for minification (kills the grain when zoomed out), but NEAREST
+      // magnification so the baked tile texels stay crisp when zoomed in.
       terrainTex.minFilter = THREE.LinearMipmapLinearFilter;
-      terrainTex.magFilter = THREE.LinearFilter;
+      terrainTex.magFilter = THREE.NearestFilter;
       terrainTex.generateMipmaps = true;
       terrainTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       terrainTex.flipY = false;
