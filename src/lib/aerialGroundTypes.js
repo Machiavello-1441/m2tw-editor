@@ -66,9 +66,9 @@ export const GROUND_ALIASES = {
 const norm = (s) => s.replace(/[_\s]/g, '');
 
 /** Resolve one ground colour inside one climate block to its texture filename. */
-export function resolveGroundTexture(block, colourKey, season) {
+export function resolveGroundTexture(block, colourKey, season, groundId) {
   if (!block) return null;
-  const aliases = GROUND_ALIASES[colourKey] || [];
+  const aliases = [groundId, ...(GROUND_ALIASES[colourKey] || [])].filter(Boolean);
   let entry = null;
   for (const a of aliases) {
     if (block[a]) { entry = block[a]; break; }
