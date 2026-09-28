@@ -7,6 +7,7 @@ import { exportTGA, downloadBlob } from './tgaExporter';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { encodeStringsBin } from '../strings/stringsBinCodec';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
+import { getFile } from '@/lib/bigFileStore';
 import JSZip from 'jszip';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
 import RegionColorDetector from './RegionColorDetector';
@@ -927,7 +928,7 @@ export default function StratPanel({
     try {
       // Try sessionStorage first, then fall back to localStorage (loaded from Home)
       const raw = sessionStorage.getItem('m2tw_win_conditions_raw') ||
-      localStorage.getItem('m2tw_campaign_win_conditions');
+      getFile('m2tw_campaign_win_conditions');
       return raw ? parseWinConditions(raw) : null;
     } catch {return null;}
   });
@@ -935,7 +936,7 @@ export default function StratPanel({
   const [factionMovies, setFactionMovies] = useState(() => {
     try {
       const raw = sessionStorage.getItem('m2tw_faction_movies_raw') ||
-      localStorage.getItem('m2tw_campaign_faction_movies');
+      getFile('m2tw_campaign_faction_movies');
       return raw ? parseFactionMovies(raw) : null;
     } catch {return null;}
   });
@@ -955,7 +956,7 @@ export default function StratPanel({
   const [disasters, setDisasters] = useState(() => {
     try {
       const raw = sessionStorage.getItem('m2tw_disasters_raw') ||
-      localStorage.getItem('m2tw_campaign_disasters');
+      getFile('m2tw_campaign_disasters');
       return raw ? parseDisasters(raw) : null;
     } catch {return null;}
   });
@@ -963,13 +964,13 @@ export default function StratPanel({
   const [campaignEvents, setCampaignEvents] = useState(() => {
     try {
       const raw = sessionStorage.getItem('m2tw_campaign_events_raw') ||
-      localStorage.getItem('m2tw_campaign_events');
+      getFile('m2tw_campaign_events');
       return raw ? parseCampaignEvents(raw) : null;
     } catch {return null;}
   });
 
   const [campaignDescription, setCampaignDescription] = useState(() => {
-    try {return sessionStorage.getItem('m2tw_campaign_description') || localStorage.getItem('m2tw_campaign_description') || '';} catch {return '';}
+    try {return sessionStorage.getItem('m2tw_campaign_description') || getFile('m2tw_campaign_description') || '';} catch {return '';}
   });
 
   const [overviewTab, setOverviewTab] = useState('files');
@@ -1131,7 +1132,7 @@ export default function StratPanel({
     if (disasters?.length) {
       zip.file(`${basePath}/descr_disasters.txt`, toCRLF(serializeDisasters(disasters)));
     } else {
-      const disastersRaw = sessionStorage.getItem('m2tw_disasters_raw') || localStorage.getItem('m2tw_campaign_disasters');
+      const disastersRaw = sessionStorage.getItem('m2tw_disasters_raw') || getFile('m2tw_campaign_disasters');
       if (disastersRaw) zip.file(`${basePath}/descr_disasters.txt`, toCRLF(disastersRaw));
     }
     // descr_events.txt
@@ -1151,7 +1152,7 @@ export default function StratPanel({
 
     for (const { key, name } of extraFiles) {
       const raw = sessionStorage.getItem(key) || (
-      key === 'm2tw_win_conditions_raw' ? localStorage.getItem('m2tw_campaign_win_conditions') : null);
+      key === 'm2tw_win_conditions_raw' ? getFile('m2tw_campaign_win_conditions') : null);
       if (raw) zip.file(`${basePath}/${name}`, toCRLF(raw));
     }
     // TGA map layers

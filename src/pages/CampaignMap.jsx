@@ -23,7 +23,7 @@ import { latLngToPixel, paintBoundary } from '../components/newmap/boundaryRaste
 import { useEDB } from '../components/edb/EDBContext';
 import { base44 } from '@/api/base44Client';
 import { setLayer, getLayer, getAllLayers, hasAnyLayer } from '../lib/mapLayerStore';
-import { getFile } from '../lib/bigFileStore';
+import { getFile, setFile } from '../lib/bigFileStore';
 import CampaignSelector from '@/components/map/CampaignSelector';
 import useCampaignSelection from '@/components/map/useCampaignSelection';
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
@@ -474,7 +474,9 @@ export default function CampaignMap() {
       if (campaignExtraMap[name]) {
         const text = await file.text();
         const [sessionKey, localKey] = campaignExtraMap[name];
-        sessionStorage.setItem(sessionKey, text); localStorage.setItem(localKey, text);
+        setFile(localKey, text);
+        try { sessionStorage.setItem(sessionKey, text); }
+        catch { sessionStorage.removeItem(sessionKey); }
       }
       if (extraSessionMap[name]) {
         const text = await file.text();
