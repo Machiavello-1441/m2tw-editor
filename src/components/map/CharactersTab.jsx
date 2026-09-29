@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle, GripVertical, ArrowDownAZ } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
+import { treeToRelatives, orderRelatives } from './familyTreeLogic';
 import CharacterRecordRow from '@/components/map/CharacterRecordRow';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -625,16 +626,8 @@ function serializeFamilyTreesToStratData(stratData, familyTrees) {
   const factions = (stratData.factions || []).map(faction => {
     const trees = familyTrees[faction.name] || [];
     if (trees.length === 0) return { ...faction, relatives: [] };
-    // Each tree produces one "relative" line: [father, mother, child1, child2, ...]
-    const relatives = trees.map(tree => {
-      const parts = [];
-      parts.push(tree.father ? [tree.father.name, tree.father.surname].filter(Boolean).join(' ') : '');
-      parts.push(tree.mother ? [tree.mother.name, tree.mother.surname].filter(Boolean).join(' ') : '');
-      for (const child of (tree.children || [])) {
-        parts.push([child.name, child.surname].filter(Boolean).join(' '));
-      }
-      return parts;
-    });
+    // One "relative" line per couple (grandchildren couples included), parents' couples first
+    const relatives = orderRelatives(trees.flatMap(treeToRelatives));
     return { ...faction, relatives };
   });
   return { ...stratData, factions };

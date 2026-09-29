@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Users, AlertTriangle, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { treeToRelatives, orderRelatives, relativeProblems } from './familyTreeLogic';
+import FamilyTreeProblems from './FamilyTreeProblems';
 
 const MIN_PARENT_CHILD_AGE_DIFF = 16;
 const MAX_CHILDREN = 4;
@@ -415,6 +417,11 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
 
   const factionTrees = trees[activeFaction] || [];
 
+  const problems = useMemo(
+    () => relativeProblems(orderRelatives(factionTrees.flatMap(treeToRelatives)), factionChars),
+    [factionTrees, factionChars]
+  );
+
   const addTree = () => {
     const newTree = { id: Date.now(), father: null, mother: null, children: [], spouses: {}, nestedChildren: {} };
     onTreesChange(prev => ({ ...prev, [activeFaction]: [...(prev[activeFaction] || []), newTree] }));
@@ -488,6 +495,8 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
         >
           <Plus className="w-3 h-3" /> New Family Tree
         </button>
+
+        <FamilyTreeProblems problems={problems} />
 
         {factionTrees.length === 0 && (
           <p className="text-[10px] text-slate-600 italic text-center py-4">No family trees for {activeFaction}</p>

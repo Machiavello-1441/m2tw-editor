@@ -392,10 +392,11 @@ export function parseDescrStrat(text) {
         // relative
         if (/^relative\s+/i.test(fl)) {
           // relative\tWilliam,\tMatilda,\t\tRufus,\t...end
-          const parts = fl.replace(/^relative\s+/i, '').split(/[\t,]+/).map(s => s.trim()).filter(Boolean);
-          const endIdx = parts.indexOf('end');
-          const rel = endIdx >= 0 ? parts.slice(0, endIdx) : parts;
-          faction.relatives.push(rel);
+          // Keep positions: father, wife (may be empty), children — split on commas only
+          const body = fl.replace(/^relative\s+/i, '').replace(/[\s,]*\bend\s*$/i, '');
+          const rel = body.split(',').map(s => s.trim());
+          while (rel.length && !rel[rel.length - 1]) rel.pop();
+          if (rel.length) faction.relatives.push(rel);
           i++; continue;
         }
 
