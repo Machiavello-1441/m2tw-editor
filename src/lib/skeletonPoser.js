@@ -7,6 +7,7 @@
  * Optimized: reuses matrix/vector objects to minimize GC pressure during posing.
  */
 import * as THREE from 'three';
+import skeletonWorldMatrices from '@/lib/skeletonWorldMatrices';
 
 /**
  * Build bind-pose matrices for each joint.
@@ -14,31 +15,13 @@ import * as THREE from 'three';
  * World = parent.world * local
  */
 export function buildBindPoseMatrices(joints) {
-  const localMats = [];
-  const worldMats = [];
-  const invBindMats = [];
-
-  for (let i = 0; i < joints.length; i++) {
-    const j = joints[i];
-    const local = new THREE.Matrix4();
-    const rotMat = new THREE.Matrix4().makeRotationFromEuler(
-      new THREE.Euler(j.bindRot.rx, j.bindRot.ry, j.bindRot.rz, 'XYZ')
-    );
-    const transMat = new THREE.Matrix4().makeTranslation(j.bindPos.x, j.bindPos.y, j.bindPos.z);
-    local.multiplyMatrices(transMat, rotMat);
-    localMats.push(local);
-
-    const world = new THREE.Matrix4();
-    if (j.parentIdx >= 0 && worldMats[j.parentIdx]) {
-      world.multiplyMatrices(worldMats[j.parentIdx], local);
-    } else {
-      world.copy(local);
-    }
-    worldMats.push(world);
-    invBindMats.push(world.clone().invert());
-  }
-
-  return { localMats, worldMats, invBindMats };
+  const localMats = joints.map(j => new THREE.Matrix4().compose(
+    new THREE.Vector3(j.bindPos.x, j.bindPos.y, j.bindPos.z),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(j.bindRot.rx, j.bindRot.ry, j.bindRot.rz, 'XYZ')),
+    new THREE.Vector3(1, 1, 1)
+  ));
+  const worldMats = skeletonWorldMatrices(joints, localMats);
+  return { localMats, worldMats, invBindMats: worldMats.map(m => m.clone().invert()) };
 }
 
 // ── Reusable scratch objects for computePosedMatrices ──
@@ -57,16 +40,15 @@ const _tempRot = new THREE.Matrix4();
  */
 export function computePosedMatrices(joints, poseRotations, reuseWorldMats) {
   const n = joints.length;
-  const worldMats = reuseWorldMats && reuseWorldMats.length >= n
-    ? reuseWorldMats
-    : joints.map(() => new THREE.Matrix4());
+  const localMats = joints.map(() => new THREE.Matrix4());
 
   for (let i = 0; i < n; i++) {
     const j = joints[i];
     
     _euler.set(j.bindRot.rx, j.bindRot.ry, j.bindRot.rz, 'XYZ');
     _bindRotMat.makeRotationFromEuler(_euler);
-    _bindTransMat.makeTranslation(j.bindPos.x, j.bindPos.y, j.bindPos.z);
+    const translation = poseRotations[i];
+    _bindTransMat.makeTranslation(j.bindPos.x + (translation?.tx || 0), j.bindPos.y + (translation?.ty || 0), j.bindPos.z + (translation?.tz || 0));
 
     if (poseRotations[i]) {
       const pr = poseRotations[i];
@@ -78,14 +60,10 @@ export function computePosedMatrices(joints, poseRotations, reuseWorldMats) {
       _localMat.multiplyMatrices(_bindTransMat, _bindRotMat);
     }
 
-    if (j.parentIdx >= 0 && worldMats[j.parentIdx]) {
-      worldMats[i].multiplyMatrices(worldMats[j.parentIdx], _localMat);
-    } else {
-      worldMats[i].copy(_localMat);
-    }
+    localMats[i].copy(_localMat);
   }
 
-  return worldMats;
+  return skeletonWorldMatrices(joints, localMats, reuseWorldMats);
 }
 
 // ── Reusable scratch for skinVertices ──

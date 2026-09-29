@@ -34,6 +34,8 @@
  */
 import { toViewerMeshes } from './m2ModelGeometry';
 import { probeModelBytes } from './m2MeshCodec';
+import { readLooseCas } from '@/lib/casAnimationReader';
+import { casSceneJoints, jointWorldPositions } from '@/lib/casSkeleton';
 
 const NODE_COUNT_AT = 0x32;
 const MIN_VERSION = 2.0, MAX_VERSION = 4.0;
@@ -156,44 +158,14 @@ class Reader {
 // ─── header and node hierarchy ────────────────────────────────────────────────
 
 function readHeader(r, out) {
-  out.version = r.f32();
-  if (!(out.version >= MIN_VERSION && out.version <= MAX_VERSION)) {
-    throw r.fail(`opens with ${out.version}, which is not a .cas version`);
-  }
-  r.skip(8);            // 38 and 9, constant everywhere
-  r.skip(4);            // 0, constant everywhere
-  out.length = r.f32();
-  r.p = NODE_COUNT_AT;  // over the two RGB triples
-  const nodes = r.count('the node count');
-  r.skip(2);            // pad, back onto the 32-bit grid
-  out.parents = [-1];
-  for (let i = 0; i < Math.max(nodes - 1, 0); i++) out.parents.push(r.u32());
-  const keys = r.count('the key count');
-  out.keyTimes = r.floats(keys);
-
-  for (let i = 0; i < nodes; i++) {
-    let name;
-    try {
-      name = r.text();
-    } catch {
-      // Six terrain models are stamped 2.23 and lay their header out
-      // differently. Say so by version rather than by a billion-byte string.
-      throw r.fail(`its header is version ${out.version}, and the layout this reader knows starts at 3.02 — the node names are not where ${out.version} puts them`);
-    }
-    out.nodes.push(name);
-    const rest = r.skip(NODE_TRAILER);
-    let meaningful = 0;
-    for (const b of rest) if (b !== 0) meaningful++;
-    if (meaningful > 1) {
-      out.notes.push(`node "${name}" carries something other than the 25 bytes every other node writes after its name`);
-    }
-  }
-  out.pivots = r.floats(nodes * 3);
-
-  const bad = out.parents.slice(1).filter(p => !(p >= 0 && p < nodes));
-  if (bad.length) {
-    throw r.fail(`the parent table points at nodes ${bad.slice(0, 4).join(', ')} of ${nodes} — the header is not being read where it really is`);
-  }
+  const parsed = readLooseCas(r.d.slice().buffer);
+  out.version = parsed.header.version;
+  out.length = parsed.header.animTime;
+  out.parents = parsed.hierarchy;
+  out.keyTimes = Float32Array.from(parsed.timeTicks);
+  out.nodes = parsed.bones.map(b => b.name);
+  out.pivots = Float32Array.from(parsed.bones.flatMap(b => [b.poseFrame.x, b.poseFrame.y, b.poseFrame.z]));
+  r.p = parsed.dataEnd;
 }
 
 // ─── chunks ───────────────────────────────────────────────────────────────────
@@ -368,7 +340,13 @@ export function readCas(buffer, source = 'model.cas') {
  * `.cas` gives every mesh its own vertices, so the objects are laid end to end
  * and each one's indices shifted by where its vertices landed.
  */
-export function casToMeshFile(scene) {
+export function casToMeshFile(scene, externalSkeleton = null) {
+  const skinned = scene.objects.some(o => o.skinned && o.bones?.length);
+  const joints = skinned ? casSceneJoints(scene, externalSkeleton) : [];
+  const world = jointWorldPositions(joints);
+  const vertices = [];
+  const notes = scene.notes.slice();
+  if (skinned && !externalSkeleton && !scene.pivots.some(v => Math.abs(v) > 1e-6)) notes.push('All bone pivots are zero: load the matching skeleton to place this character.');
   const total = scene.objects.reduce((s, o) => s + o.vertices, 0);
   const anyUvs = scene.objects.some(o => o.uvs && o.uvs.length);
   const positions = new Float32Array(total * 3);
@@ -380,6 +358,15 @@ export function casToMeshFile(scene) {
 
   for (const obj of scene.objects) {
     positions.set(obj.positions, base * 3);
+    if (skinned) {
+      for (let i = 0; i < obj.vertices; i++) {
+        const boneId = obj.skinned && world[obj.bones?.[i]] ? obj.bones[i] : -1;
+        const pivot = world[boneId] || { x: 0, y: 0, z: 0 };
+        const at = (base + i) * 3;
+        positions[at] += pivot.x; positions[at + 1] += pivot.y; positions[at + 2] += pivot.z;
+        vertices.push({ x: positions[at], y: positions[at + 1], z: positions[at + 2], boneId });
+      }
+    }
     normals.set(obj.normals, base * 3);
     // An object with no UVs of its own gets zeros rather than being left out:
     // the UV array is one run over the whole pool, so a hole would slide every
@@ -405,17 +392,19 @@ export function casToMeshFile(scene) {
   return {
     source: scene.source, format: 'cas',
     positions, normals, uvs, groups,
-    bones: scene.nodes.slice(), lodName: '', notes: scene.notes.slice(), textures,
+    bones: scene.nodes.slice(), lodName: '', notes, textures,
+    skeletonData: skinned ? { joints, vertices, normals: normals.slice(), sharedPool: true, packedBones: externalSkeleton?.packedBones } : null,
   };
 }
 
 /** In the `{ meshes, errors }` shape the viewer consumes. */
-export function parseCasFile(buffer, source = 'model.cas') {
+export function parseCasFile(buffer, source = 'model.cas', externalSkeleton = null) {
   try {
     const scene = readCas(buffer, source);
-    const decoded = casToMeshFile(scene);
+    const decoded = casToMeshFile(scene, externalSkeleton);
     const view = toViewerMeshes(decoded);
     view.scene = scene;
+    view.skeletonData = decoded.skeletonData;
     return view;
   } catch (e) {
     return { format: 'cas', meshes: [], bones: [], errors: [e.message] };

@@ -6,6 +6,7 @@ import ModelViewerSidebar from './ModelViewerSidebar';
 import ModeldbSkinPanel from './ModeldbSkinPanel';
 import PoseEditor from './PoseEditor';
 import AnimPlaybackPanel from './AnimPlaybackPanel';
+import skinNativeRig from '@/lib/nativeSkinning';
 import { buildBindPoseMatrices, computePosedMatrices, skinVertices, getJointWorldPositions } from '@/lib/skeletonPoser';
 
 const LIGHTING_PRESETS = {
@@ -86,6 +87,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
   const posedWorldMatsRef = useRef(null); // reusable Matrix4 array
   const skinnedBufRef = useRef(null);     // reusable Float32Array for skinned positions
   const jointPosRef = useRef(null);       // reusable Vector3 array for joint positions
+  const nativeSkinRef = useRef(null);
   const groupVertMapsRef = useRef([]);    // pre-computed per-group vertex index maps
 
   const [isRotating, setIsRotating] = useState(false);
@@ -133,6 +135,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
       while (el.firstChild) el.removeChild(el.firstChild);
     }
     // Clear reusable buffers
+    nativeSkinRef.current = null;
     posedWorldMatsRef.current = null;
     skinnedBufRef.current = null;
     jointPosRef.current = null;
@@ -174,8 +177,8 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
     parsedMesh.meshes.forEach((mesh, index) => {
       const meshName = mesh.name || `Mesh_${index}`;
       const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
-      geo.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
+      geo.setAttribute('position', new THREE.BufferAttribute(mesh.positions.slice(), 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(mesh.normals.slice(), 3));
       geo.setAttribute('uv', new THREE.BufferAttribute(mesh.uvs, 2));
       geo.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
       geo.computeBoundingBox();
@@ -376,8 +379,20 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
     // Reuse pre-allocated buffers to avoid GC pressure
     const posedWorldMats = computePosedMatrices(joints, poseRotations, posedWorldMatsRef.current);
 
-    // Skin each mesh group's vertices using reusable buffer
-    if (skeletonData.vertices?.length > 0) {
+    // Native groups index a shared pool; MS3D groups have compact local pools.
+    if (skeletonData.sharedPool) {
+      const skin = skinNativeRig(skeletonData, invBindMats, posedWorldMats, nativeSkinRef.current);
+      nativeSkinRef.current = skin;
+      meshObjsRef.current.forEach(obj => {
+        obj.geometry.attributes.position.array.set(skin.positions);
+        obj.geometry.attributes.normal.array.set(skin.normals);
+        obj.geometry.attributes.position.needsUpdate = true;
+        obj.geometry.attributes.normal.needsUpdate = true;
+        obj.geometry.computeBoundingSphere();
+        const wire = obj.children.find(c => c.isLineSegments);
+        if (wire && wire.visible) { wire.geometry.dispose(); wire.geometry = new THREE.WireframeGeometry(obj.geometry); }
+      });
+    } else if (skeletonData.vertices?.length > 0) {
       const skinnedPositions = skinVertices(skeletonData.vertices, invBindMats, posedWorldMats, skinnedBufRef.current);
 
       // Distribute skinned positions back to per-group meshes using pre-computed vertex maps
@@ -814,6 +829,8 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
         ) : sidebarTab === 'anim' ? (
           <AnimPlaybackPanel
             joints={skeletonData?.joints || []}
+            packedBones={skeletonData?.packedBones}
+            rigWarnings={skeletonData?.warnings}
             onPoseChange={setPoseRotations}
             onReset={handleResetPose}
           />

@@ -6,6 +6,8 @@ import { parseMs3d as parseMs3dFull } from '@/lib/ms3dCodec';
 import ModelViewer from './ModelViewer';
 import { Button } from '@/components/ui/button';
 import ModelBrowserBar from './ModelBrowserBar';
+import ModelSkeletonImport from '@/components/assets/ModelSkeletonImport';
+import { buildNativeRig } from '@/lib/nativeModelRig';
 import { modeldbStore } from '@/lib/modeldbStore';
 import { indexFolder, getFolderIndex, loadFolderModeldb, resolveFile } from '@/lib/modFolderStore';
 import { Upload, Download, Info, ArrowLeftRight, Box, AlertTriangle, X } from 'lucide-react';
@@ -192,6 +194,15 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
                 {current.parsed.bones.length} bones
               </span>
             )}
+            {current.parsed.bones?.length > 0 && current.sourceFormat !== 'ms3d' && (
+              <ModelSkeletonImport key={current.name} name={current.skeletonName} onApply={(skeleton, name) => {
+                const parsed = current.sourceFormat === 'cas'
+                  ? parseCasFile(current.rawBuffer, current.name, skeleton)
+                  : { ...current.parsed, skeletonData: buildNativeRig(current.parsed, skeleton) };
+                if (!parsed.meshes?.length) throw new Error(parsed.errors?.[0] || 'Could not bind the skeleton.');
+                setFiles(prev => prev.map(f => f === current ? { ...f, parsed, skeletonName: name } : f));
+              }} />
+            )}
             {current.parsed.lodName && (
               <span className="text-slate-500 font-mono">{current.parsed.lodName}</span>
             )}
@@ -228,11 +239,12 @@ function ModelSubPanel({ accept, label, hint, onToMs3d, onFromMs3d }) {
           {/* 3D Viewer — fills remaining space */}
           <div className="flex-1 rounded-xl border border-slate-700 overflow-hidden bg-slate-900 min-h-0">
             <ModelViewer
+              key={`${current.name}:${current.skeletonName || ''}`}
               parsedMesh={current.parsed}
               modelName={current.name}
               onLoadModel={loadFile}
               autoSkin={autoSkin}
-              skeletonData={current.ms3dFull || null}
+              skeletonData={current.ms3dFull || current.parsed.skeletonData || null}
               groupComments={current.ms3dFull?.groupComments || null}
               className="w-full h-full"
             />

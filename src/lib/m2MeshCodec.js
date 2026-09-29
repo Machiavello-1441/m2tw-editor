@@ -41,8 +41,7 @@ const STREAM_STRIDE = {
 const POSITION_STREAM = 0;
 const NORMAL_STREAM = 3;
 const UV_STREAM = 4;
-/** Bone indices and their weights: a pair out of these four, four bytes each. */
-const SKIN_STREAMS = [8, 9, 13, 14];
+// Native rigging uses stream 1 (two float weights) and stream 2 (packed indices).
 
 /** How far ahead of a finished stream the next one's header may sit. The gap
  *  is boost's own bookkeeping; the longest measured is 40 bytes. */
@@ -204,46 +203,23 @@ function readStreams(a, out) {
   unpackSkin(packed, verts, out);
 }
 
-/**
- * The rigging: four bytes a vertex in each of two streams, one holding bone
- * indices and one holding their weights. The stream NUMBERS do not say which is
- * which (8/9 and 13/14 both appear), so tell them apart by content — weights
- * are a partition of 255 and therefore sum to about 255 per vertex, while
- * indices do not. Only the first `weightsPerVertex` slots of each vertex carry
- * meaning; the rest are padding.
- */
+/** Native skin streams, confirmed by GUI Toolkit v2.4.0 mesh.py:
+ * two float32 weights; first bone is byte 2, second bone is byte 1. */
 function unpackSkin(packed, verts, out) {
-  const candidates = SKIN_STREAMS.filter(t => packed[t] && packed[t].length >= verts * 4);
-  if (!candidates.length || !verts) return;
-
-  let weightType = null;
-  for (const t of candidates) {
-    const raw = packed[t];
-    let total = 0;
-    for (let v = 0; v < verts; v++) {
-      total += raw[v * 4] + raw[v * 4 + 1] + raw[v * 4 + 2] + raw[v * 4 + 3];
-    }
-    const avg = total / verts;
-    if (avg > 200 && avg < 300) { weightType = t; break; }
-  }
-  const indexType = candidates.find(t => t !== weightType);
-  if (weightType === null || indexType === undefined) {
-    out.notes.push('the vertex rigging streams could not be told apart, so no skin data was read');
-    return;
-  }
-
-  const perVertex = Math.min(Math.max(out.weightsPerVertex || 2, 1), 4);
-  const idxRaw = packed[indexType];
-  const wRaw = packed[weightType];
-  out.skinIndices = new Uint8Array(verts * 4);
+  const weights = packed[1], indices = packed[2];
+  if (!weights || !indices || weights.length !== verts * 8 || indices.length !== verts * 4) return;
+  const view = new DataView(weights.buffer, weights.byteOffset, weights.byteLength);
+  out.skinIndices = new Uint16Array(verts * 4);
   out.skinWeights = new Float32Array(verts * 4);
+  out.weightsPerVertex = 2;
   for (let v = 0; v < verts; v++) {
-    let sum = 0;
-    for (let c = 0; c < perVertex; c++) sum += wRaw[v * 4 + c];
-    for (let c = 0; c < perVertex; c++) {
-      out.skinIndices[v * 4 + c] = idxRaw[v * 4 + c];
-      out.skinWeights[v * 4 + c] = sum ? wRaw[v * 4 + c] / sum : (c === 0 ? 1 : 0);
-    }
+    const a = view.getFloat32(v * 8, true), b = view.getFloat32(v * 8 + 4, true);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0 || b < 0) throw new ArchiveError('Invalid vertex skin weights.');
+    const total = a + b;
+    out.skinIndices[v * 4] = indices[v * 4 + 2];
+    out.skinIndices[v * 4 + 1] = indices[v * 4 + 1];
+    out.skinWeights[v * 4] = total ? a / total : 1;
+    out.skinWeights[v * 4 + 1] = total ? b / total : 0;
   }
 }
 
