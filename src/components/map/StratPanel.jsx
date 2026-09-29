@@ -7,6 +7,7 @@ import { exportTGA, downloadBlob } from './tgaExporter';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { encodeStringsBin } from '../strings/stringsBinCodec';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
+import StratChangePreview, { rememberOriginalStrat } from '@/components/map/StratChangePreview';
 import { getFile } from '@/lib/bigFileStore';
 import JSZip from 'jszip';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
@@ -975,7 +976,7 @@ export default function StratPanel({
     setLoadError('');
     try {
     const text = type === 'names' ? await readNamesFile(file) : await file.text();
-    if (type === 'strat') onStratLoad(text, file.name);else
+    if (type === 'strat') { rememberOriginalStrat(text); onStratLoad(text, file.name); } else
     if (type === 'regions') onRegionsLoad(text);else
     if (type === 'names') onNamesLoad(text);else
     if (type === 'factions') onFactionsLoad(text);else
@@ -1353,6 +1354,11 @@ export default function StratPanel({
                 </div>);
 
             })}
+
+            <StratChangePreview
+              stratData={stratData}
+              buildCurrent={() => serializeDescrStrat({ ...stratData, _regionsLookup: regionsData, _regionsLayer: regionsLayer }, overlayItems, editedSettlements)}
+              onDownload={(text) => downloadBlob(new Blob([text], { type: 'text/plain' }), 'descr_strat.original.txt')} />
 
             {/* Download Campaign Folder ZIP */}
             <button
