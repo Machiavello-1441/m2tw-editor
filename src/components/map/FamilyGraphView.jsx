@@ -1,0 +1,109 @@
+import React, { useMemo, useState } from 'react';
+import { Plus, Maximize2, Minimize2, Image } from 'lucide-react';
+import { layoutForest } from './familyGraphLayout';
+import { addChild, setParent, setSpouse, detach } from './familyGraphOps';
+import FamilyGraphCard, { usePortraits, portraitFor } from './FamilyGraphCard';
+import FamilyTreeProblems from './FamilyTreeProblems';
+
+function Pill({ pill, onDropChar }) {
+  const [over, setOver] = useState(false);
+  return (
+    <div style={{ left: pill.x, top: pill.y }}
+      onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => { e.preventDefault(); setOver(false); onDropChar(pill, e.dataTransfer.getData('charId')); }}
+      className={`absolute w-[72px] h-[18px] rounded-full border border-dashed text-[9px] text-center leading-[16px] ${
+        over ? 'border-amber-400 bg-amber-900/40 text-amber-300' : 'border-slate-600/60 text-slate-500'}`}>
+      + child
+    </div>
+  );
+}
+
+// Visual family tree: drag characters onto slots (parents), cards (spouse) or "+ child" pills.
+export default function FamilyGraphView({ faction, chars, factionTrees, onTreesChange, onAddTree, problems }) {
+  const portraits = usePortraits();
+  const [showPortraits, setShowPortraits] = useState(true);
+  const [full, setFull] = useState(false);
+  const [message, setMessage] = useState('');
+  const forest = useMemo(() => layoutForest(factionTrees), [factionTrees]);
+
+  const apply = (result) => {
+    if (result.error) { setMessage(result.error); return; }
+    setMessage('');
+    onTreesChange((prev) => ({ ...prev, [faction]: result.trees }));
+  };
+  const findChar = (id) => chars.find((c) => String(c.id) === id);
+
+  const dropOnNode = (node, id) => {
+    const c = findChar(id);
+    if (!c) return;
+    if (node.kind === 'slot' && !node.char) return apply(setParent(factionTrees, node.unit.treeId, node.slot, c));
+    if (node.kind === 'child' && !node.unit.isRoot && node.char && !node.unit.parents[1]) {
+      return apply(setSpouse(factionTrees, node.unit.treeId, node.char, c));
+    }
+    setMessage('Drop on an empty slot, a single person (spouse), or a "+ child" pill');
+  };
+  const dropOnPill = (pill, id) => {
+    const c = findChar(id);
+    if (c) apply(addChild(factionTrees, chars, pill.unit, c));
+  };
+
+  const placedIds = new Set(forest.flatMap((f) => f.nodes.map((n) => n.char?.id)).filter((x) => x != null));
+  const wrap = full ? 'fixed inset-4 z-50 bg-slate-950 border border-slate-700 rounded-lg shadow-2xl' : 'h-full';
+  const withPortrait = chars.filter((c) => c.portrait).length;
+
+  return (
+    <div className={`flex flex-col ${wrap}`}>
+      <div className="flex items-center gap-2 p-2 border-b border-slate-800 shrink-0">
+        <button onClick={onAddTree} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-600/40 text-slate-300 hover:text-white">
+          <Plus className="w-3 h-3" /> New tree
+        </button>
+        <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
+          <input type="checkbox" checked={showPortraits} onChange={(e) => setShowPortraits(e.target.checked)} className="accent-amber-500" />
+          <Image className="w-3 h-3" /> Portraits ({withPortrait} unique)
+        </label>
+        <button onClick={() => setFull((v) => !v)} className="ml-auto text-slate-400 hover:text-white" title="Toggle full screen">
+          {full ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+
+      <div className="flex gap-1 flex-wrap p-2 border-b border-slate-800 shrink-0 max-h-24 overflow-y-auto">
+        {chars.map((c) => {
+          const src = showPortraits ? portraitFor(c, portraits) : null;
+          return (
+            <div key={c.id} draggable onDragStart={(e) => e.dataTransfer.setData('charId', String(c.id))}
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-mono cursor-grab bg-slate-800 ${
+                c.sex === 'female' ? 'border-pink-500/40' : 'border-sky-500/40'} ${placedIds.has(c.id) ? 'opacity-50' : 'text-slate-200'}`}
+              title="Drag onto the tree">
+              {src && <img src={src} alt="" className="w-4 h-4 rounded-sm object-cover" />}
+              {c.name}<span className="text-slate-500">{c.age}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {message && <p className="px-2 py-1 text-[10px] text-amber-400 bg-amber-900/20 shrink-0">{message}</p>}
+      <div className="px-2 pt-2 shrink-0"><FamilyTreeProblems problems={problems} /></div>
+
+      <div className="flex-1 overflow-auto p-3 space-y-5">
+        {forest.length === 0 && <p className="text-[10px] text-slate-600 italic text-center py-4">No family trees for {faction} — click "New tree"</p>}
+        {forest.map((f, i) => (
+          <div key={i}>
+            <p className="text-[10px] font-semibold text-amber-300 mb-1">{f.title}</p>
+            <div className="relative" style={{ width: f.width, height: f.height, minWidth: 240 }}>
+              <svg className="absolute inset-0 pointer-events-none" width={f.width} height={f.height} style={{ overflow: 'visible' }}>
+                {f.edges.map((d, k) => <path key={k} d={d} stroke="rgb(148 163 184 / 0.6)" strokeWidth="1.5" fill="none" />)}
+              </svg>
+              {f.nodes.map((n) => (
+                <FamilyGraphCard key={n.key} node={n} portraits={portraits} showPortraits={showPortraits}
+                  onDropChar={dropOnNode}
+                  onDetach={(node) => onTreesChange((prev) => ({ ...prev, [faction]: detach(factionTrees, { ...node, treeId: node.unit.treeId, charId: node.char?.id }) }))} />
+              ))}
+              {f.pills.map((p) => <Pill key={p.key} pill={p} onDropChar={dropOnPill} />)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

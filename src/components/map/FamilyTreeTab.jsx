@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Users, AlertTriangle, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { treeToRelatives, orderRelatives, relativeProblems } from './familyTreeLogic';
 import FamilyTreeProblems from './FamilyTreeProblems';
+import FamilyGraphView from './FamilyGraphView';
 
 const MIN_PARENT_CHILD_AGE_DIFF = 16;
 const MAX_CHILDREN = 4;
@@ -387,6 +388,7 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTre
 
 export default function FamilyTreeTab({ stratData, trees, onTreesChange, initialized, onInitialized }) {
   const [factionFilter, setFactionFilter] = useState('');
+  const [view, setView] = useState('visual');
 
   const allChars = useMemo(() => buildAllChars(stratData), [stratData]);
 
@@ -476,8 +478,21 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
         >
           {allFactions.map(f => <option key={f}>{f}</option>)}
         </select>
-        <p className="text-[9px] text-slate-500">{factionChars.length} characters ({maleChars.length}♂ {femaleChars.length}♀)</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[9px] text-slate-500 flex-1">{factionChars.length} characters ({maleChars.length}♂ {femaleChars.length}♀)</p>
+          {[['visual', 'Visual'], ['list', 'List']].map(([id, label]) => (
+            <button key={id} onClick={() => setView(id)}
+              className={`text-[9px] px-2 py-0.5 rounded border ${view === id ? 'border-amber-500/50 text-amber-400 bg-amber-500/10' : 'border-slate-600/40 text-slate-500'}`}>{label}</button>
+          ))}
+        </div>
       </div>
+
+      {view === 'visual' ? (
+        <div className="flex-1 min-h-0">
+          <FamilyGraphView faction={activeFaction} chars={factionChars} factionTrees={factionTrees}
+            onTreesChange={onTreesChange} onAddTree={addTree} problems={problems} />
+        </div>
+      ) : <>
 
       {/* Drag sidebar: two columns male/female */}
       <div className="shrink-0 border-b border-slate-800 p-2">
@@ -514,6 +529,7 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
           />
         ))}
       </div>
+      </>}
     </div>
   );
 }
