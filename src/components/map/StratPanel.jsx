@@ -22,6 +22,7 @@ import { parseCampaignEvents, serializeCampaignEvents } from './campaignEventsPa
 import DisastersTab from './DisastersTab';
 import CampaignEventsTab from './CampaignEventsTab';
 import CampaignDescriptionsStrings from './CampaignDescriptionsStrings';
+import CampaignSearchSelect from '@/components/map/CampaignSearchSelect';
 
 // Ensure Windows line endings (CRLF) for all exported .txt files
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
@@ -299,7 +300,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   const [selectedTree, setSelectedTree] = useState('');
   const [showAllBuildings, setShowAllBuildings] = useState(false);
   const [relocating, setRelocating] = useState(null); // null | 'city' | 'port'
-  const [hiddenResSearch, setHiddenResSearch] = useState('');
+
 
   // Auto-expand when selected from map click
   const prevSelected = useRef(false);
@@ -412,7 +413,6 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       triumph: regionInfo?.val1 ?? 5,
       agriculture: regionInfo?.val2 ?? 5
     });
-    setHiddenResSearch('');
     setEditing(true);
     setExpanded(true);
   };
@@ -569,11 +569,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               <div>
                 <span className="text-[9px] text-slate-500">Faction Creator</span>
                 {factionList.length > 0 ?
-            <select value={draft.factionCreator} onChange={(e) => setDraft((d) => ({ ...d, factionCreator: e.target.value }))}
-            className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                    <option value="">— select faction —</option>
-                    {factionList.map((f) => <option key={f} value={f}>{f}</option>)}
-                  </select> :
+            <CampaignSearchSelect value={draft.factionCreator} onChange={value => setDraft(d => ({ ...d, factionCreator: value }))} options={factionList} placeholder="Select faction creator…" /> :
 
             <input value={draft.factionCreator} onChange={(e) => setDraft((d) => ({ ...d, factionCreator: e.target.value }))}
             placeholder="Load descr_sm_factions.txt"
@@ -611,35 +607,10 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               )}
                   </div>
             }
-                <div className="relative">
-                  <input
-                    value={hiddenResSearch}
-                    onChange={(e) => setHiddenResSearch(e.target.value)}
-                    placeholder={hiddenResourceMasterList.length ? 'Search hidden resources…' : 'Load EDB for list'}
-                    className="w-full h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600"
-                  />
-                  {hiddenResSearch && hiddenResourceMasterList.length > 0 && (() => {
-                    const filtered = hiddenResourceMasterList
-                      .filter((hr) => !draft.hiddenResources?.includes(hr))
-                      .filter((hr) => hr.toLowerCase().includes(hiddenResSearch.toLowerCase()));
-                    if (filtered.length === 0) return null;
-                    return (
-                      <div className="absolute z-50 left-0 right-0 top-full mt-0.5 bg-slate-800 border border-slate-600/50 rounded shadow-xl max-h-28 overflow-y-auto">
-                        {filtered.slice(0, 20).map((hr) => (
-                          <button
-                            key={hr}
-                            type="button"
-                            onClick={() => {
-                              setDraft((d) => ({ ...d, hiddenResources: [...(d.hiddenResources || []), hr] }));
-                              setHiddenResSearch('');
-                            }}
-                            className="w-full px-2 py-0.5 text-[10px] text-left hover:bg-slate-700 font-mono text-slate-200"
-                          >{hr}</button>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
+                <CampaignSearchSelect value="" options={hiddenResourceMasterList.filter(hr => !draft.hiddenResources?.includes(hr))}
+                  onChange={hr => { if (hr) setDraft(d => ({ ...d, hiddenResources: [...(d.hiddenResources || []), hr] })); }}
+                  placeholder={hiddenResourceMasterList.length ? 'Add hidden resource…' : 'Load EDB for list'}
+                  disabled={!hiddenResourceMasterList.length} allowClear={false} />
               </div>
 
               {/* Triumph & Agriculture (descr_regions numeric values) */}
@@ -689,13 +660,8 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                   </div>
                 }
                 <div className="grid grid-cols-2 gap-1">
-                  <select value={selectedTree} onChange={(e) => setSelectedTree(e.target.value)}
-                    className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                    <option value="">{availableTrees.length ? '— tree —' : 'Load EDB'}</option>
-                    {availableTrees.map(([tree]) => <option key={tree} value={tree}>{tree}</option>)}
-                  </select>
-                  <select value="" onChange={(e) => {
-                    const level = e.target.value;
+                  <CampaignSearchSelect value={selectedTree} onChange={setSelectedTree} options={availableTrees.map(([tree]) => tree)} placeholder={availableTrees.length ? 'Select building tree…' : 'Load EDB'} />
+                  <CampaignSearchSelect value="" onChange={level => {
                     if (!level || !selectedTree) return;
                     const fullName = `${selectedTree} ${level}`;
                     // Only add if not already present
@@ -705,10 +671,8 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                     setSelectedTree('');
                   }}
                     disabled={!selectedTree || treeLevels.length === 0}
-                    className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 disabled:opacity-40">
-                    <option value="">{treeLevels.length ? '— level —' : 'none available'}</option>
-                    {treeLevels.map((bl) => <option key={bl.name} value={bl.name}>{bl.name}</option>)}
-                  </select>
+                    options={treeLevels.map(bl => bl.name)} allowClear={false}
+                    placeholder={treeLevels.length ? 'Select building level…' : 'None available'} />
                 </div>
                 <label className="flex items-center gap-1.5 cursor-pointer pt-0.5">
                   <input type="checkbox" checked={showAllBuildings}
@@ -721,22 +685,14 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               {/* Owning Faction */}
               <div>
                 <span className="text-[9px] text-slate-500">Owning Faction (descr_strat)</span>
-                <select value={draft.faction || ''} onChange={(e) => setDraft((d) => ({ ...d, faction: e.target.value }))}
-            className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                  <option value="">— select —</option>
-                  {(allFactions || factionList).map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
+                <CampaignSearchSelect value={draft.faction || ''} onChange={value => setDraft(d => ({ ...d, faction: value }))} options={allFactions || factionList} placeholder="Select owning faction…" />
               </div>
 
               {/* Rebel Faction */}
               <div>
                 <span className="text-[9px] text-slate-500">Rebel Faction (descr_regions)</span>
                 {rebelFactionList?.length > 0 ?
-            <select value={draft.rebelFaction || ''} onChange={(e) => setDraft((d) => ({ ...d, rebelFaction: e.target.value }))}
-            className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                    <option value="">— select —</option>
-                    {rebelFactionList.map((f) => <option key={f} value={f}>{f}</option>)}
-                  </select> :
+            <CampaignSearchSelect value={draft.rebelFaction || ''} onChange={value => setDraft(d => ({ ...d, rebelFaction: value }))} options={rebelFactionList} placeholder="Select rebel faction…" /> :
 
             <input value={draft.rebelFaction || ''} onChange={(e) => setDraft((d) => ({ ...d, rebelFaction: e.target.value }))}
             placeholder="rebel faction…"
@@ -748,11 +704,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               <div>
                 <span className="text-[9px] text-slate-500">Music Type</span>
                 {musicTypeList?.length > 0 ?
-            <select value={draft.musicType || ''} onChange={(e) => setDraft((d) => ({ ...d, musicType: e.target.value }))}
-            className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                    <option value="">— none —</option>
-                    {musicTypeList.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select> :
+            <CampaignSearchSelect value={draft.musicType || ''} onChange={value => setDraft(d => ({ ...d, musicType: value }))} options={musicTypeList} placeholder="Select music type…" /> :
 
             <input value={draft.musicType || ''} onChange={(e) => setDraft((d) => ({ ...d, musicType: e.target.value }))}
             placeholder="music type…"
@@ -764,11 +716,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               <div>
                 <span className="text-[9px] text-slate-500">Mercenary Pool</span>
                 {mercenaryPoolList?.length > 0 ?
-            <select value={draft.mercenaryPool || ''} onChange={(e) => setDraft((d) => ({ ...d, mercenaryPool: e.target.value }))}
-            className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                    <option value="">— none —</option>
-                    {mercenaryPoolList.map((p) => <option key={p} value={p}>{p}</option>)}
-                  </select> :
+            <CampaignSearchSelect value={draft.mercenaryPool || ''} onChange={value => setDraft(d => ({ ...d, mercenaryPool: value }))} options={mercenaryPoolList} placeholder="Select mercenary pool…" /> :
 
             <input value={draft.mercenaryPool || ''} onChange={(e) => setDraft((d) => ({ ...d, mercenaryPool: e.target.value }))}
             placeholder="mercenary pool…"

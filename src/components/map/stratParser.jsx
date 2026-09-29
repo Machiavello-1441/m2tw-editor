@@ -383,6 +383,8 @@ export function parseDescrStrat(text) {
             name: fm[1].trim(), sex: fm[2], age: parseInt(fm[3]),
             status: deadMatch ? 'dead' : statusRaw,
             deadYears: deadMatch ? parseInt(deadMatch[1]) : 0,
+            recordRole: fl.split(',').slice(3).map(part => part.trim()).find(part => /^(never_a_leader|past_leader|past_heir|leader|heir)$/i.test(part)) || 'never_a_leader',
+            _lineNum: i,
           });
           i++; continue;
         }
@@ -631,9 +633,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       // Find the faction line in the file
       const factionLineIdx = lines.findIndex(l => {
         const cl = l.replace(/;.*$/, '').trim();
-        return cl === `faction ${faction.name}` ||
-          cl.startsWith(`faction ${faction.name},`) ||
-          cl.startsWith(`faction ${faction.name} `);
+        return cl.match(/^faction\s+([^,\s]+)/i)?.[1] === faction.name;
       });
       if (factionLineIdx < 0) continue;
 
@@ -717,6 +717,18 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       const kpIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*denari_kings_purse\b/i.test(l.replace(/;.*$/, '')));
       const kpLine = `\tdenari_kings_purse\t${faction.kingsPurse || 0}`;
       if (kpIdx >= 0) lines[kpIdx] = kpLine;
+
+      // Patch edited family records in place; faction-local order also supports older cached parses.
+      const recordLines = [];
+      for (let ri = factionLineIdx + 1; ri < factionEnd; ri++) {
+        if (/^\s*character_record\s+/i.test(lines[ri])) recordLines.push(ri);
+      }
+      (faction.characterRecords || []).forEach((rec, index) => {
+        if (!rec._edited || recordLines[index] == null) return;
+        const lineIndex = recordLines[index];
+        const comment = lines[lineIndex].match(/;.*$/)?.[0];
+        lines[lineIndex] = serializeCharLine({ ...rec, charType: 'family' }) + (comment ? ` ${comment}` : '');
+      });
 
       // Rewrite relative lines if faction.relatives is defined (from family tree editor)
       if (faction.relatives !== undefined) {

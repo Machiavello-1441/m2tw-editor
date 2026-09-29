@@ -7,26 +7,28 @@ const MAX_CHILDREN = 4;
 // Build a flat list of all characters including character_record entries
 function buildAllChars(stratData) {
   const chars = (stratData?.items || []).filter(i => i.category === 'character');
-  const charNames = new Set(chars.map(c => c.name?.toLowerCase()));
+  const charNames = new Set(chars.map(c => `${c.faction}:${[c.name, c.surname].filter(Boolean).join(' ').toLowerCase()}`));
 
   // Add character_record entries not already present as full characters
   for (const faction of (stratData?.factions || [])) {
-    for (const rec of (faction.characterRecords || [])) {
-      if (!charNames.has(rec.name?.toLowerCase())) {
+    for (const [index, rec] of (faction.characterRecords || []).entries()) {
+      const nameKey = `${faction.name}:${[rec.name, rec.surname].filter(Boolean).join(' ').toLowerCase()}`;
+      if (!charNames.has(nameKey)) {
         chars.push({
-          id: `rec_${faction.name}_${rec.name}`,
+          id: `rec_${faction.name}_${rec._lineNum ?? index}`,
           category: 'character',
           name: rec.name,
+          surname: rec.surname,
           sex: rec.sex || 'male',
-          age: rec.age || 30,
+          age: rec.age ?? 0,
           faction: faction.name,
-          charType: 'named character',
+          charType: 'family',
           status: rec.status,
           traits: [],
           ancillaries: [],
           army: [],
         });
-        charNames.add(rec.name?.toLowerCase());
+        charNames.add(nameKey);
       }
     }
   }
@@ -39,10 +41,10 @@ function buildInitialTrees(stratData, allChars) {
   const charByName = {};
   for (const c of allChars) {
     // Index by first name alone
-    if (c.name) charByName[c.name.toLowerCase()] = c;
+    if (c.name) charByName[`${c.faction}:${c.name.toLowerCase()}`] = c;
     // Index by full name (first + surname) — this is what relative lines contain
     const fullName = [c.name, c.surname].filter(Boolean).join(' ');
-    if (fullName) charByName[fullName.toLowerCase()] = c;
+    if (fullName) charByName[`${c.faction}:${fullName.toLowerCase()}`] = c;
   }
 
   for (const faction of (stratData?.factions || [])) {
@@ -50,10 +52,10 @@ function buildInitialTrees(stratData, allChars) {
     for (const rel of (faction.relatives || [])) {
       // rel is an array of names: [head/father, wife/mother, child1, child2, ...]
       if (!rel || rel.length === 0) continue;
-      const father = rel[0] ? charByName[rel[0].toLowerCase()] || null : null;
-      const mother = rel[1] ? charByName[rel[1].toLowerCase()] || null : null;
+      const father = rel[0] ? charByName[`${faction.name}:${rel[0].toLowerCase()}`] || null : null;
+      const mother = rel[1] ? charByName[`${faction.name}:${rel[1].toLowerCase()}`] || null : null;
       const childNames = rel.slice(2);
-      const children = childNames.map(n => charByName[n?.toLowerCase()]).filter(Boolean);
+      const children = childNames.map(n => charByName[`${faction.name}:${n?.toLowerCase()}`]).filter(Boolean);
       trees.push({
         id: Date.now() + Math.random(),
         father,
