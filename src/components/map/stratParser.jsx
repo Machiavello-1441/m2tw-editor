@@ -12,6 +12,21 @@ export const SETTLEMENT_LEVEL_ICONS = {
 // ─── Utility ──────────────────────────────────────────────────────────────────
 function cleanLine(l) { return l.replace(/;.*$/, '').trim(); }
 
+// End of a faction block = next TOP-LEVEL faction/diplomacy/region/script keyword.
+// A `region X` line inside a settlement { } must not end the block.
+function findFactionEnd(lines, start) {
+  let depth = 0;
+  for (let fi = start + 1; fi < lines.length; fi++) {
+    const fl = lines[fi].replace(/;.*$/, '').trim();
+    if (!fl) continue;
+    if (fl === '{') { depth++; continue; }
+    if (fl === '}') { depth = Math.max(0, depth - 1); continue; }
+    if (depth > 0) continue;
+    if (/^faction\s+\w/i.test(fl) || /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) || /^region\s+\S/i.test(fl) || /^script\s*$/i.test(fl)) return fi;
+  }
+  return lines.length;
+}
+
 // ─── Building block parser { type tree level } ────────────────────────────────
 function parseBuildingBlock(lines, i) {
   // skip to opening brace
@@ -658,6 +673,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       if (faction.shadowedBy) headerParts[0] += `, shadowed_by ${faction.shadowedBy}`;
       lines[factionLineIdx] = headerParts[0];
 
+      factionEnd = findFactionEnd(lines, factionLineIdx);
       // Patch or add ai_label
       const aiIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*ai_label\b/i.test(l.replace(/;.*$/, '')));
       const aiLine = `\tai_label\t${faction.aiLabel || 'default'}`;
@@ -677,6 +693,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
         ) { factionEnd = fi; break; }
       }
 
+      factionEnd = findFactionEnd(lines, factionLineIdx);
       // Remove/add dead flags
       const deadFlags = ['dead_until_resurrected','dead_until_emerged','re_emergent','undiscovered'];
       for (const flag of deadFlags) {
@@ -690,6 +707,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
         if (!fl) continue;
         if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
       }
+      factionEnd = findFactionEnd(lines, factionLineIdx);
       // Insert new dead flags after ai_label line
       const insertFlagAfter = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*ai_label\b/i.test(l.replace(/;.*$/, '')));
       const flagsToInsert = [];
@@ -709,6 +727,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
         if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
       }
 
+      factionEnd = findFactionEnd(lines, factionLineIdx);
       // Patch denari
       const denariIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*denari\b(?!_kings)/i.test(l.replace(/;.*$/, '')));
       const denariLine = `\tdenari\t${faction.treasury || 0}`;
@@ -740,6 +759,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
           if (!fl) continue;
           if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
         }
+        factionEnd = findFactionEnd(lines, factionLineIdx);
         // Remove all existing relative lines in this faction block
         for (let fi = factionEnd - 1; fi > factionLineIdx; fi--) {
           if (/^\s*relative\s+/i.test(lines[fi].replace(/;.*$/, ''))) {
