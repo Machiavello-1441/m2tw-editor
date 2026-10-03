@@ -203,8 +203,22 @@ export default function CampaignMap() {
     }
   }, [regionsData]);
 
-  const { edbData } = useEDB();
+  const { edbData, setEdbData } = useEDB();
   const hiddenResourceList = useMemo(() => extractHiddenResourcesFromEDB(edbData || {}), [edbData]);
+
+  // Create a hidden resource that isn't in the EDB yet. It is appended to the
+  // hidden_resources line at the top of export_descr_buildings.txt, so the
+  // edited EDB ships with the campaign export.
+  const handleAddHiddenResource = useCallback((name) => {
+    const clean = (name || '').trim().replace(/\s+/g, '_');
+    if (!clean) return;
+    setEdbData(prev => {
+      if (!prev) return prev;
+      const list = prev.hiddenResources || [];
+      if (list.includes(clean)) return prev;
+      return { ...prev, hiddenResources: [...list, clean] };
+    });
+  }, [setEdbData]);
   const buildingLevelList  = useMemo(() => extractBuildingLevelsFromEDB(edbData || {}), [edbData]);
   const factionList        = useMemo(() => {
     const fromFactions = (stratData?.factions || []).map(f => f.name).filter(Boolean);
@@ -1603,6 +1617,7 @@ export default function CampaignMap() {
                   editedSettlements={editedSettlements}
                   rebelFactionList={rebelFactionList}
                   hiddenResourceList={hiddenResourceList}
+                  onAddHiddenResource={handleAddHiddenResource}
                   musicTypeList={musicTypeList}
                   mercenaryPoolList={mercenaryPoolList}
                   religionList={religionList}

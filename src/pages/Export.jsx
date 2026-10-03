@@ -11,6 +11,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2, Globe2, Layers, FolderOpen } from 'lucide-react';
 import JSZip from 'jszip';
 import { toUtf16leBytes } from '@/lib/utf16';
+import { entriesToTextBytes, txtNameFor } from '@/lib/stringsTxtFile';
+import { getAllLayers } from '@/lib/mapLayerStore';
+import { runExportValidation } from '../components/export/exportValidation';
+import ExportValidationDialog from '../components/export/ExportValidationDialog';
 import ValidationDashboard from '../components/export/ValidationDashboard';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 import CampaignPackagePicker from '../components/export/CampaignPackagePicker';
@@ -78,6 +82,7 @@ export default function Export() {
   const { guildData, exportGuildsFile } = useRefData();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
+  const [validation, setValidation] = useState(null);
   const [exportingTwemp, setExportingTwemp] = useState(false);
   // Map<relativePath, File> for extra files to bundle
   const [extraFiles, setExtraFiles] = useState(new Map());
@@ -109,6 +114,8 @@ export default function Export() {
       const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
       const binBuf = encodeStringsBin(entries, magic1, magic2);
       dataFolder.folder('text').file('export_buildings.txt.strings.bin', new Uint8Array(binBuf));
+      // Plain-text twin (UTF-16LE) of the same strings
+      dataFolder.folder('text').file('export_buildings.txt', entriesToTextBytes(entries));
     }
 
     // Export building images as TGA files
@@ -138,6 +145,11 @@ export default function Export() {
       if (traitsTextContent instanceof ArrayBuffer) traitsTextContent = new Uint8Array(traitsTextContent);
       const traitsTextName = traitsTextFilename || 'export_VnVs.txt';
       dataFolder.folder('text').file(traitsTextName, traitsTextContent);
+      // Edited .strings.bin → also ship the plain-text twin
+      if (/\.bin$/i.test(traitsTextName)) {
+        const txtEntries = Object.entries(traitsTextData).map(([key, value]) => ({ key, value: String(value) }));
+        dataFolder.folder('text').file(txtNameFor(traitsTextName), entriesToTextBytes(txtEntries));
+      }
     }
 
     // Export guilds
@@ -154,6 +166,11 @@ export default function Export() {
       if (ancTextContent instanceof ArrayBuffer) ancTextContent = new Uint8Array(ancTextContent);
       const ancTextName = ancTextFilename || 'export_ancillaries.txt';
       dataFolder.folder('text').file(ancTextName, ancTextContent);
+      // Edited .strings.bin → also ship the plain-text twin
+      if (/\.bin$/i.test(ancTextName)) {
+        const txtEntries = Object.entries(ancTextData).map(([key, value]) => ({ key, value: String(value) }));
+        dataFolder.folder('text').file(txtNameFor(ancTextName), entriesToTextBytes(txtEntries));
+      }
     }
 
     // Include Lua scripts
@@ -204,6 +221,18 @@ export default function Export() {
 
     setBuilding(false);
     setDone(true);
+  };
+
+  // Automated validation runs before the zip is built — anything invalid
+  // (map placement, broken references, buggy features) is listed in a popup so
+  // it can be corrected first.
+  const startExportZip = () => {
+    const result = runExportValidation({ edbData, layers: getAllLayers() });
+    if (result.errors.length > 0 || result.warnings.length > 0) {
+      setValidation(result);
+      return;
+    }
+    handleExportZip();
   };
 
   // OpenTWEMP preset export
@@ -394,7 +423,7 @@ export default function Export() {
 
           <Button
             className="w-full h-12 text-base gap-2"
-            onClick={handleExportZip}
+            onClick={startExportZip}
             disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && extraFiles.size === 0)}
           >
             {building ? (
@@ -425,6 +454,13 @@ export default function Export() {
           )}
         </div>
       </ScrollArea>
+
+      <ExportValidationDialog
+        open={!!validation}
+        onOpenChange={(o) => !o && setValidation(null)}
+        result={validation}
+        exportLabel={`Download ${modName}_data.zip anyway`}
+        onProceed={() => { setValidation(null); handleExportZip(); }} />
     </div>
   );
 }

@@ -11,6 +11,10 @@ import StratChangePreview, { rememberOriginalStrat } from '@/components/map/Stra
 import { getFile } from '@/lib/bigFileStore';
 import JSZip from 'jszip';
 import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
+import { serializeEDB } from '../edb/EDBParser';
+import { entriesToTextBytes } from '@/lib/stringsTxtFile';
+import { runExportValidation } from '../export/exportValidation';
+import ExportValidationDialog from '../export/ExportValidationDialog';
 import RegionColorDetector from './RegionColorDetector';
 import NewRegionForm from './NewRegionForm';
 import OsmRegionSearch from './OsmRegionSearch';
@@ -852,6 +856,7 @@ export default function StratPanel({
   onRecolorRegion, onAddNewRegion,
   layers, dirtyLayers, editedSettlements,
   rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList,
+  onAddHiddenResource,
   pendingPlace, onCancelPlacement,
   onRelocatePixel, mapH,
   onLoadTgaLayer,
@@ -873,6 +878,7 @@ export default function StratPanel({
   const [expandedFactions, setExpandedFactions] = useState(() => new Set());
   const [showNewRegion, setShowNewRegion] = useState(false);
   const [newRegionSeedColor, setNewRegionSeedColor] = useState(null);
+  const [exportIssues, setExportIssues] = useState(null);
   const [winConditions, setWinConditions] = useState(() => {
     try {
       // Try sessionStorage first, then fall back to localStorage (loaded from Home)
@@ -1048,10 +1054,27 @@ export default function StratPanel({
   // Determine if any campaign data has been modified/loaded
   const hasAnyModifiedData = !!(stratData?.raw || regionsData?.length || settlementNames || factionColors || LAYER_DEFS.some((d) => layers?.[d.id]?.data));
 
+  // Automated validation runs before the campaign files are written — anything
+  // invalid (placement, features, EDB references) is listed in a popup first.
+  const startCampaignExport = () => {
+    const result = runExportValidation({ edbData, layers });
+    if (result.errors.length > 0 || result.warnings.length > 0) {
+      setExportIssues(result);
+      return;
+    }
+    handleExportCampaignZip();
+  };
+
   const handleExportCampaignZip = async () => {
     const zip = new JSZip();
     const campaignName = stratData?.campaignName || 'imperial_campaign';
     const basePath = `data/world/maps/campaign/custom/${campaignName}`;
+
+    // export_descr_buildings.txt — carries hidden_resources that were added
+    // from the region form, plus any other EDB edits
+    if (edbData) {
+      zip.file('data/export_descr_buildings.txt', toCRLF(serializeEDB(edbData)));
+    }
 
     // descr_strat.txt
     if (stratData?.raw) {
@@ -1126,6 +1149,8 @@ export default function StratPanel({
       const meta = JSON.parse(sessionStorage.getItem('m2tw_names_bin_meta') || '{}');
       const binBuf = encodeStringsBin(entries, meta.magic1 ?? 2, meta.magic2 ?? 2048);
       zip.file(`data/text/${campaignName}_regions_and_settlement_names.txt.strings.bin`, binBuf);
+      // Plain-text twin of the same strings (UTF-16LE)
+      zip.file(`data/text/${campaignName}_regions_and_settlement_names.txt`, entriesToTextBytes(entries));
     }
     // Campaign descriptions as .strings.bin
     try {
@@ -1136,6 +1161,8 @@ export default function StratPanel({
           const descEntries = Object.entries(descMap).map(([k, v]) => ({ key: k, value: v }));
           const descBinBuf = encodeStringsBin(descEntries);
           zip.file(`data/text/campaign_descriptions.txt.strings.bin`, descBinBuf);
+          // Plain-text twin of the same strings (UTF-16LE)
+          zip.file('data/text/campaign_descriptions.txt', entriesToTextBytes(descEntries));
         }
       }
     } catch (e) { console.warn('campaign_descriptions export failed', e); }
@@ -1362,13 +1389,20 @@ export default function StratPanel({
 
             {/* Download Campaign Folder ZIP */}
             <button
-              onClick={handleExportCampaignZip}
+              onClick={startCampaignExport}
               disabled={!hasAnyModifiedData}
               className={`w-full flex items-center justify-center gap-1.5 px-2 py-2 mt-1 rounded text-[11px] font-semibold border transition-colors ${
               hasAnyModifiedData ? 'bg-green-600/20 hover:bg-green-600/40 border-green-500/40 text-green-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'}`
               }>
               <FolderDown className="w-3.5 h-3.5" /> Download Campaign Folder (.zip)
             </button>
+
+            <ExportValidationDialog
+              open={!!exportIssues}
+              onOpenChange={(o) => !o && setExportIssues(null)}
+              result={exportIssues}
+              exportLabel="Export campaign .zip anyway"
+              onProceed={() => { setExportIssues(null); handleExportCampaignZip(); }} />
           </div>}
 
           {/* Campaign Settings sub-tab */}
@@ -1654,6 +1688,7 @@ export default function StratPanel({
             naturalResList={naturalResList}
             seedColor={newRegionSeedColor}
             cloneSources={cloneSources}
+            onAddHiddenResource={onAddHiddenResource}
             onCancel={() => { setShowNewRegion(false); setNewRegionSeedColor(null); }}
             onAdd={(draft) => {
               if (onAddNewRegion) onAddNewRegion(draft);

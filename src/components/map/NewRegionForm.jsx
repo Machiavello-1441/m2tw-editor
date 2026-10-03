@@ -67,7 +67,7 @@ function SearchableSelect({ value, onChange, options, placeholder, emptyMsg }) {
 }
 
 // ─── Multi-select searchable (for hidden resources) ───────────────────────────
-function SearchableMultiSelect({ selected, onChange, options, placeholder, emptyMsg }) {
+function SearchableMultiSelect({ selected, onChange, options, placeholder, emptyMsg, onCreateOption }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ref = useRef(null);
@@ -87,6 +87,8 @@ function SearchableMultiSelect({ selected, onChange, options, placeholder, empty
 
   const add = (val) => { if (!selected.includes(val)) onChange([...selected, val]); };
   const remove = (val) => onChange(selected.filter(x => x !== val));
+  // Typed name that isn't in the EDB yet → offer to create it (only when the parent allows it)
+  const newName = onCreateOption ? query.trim().replace(/\s+/g, '_') : '';
 
   return (
     <div ref={ref} className="relative">
@@ -116,7 +118,15 @@ function SearchableMultiSelect({ selected, onChange, options, placeholder, empty
             className="w-full h-6 px-2 text-[11px] bg-slate-800 border-b border-slate-700 text-slate-200 placeholder-slate-600 outline-none"
           />
           <div className="max-h-36 overflow-y-auto">
-            {filtered.length === 0 && (
+            {newName && !options.some(o => o.toLowerCase() === newName.toLowerCase()) && (
+              <div
+                onMouseDown={() => { onCreateOption(newName); add(newName); setQuery(''); setOpen(false); }}
+                className="px-2 py-1 text-[10px] font-mono cursor-pointer hover:bg-slate-700 text-green-400 border-b border-slate-700/60"
+              >
+                + new hidden resource “{newName}”
+              </div>
+            )}
+            {filtered.length === 0 && !newName && (
               <div className="px-2 py-1 text-[10px] text-slate-600 italic">{emptyMsg || 'No options'}</div>
             )}
             {filtered.map(opt => (
@@ -136,7 +146,7 @@ function SearchableMultiSelect({ selected, onChange, options, placeholder, empty
 }
 
 // ─── Main form ────────────────────────────────────────────────────────────────
-export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList, seedColor, cloneSources }) {
+export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData, rebelFactionList, hiddenResourceList, musicTypeList, mercenaryPoolList, religionList, naturalResList, seedColor, cloneSources, onAddHiddenResource }) {
   const [draft, setDraft] = useState({
     // Seed the unique-name suffixes so region and settlement can never collide,
     // even before the user has typed anything — they prefix with their own name.
@@ -490,14 +500,23 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
         {/* Hidden Resources */}
         <div>
           <span className="text-[9px] text-slate-500">Hidden Resources (EDB)</span>
-          {edbHiddenRes.length > 0 ? (
-            <SearchableMultiSelect
-              selected={draft.hiddenResources}
-              onChange={v => setDraft(d => ({ ...d, hiddenResources: v }))}
-              options={edbHiddenRes}
-              placeholder="— add hidden resource —"
-              emptyMsg="Load EDB for hidden resources"
-            />
+          {edbHiddenRes.length > 0 || edbData ? (
+            <>
+              <SearchableMultiSelect
+                selected={draft.hiddenResources}
+                onChange={v => setDraft(d => ({ ...d, hiddenResources: v }))}
+                options={edbHiddenRes}
+                placeholder="— add hidden resource —"
+                emptyMsg={onAddHiddenResource ? 'No hidden resources yet — search a name to create one' : 'No hidden resources in EDB'}
+                onCreateOption={onAddHiddenResource}
+              />
+              {onAddHiddenResource && (
+                <p className="text-[9px] text-slate-600 mt-0.5">
+                  Search a name that is missing and pick “+ new hidden resource” — it is appended to the
+                  hidden_resources line at the top of export_descr_buildings.txt.
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-[9px] text-slate-600 italic">Load EDB to get hidden resource list</p>
           )}
