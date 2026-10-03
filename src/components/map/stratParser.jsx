@@ -12,36 +12,44 @@ export const SETTLEMENT_LEVEL_ICONS = {
 // ─── Utility ──────────────────────────────────────────────────────────────────
 function cleanLine(l) { return l.replace(/;.*$/, '').trim(); }
 
-// End of a faction block = next TOP-LEVEL faction/diplomacy/region/script keyword.
-// A `region X` line inside a settlement { } must not end the block.
+// Net brace change of one line. Counted per character so a block whose opening
+// brace shares its line with the keyword ("settlement {", "building { type X }")
+// is tracked correctly instead of leaking its contents to the top level.
+function braceDelta(line) {
+  let d = 0;
+  for (const ch of line) { if (ch === '{') d++; else if (ch === '}') d--; }
+  return d;
+}
+
+// A faction block ends at the next TOP-LEVEL faction/diplomacy/region/script
+// keyword. `region X` is a settlement field when it sits inside { }, so it must
+// never end the block — otherwise family/character lines get written into a city.
 function findFactionEnd(lines, start) {
   let depth = 0;
   for (let fi = start + 1; fi < lines.length; fi++) {
     const fl = lines[fi].replace(/;.*$/, '').trim();
     if (!fl) continue;
-    if (fl === '{') { depth++; continue; }
-    if (fl === '}') { depth = Math.max(0, depth - 1); continue; }
-    if (depth > 0) continue;
-    if (/^faction\s+\w/i.test(fl) || /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) || /^region\s+\S/i.test(fl) || /^script\s*$/i.test(fl)) return fi;
+    if (depth === 0 && (/^faction\s+\w/i.test(fl) || /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) || /^region\s+\S/i.test(fl) || /^script\s*$/i.test(fl))) return fi;
+    depth += braceDelta(fl);
+    if (depth < 0) depth = 0;
   }
   return lines.length;
 }
 
 // ─── Building block parser { type tree level } ────────────────────────────────
 function parseBuildingBlock(lines, i) {
-  // skip to opening brace
+  // Skip to the opening brace — it may share its line with the "building" keyword.
   while (i < lines.length && !cleanLine(lines[i]).includes('{')) i++;
-  i++; // skip {
   const buildings = [];
-  let depth = 1;
-  while (i < lines.length && depth > 0) {
+  let depth = 0;
+  for (; i < lines.length; i++) {
     const line = cleanLine(lines[i]);
-    if (line === '{') { depth++; i++; continue; }
-    if (line === '}') { depth--; if (depth === 0) break; i++; continue; }
-    // "type core_building wooden_wall"
-    const m = line.match(/^type\s+(.+)/);
+    // Text sitting on a brace line ("building { type wooden_wall }") still counts.
+    const body = line.replace(/[{}]/g, ' ').replace(/^building\b/i, '').trim();
+    const m = body.match(/^type\s+(.+)/);
     if (m) buildings.push(m[1].trim());
-    i++;
+    depth += braceDelta(line);
+    if (depth <= 0) break;
   }
   return { buildings, endIndex: i };
 }
@@ -65,8 +73,14 @@ function parseSettlementBlock(lines, startI, lineStartOverride) {
   let depth = 1;
   while (i < lines.length && depth > 0) {
     const line = cleanLine(lines[i]);
-    if (line === '{') { depth++; i++; continue; }
-    if (line === '}') { depth--; if (depth === 0) break; i++; continue; }
+    // Braces counted per character so nested blocks opened on their own keyword
+    // line ("building {") neither close nor escape this settlement block.
+    const braceChange = braceDelta(line);
+    if (braceChange !== 0) {
+      depth += braceChange;
+      if (depth <= 0) break;
+      i++; continue;
+    }
 
     let m;
     if ((m = line.match(/^level\s+(\S+)/)))           settlement.level          = m[1];
@@ -75,8 +89,8 @@ function parseSettlementBlock(lines, startI, lineStartOverride) {
     else if ((m = line.match(/^year_founded\s+(-?\d+)/))) settlement.yearFounded = parseInt(m[1]);
     else if ((m = line.match(/^plan_set\s+(\S+)/)))    settlement.planSet        = m[1];
     else if ((m = line.match(/^faction_creator\s+(\S+)/))) settlement.factionCreator = m[1];
-    else if (line === 'building') {
-      const { buildings: blds, endIndex } = parseBuildingBlock(lines, i + 1);
+    else if (/^building\b/i.test(line)) {
+      const { buildings: blds, endIndex } = parseBuildingBlock(lines, line.includes('{') ? i : i + 1);
       settlement.buildings.push(...blds);
       i = endIndex + 1;
       continue;
@@ -305,17 +319,25 @@ export function parseDescrStrat(text) {
       }
       i++;
 
+      // Brace depth of blocks opened while scanning this faction. Keywords inside
+      // a block (a `region X` field of a settlement written as "settlement {")
+      // must never end the faction — that truncated the block and pushed the
+      // family lines into the city's settlement block on re-export.
+      let braceDepth = 0;
       while (i < lines.length) {
-        const fl = cleanLine(lines[i]);
+        const rawLine = lines[i];
+        const fl = cleanLine(rawLine);
         if (!fl) { i++; continue; }
 
         // End of faction: next top-level keyword
         if (
-          /^faction\s+\w/i.test(fl) ||
-          /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
-          /^region\s+\S/i.test(fl) ||
-          /^script\s*$/i.test(fl) ||
-          /^(playable|unlockable|nonplayable|start_date|end_date|timescale|campaign)\b/i.test(fl)
+          braceDepth === 0 && (
+            /^faction\s+\w/i.test(fl) ||
+            /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
+            /^region\s+\S/i.test(fl) ||
+            /^script\s*$/i.test(fl) ||
+            /^(playable|unlockable|nonplayable|start_date|end_date|timescale|campaign)\b/i.test(fl)
+          )
         ) {
           break;
         }
@@ -329,10 +351,11 @@ export function parseDescrStrat(text) {
         if (/^re_emergent$/i.test(fl))             { faction.reEmergent = true; i++; continue; }
         if (/^undiscovered$/i.test(fl))            { faction.undiscovered = true; i++; continue; }
 
-        // Settlement block
-        if (/^settlement(\s+castle)?$/i.test(fl)) {
+        // Settlement block: "settlement", "settlement castle", or with the
+        // opening brace on the same line.
+        if (/^settlement(\s+castle)?\s*\{?\s*$/i.test(fl)) {
           const isCastle = /castle/i.test(fl);
-          const { settlement, endIndex } = parseSettlementBlock(lines, i + 1, i);
+          const { settlement, endIndex } = parseSettlementBlock(lines, fl.includes('{') ? i : i + 1, i);
           settlement.id       = itemId++;
           settlement.faction  = faction.name;
           settlement.category = 'settlement';
@@ -415,6 +438,8 @@ export function parseDescrStrat(text) {
           i++; continue;
         }
 
+        braceDepth += braceDelta(fl);
+        if (braceDepth < 0) braceDepth = 0;
         i++;
       }
 
@@ -653,18 +678,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       });
       if (factionLineIdx < 0) continue;
 
-      // Find end of this faction block
-      let factionEnd = lines.length;
-      for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
-        const fl = lines[fi].replace(/;.*$/, '').trim();
-        if (!fl) continue;
-        if (
-          /^faction\s+\w/i.test(fl) ||
-          /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
-          /^region\s+\S/i.test(fl) ||
-          /^script\s*$/i.test(fl)
-        ) { factionEnd = fi; break; }
-      }
+      let factionEnd = findFactionEnd(lines, factionLineIdx);
 
       // Rewrite faction header line with correct economicAI/militaryAI
       const headerParts = [`faction\t${faction.name}`];
@@ -673,25 +687,11 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       if (faction.shadowedBy) headerParts[0] += `, shadowed_by ${faction.shadowedBy}`;
       lines[factionLineIdx] = headerParts[0];
 
-      factionEnd = findFactionEnd(lines, factionLineIdx);
       // Patch or add ai_label
       const aiIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*ai_label\b/i.test(l.replace(/;.*$/, '')));
       const aiLine = `\tai_label\t${faction.aiLabel || 'default'}`;
       if (aiIdx >= 0) lines[aiIdx] = aiLine;
       else lines.splice(factionLineIdx + 1, 0, aiLine);
-
-      // Refind factionEnd after potential splice
-      factionEnd = lines.length;
-      for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
-        const fl = lines[fi].replace(/;.*$/, '').trim();
-        if (!fl) continue;
-        if (
-          /^faction\s+\w/i.test(fl) ||
-          /^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl) ||
-          /^region\s+\S/i.test(fl) ||
-          /^script\s*$/i.test(fl)
-        ) { factionEnd = fi; break; }
-      }
 
       factionEnd = findFactionEnd(lines, factionLineIdx);
       // Remove/add dead flags
@@ -699,13 +699,6 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       for (const flag of deadFlags) {
         const idx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && l.replace(/;.*$/, '').trim() === flag);
         if (idx >= 0) lines.splice(idx, 1);
-      }
-      // Refind factionEnd
-      factionEnd = lines.length;
-      for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
-        const fl = lines[fi].replace(/;.*$/, '').trim();
-        if (!fl) continue;
-        if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
       }
       factionEnd = findFactionEnd(lines, factionLineIdx);
       // Insert new dead flags after ai_label line
@@ -717,14 +710,6 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       if (faction.undiscovered) flagsToInsert.push('\tundiscovered');
       if (flagsToInsert.length && insertFlagAfter >= 0) {
         lines.splice(insertFlagAfter + 1, 0, ...flagsToInsert);
-      }
-
-      // Refind factionEnd
-      factionEnd = lines.length;
-      for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
-        const fl = lines[fi].replace(/;.*$/, '').trim();
-        if (!fl) continue;
-        if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
       }
 
       factionEnd = findFactionEnd(lines, factionLineIdx);
@@ -752,13 +737,6 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
 
       // Rewrite relative lines if faction.relatives is defined (from family tree editor)
       if (faction.relatives !== undefined) {
-        // Refind factionEnd
-        factionEnd = lines.length;
-        for (let fi = factionLineIdx + 1; fi < lines.length; fi++) {
-          const fl = lines[fi].replace(/;.*$/, '').trim();
-          if (!fl) continue;
-          if (/^faction\s+\w/i.test(fl)||/^(faction_standings|action_relationships|faction_relationships)\b/i.test(fl)||/^region\s+\S/i.test(fl)||/^script\s*$/i.test(fl)) { factionEnd = fi; break; }
-        }
         factionEnd = findFactionEnd(lines, factionLineIdx);
         // Remove all existing relative lines in this faction block
         for (let fi = factionEnd - 1; fi > factionLineIdx; fi--) {
@@ -770,7 +748,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
         // Insert new relative lines before factionEnd
         const relLines = (faction.relatives || [])
           .filter(rel => rel && rel.some(n => n))
-          .map(rel => `\trelative\t${rel.join(',\t')}\tend`);
+          .map(rel => `\trelative\t${rel.join(',\t')},\tend`);
         if (relLines.length > 0) {
           lines.splice(factionEnd, 0, ...relLines);
         }
