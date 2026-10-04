@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { getItemIcon, getItemLabel } from './StratOverlay';
+import { getItemIcon } from './StratOverlay';
 import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, parseWinConditions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { exportTGA, downloadBlob } from './tgaExporter';
 import { LAYER_DEFS } from './mapLayerConstants';
@@ -298,7 +298,7 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
 }
 
 // ─── Settlement editor (inline) ──────────────────────────────────────────────
-function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer, onRelocatePixel, mapH, rebelFactionList, musicTypeList, mercenaryPoolList, religionList, allFactions }) {
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer, onRelocatePixel, mapH, rebelFactionList, musicTypeList, mercenaryPoolList, religionList, allFactions, onAddHiddenResource }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
@@ -614,8 +614,16 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
             }
                 <CampaignSearchSelect value="" options={hiddenResourceMasterList.filter(hr => !draft.hiddenResources?.includes(hr))}
                   onChange={hr => { if (hr) setDraft(d => ({ ...d, hiddenResources: [...(d.hiddenResources || []), hr] })); }}
-                  placeholder={hiddenResourceMasterList.length ? 'Add hidden resource…' : 'Load EDB for list'}
-                  disabled={!hiddenResourceMasterList.length} allowClear={false} />
+                  onCreateOption={edbData ? onAddHiddenResource : undefined}
+                  createLabel={name => `+ new hidden resource “${name}”`}
+                  placeholder={hiddenResourceMasterList.length || (edbData && onAddHiddenResource) ? 'Add hidden resource…' : 'Load EDB for list'}
+                  disabled={!hiddenResourceMasterList.length && !(edbData && onAddHiddenResource)} allowClear={false} />
+                {edbData && onAddHiddenResource && (
+                  <p className="text-[9px] text-slate-600 mt-0.5">
+                    Search a name that is missing and pick “+ new hidden resource” — it is appended to the
+                    hidden_resources line at the top of export_descr_buildings.txt.
+                  </p>
+                )}
               </div>
 
               {/* Triumph & Agriculture (descr_regions numeric values) */}
@@ -1763,7 +1771,8 @@ export default function StratPanel({
                             musicTypeList={musicTypeList}
                             mercenaryPoolList={mercenaryPoolList}
                             religionList={religionList}
-                            allFactions={allFactions} />
+                            allFactions={allFactions}
+                            onAddHiddenResource={onAddHiddenResource} />
                           
                                   </div>
                                 </div>
