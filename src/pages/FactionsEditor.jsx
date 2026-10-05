@@ -836,7 +836,7 @@ export default function FactionsEditor() {
     duplicateFactionStrings(src.name, newFactionName, payload);
     const charRes = duplicateStratmapCharacters(src.name, newFactionName);
     const namesRes = duplicateFactionNames(src.name, newFactionName);
-    const eduRes = duplicateEduOwnership(src.name, newFactionName);
+    const eduRes = duplicateEduOwnership(src.name, newFactionName, src.culture);
     autoInsertNavyEntry(newFactionName);
     injectMenuStringsForFaction(newFactionName, payload.displayName || newFactionName);
 
