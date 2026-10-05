@@ -254,67 +254,60 @@ export function duplicateEduOwnership(srcName, dstName, srcCulture = '') {
   const addToList = (list = []) => {
     const facs = [...list];
     const srcIdx = facs.findIndex((f) => sourceTokens.has(String(f || '').toLowerCase()));
-    if (srcIdx === -1) return { facs, touched: false, added: false, exists: false };
+    if (srcIdx === -1) return { facs, touched: false, exists: false };
     if (facs.some((f) => String(f || '').toLowerCase() === DST)) {
-      return { facs, touched: true, added: false, exists: true };
+      return { facs, touched: true, exists: true };
     }
     facs.splice(srcIdx + 1, 0, dstName);
-    return { facs, touched: true, added: true, exists: false };
+    return { facs, touched: true, exists: false };
   };
 
-  const persistEdu = (out) => {
+  const persistRawEdu = (out) => {
     setFile(EDU_KEY, out);
+    try { localStorage.setItem(EDU_KEY, out); } catch {}
     try { sessionStorage.setItem('m2tw_edu_raw', out); } catch {}
     try { localStorage.setItem('m2tw_edu_units', JSON.stringify(parseEDU(out))); } catch {}
     window.dispatchEvent(new CustomEvent('edu-file-loaded'));
   };
 
-  try {
-    let raw = getFile(EDU_KEY);
-    if (!raw) {
-      // Fallback: Home also mirrors the raw EDU into sessionStorage
-      try { raw = sessionStorage.getItem('m2tw_edu_raw'); } catch {}
-      if (raw) setFile(EDU_KEY, raw);
-    }
+  const addRawCandidate = (candidates, seen, source, value) => {
+    if (typeof value !== 'string' || !value.trim()) return;
+    if (seen.has(value)) return;
+    seen.add(value);
+    candidates.push({ source, value });
+  };
 
+  const getRawCandidates = () => {
+    const candidates = [];
+    const seen = new Set();
+    addRawCandidate(candidates, seen, 'bigFileStore', getFile(EDU_KEY));
+    try { addRawCandidate(candidates, seen, 'localStorage', localStorage.getItem(EDU_KEY)); } catch {}
+    try { addRawCandidate(candidates, seen, 'sessionStorage', sessionStorage.getItem('m2tw_edu_raw')); } catch {}
+    return candidates;
+  };
+
+  const applyToRaw = (raw) => {
     let count = 0, already = 0, srcLines = 0;
+    const lines = raw.split('\n').map((line) => {
+      const m = line.match(/^(\s*(?:ownership|era\s+\d+)\s+)(.*)$/i);
+      if (!m) return line;
+      let rest = m[2], comment = '';
+      const ci = rest.indexOf(';');
+      if (ci !== -1) { comment = rest.slice(ci); rest = rest.slice(0, ci); }
+      const facs = rest.split(',').map((s) => s.trim()).filter(Boolean);
+      const res = addToList(facs);
+      if (!res.touched) return line;
+      srcLines++;
+      if (res.exists) { already++; return line; }
+      count++;
+      return m[1] + res.facs.join(', ') + (comment ? ' ' + comment : '');
+    });
+    return { count, already, srcLines, out: lines.join('\n') };
+  };
 
-    if (raw) {
-      // Handles both "ownership" and "era N" lines. A unit can be available to a
-      // literal faction ("england") or to that faction's culture group
-      // ("northern_european"), so match either token and insert the new faction
-      // directly after the source token.
-      const lines = raw.split('\n').map((line) => {
-        const m = line.match(/^(\s*(?:ownership|era\s+\d+)\s+)(.*)$/i);
-        if (!m) return line;
-        let rest = m[2], comment = '';
-        const ci = rest.indexOf(';');
-        if (ci !== -1) { comment = rest.slice(ci); rest = rest.slice(0, ci); }
-        const facs = rest.split(',').map((s) => s.trim()).filter(Boolean);
-        const res = addToList(facs);
-        if (!res.touched) return line;
-        srcLines++;
-        if (res.exists) { already++; return line; }
-        count++;
-        return m[1] + res.facs.join(', ') + (comment ? ' ' + comment : '');
-      });
-      if (count > 0) {
-        persistEdu(lines.join('\n'));
-        return { count, already, srcLines, loaded: true };
-      }
-      if (srcLines > 0) return { count, already, srcLines, loaded: true };
-    }
-
-    // If the raw EDU cache is absent or not really raw EDU, fall back to the
-    // Unit Editor's parsed cache. This is the same structure Unit Editor uses
-    // successfully, so faction duplication can still update EDU ownerships.
-    let parsed = null;
-    try { parsed = JSON.parse(localStorage.getItem('m2tw_edu_units') || 'null'); } catch {}
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return { count: 0, already: 0, srcLines: 0, loaded: !!raw };
-    }
-
-    const updated = parsed.map((unit) => {
+  const applyToUnits = (units) => {
+    let count = 0, already = 0, srcLines = 0;
+    const updated = units.map((unit) => {
       let changed = false;
       const next = { ...unit };
       for (const key of ['ownership', 'era0', 'era1', 'era2']) {
@@ -328,13 +321,51 @@ export function duplicateEduOwnership(srcName, dstName, srcCulture = '') {
       }
       return changed ? next : unit;
     });
+    return { count, already, srcLines, units: updated };
+  };
 
-    if (count > 0) {
-      const out = serializeEDU(updated);
-      persistEdu(out);
-      try { localStorage.setItem('m2tw_edu_units', JSON.stringify(updated)); } catch {}
+  try {
+    const rawCandidates = getRawCandidates();
+
+    // First try every raw source. The in-memory big-file store can outlive a
+    // reload and become stale, so do not stop at the first truthy value.
+    for (const candidate of rawCandidates) {
+      const result = applyToRaw(candidate.value);
+      if (result.count > 0) {
+        persistRawEdu(result.out);
+        return { count: result.count, already: result.already, srcLines: result.srcLines, loaded: true };
+      }
+      if (result.srcLines > 0) {
+        return { count: result.count, already: result.already, srcLines: result.srcLines, loaded: true };
+      }
     }
-    return { count, already, srcLines, loaded: true };
+
+    const unitCandidates = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem('m2tw_edu_units') || 'null');
+      if (Array.isArray(parsed) && parsed.length > 0) unitCandidates.push(parsed);
+    } catch {}
+    for (const candidate of rawCandidates) {
+      try {
+        const parsed = parseEDU(candidate.value);
+        if (parsed.length > 0) unitCandidates.push(parsed);
+      } catch {}
+    }
+
+    for (const units of unitCandidates) {
+      const result = applyToUnits(units);
+      if (result.count > 0) {
+        const out = serializeEDU(result.units);
+        persistRawEdu(out);
+        try { localStorage.setItem('m2tw_edu_units', JSON.stringify(result.units)); } catch {}
+        return { count: result.count, already: result.already, srcLines: result.srcLines, loaded: true };
+      }
+      if (result.srcLines > 0) {
+        return { count: result.count, already: result.already, srcLines: result.srcLines, loaded: true };
+      }
+    }
+
+    return { count: 0, already: 0, srcLines: 0, loaded: rawCandidates.length > 0 || unitCandidates.length > 0 };
   } catch { return { count: 0, already: 0, srcLines: 0, loaded: true }; }
 }
 
