@@ -10,6 +10,7 @@ import {
 } from '@/components/minorfiles/stratmap/stratCharParser';
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { parseEDU } from '@/components/units/EDUParser';
 
 const EXPANDED_KEY = 'm2tw_strings_bin_global';
 const MENU_KEY = 'm2tw_menu_strings_bin';
@@ -242,7 +243,7 @@ export function duplicateFactionNames(srcName, dstName) {
  * In export_descr_unit.txt, add the target faction to the ownership line
  * of every unit owned by the source faction.
  */
-export function duplicateEduOwnership(srcName, dstName) {
+export function duplicateEduOwnership(srcName, dstName, srcCulture = '') {
   try {
     let raw = getFile(EDU_KEY);
     if (!raw) {
@@ -252,9 +253,16 @@ export function duplicateEduOwnership(srcName, dstName) {
     }
     if (!raw) return { count: 0, already: 0, srcLines: 0, loaded: false };
     let count = 0, already = 0, srcLines = 0;
-    const SRC = srcName.toLowerCase(), DST = dstName.toLowerCase();
-    // Handles both "ownership" and "era N" lines; inserts the new faction
-    // directly after the source one (e.g. "france, milan" → "france, milan, mantua")
+    const sourceTokens = new Set(
+      [srcName, srcCulture]
+        .map((v) => String(v || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const DST = dstName.toLowerCase();
+    // Handles both "ownership" and "era N" lines. A unit can be available to a
+    // literal faction ("england") or to that faction's culture group
+    // ("northern_european"), so match either token and insert the new faction
+    // directly after the source token.
     const lines = raw.split('\n').map((line) => {
       const m = line.match(/^(\s*(?:ownership|era\s+\d+)\s+)(.*)$/i);
       if (!m) return line;
@@ -262,7 +270,7 @@ export function duplicateEduOwnership(srcName, dstName) {
       const ci = rest.indexOf(';');
       if (ci !== -1) { comment = rest.slice(ci); rest = rest.slice(0, ci); }
       const facs = rest.split(',').map((s) => s.trim()).filter(Boolean);
-      const srcIdx = facs.findIndex((f) => f.toLowerCase() === SRC);
+      const srcIdx = facs.findIndex((f) => sourceTokens.has(f.toLowerCase()));
       if (srcIdx === -1) return line;
       srcLines++;
       if (facs.some((f) => f.toLowerCase() === DST)) { already++; return line; }
@@ -274,6 +282,8 @@ export function duplicateEduOwnership(srcName, dstName) {
       const out = lines.join('\n');
       setFile(EDU_KEY, out);
       try { sessionStorage.setItem('m2tw_edu_raw', out); } catch {}
+      try { localStorage.setItem('m2tw_edu_units', JSON.stringify(parseEDU(out))); } catch {}
+      window.dispatchEvent(new CustomEvent('edu-file-loaded'));
     }
     return { count, already, srcLines, loaded: true };
   } catch { return { count: 0, already: 0, srcLines: 0, loaded: true }; }
