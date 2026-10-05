@@ -10,7 +10,7 @@ import {
 } from '@/components/minorfiles/stratmap/stratCharParser';
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
-import { parseEDU } from '@/components/units/EDUParser';
+import { parseEDU, serializeEDU } from '@/components/units/EDUParser';
 
 const EXPANDED_KEY = 'm2tw_strings_bin_global';
 const MENU_KEY = 'm2tw_menu_strings_bin';
@@ -244,6 +244,31 @@ export function duplicateFactionNames(srcName, dstName) {
  * of every unit owned by the source faction.
  */
 export function duplicateEduOwnership(srcName, dstName, srcCulture = '') {
+  const sourceTokens = new Set(
+    [srcName, srcCulture]
+      .map((v) => String(v || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const DST = dstName.toLowerCase();
+
+  const addToList = (list = []) => {
+    const facs = [...list];
+    const srcIdx = facs.findIndex((f) => sourceTokens.has(String(f || '').toLowerCase()));
+    if (srcIdx === -1) return { facs, touched: false, added: false, exists: false };
+    if (facs.some((f) => String(f || '').toLowerCase() === DST)) {
+      return { facs, touched: true, added: false, exists: true };
+    }
+    facs.splice(srcIdx + 1, 0, dstName);
+    return { facs, touched: true, added: true, exists: false };
+  };
+
+  const persistEdu = (out) => {
+    setFile(EDU_KEY, out);
+    try { sessionStorage.setItem('m2tw_edu_raw', out); } catch {}
+    try { localStorage.setItem('m2tw_edu_units', JSON.stringify(parseEDU(out))); } catch {}
+    window.dispatchEvent(new CustomEvent('edu-file-loaded'));
+  };
+
   try {
     let raw = getFile(EDU_KEY);
     if (!raw) {
@@ -251,39 +276,63 @@ export function duplicateEduOwnership(srcName, dstName, srcCulture = '') {
       try { raw = sessionStorage.getItem('m2tw_edu_raw'); } catch {}
       if (raw) setFile(EDU_KEY, raw);
     }
-    if (!raw) return { count: 0, already: 0, srcLines: 0, loaded: false };
+
     let count = 0, already = 0, srcLines = 0;
-    const sourceTokens = new Set(
-      [srcName, srcCulture]
-        .map((v) => String(v || '').trim().toLowerCase())
-        .filter(Boolean)
-    );
-    const DST = dstName.toLowerCase();
-    // Handles both "ownership" and "era N" lines. A unit can be available to a
-    // literal faction ("england") or to that faction's culture group
-    // ("northern_european"), so match either token and insert the new faction
-    // directly after the source token.
-    const lines = raw.split('\n').map((line) => {
-      const m = line.match(/^(\s*(?:ownership|era\s+\d+)\s+)(.*)$/i);
-      if (!m) return line;
-      let rest = m[2], comment = '';
-      const ci = rest.indexOf(';');
-      if (ci !== -1) { comment = rest.slice(ci); rest = rest.slice(0, ci); }
-      const facs = rest.split(',').map((s) => s.trim()).filter(Boolean);
-      const srcIdx = facs.findIndex((f) => sourceTokens.has(f.toLowerCase()));
-      if (srcIdx === -1) return line;
-      srcLines++;
-      if (facs.some((f) => f.toLowerCase() === DST)) { already++; return line; }
-      facs.splice(srcIdx + 1, 0, dstName);
-      count++;
-      return m[1] + facs.join(', ') + (comment ? ' ' + comment : '');
+
+    if (raw) {
+      // Handles both "ownership" and "era N" lines. A unit can be available to a
+      // literal faction ("england") or to that faction's culture group
+      // ("northern_european"), so match either token and insert the new faction
+      // directly after the source token.
+      const lines = raw.split('\n').map((line) => {
+        const m = line.match(/^(\s*(?:ownership|era\s+\d+)\s+)(.*)$/i);
+        if (!m) return line;
+        let rest = m[2], comment = '';
+        const ci = rest.indexOf(';');
+        if (ci !== -1) { comment = rest.slice(ci); rest = rest.slice(0, ci); }
+        const facs = rest.split(',').map((s) => s.trim()).filter(Boolean);
+        const res = addToList(facs);
+        if (!res.touched) return line;
+        srcLines++;
+        if (res.exists) { already++; return line; }
+        count++;
+        return m[1] + res.facs.join(', ') + (comment ? ' ' + comment : '');
+      });
+      if (count > 0) {
+        persistEdu(lines.join('\n'));
+        return { count, already, srcLines, loaded: true };
+      }
+      if (srcLines > 0) return { count, already, srcLines, loaded: true };
+    }
+
+    // If the raw EDU cache is absent or not really raw EDU, fall back to the
+    // Unit Editor's parsed cache. This is the same structure Unit Editor uses
+    // successfully, so faction duplication can still update EDU ownerships.
+    let parsed = null;
+    try { parsed = JSON.parse(localStorage.getItem('m2tw_edu_units') || 'null'); } catch {}
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return { count: 0, already: 0, srcLines: 0, loaded: !!raw };
+    }
+
+    const updated = parsed.map((unit) => {
+      let changed = false;
+      const next = { ...unit };
+      for (const key of ['ownership', 'era0', 'era1', 'era2']) {
+        const res = addToList(next[key] || []);
+        if (!res.touched) continue;
+        srcLines++;
+        if (res.exists) { already++; continue; }
+        next[key] = res.facs;
+        changed = true;
+        count++;
+      }
+      return changed ? next : unit;
     });
+
     if (count > 0) {
-      const out = lines.join('\n');
-      setFile(EDU_KEY, out);
-      try { sessionStorage.setItem('m2tw_edu_raw', out); } catch {}
-      try { localStorage.setItem('m2tw_edu_units', JSON.stringify(parseEDU(out))); } catch {}
-      window.dispatchEvent(new CustomEvent('edu-file-loaded'));
+      const out = serializeEDU(updated);
+      persistEdu(out);
+      try { localStorage.setItem('m2tw_edu_units', JSON.stringify(updated)); } catch {}
     }
     return { count, already, srcLines, loaded: true };
   } catch { return { count: 0, already: 0, srcLines: 0, loaded: true }; }
