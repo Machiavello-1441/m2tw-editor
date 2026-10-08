@@ -474,7 +474,6 @@ export default function Home() {
       }
 
       if (FAMILY_RULE_FILES.has(name)) {
-        if (name === 'descr_campaign_db.xml' && fileNames.has('descr_campaign_ai_db_ex.xml')) continue;
         setFileStatus(prev => ({ ...prev, family_rules: 'loading' }));
         try {
           await loadFamilyRulesFile(file);
@@ -1077,7 +1076,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
               <FileStatus label="Rebel Factions" hint="descr_rebel_factions.txt" status={fileStatus.rebel_fac} />
               <FileStatus label="Religions" hint="descr_religions.txt" status={fileStatus.religions} />
               <FileStatus label="Climates" hint="descr_climates.txt + aerial ground types" status={fileStatus.climates} />
-              <FileStatus label="Family-tree Rules" hint="descr_campaign_ai_db_ex.xml" status={fileStatus.family_rules} />
+              <FileStatus label="Family-tree Rules" hint="descr_campaign_db.xml" status={fileStatus.family_rules} />
               <FileStatus label="Offmap Models" hint="descr_offmap_models.txt" status={fileStatus.offmap} />
               <FileStatus label="Guilds" hint="export_descr_guilds.txt" status={fileStatus.guilds} />
               <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />

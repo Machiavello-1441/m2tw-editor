@@ -1,6 +1,6 @@
 export const FAMILY_RULES_KEY = 'm2tw_family_tree_rules';
 export const FAMILY_RULES_EVENT = 'family-tree-rules-loaded';
-export const FAMILY_RULE_FILES = new Set(['descr_campaign_ai_db_ex.xml', 'descr_campaign_db.xml']);
+export const FAMILY_RULE_FILES = new Set(['descr_campaign_db.xml']);
 
 export function parseFamilyRules(text, source) {
   const doc = new DOMParser().parseFromString(text.replace(/^\uFEFF/, ''), 'application/xml');
