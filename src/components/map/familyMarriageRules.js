@@ -8,7 +8,7 @@ export function marriageEligibility(character, values) {
   const minimum = female ? 'daughters_age_of_consent' : 'age_of_manhood';
   const maximum = female ? 'max_age_for_marriage_for_female' : 'max_age_for_marriage_for_male';
   const errors = [];
-  for (const key of [minimum, maximum, ...(female ? ['daughters_retirement_age'] : [])]) {
+  for (const key of [minimum, maximum]) {
     if (values[key] == null) continue;
     if (key === minimum ? age < values[key] : age > values[key]) errors.push(`${character.name}: age ${age} violates ${key} = ${values[key]} (new-marriage eligibility)`);
   }

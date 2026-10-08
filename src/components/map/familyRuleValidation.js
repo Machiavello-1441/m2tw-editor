@@ -25,7 +25,7 @@ export default function familyRuleValidation(rels, chars, rules) {
   for (const [fatherName, motherName, ...childNames] of rels) {
     const father = lookup(fatherName), mother = lookup(motherName);
     checkCouple(father, mother, childNames.map(lookup).filter(Boolean), values, report);
-    if (father && mother) for (const parent of [father, mother]) {
+    if (father && mother) for (const parent of [father, mother].filter(character => character.sex !== 'female')) {
       // Existing marriages do not have dates in descr_strat, so upper eligibility
       // limits must not be treated as proof of an invalid historical marriage.
       warnings.push(...marriageEligibility(parent, values).filter(message => !message.includes('age_of_manhood') && !message.includes('daughters_age_of_consent')));
