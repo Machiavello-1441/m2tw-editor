@@ -15,8 +15,9 @@ export function usePortraits() {
 
 export function portraitFor(char, portraits) {
   if (!char?.portrait) return null;
-  const f = char.portrait;
-  return portraits[`${f}/portrait_young`] || portraits[`${f}/portrait_old`] || portraits[`${f}/portrait_dead`] || null;
+  // Use the same folder normalization as the character panel preview.
+  const folder = char.portrait.toLowerCase().replace(/\.tga$/i, '');
+  return portraits[`${folder}/portrait_young`] || portraits[`${folder}/portrait_old`] || portraits[`${folder}/portrait_dead`] || null;
 }
 
 const style = { width: CW, height: CH };
