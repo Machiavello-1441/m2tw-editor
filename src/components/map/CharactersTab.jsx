@@ -625,6 +625,9 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   const [treesInitialized, setTreesInitialized] = useState(false);
   const listTopRef = useRef(null);
   const [localOpenCharId, setLocalOpenCharId] = useState(null);
+  // A campaign save reparses records and assigns new IDs; rebuild from the
+  // saved relatives instead of retaining references to pre-save characters.
+  useEffect(() => { setFamilyTrees({}); setTreesInitialized(false); }, [stratData?.raw]);
 
   const allFactions = useMemo(() => {
     const from = (stratData?.factions || []).map(f => f.name).filter(Boolean);
@@ -802,6 +805,12 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
           <FamilyTreeTab
             stratData={stratData}
             trees={familyTrees}
+            onCommitFamilyMember={(character, nextFactionTrees, isNew) => {
+              const nextTrees = { ...familyTrees, [character.faction]: nextFactionTrees };
+              const items = isNew ? [...(stratData.items || []), character] : stratData.items;
+              setFamilyTrees(nextTrees);
+              onStratDataChange(serializeFamilyTreesToStratData({ ...stratData, items }, nextTrees));
+            }}
             renderCharacterDetails={character => {
               const record = allRecords.find(rec => rec._faction === character.faction && `rec_${rec._faction}_${rec._lineNum ?? rec._recordIndex}` === String(character.id));
               return record ? <CharacterRecordRow key={character.id} rec={record} factionName={record._faction} initialExpanded onUpdate={updated => handleRecordUpdate(record._faction, record, updated)} /> :

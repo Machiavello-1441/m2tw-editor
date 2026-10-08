@@ -3,7 +3,7 @@ import { Archive, ChevronDown, ChevronRight } from 'lucide-react';
 
 const ROLES = ['never_a_leader', 'past_leader', 'past_heir', 'leader', 'heir'];
 const inputClass = 'h-6 w-full rounded border border-input bg-background px-1.5 text-[11px] text-foreground font-mono';
-export default function CharacterRecordRow({ rec, factionName, onUpdate, initialExpanded = false }) {
+export default function CharacterRecordRow({ rec, factionName, onUpdate, initialExpanded = false, fixedSex }) {
   const [expanded, setExpanded] = useState(initialExpanded);
   const set = (key, value) => onUpdate({ ...rec, [key]: value });
   const isDead = rec.status === 'dead';
@@ -18,7 +18,7 @@ export default function CharacterRecordRow({ rec, factionName, onUpdate, initial
       {expanded && <div className="grid grid-cols-2 gap-1.5 border-t border-border p-2 text-[9px] text-muted-foreground">
         <label>Name<input value={rec.name || ''} onChange={event => set('name', event.target.value)} className={inputClass} /></label>
         <label>Surname<input value={rec.surname || ''} onChange={event => set('surname', event.target.value)} placeholder="optional" className={inputClass} /></label>
-        <label>Sex<select value={rec.sex || 'male'} onChange={event => set('sex', event.target.value)} className={inputClass}><option value="male">male</option><option value="female">female</option></select></label>
+        <label>Sex<select value={fixedSex || rec.sex || 'male'} disabled={!!fixedSex} onChange={event => set('sex', event.target.value)} className={inputClass}><option value="male">male</option><option value="female">female</option></select></label>
         <label>Age<input type="number" min={0} value={rec.age ?? 0} onChange={event => set('age', Math.max(0, parseInt(event.target.value) || 0))} className={inputClass} /></label>
         <label>Alive / Dead<select value={isDead ? 'dead' : 'alive'} onChange={event => onUpdate({ ...rec, status: event.target.value, recordRole: role })} className={inputClass}><option value="alive">alive</option><option value="dead">dead</option></select></label>
         {isDead && <label>Years Dead<input type="number" min={0} value={rec.deadYears ?? 0} onChange={event => set('deadYears', Math.max(0, parseInt(event.target.value) || 0))} className={inputClass} /></label>}

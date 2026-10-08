@@ -393,7 +393,7 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTre
   );
 }
 
-export default function FamilyTreeTab({ stratData, trees, onTreesChange, initialized, onInitialized, renderCharacterDetails }) {
+export default function FamilyTreeTab({ stratData, trees, onTreesChange, initialized, onInitialized, renderCharacterDetails, onCommitFamilyMember }) {
   const rules = useFamilyRules();
   const [factionFilter, setFactionFilter] = useState('');
   const [view, setView] = useState('visual');
@@ -504,7 +504,7 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
       {view === 'visual' ? (
         <div className="flex-1 min-h-0">
           <FamilyVisualEditor key={activeFaction} faction={activeFaction} chars={factionChars} factionTrees={factionTrees}
-            onTreesChange={onTreesChange} onAddTree={addTree} problems={problems} rules={rules} renderCharacterDetails={renderCharacterDetails} onClose={() => setView('list')} />
+            onTreesChange={onTreesChange} onAddTree={addTree} problems={problems} rules={rules} renderCharacterDetails={renderCharacterDetails} onCommitFamilyMember={onCommitFamilyMember} onClose={() => setView('list')} />
         </div>
       ) : <>
 

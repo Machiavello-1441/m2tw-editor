@@ -6,11 +6,14 @@ import FamilyGraphCard, { usePortraits, portraitFor } from './FamilyGraphCard';
 import FamilyTreeProblems from './FamilyTreeProblems';
 import FamilyGraphLines from '@/components/map/FamilyGraphLines';
 import FamilyRulesStatus from '@/components/map/FamilyRulesStatus';
+import FamilyRelationActions from '@/components/map/FamilyRelationActions';
+import FamilyMemberSlot from '@/components/map/FamilyMemberSlot';
 
-function Pill({ pill, onDropChar }) {
+function Pill({ pill, onDropChar, onSelect }) {
   const [over, setOver] = useState(false);
   return (
     <div style={{ left: pill.x, top: pill.y }}
+      role="button" tabIndex={0} onClick={() => onSelect?.(pill)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect?.(pill); } }}
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => { e.preventDefault(); setOver(false); onDropChar(pill, e.dataTransfer.getData('charId')); }}
@@ -22,7 +25,7 @@ function Pill({ pill, onDropChar }) {
 }
 
 // Visual family tree: drag characters onto slots (parents), cards (spouse) or "+ child" pills.
-export default function FamilyGraphView({ faction, chars, factionTrees, onTreesChange, onAddTree, problems, rules, onSelectCharacter, selectedCharacterId, onSelectTree, hideCharacterList = false, showPortraits: externalShowPortraits, onShowPortraitsChange, onClose }) {
+export default function FamilyGraphView({ faction, chars, factionTrees, onTreesChange, onAddTree, problems, rules, onSelectCharacter, selectedCharacterId, onSelectTree, hideCharacterList = false, showPortraits: externalShowPortraits, onShowPortraitsChange, onClose, onRequestMember, pendingMember, onOpenMember }) {
   const portraits = usePortraits();
   const [localShowPortraits, setLocalShowPortraits] = useState(true);
   const showPortraits = externalShowPortraits ?? localShowPortraits;
@@ -31,7 +34,8 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
   const [message, setMessage] = useState('');
   const forest = useMemo(() => layoutForest(factionTrees), [factionTrees]);
   const [selectedTreeId, setSelectedTreeId] = useState('');
-  const activeTreeId = forest.some(tree => String(tree.rootId) === selectedTreeId) ? selectedTreeId : String(forest[0]?.rootId ?? '');
+  const activeTreeId = forest.some(tree => String(tree.rootId) === selectedTreeId) ? selectedTreeId : String(forest.find(tree => tree.nodes.some(node => String(node.char?.id) === selectedCharacterId))?.rootId ?? forest[0]?.rootId ?? '');
+  const pendingNode = pendingMember?.anchorId != null ? forest.flatMap(tree => tree.nodes).find(node => String(node.char?.id) === String(pendingMember.anchorId)) : null;
   const visibleForest = forest.filter(tree => String(tree.rootId) === activeTreeId);
 
   const apply = (result) => {
@@ -93,6 +97,7 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
         })}
       </div>}
 
+      {onRequestMember && <FamilyRelationActions character={chars.find(c => String(c.id) === selectedCharacterId)} onRequest={onRequestMember} />}
       <FamilyRulesStatus rules={rules} />
       {message && <p role="alert" className="px-2 py-1 text-xs text-destructive bg-destructive/10 shrink-0">{message}</p>}
       <div className="px-2 pt-2 shrink-0 max-h-32 overflow-y-auto"><FamilyTreeProblems problems={problems} /></div>
@@ -102,14 +107,17 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
         {visibleForest.map((f, i) => (
           <div key={i}>
             <p className="text-[10px] font-semibold text-amber-300 mb-1">{f.title}</p>
-            <div className="relative" style={{ width: f.width, height: f.height, minWidth: 240 }}>
+            <div className="relative" style={{ width: f.width + (f.nodes.includes(pendingNode) && pendingMember.kind === 'spouse' ? 140 : 0), height: f.height + (f.nodes.includes(pendingNode) && pendingMember.kind !== 'spouse' ? 100 : 0), minWidth: 240 }}>
+              <div className="relative" style={{ top: f.nodes.includes(pendingNode) && pendingMember.kind === 'parent' ? 100 : 0 }}>
               <FamilyGraphLines forest={f} />
               {f.nodes.map((n) => (
                 <FamilyGraphCard key={n.key} node={n} portraits={portraits} showPortraits={showPortraits}
-                  onDropChar={dropOnNode} onSelect={onSelectCharacter} selected={String(n.char?.id) === selectedCharacterId} errorMessages={problems.characterErrors?.[String(n.char?.id)]}
+                  onDropChar={dropOnNode} onSelect={onSelectCharacter} onSelectSlot={node => onRequestMember?.({ kind: 'slot', treeId: node.unit.treeId, slot: node.slot, sex: node.slot === 'father' ? 'male' : 'female', label: node.slot }, true)} selected={String(n.char?.id) === selectedCharacterId} errorMessages={problems.characterErrors?.[String(n.char?.id)]}
                   onDetach={(node) => onTreesChange((prev) => ({ ...prev, [faction]: detach(factionTrees, { ...node, treeId: node.unit.treeId, charId: node.char?.id }) }))} />
               ))}
-              {f.pills.map((p) => <Pill key={p.key} pill={p} onDropChar={dropOnPill} />)}
+              {f.pills.map((p) => <Pill key={p.key} pill={p} onDropChar={dropOnPill} onSelect={pill => { const parent = pill.unit.parents[0]; if (parent) onRequestMember?.({ kind: 'child', anchorId: parent.id, label: 'child' }, true); }} />)}
+              </div>
+              {f.nodes.includes(pendingNode) && <FamilyMemberSlot request={pendingMember} node={pendingNode} forest={f} onClick={onOpenMember} />}
             </div>
           </div>
         ))}

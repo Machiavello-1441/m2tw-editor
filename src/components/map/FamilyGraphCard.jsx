@@ -21,7 +21,7 @@ export function portraitFor(char, portraits) {
 
 const style = { width: CW, height: CH };
 
-export default function FamilyGraphCard({ node, portraits, showPortraits, onDropChar, onDetach, onSelect, selected, errorMessages }) {
+export default function FamilyGraphCard({ node, portraits, showPortraits, onDropChar, onDetach, onSelect, selected, errorMessages, onSelectSlot }) {
   const [over, setOver] = useState(false);
   const { char, slot } = node;
   const dropProps = {
@@ -33,9 +33,9 @@ export default function FamilyGraphCard({ node, portraits, showPortraits, onDrop
 
   if (!char) {
     return (
-      <div {...dropProps} style={{ ...style, left: node.x, top: node.y }}
+      <div {...dropProps} role="button" tabIndex={0} onClick={() => onSelectSlot?.(node)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectSlot?.(node); } }} style={{ ...style, left: node.x, top: node.y }}
         className={`absolute rounded border-2 border-dashed border-slate-600/50 flex items-center justify-center text-[9px] text-slate-500 text-center px-1 ${ring}`}>
-        Drop {slot === 'father' ? 'a man (father)' : 'a woman (mother)'}
+        Click or drop to add {slot === 'father' ? 'a father' : 'a mother'}
       </div>
     );
   }
