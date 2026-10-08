@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import BulkSettlementFields from '@/components/map/BulkSettlementFields';
 import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
+import { populationSettlementLevel, useSettlementMechanics } from '@/components/map/settlementMechanics';
 
 export default function BulkSettlementEditor({ selected, visible, onSelectVisible, onClear, onApply, edbData }) {
   const [draft, setDraft] = useState({ type: '', level: '', population: '', tree: '', building: '', action: 'set' });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const proposed = selected.map(s => ({ ...s, ...(draft.type ? { castle: draft.type === 'castle' } : {}), ...(draft.level ? { level: draft.level } : {}) }));
+  const mechanics = useSettlementMechanics();
+  const proposed = selected.map(s => {
+    const next = { ...s, ...(draft.type ? { castle: draft.type === 'castle' } : {}), ...(draft.level && !mechanics ? { level: draft.level } : {}), ...(draft.population !== '' ? { population: Number(draft.population) } : {}) };
+    return { ...next, level: populationSettlementLevel(next.population, next.castle, mechanics) || next.level };
+  });
   const options = proposed.length ? availableSettlementBuildings(edbData, proposed[0]).filter(b => !b.building.startsWith('core_') && proposed.every(s => availableSettlementBuildings(edbData, s).some(other => other.name === b.name && other.building === b.building))) : [];
   const apply = () => {
     try {
       if (draft.population !== '' && (!Number.isInteger(Number(draft.population)) || Number(draft.population) < 0)) throw new Error('Population must be a non-negative whole number.');
       if (draft.tree && draft.action === 'set' && !options.some(b => b.building === draft.tree && b.name === draft.building)) throw new Error('Choose a building level available to every selected settlement.');
       const changes = proposed.map(s => {
-        let next = normalizeSettlement(s, edbData, !!(draft.type || draft.level));
-        if (draft.population !== '') next.population = Number(draft.population);
+        let next = normalizeSettlement(s, edbData, !!(draft.type || draft.level || draft.population !== '' || mechanics));
         if (draft.tree) next.buildings = draft.action === 'remove' ? next.buildings.filter(b => b.split(/\s+/)[0] !== draft.tree) : replaceSettlementBuilding(next.buildings, `${draft.tree} ${draft.building}`);
         return { id: s.id, edits: next };
       });

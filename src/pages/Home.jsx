@@ -14,6 +14,7 @@ import { setFile } from '@/lib/bigFileStore';
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
 import DataFolderPicker from '../components/home/DataFolderPicker';
+import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { DESCR_CLIMATES_KEY, AERIAL_RAW_KEY, MOD_CLIMATES_EVT } from '@/lib/modClimates';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
@@ -470,6 +471,7 @@ export default function Home() {
         continue;
       }
 
+      if (await loadSettlementMechanicsFile(file)) continue;
       const key = DATA_FILE_MAP[name];
       if (!key) continue;
 

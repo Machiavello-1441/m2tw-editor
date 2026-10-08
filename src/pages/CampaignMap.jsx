@@ -27,6 +27,7 @@ import { getFile, setFile } from '../lib/bigFileStore';
 import CampaignSelector from '@/components/map/CampaignSelector';
 import useCampaignSelection from '@/components/map/useCampaignSelection';
 import useSettlementChanges from '@/components/map/useSettlementChanges';
+import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
 import { getCharacterNamesRaw, getCharacterDisplayNames } from '@/lib/characterNames';
 
@@ -353,6 +354,7 @@ export default function CampaignMap() {
 
     for (const file of files) {
       const name = file.name.toLowerCase();
+      if (await loadSettlementMechanicsFile(file)) continue;
       if (TGA_MAP[name]) {
         const buf = await file.arrayBuffer();
         const result = await loadTGA(buf);

@@ -539,11 +539,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
               <SettlementTypeFields value={draft} edbData={edbData} onChange={value => { setDraft(value); setSelectedTree(''); }} />
               {saveError && <p role="alert" className="text-[11px] text-destructive">{saveError}</p>}
               <div className="grid grid-cols-2 gap-1.5">
-                <div>
-                  <span className="text-[9px] text-slate-500">Population</span>
-                  <input type="number" value={draft.population} onChange={(e) => setDraft((d) => ({ ...d, population: parseInt(e.target.value) || 0 }))}
-              className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
-                </div>
+
                 <div>
                   <span className="text-[9px] text-slate-500">Year Founded</span>
                   <input type="number" value={draft.yearFounded} onChange={(e) => setDraft((d) => ({ ...d, yearFounded: parseInt(e.target.value) || 0 }))}
