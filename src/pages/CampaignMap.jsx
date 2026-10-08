@@ -26,6 +26,7 @@ import { setLayer, getLayer, getAllLayers, hasAnyLayer } from '../lib/mapLayerSt
 import { getFile, setFile } from '../lib/bigFileStore';
 import CampaignSelector from '@/components/map/CampaignSelector';
 import useCampaignSelection from '@/components/map/useCampaignSelection';
+import useSettlementChanges from '@/components/map/useSettlementChanges';
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
 import { getCharacterNamesRaw, getCharacterDisplayNames } from '@/lib/characterNames';
 
@@ -148,6 +149,7 @@ export default function CampaignMap() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [visibleCategories, setVisibleCategories] = useState(new Set(['settlement', 'resource', 'character', 'fortification']));
   const [editedSettlements, setEditedSettlements] = useState({});
+  const updateSettlements = useSettlementChanges({ setEditedSettlements, setOverlayItems, setStratDataRaw, setSelectedItem, setOverlayDirty });
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
   const [regionWizard, setRegionWizard] = useState(null); // { draft, step: 'paint'|'city'|'port' }
   const [pendingRelocate, setPendingRelocate] = useState(null); // { type: 'city'|'port', regionInfo, settlement }
@@ -1586,22 +1588,8 @@ export default function CampaignMap() {
                   onNamesLoad={(text) => { try { sessionStorage.setItem('m2tw_names_raw', text); } catch {} setSettlementNamesRaw(parseSettlementNames(text)); }}
                   onFactionsLoad={(text) => { try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {} setFactionColorsRaw(parseDescrSmFactions(text)); }}
                   onRegionsDataUpdate={setRegionsDataRaw}
-                  onSettlementChange={(id, edits) => {
-                    setEditedSettlements(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...edits } }));
-                    setOverlayItems(prev => prev.map(i => i.id === id ? { ...i, ...edits } : i));
-                    setStratDataRaw(prev => prev ? { ...prev, items: (prev.items||[]).map(i => i.id === id ? { ...i, ...edits } : i) } : prev);
-                    setSelectedItem(prev => prev?.id === id ? { ...prev, ...edits } : prev);
-                    setOverlayDirty(true);
-                  }}
-                  onBulkSettlementChange={changes => {
-                    const byId = new Map(changes.map(({ id, edits }) => [id, edits]));
-                    const merge = item => byId.has(item.id) ? { ...item, ...byId.get(item.id) } : item;
-                    setEditedSettlements(prev => ({ ...prev, ...Object.fromEntries(changes.map(({ id, edits }) => [id, { ...(prev[id] || {}), ...edits }])) }));
-                    setOverlayItems(prev => prev.map(merge));
-                    setStratDataRaw(prev => prev ? { ...prev, items: (prev.items || []).map(merge) } : prev);
-                    setSelectedItem(prev => prev ? merge(prev) : prev);
-                    setOverlayDirty(true);
-                  }}
+                  onSettlementChange={(id, edits) => updateSettlements([{ id, edits }])}
+                  onBulkSettlementChange={updateSettlements}
                   overlayItems={overlayItems}
                   selectedItem={selectedItem}
                   onSaveItem={(item) => {

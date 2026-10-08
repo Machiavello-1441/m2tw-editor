@@ -73,6 +73,13 @@ function parseSettlementBlock(lines, startI, lineStartOverride) {
   let depth = 1;
   while (i < lines.length && depth > 0) {
     const line = cleanLine(lines[i]);
+    // Consume inline/open-on-keyword building braces as one complete block.
+    if (/^building\b/i.test(line)) {
+      const { buildings: blds, endIndex } = parseBuildingBlock(lines, line.includes('{') ? i : i + 1);
+      settlement.buildings.push(...blds);
+      i = endIndex + 1;
+      continue;
+    }
     // Braces counted per character so nested blocks opened on their own keyword
     // line ("building {") neither close nor escape this settlement block.
     const braceChange = braceDelta(line);
@@ -624,12 +631,19 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       }
     }
   }
-  // Apply comment-line insertions/removals in reverse line order
-  fortCommentChanges.sort((a, b) => b.lineNum - a.lineNum);
-  for (const change of fortCommentChanges) {
-    if (change.action === 'insert') lines.splice(change.lineNum, 0, change.text);
-    else if (change.action === 'remove') lines.splice(change.lineNum, 1);
+  // Settlement and fort-comment edits use ORIGINAL coordinates. Apply them
+  // together before faction/global insertions shift any of those coordinates.
+  for (const [id, edits] of Object.entries(editedSettlements)) {
+    const orig = stratData.items?.find(it => it.id == id && it.category === 'settlement');
+    if (!orig || orig.id < 0 || orig._lineStart === undefined) continue;
+    const indent = (lines[orig._lineStart] || '').match(/^(\s*)/)?.[1] || '';
+    replacements.push({ start: orig._lineStart, end: orig._lineEnd, newLines: generateSettlementBlock({ ...orig, ...edits }, indent) });
   }
+  for (const change of fortCommentChanges) {
+    replacements.push({ start: change.lineNum, end: change.action === 'insert' ? change.lineNum - 1 : change.lineNum, newLines: change.action === 'insert' ? [change.text] : [] });
+  }
+  replacements.sort((a, b) => b.start - a.start);
+  for (const { start, end, newLines } of replacements) lines.splice(start, end - start + 1, ...newLines);
 
   // ── Patch global campaign settings ──────────────────────────────────────
   const pl = (regex, newLine) => {
@@ -1045,22 +1059,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // Patch edited settlement blocks
-  for (const [id, edits] of Object.entries(editedSettlements)) {
-    const orig = stratData.items?.find(it => it.id == id && it.category === 'settlement');
-    if (!orig || orig._lineStart === undefined) continue;
-    const merged = { ...orig, ...edits };
-    const indentMatch = (lines[orig._lineStart] || '').match(/^(\s*)/);
-    const indent = indentMatch ? indentMatch[1] : '\t';
-    const newBlock = generateSettlementBlock(merged, indent);
-    replacements.push({ start: orig._lineStart, end: orig._lineEnd, newLines: newBlock });
-  }
-
-  replacements.sort((a, b) => b.start - a.start);
   const result = [...lines];
-  for (const { start, end, newLines } of replacements) {
-    result.splice(start, end - start + 1, ...newLines);
-  }
 
   // ── Tail cleanup ──────────────────────────────────────────────────────────
   // 1. Remove every "script" + filename pair wherever it sits (it must only

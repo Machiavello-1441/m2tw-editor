@@ -32,9 +32,12 @@ export function normalizeSettlement(settlement, edbData, prune = false) {
   const tier = SETTLEMENT_LEVELS.indexOf(next.level);
   if (tier > 0) {
     const tree = next.castle ? 'core_castle_building' : 'core_building';
-    const candidates = all.filter(b => b.building === tree && buildingAllowed(b, next));
-    candidates.sort((a, b) => SETTLEMENT_LEVELS.indexOf(b.settlementMin) - SETTLEMENT_LEVELS.indexOf(a.settlementMin));
-    const core = candidates[0]?.name || (!all.length ? (next.castle ? CASTLE_CORES : CITY_CORES)[tier - 1] : null);
+    const expected = (next.castle ? CASTLE_CORES : CITY_CORES)[tier - 1];
+    const candidates = all.filter(b => b.building === tree && buildingAllowed(b, next, true));
+    // Core buildings upgrade FROM settlement_min to the next settlement tier.
+    const core = candidates.find(b => b.name === expected)?.name
+      || candidates.find(b => b.settlementMin === SETTLEMENT_LEVELS[tier - 1])?.name
+      || (!all.length ? expected : null);
     if (!core) throw new Error(`No ${tree} is available for ${next.level} in the loaded EDB.`);
     buildings = [`${tree} ${core}`, ...buildings];
   }
