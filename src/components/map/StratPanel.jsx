@@ -31,7 +31,6 @@ import CampaignSearchSelect from '@/components/map/CampaignSearchSelect';
 import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
 import BulkSettlementEditor from '@/components/map/BulkSettlementEditor';
 import SettlementTypeFields from '@/components/map/SettlementTypeFields';
-import SettlementValidationView from '@/components/map/SettlementValidationView';
 import StratPanelTabs from '@/components/map/StratPanelTabs';
 import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
 
@@ -1624,7 +1623,6 @@ export default function StratPanel({
 
         }
 
-        {tab === 'validation' && <SettlementValidationView settlements={settlements} edbData={edbData} onApply={onBulkSettlementChange} />}
         {/* ── Settlements tab ── */}
         {tab === 'settlements' && <>
           <RegionColorDetector

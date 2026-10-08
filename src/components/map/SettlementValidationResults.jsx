@@ -16,7 +16,7 @@ export default function SettlementValidationResults({ reports, corrected }) {
           <td className="p-2 align-top font-mono">{settlement.population ?? 'Missing'}</td>
           <td className="p-2 align-top">{previous && previous.level !== settlement.level && <div className="text-muted-foreground">{label(previous.level)} →</div>}{label(settlement.level)}{expectedLevel && expectedLevel !== settlement.level && <div className="text-muted-foreground">Expected: {label(expectedLevel)}</div>}</td>
           <td className="p-2 align-top font-mono">{previous && JSON.stringify(previous.core) !== JSON.stringify(report.currentCore) && <div className="text-muted-foreground">{previous.core.join(', ') || 'Missing'} →</div>}{report.currentCore.join(', ') || (settlement.level === 'village' && !settlement.castle ? 'Not required' : 'Missing')}</td>
-          <td className={`p-2 align-top ${error ? 'text-destructive' : 'text-foreground'}`}>{error || waiting || (report.changed ? 'Correcting…' : previous ? 'Corrected' : 'Valid')}</td>
+          <td className={`p-2 align-top ${error ? 'text-destructive' : 'text-foreground'}`}>{error || waiting || (report.changed ? 'Correction proposed' : previous ? 'Corrected' : 'Valid')}</td>
         </tr>;
       })}</tbody>
     </table>
