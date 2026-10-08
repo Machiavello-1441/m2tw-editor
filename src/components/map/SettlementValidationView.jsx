@@ -28,7 +28,7 @@ export default function SettlementValidationView({ settlements, edbData, onApply
         <Button size="sm" disabled={!changes.length} onClick={apply}>Apply corrections ({changes.length})</Button>
       </div>
       {changes.length > 0 && unresolved > 0 && <p className="text-[10px] text-muted-foreground">Settlements with unresolved issues will not be changed.</p>}
-      <div className="max-h-96 overflow-y-auto"><SettlementValidationResults reports={reports} corrected={corrected} /></div>
+      {reports.some(report => report.changed || report.error || report.waiting) && <div className="max-h-96 overflow-y-auto"><SettlementValidationResults reports={reports} corrected={corrected} /></div>}
     </>}
     <SettlementCorrectionPreview open={previewOpen} onOpenChange={setPreviewOpen} changes={changes} unresolved={unresolved} onApply={apply} />
   </section>;

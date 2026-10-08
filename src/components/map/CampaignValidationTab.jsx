@@ -8,11 +8,11 @@ export default function CampaignValidationTab({ layers, overlayProps, settlement
     <div className="p-3 border-b border-slate-800 bg-slate-900/40">
       <OverlayMapGenerator {...overlayProps} />
     </div>
-    <div className="p-3 border-b border-border">
-      <SettlementValidationView settlements={settlements} edbData={edbData} onApply={onApply} />
-    </div>
     <div className="min-h-80">
       <MapValidationPanel layers={layers} onJumpTo={onJumpTo} />
+    </div>
+    <div className="p-3 border-b border-border">
+      <SettlementValidationView settlements={settlements} edbData={edbData} onApply={onApply} />
     </div>
   </div>;
 }
