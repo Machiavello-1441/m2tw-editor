@@ -29,6 +29,9 @@ import CampaignEventsTab from './CampaignEventsTab';
 import CampaignDescriptionsStrings from './CampaignDescriptionsStrings';
 import CampaignSearchSelect from '@/components/map/CampaignSearchSelect';
 import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
+import BulkSettlementEditor from '@/components/map/BulkSettlementEditor';
+import SettlementTypeFields from '@/components/map/SettlementTypeFields';
+import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
 
 // Ensure Windows line endings (CRLF) for all exported .txt files
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
@@ -306,6 +309,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   const [selectedTree, setSelectedTree] = useState('');
   const [showAllBuildings, setShowAllBuildings] = useState(false);
   const [relocating, setRelocating] = useState(null); // null | 'city' | 'port'
+  const [saveError, setSaveError] = useState('');
 
 
   // Auto-expand when selected from map click
@@ -321,7 +325,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     return regionsData.find((r) => r.regionName === item.region);
   }, [regionsData, item.region]);
 
-  const buildingLevels = useMemo(() => extractBuildingLevelsFromEDB(edbData), [edbData]);
+  const buildingLevels = useMemo(() => availableSettlementBuildings(edbData, draft, showAllBuildings), [edbData, draft.level, draft.castle, showAllBuildings]);
   const hiddenResourceMasterList = useMemo(() => extractHiddenResourcesFromEDB(edbData), [edbData]);
 
   // Compute which resource overlay items sit on this region's territory via pixel lookup
@@ -359,35 +363,8 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [buildingLevels]);
 
-  // Index of a settlement level in the canonical progression (village→huge_city).
-  // Returns -1 for unknown values so they are treated as the lowest tier.
-  const settlementLevelIndex = (lvl) => SETTLEMENT_LEVELS.indexOf(lvl);
-
-  // Building trees that have at least one level available at the current
-  // settlement tier (or all trees when showAllBuildings is on).
-  const availableTrees = useMemo(() => {
-    if (showAllBuildings) return buildingTrees;
-    const maxIdx = settlementLevelIndex(draft.level);
-    return buildingTrees.filter(([, levels]) =>
-      levels.some(bl => {
-        const reqIdx = settlementLevelIndex(bl.settlementMin);
-        return reqIdx === -1 || reqIdx <= maxIdx;
-      })
-    );
-  }, [buildingTrees, draft.level, showAllBuildings]);
-
-  // Levels for the selected tree, filtered by settlement tier.
-  const treeLevels = useMemo(() => {
-    if (!selectedTree) return [];
-    const entry = buildingTrees.find(([t]) => t === selectedTree);
-    if (!entry) return [];
-    if (showAllBuildings) return entry[1];
-    const maxIdx = settlementLevelIndex(draft.level);
-    return entry[1].filter(bl => {
-      const reqIdx = settlementLevelIndex(bl.settlementMin);
-      return reqIdx === -1 || reqIdx <= maxIdx;
-    });
-  }, [buildingTrees, selectedTree, draft.level, showAllBuildings]);
+  const availableTrees = buildingTrees;
+  const treeLevels = buildingTrees.find(([tree]) => tree === selectedTree)?.[1] || [];
 
   // Build faction list from factionColors (descr_sm_factions.txt)
   const factionList = useMemo(() => {
@@ -398,6 +375,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   const open = () => {
     setDraft({
       level: item.level,
+      castle: !!item.castle,
       population: item.population,
       yearFounded: item.yearFounded,
       planSet: item.planSet,
@@ -424,8 +402,10 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
   };
 
   const commit = () => {
-    // Save settlement/strat edits
-    onChange(item.id, draft);
+    let edits;
+    try { edits = normalizeSettlement(draft, edbData); setSaveError(''); }
+    catch (e) { setSaveError(e.message); return; }
+    onChange(item.id, edits);
     // Propagate display name edits back to settlementNames
     if (onSettlementNamesChange) {
       const nameUpdates = {};
@@ -556,10 +536,8 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                 </div>
               </div>
 
-              <select value={draft.level} onChange={(e) => setDraft((d) => ({ ...d, level: e.target.value }))}
-          className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                {SETTLEMENT_LEVELS.map((l) => <option key={l}>{l}</option>)}
-              </select>
+              <SettlementTypeFields value={draft} edbData={edbData} onChange={value => { setDraft(value); setSelectedTree(''); }} />
+              {saveError && <p role="alert" className="text-[11px] text-destructive">{saveError}</p>}
               <div className="grid grid-cols-2 gap-1.5">
                 <div>
                   <span className="text-[9px] text-slate-500">Population</span>
@@ -667,7 +645,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                             className="leading-none text-slate-600 hover:text-slate-300 disabled:opacity-20 disabled:cursor-default">▼</button>
                         </div>
                         <span className="text-slate-300 font-mono flex-1 truncate" title={b}>{b}</span>
-                        <button onClick={() => setDraft(d => ({ ...d, buildings: d.buildings.filter((_, j) => j !== idx) }))}
+                        <button disabled={/^core_(?:castle_)?building\s/.test(b)} title="Core buildings follow the settlement level" onClick={() => setDraft(d => ({ ...d, buildings: d.buildings.filter((_, j) => j !== idx) }))}
                           className="text-slate-600 hover:text-red-400 shrink-0"><X className="w-2.5 h-2.5" /></button>
                       </div>
                     ))}
@@ -680,7 +658,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                     const fullName = `${selectedTree} ${level}`;
                     // Only add if not already present
                     if (!draft.buildings.includes(fullName)) {
-                      setDraft(d => ({ ...d, buildings: [...d.buildings, fullName] }));
+                      setDraft(d => ({ ...d, buildings: replaceSettlementBuilding(d.buildings, fullName) }));
                     }
                     setSelectedTree('');
                   }}
@@ -859,7 +837,7 @@ export default function StratPanel({
   onSettlementNamesChange,
   overlayItems, selectedItem, onSelectItem, onSaveItem,
   visibleCategories, onToggleCategory,
-  onDeleteItem, onAddItem, onSettlementChange,
+  onDeleteItem, onAddItem, onSettlementChange, onBulkSettlementChange,
   onReorderSettlements,
   cultureList, edbData, regionsLayer,
   onRecolorRegion, onAddNewRegion,
@@ -885,6 +863,8 @@ export default function StratPanel({
   // Faction settlement lists are collapsed by default for readability.
   // A faction is added to this Set when the user expands it.
   const [expandedFactions, setExpandedFactions] = useState(() => new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkIds, setBulkIds] = useState(() => new Set());
   const [showNewRegion, setShowNewRegion] = useState(false);
   const [newRegionSeedColor, setNewRegionSeedColor] = useState(null);
   const [exportIssues, setExportIssues] = useState(null);
@@ -1681,6 +1661,7 @@ export default function StratPanel({
           <div className="flex gap-1.5 sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm py-1.5 -mx-2 px-2 border-b border-slate-800/60">
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search region or faction…"
             className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
+            <button type="button" onClick={() => { setBulkMode(v => !v); setBulkIds(new Set()); }} className="shrink-0 rounded border border-border px-2 text-[10px] text-foreground">{bulkMode ? 'Done bulk editing' : 'Bulk edit'}</button>
             <button onClick={() => setShowNewRegion((v) => !v)}
             className={`flex items-center gap-0.5 px-2 h-6 rounded text-[10px] border transition-colors shrink-0 ${showNewRegion ? 'bg-green-600/20 border-green-500/40 text-green-400' : 'border-slate-600/40 text-slate-400 hover:text-slate-200'}`}>
               <Plus className="w-3 h-3" /> Region
@@ -1707,6 +1688,9 @@ export default function StratPanel({
             }} />
 
           }
+          {bulkMode && <BulkSettlementEditor selected={settlements.filter(s => bulkIds.has(s.id))} visible={filteredSettlements} edbData={edbData}
+            onSelectVisible={() => { setBulkIds(new Set(filteredSettlements.map(s => s.id))); setExpandedFactions(new Set(byFaction.map(([f]) => f))); }}
+            onClear={() => setBulkIds(new Set())} onApply={onBulkSettlementChange} />}
           {settlements.length === 0 ?
           <div className="text-[10px] text-slate-600 text-center py-4">Load descr_strat.txt to see settlements</div> :
           <DragDropContext onDragEnd={(result) => {
@@ -1746,6 +1730,7 @@ export default function StratPanel({
                                   <div {...drag.dragHandleProps} className="shrink-0 cursor-grab text-slate-700 hover:text-slate-400 px-0.5">
                                     <GripVertical className="w-3 h-3" />
                                   </div>
+                                  {bulkMode && <input type="checkbox" aria-label={`Select ${s.region}`} checked={bulkIds.has(s.id)} onChange={() => setBulkIds(prev => { const next = new Set(prev); next.has(s.id) ? next.delete(s.id) : next.add(s.id); return next; })} />}
                                   {idx === 0 && <span className="text-[8px] text-amber-500 shrink-0" title="Capital">★</span>}
                                   <div className="flex-1 min-w-0">
                                     <SettlementRow

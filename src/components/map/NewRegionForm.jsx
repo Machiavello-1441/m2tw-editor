@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, X, Check, Search, Copy } from 'lucide-react';
-import { extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from './additionalParsers';
+import { extractHiddenResourcesFromEDB } from './additionalParsers';
 import ReligionsEditor from './ReligionsEditor';
+import SettlementTypeFields from '@/components/map/SettlementTypeFields';
+import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
 
-const SETTLEMENT_LEVELS = ['village', 'town', 'large_town', 'city', 'large_city', 'huge_city'];
 
 // ─── Searchable dropdown ──────────────────────────────────────────────────────
 function SearchableSelect({ value, onChange, options, placeholder, emptyMsg }) {
@@ -186,7 +187,8 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
   const edbHiddenRes = useMemo(() => hiddenResourceList?.length ? hiddenResourceList : extractHiddenResourcesFromEDB(edbData), [hiddenResourceList, edbData]);
 
   // Building trees from EDB
-  const buildingLevels = useMemo(() => extractBuildingLevelsFromEDB(edbData), [edbData]);
+  const buildingLevels = useMemo(() => availableSettlementBuildings(edbData, draft), [edbData, draft.castle, draft.level]);
+  const [saveError, setSaveError] = useState('');
   const buildingTrees = useMemo(() => {
     const map = {};
     for (const bl of buildingLevels) {
@@ -236,6 +238,7 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
       faction: settlement.faction || d.faction || '',
       factionCreator: region.factionCreator || settlement.factionCreator || d.factionCreator || '',
       rebelFaction: region.rebelFaction || d.rebelFaction || '',
+      castle: !!settlement.castle,
       level: settlement.level || d.level || 'village',
       population: settlement.population ?? d.population ?? 400,
       buildings: [...(settlement.buildings || [])],
@@ -250,7 +253,8 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onAdd(draft);
+    try { onAdd(normalizeSettlement(draft, edbData, true)); setSaveError(''); }
+    catch (e) { setSaveError(e.message); }
   };
 
   return (
@@ -375,22 +379,8 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
         )}
       </div>
 
-      {/* Castle + Level */}
-      <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <input type="checkbox" checked={draft.castle}
-            onChange={e => setDraft(d => ({ ...d, castle: e.target.checked }))}
-            className="w-3 h-3 accent-amber-500" />
-          <span className="text-[10px] text-slate-300 font-semibold">Castle settlement</span>
-        </label>
-      </div>
-      <div>
-        <span className="text-[9px] text-slate-500">Settlement Level</span>
-        <select value={draft.level} onChange={e => setDraft(d => ({ ...d, level: e.target.value }))}
-          className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-          {SETTLEMENT_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-        </select>
-      </div>
+      <SettlementTypeFields value={draft} edbData={edbData} onChange={value => { setDraft(value); setSelectedTree(''); }} />
+      {saveError && <p role="alert" className="text-[11px] text-destructive">{saveError}</p>}
 
       <div className="grid grid-cols-2 gap-1.5">
         <div>
@@ -415,7 +405,7 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
             {draft.buildings.map(b => (
               <span key={b} className="flex items-center gap-0.5 px-1 py-0.5 bg-slate-800/60 rounded text-[9px] text-slate-300 font-mono">
                 {b}
-                <button type="button" onClick={() => setDraft(d => ({ ...d, buildings: d.buildings.filter(x => x !== b) }))}
+                <button type="button" disabled={/^core_(?:castle_)?building\s/.test(b)} title="Core buildings follow the settlement level" onClick={() => setDraft(d => ({ ...d, buildings: d.buildings.filter(x => x !== b) }))}
                   className="text-slate-600 hover:text-red-400"><X className="w-2 h-2" /></button>
               </span>
             ))}
@@ -434,7 +424,7 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
                 // Store as "treeName levelName" so serializer outputs "type tree level"
                 const fullName = selectedTree ? `${selectedTree} ${val}` : val;
                 if (!draft.buildings.includes(fullName)) {
-                  setDraft(d => ({ ...d, buildings: [...d.buildings, fullName] }));
+                  setDraft(d => ({ ...d, buildings: replaceSettlementBuilding(d.buildings, fullName) }));
                 }
                 setSelectedTree('');
               }

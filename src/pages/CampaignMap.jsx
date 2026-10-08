@@ -1590,6 +1590,16 @@ export default function CampaignMap() {
                     setEditedSettlements(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...edits } }));
                     setOverlayItems(prev => prev.map(i => i.id === id ? { ...i, ...edits } : i));
                     setStratDataRaw(prev => prev ? { ...prev, items: (prev.items||[]).map(i => i.id === id ? { ...i, ...edits } : i) } : prev);
+                    setSelectedItem(prev => prev?.id === id ? { ...prev, ...edits } : prev);
+                    setOverlayDirty(true);
+                  }}
+                  onBulkSettlementChange={changes => {
+                    const byId = new Map(changes.map(({ id, edits }) => [id, edits]));
+                    const merge = item => byId.has(item.id) ? { ...item, ...byId.get(item.id) } : item;
+                    setEditedSettlements(prev => ({ ...prev, ...Object.fromEntries(changes.map(({ id, edits }) => [id, { ...(prev[id] || {}), ...edits }])) }));
+                    setOverlayItems(prev => prev.map(merge));
+                    setStratDataRaw(prev => prev ? { ...prev, items: (prev.items || []).map(merge) } : prev);
+                    setSelectedItem(prev => prev ? merge(prev) : prev);
                     setOverlayDirty(true);
                   }}
                   overlayItems={overlayItems}

@@ -191,23 +191,23 @@ export function extractBuildingLevelsFromEDB(edbDataOrArray) {
   if (!Array.isArray(buildingsArr)) return [];
   const levels = [];
   const seen = new Set();
-  const push = (name, building, settlementMin) => {
+  const push = (name, building, settlementMin, settlementType) => {
     const key = `${building}\u0000${name}`;
     if (seen.has(key)) return;
     seen.add(key);
-    levels.push({ name, building, settlementMin: settlementMin || 'village' });
+    levels.push({ name, building, settlementMin: settlementMin || 'village', settlementType: settlementType || null });
   };
   const walk = (building) => {
     if (!Array.isArray(building.levels)) return;
     // First pass: register each level with its own settlementMin
     for (const lvl of building.levels) {
-      if (lvl.name) push(lvl.name, building.name || '', lvl.settlementMin);
+      if (lvl.name) push(lvl.name, building.name || '', lvl.settlementMin, lvl.settlementType);
     }
     // Second pass: register upgrade targets (only fills names not already seen)
     for (const lvl of building.levels) {
       if (Array.isArray(lvl.upgrades)) lvl.upgrades.forEach(u => {
         const name = typeof u === 'string' ? u : u?.name;
-        if (name) push(name, building.name || '', lvl.settlementMin);
+        if (name) push(name, building.name || '', lvl.settlementMin, building.levels.find(level => level.name === name)?.settlementType ?? lvl.settlementType);
       });
     }
   };
