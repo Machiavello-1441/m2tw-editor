@@ -2,6 +2,7 @@ import React from 'react';
 import MapValidationPanel from '@/components/map/MapValidationPanel';
 import OverlayMapGenerator from '@/components/map/OverlayMapGenerator';
 import SettlementValidationView from '@/components/map/SettlementValidationView';
+import BuildingRequirementValidation from '@/components/edb/BuildingRequirementValidation';
 
 export default function CampaignValidationTab({ layers, overlayProps, settlements, edbData, onApply, onJumpTo }) {
   return <div className="h-full overflow-y-auto">
@@ -13,6 +14,9 @@ export default function CampaignValidationTab({ layers, overlayProps, settlement
     </div>
     <div className="p-3 border-b border-border">
       <SettlementValidationView settlements={settlements} edbData={edbData} onApply={onApply} />
+    </div>
+    <div className="p-3">
+      <BuildingRequirementValidation edbData={edbData} />
     </div>
   </div>;
 }

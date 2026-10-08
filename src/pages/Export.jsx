@@ -16,6 +16,7 @@ import { getAllLayers } from '@/lib/mapLayerStore';
 import { runExportValidation } from '../components/export/exportValidation';
 import ExportValidationDialog from '../components/export/ExportValidationDialog';
 import ValidationDashboard from '../components/export/ValidationDashboard';
+import BuildingRequirementValidation from '@/components/edb/BuildingRequirementValidation';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 import CampaignPackagePicker from '../components/export/CampaignPackagePicker';
 import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
@@ -406,6 +407,7 @@ export default function Export() {
           </Card>
 
           <ValidationDashboard edbData={edbData} />
+          <BuildingRequirementValidation edbData={edbData} />
           <TriggerValidationPanel />
 
           {/* OpenTWEMP Integration */}

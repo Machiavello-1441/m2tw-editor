@@ -9,6 +9,7 @@
  */
 import { validateMod } from './ModValidator';
 import { validateLayers } from '../map/mapValidator';
+import buildingRequirementValidation from '@/components/edb/buildingRequirementValidation';
 
 export function runExportValidation({ edbData, layers }) {
   const errors = [];
@@ -19,6 +20,7 @@ export function runExportValidation({ edbData, layers }) {
     const { errors: edbErrors, warnings: edbWarnings } = validateMod(edbData);
     edbErrors.forEach(add);
     edbWarnings.forEach(add);
+    buildingRequirementValidation(edbData).issues.forEach(add);
   }
 
   const hasPixelData = layers && Object.values(layers).some((l) => l?.data);

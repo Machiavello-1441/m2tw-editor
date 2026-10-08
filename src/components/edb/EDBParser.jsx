@@ -39,7 +39,7 @@ export const HIDDEN_RESOURCES_DEFAULT = [
   'horde_target', 'no_pirates', 'no_brigands'
 ];
 
-function parseRequirements(reqStr) {
+export function parseRequirements(reqStr) {
   // Parse requirement string like:
   // "factions { england, scotland, }  and event_counter gunpowder_discovered 1"
   if (!reqStr || !reqStr.trim()) return [];
