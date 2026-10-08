@@ -31,6 +31,8 @@ import CampaignSearchSelect from '@/components/map/CampaignSearchSelect';
 import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
 import BulkSettlementEditor from '@/components/map/BulkSettlementEditor';
 import SettlementTypeFields from '@/components/map/SettlementTypeFields';
+import SettlementValidationView from '@/components/map/SettlementValidationView';
+import StratPanelTabs from '@/components/map/StratPanelTabs';
 import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
 
 // Ensure Windows line endings (CRLF) for all exported .txt files
@@ -1228,15 +1230,7 @@ export default function StratPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Sub-tabs */}
-      <div className="flex border-b border-slate-800 shrink-0 flex-wrap">
-        {[['overview', 'Overview'], ['settlements', 'Settlements'], ['factions', 'Factions'], ['characters', 'Characters']].map(([id, label]) =>
-        <button key={id} onClick={() => setTab(id)}
-        className={`flex-1 py-1.5 text-[9px] font-semibold border-b-2 transition-colors ${tab === id ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
-            {label}
-          </button>
-        )}
-      </div>
+      <StratPanelTabs tab={tab} onChange={setTab} />
 
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
 
@@ -1630,6 +1624,7 @@ export default function StratPanel({
 
         }
 
+        {tab === 'validation' && <SettlementValidationView settlements={settlements} edbData={edbData} onApply={onBulkSettlementChange} />}
         {/* ── Settlements tab ── */}
         {tab === 'settlements' && <>
           <RegionColorDetector
