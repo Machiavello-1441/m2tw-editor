@@ -18,6 +18,8 @@ import ExportValidationDialog from '../components/export/ExportValidationDialog'
 import ValidationDashboard from '../components/export/ValidationDashboard';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 import CampaignPackagePicker from '../components/export/CampaignPackagePicker';
+import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
+import { getCharacterNamesRaw } from '@/lib/characterNames';
 
 function getCampaigns() {
   try { const s = localStorage.getItem('m2tw_campaigns'); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -211,6 +213,7 @@ export default function Export() {
       zip.file(`${modName}/${relPath}`, new Uint8Array(buf));
     }
 
+    addCharacterNamesToZip(dataFolder);
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -260,6 +263,7 @@ export default function Export() {
     setExportingTwemp(false);
   };
 
+  const hasCharacterNames = !!getCharacterNamesRaw();
   const hasEDB = !!edbData;
   const hasText = textData && Object.keys(textData).length > 0;
   const hasGuilds = !!(guildData?.guilds?.length || guildData?.triggers?.length);
@@ -424,7 +428,7 @@ export default function Export() {
           <Button
             className="w-full h-12 text-base gap-2"
             onClick={startExportZip}
-            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && extraFiles.size === 0)}
+            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && extraFiles.size === 0)}
           >
             {building ? (
               <>
@@ -446,7 +450,7 @@ export default function Export() {
             </div>
           )}
 
-          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && extraFiles.size === 0 && (
+          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && extraFiles.size === 0 && (
             <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
               <AlertCircle className="w-3.5 h-3.5" />
               Load at least one moddable file to enable export.

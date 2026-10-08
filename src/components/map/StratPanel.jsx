@@ -28,6 +28,7 @@ import DisastersTab from './DisastersTab';
 import CampaignEventsTab from './CampaignEventsTab';
 import CampaignDescriptionsStrings from './CampaignDescriptionsStrings';
 import CampaignSearchSelect from '@/components/map/CampaignSearchSelect';
+import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
 
 // Ensure Windows line endings (CRLF) for all exported .txt files
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
@@ -1077,6 +1078,7 @@ export default function StratPanel({
     const zip = new JSZip();
     const campaignName = stratData?.campaignName || 'imperial_campaign';
     const basePath = `data/world/maps/campaign/custom/${campaignName}`;
+    addCharacterNamesToZip(zip.folder('data'), descrNames, namesDisplayMap);
 
     // export_descr_buildings.txt — carries hidden_resources that were added
     // from the region form, plus any other EDB edits

@@ -27,6 +27,7 @@ import { getFile, setFile } from '../lib/bigFileStore';
 import CampaignSelector from '@/components/map/CampaignSelector';
 import useCampaignSelection from '@/components/map/useCampaignSelection';
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
+import { getCharacterNamesRaw, getCharacterDisplayNames } from '@/lib/characterNames';
 
 const INITIAL_PAINT = {
   active: false,
@@ -173,12 +174,21 @@ export default function CampaignMap() {
   const [cultures, setCultures] = useState(() => { try { const r = sessionStorage.getItem('m2tw_cultures_raw'); return r ? parseDescrCultures(r) : []; } catch { return []; } });
 
   // ── Character creation data sources ──────────────────────────────────────
-  const [descrNames, setDescrNames] = useState(() => { try { const r = sessionStorage.getItem('m2tw_descr_names_raw'); return r ? parseDescrNames(r) : null; } catch { return null; } });
+  const [descrNames, setDescrNames] = useState(() => { try { const r = getCharacterNamesRaw(); return r ? parseDescrNames(r) : null; } catch { return null; } });
   const [traitsList, setTraitsList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_traits_raw'); return r ? parseExportDescrTraits(r) : []; } catch { return []; } });
   const [ancillariesList, setAncillariesList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_ancillaries_raw'); return r ? parseExportDescrAncillaries(r) : []; } catch { return []; } });
   const [eduUnits, setEduUnits] = useState(() => { try { const r = sessionStorage.getItem('m2tw_edu_raw'); return r ? parseEDU(r) : []; } catch { return []; } });
   // namesDisplayMap: decoded from names.txt.strings.bin (separate from region settlement names)
-  const [namesDisplayMap, setNamesDisplayMap] = useState(() => { try { const r = sessionStorage.getItem('m2tw_char_names_display'); return r ? JSON.parse(r) : {}; } catch { return {}; } });
+  const [namesDisplayMap, setNamesDisplayMap] = useState(() => { try { return getCharacterDisplayNames(); } catch { return {}; } });
+
+  useEffect(() => {
+    const onNames = e => {
+      if (e.detail?.raw) setDescrNames(parseDescrNames(e.detail.raw));
+      if (e.detail?.namesDisplayMap) setNamesDisplayMap(e.detail.namesDisplayMap);
+    };
+    window.addEventListener('load-character-names', onNames);
+    return () => window.removeEventListener('load-character-names', onNames);
+  }, []);
 
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
