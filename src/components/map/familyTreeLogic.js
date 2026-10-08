@@ -6,6 +6,8 @@
 // - checks: father is a man, wife a woman, one set of parents per child,
 //   nobody is their own ancestor, parents at least ~14 years older.
 
+import familyCharacterAge, { familyAgeDescription } from '@/components/map/familyCharacterAge';
+
 export const fullName = (c) => (c ? [c.name, c.surname].filter(Boolean).join(' ') : '');
 
 // A tree (root couple + nested spouses/children) -> list of relative lines.
@@ -66,9 +68,12 @@ export function relativeProblems(rels, chars) {
       if (parentOf[k]) errors.push(`${k} has two sets of parents (${parentOf[k]} and ${father})`);
       parentOf[k] = father;
       for (const p of [father, wife]) {
-        const pa = look(p)?.age, ka = look(k)?.age;
-        if (p && pa != null && ka != null && pa - ka < 14) {
-          warnings.push(`${p} (${pa}) is only ${pa - ka} years older than the child ${k} (${ka})`);
+        const parent = look(p), child = look(k);
+        if (p && parent?.age != null && child?.age != null) {
+          const pa = familyCharacterAge(parent), ka = familyCharacterAge(child);
+          if (pa - ka < 14) {
+            warnings.push(`${p} (${familyAgeDescription(parent)}) is only ${pa - ka} years older than the child ${k} (${familyAgeDescription(child)})`);
+          }
         }
       }
     }

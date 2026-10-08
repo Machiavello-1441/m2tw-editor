@@ -3,6 +3,7 @@ import { Plus, Trash2, Users, AlertTriangle, X, ChevronDown, ChevronRight } from
 import { treeToRelatives, orderRelatives, relativeProblems } from './familyTreeLogic';
 import FamilyTreeProblems from './FamilyTreeProblems';
 import FamilyGraphView from './FamilyGraphView';
+import familyCharacterAge, { syncFamilyTreeAges } from '@/components/map/familyCharacterAge';
 
 const MIN_PARENT_CHILD_AGE_DIFF = 16;
 const MAX_CHILDREN = 4;
@@ -27,6 +28,7 @@ function buildAllChars(stratData) {
           faction: faction.name,
           charType: 'family',
           status: rec.status,
+          deadYears: rec.deadYears ?? 0,
           traits: [],
           ancillaries: [],
           army: [],
@@ -124,7 +126,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
   const spouse = spouses?.[char.id];
   const myChildren = children?.[char.id] || [];
   const canAddChild = myChildren.length < MAX_CHILDREN;
-  const ageLimit = Math.max(0, (char.age || 0) - MIN_PARENT_CHILD_AGE_DIFF);
+  const ageLimit = Math.max(0, familyCharacterAge(char) - MIN_PARENT_CHILD_AGE_DIFF);
   const opposSex = char.sex === 'male' ? 'female' : 'male';
 
   // Exclude characters who are parents in this tree from being spouses of their own children
@@ -135,8 +137,8 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
   const eligibleChildren = useMemo(() =>
     allChars.filter(c =>
       c.faction === faction &&
-      (c.age || 0) >= 0 &&
-      (c.age || 0) <= ageLimit &&
+      familyCharacterAge(c) >= 0 &&
+      familyCharacterAge(c) <= ageLimit &&
       c.id !== char.id &&
       !myChildren.find(mc => mc.id === c.id) &&
       !(spouse && c.id === spouse.id) &&
@@ -297,14 +299,14 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTre
   };
 
   const eligibleChildren = useMemo(() => {
-    const fatherAge = father?.age || 0;
-    const motherAge = mother?.age || 0;
+    const fatherAge = familyCharacterAge(father);
+    const motherAge = familyCharacterAge(mother);
     const parentAge = (father && mother) ? Math.min(fatherAge, motherAge) : (fatherAge || motherAge);
     const maxChildAge = Math.max(0, parentAge - MIN_PARENT_CHILD_AGE_DIFF);
     return allChars.filter(c =>
       c.faction === faction &&
-      (c.age || 0) >= 0 &&
-      (c.age || 0) <= maxChildAge &&
+      familyCharacterAge(c) >= 0 &&
+      familyCharacterAge(c) <= maxChildAge &&
       !(children || []).find(x => x.id === c.id) &&
       c.id !== father?.id && c.id !== mother?.id &&
       !usedChildIds.has(c.id)
@@ -417,7 +419,10 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
   const maleChars = useMemo(() => factionChars.filter(c => c.sex === 'male'), [factionChars]);
   const femaleChars = useMemo(() => factionChars.filter(c => c.sex === 'female'), [factionChars]);
 
-  const factionTrees = trees[activeFaction] || [];
+  const factionTrees = useMemo(
+    () => syncFamilyTreeAges(trees[activeFaction] || [], factionChars),
+    [trees, activeFaction, factionChars]
+  );
 
   const problems = useMemo(
     () => relativeProblems(orderRelatives(factionTrees.flatMap(treeToRelatives)), factionChars),

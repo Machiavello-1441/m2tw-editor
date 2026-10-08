@@ -1,5 +1,6 @@
 // Pure edit operations for the visual family tree. Each returns { trees } or { error }.
 import { treeToRelatives, orderRelatives, relativeProblems } from './familyTreeLogic';
+import familyCharacterAge from '@/components/map/familyCharacterAge';
 
 export const MAX_CHILDREN = 4;
 export const MIN_AGE_DIFF = 14;
@@ -33,8 +34,8 @@ export function addChild(trees, chars, target, child) {
   if (!parents.length) return { error: 'Give this couple a parent first' };
   if (parents.some((p) => p.id === child.id)) return { error: 'Nobody can be their own child' };
   if (child.faction !== parents[0].faction) return { error: 'Child must be of the same faction' };
-  const minAge = Math.min(...parents.map((p) => p.age || 0));
-  if (minAge - (child.age || 0) < MIN_AGE_DIFF) {
+  const minAge = Math.min(...parents.map(familyCharacterAge));
+  if (minAge - familyCharacterAge(child) < MIN_AGE_DIFF) {
     return { error: `${child.name} is too old — parents must be ${MIN_AGE_DIFF}+ years older` };
   }
   // Carry the child's own spouse/descendants along when moving between trees.
