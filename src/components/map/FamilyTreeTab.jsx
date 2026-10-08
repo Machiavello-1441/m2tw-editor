@@ -4,9 +4,9 @@ import { treeToRelatives, orderRelatives, relativeProblems } from './familyTreeL
 import FamilyTreeProblems from './FamilyTreeProblems';
 import FamilyVisualEditor from '@/components/map/FamilyVisualEditor';
 import familyCharacterAge, { syncFamilyTreeAges } from '@/components/map/familyCharacterAge';
-
-const MIN_PARENT_CHILD_AGE_DIFF = 16;
-const MAX_CHILDREN = 4;
+import useFamilyRules from '@/components/map/useFamilyRules';
+import familyRuleValidation from '@/components/map/familyRuleValidation';
+import FamilyRulesStatus from '@/components/map/FamilyRulesStatus';
 
 // Build a flat list of all characters including character_record entries
 function buildAllChars(stratData) {
@@ -19,6 +19,7 @@ function buildAllChars(stratData) {
       const nameKey = `${faction.name}:${[rec.name, rec.surname].filter(Boolean).join(' ').toLowerCase()}`;
       if (!charNames.has(nameKey)) {
         chars.push({
+          ...rec,
           id: `rec_${faction.name}_${rec._lineNum ?? index}`,
           category: 'character',
           name: rec.name,
@@ -120,7 +121,9 @@ function CharacterDragCard({ onDrop, slot, assigned, onClear, allChars }) {
   );
 }
 
-function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild, onRemoveChild, spouses, children, faction, usedChildIds }) {
+function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild, onRemoveChild, spouses, children, faction, usedChildIds, limits }) {
+  const MAX_CHILDREN = limits?.max_number_of_children ?? 4;
+  const MIN_PARENT_CHILD_AGE_DIFF = limits?.parent_to_child_min_age_diff ?? 16;
   const [expanded, setExpanded] = useState(true);
   const [showAddChild, setShowAddChild] = useState(false);
   const spouse = spouses?.[char.id];
@@ -197,7 +200,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
               spouses={spouses}
               children={children}
               faction={faction}
-              usedChildIds={usedChildIds}
+              usedChildIds={usedChildIds} limits={limits}
             />
           ))}
 
@@ -226,7 +229,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
           ) : (
             <div className="flex items-center gap-1 text-[9px] text-amber-500">
               <AlertTriangle className="w-3 h-3" />
-              Max {MAX_CHILDREN} children (5th requires EOP/MEX mod)
+              Max {MAX_CHILDREN} children per couple
             </div>
           )}
         </div>
@@ -235,7 +238,9 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
   );
 }
 
-function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTrees }) {
+function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTrees, limits }) {
+  const MAX_CHILDREN = limits?.max_number_of_children ?? 4;
+  const MIN_PARENT_CHILD_AGE_DIFF = limits?.parent_to_child_min_age_diff ?? 16;
   const treeId = tree.id;
   const father = tree.father;
   const mother = tree.mother;
@@ -347,7 +352,7 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTre
             spouses={spouses || {}}
             children={nestedChildrenMap}
             faction={faction}
-            usedChildIds={usedChildIds}
+            usedChildIds={usedChildIds} limits={limits}
           />
         ))}
 
@@ -380,7 +385,7 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTre
         ) : (
           <div className="flex items-center gap-1 text-[9px] text-amber-500 mt-1">
             <AlertTriangle className="w-3 h-3" />
-            Max {MAX_CHILDREN} children — 5th requires EOP or MEX mod
+            Max {MAX_CHILDREN} children per couple
           </div>
         )}
       </div>
@@ -388,7 +393,8 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTre
   );
 }
 
-export default function FamilyTreeTab({ stratData, trees, onTreesChange, initialized, onInitialized }) {
+export default function FamilyTreeTab({ stratData, trees, onTreesChange, initialized, onInitialized, renderCharacterDetails }) {
+  const rules = useFamilyRules();
   const [factionFilter, setFactionFilter] = useState('');
   const [view, setView] = useState('visual');
 
@@ -424,14 +430,17 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
     [trees, activeFaction, factionChars]
   );
 
-  const problems = useMemo(
-    () => relativeProblems(orderRelatives(factionTrees.flatMap(treeToRelatives)), factionChars),
-    [factionTrees, factionChars]
-  );
+  const problems = useMemo(() => {
+    const relatives = orderRelatives(factionTrees.flatMap(treeToRelatives));
+    const basic = relativeProblems(relatives, factionChars, rules ? 0 : 14);
+    const mod = familyRuleValidation(relatives, factionChars, rules);
+    return { errors: [...new Set([...basic.errors, ...mod.errors])], warnings: [...new Set([...basic.warnings, ...mod.warnings])], characterErrors: mod.characterErrors };
+  }, [factionTrees, factionChars, rules]);
 
   const addTree = () => {
     const newTree = { id: Date.now(), father: null, mother: null, children: [], spouses: {}, nestedChildren: {} };
     onTreesChange(prev => ({ ...prev, [activeFaction]: [...(prev[activeFaction] || []), newTree] }));
+    return newTree.id;
   };
 
   const updateTree = (tid, updated) => {
@@ -494,8 +503,8 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
 
       {view === 'visual' ? (
         <div className="flex-1 min-h-0">
-          <FamilyVisualEditor faction={activeFaction} chars={factionChars} factionTrees={factionTrees}
-            onTreesChange={onTreesChange} onAddTree={addTree} problems={problems} onClose={() => setView('list')} />
+          <FamilyVisualEditor key={activeFaction} faction={activeFaction} chars={factionChars} factionTrees={factionTrees}
+            onTreesChange={onTreesChange} onAddTree={addTree} problems={problems} rules={rules} renderCharacterDetails={renderCharacterDetails} onClose={() => setView('list')} />
         </div>
       ) : <>
 
@@ -516,6 +525,7 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
           <Plus className="w-3 h-3" /> New Family Tree
         </button>
 
+        <FamilyRulesStatus rules={rules} />
         <FamilyTreeProblems problems={problems} />
 
         {factionTrees.length === 0 && (
@@ -530,7 +540,7 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
             onUpdate={updateTree}
             onDelete={deleteTree}
             faction={activeFaction}
-            allFactionTrees={factionTrees}
+            allFactionTrees={factionTrees} limits={rules?.values}
           />
         ))}
       </div>

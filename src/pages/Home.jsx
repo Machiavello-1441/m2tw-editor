@@ -15,6 +15,7 @@ import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
 import DataFolderPicker from '../components/home/DataFolderPicker';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
+import { loadFamilyRulesFile, FAMILY_RULE_FILES, FAMILY_RULES_KEY } from '@/components/map/familyRules';
 import { DESCR_CLIMATES_KEY, AERIAL_RAW_KEY, MOD_CLIMATES_EVT } from '@/lib/modClimates';
 import {
   Swords, FolderOpen, CheckCircle2, AlertCircle, Clock,
@@ -190,6 +191,7 @@ export default function Home() {
       expunits: ls('m2tw_export_units_file') ? 'ok' : 'idle',
       aerial_ground_types: ls('m2tw_aerial_ground_types') ? 'ok' : 'idle',
       climates: ls(DESCR_CLIMATES_KEY) ? 'ok' : 'idle',
+      family_rules: ls(FAMILY_RULES_KEY) ? 'ok' : 'idle',
       strings_bin: stringsCount > 0 ? 'ok' : 'idle',
       anc_images: 'idle',
       unit_images: 'idle',
@@ -471,6 +473,18 @@ export default function Home() {
         continue;
       }
 
+      if (FAMILY_RULE_FILES.has(name)) {
+        if (name === 'descr_campaign_db.xml' && fileNames.has('descr_campaign_ai_db_ex.xml')) continue;
+        setFileStatus(prev => ({ ...prev, family_rules: 'loading' }));
+        try {
+          await loadFamilyRulesFile(file);
+          setFileStatus(prev => ({ ...prev, family_rules: 'ok' }));
+        } catch (error) {
+          setFileStatus(prev => ({ ...prev, family_rules: 'error' }));
+          result.errors.push(error.message);
+        }
+        continue;
+      }
       if (await loadSettlementMechanicsFile(file)) continue;
       const key = DATA_FILE_MAP[name];
       if (!key) continue;
@@ -1063,6 +1077,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
               <FileStatus label="Rebel Factions" hint="descr_rebel_factions.txt" status={fileStatus.rebel_fac} />
               <FileStatus label="Religions" hint="descr_religions.txt" status={fileStatus.religions} />
               <FileStatus label="Climates" hint="descr_climates.txt + aerial ground types" status={fileStatus.climates} />
+              <FileStatus label="Family-tree Rules" hint="descr_campaign_ai_db_ex.xml" status={fileStatus.family_rules} />
               <FileStatus label="Offmap Models" hint="descr_offmap_models.txt" status={fileStatus.offmap} />
               <FileStatus label="Guilds" hint="export_descr_guilds.txt" status={fileStatus.guilds} />
               <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />

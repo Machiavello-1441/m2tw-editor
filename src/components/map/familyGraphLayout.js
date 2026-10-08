@@ -65,21 +65,24 @@ function place(u, x, y, out) {
     });
   });
   if (u.couple[0] && u.couple[1]) {
-    out.edges.push(`M${cards[0] + CW} ${y + CH / 2} H${cards[1]}`);
+    out.edges.push({ d: `M${cards[0] + CW} ${y + CH / 2} H${cards[1]}` });
   }
   out.pills.push({ key: `p-${u.treeId}-${u.parentId}`, x: cx - 36, y: y + CH + 3, unit: meta });
   if (u.kids.length) {
     const midY = y + ROW - 24;
-    out.edges.push(`M${cx} ${y + CH + 21} V${midY}`);
+    out.edges.push({ d: `M${cx} ${y + CH + 21} V${midY}` });
     let kx = cx - u.kw / 2;
     const centers = [];
     u.kids.forEach((k) => {
       place(k, kx, y + ROW, out);
-      centers.push(kx + k.w / 2);
+      const child = k.asChild || k.person;
+      const member = Math.max(0, k.couple.findIndex(character => character?.id === child?.id));
+      const targetX = kx + k.w / 2 - k.coupleW / 2 + member * (CW + IN) + CW / 2;
+      centers.push(targetX);
+      out.edges.push({ d: `M${targetX} ${midY} V${y + ROW}`, sex: child?.sex || 'male', x: targetX, y: y + ROW - 4 });
       kx += k.w + GAP;
     });
-    out.edges.push(`M${Math.min(...centers, cx)} ${midY} H${Math.max(...centers, cx)}`);
-    centers.forEach((c) => out.edges.push(`M${c} ${midY} V${y + ROW}`));
+    out.edges.push({ d: `M${Math.min(...centers, cx)} ${midY} H${Math.max(...centers, cx)}` });
   }
 }
 
@@ -89,6 +92,7 @@ export function layoutForest(trees) {
     const out = { nodes: [], edges: [], pills: [], width: u.w, height: (u.depth - 1) * ROW + CH + 26 };
     place(u, 0, 0, out);
     // A grafted-in child keeps its own card as the couple member.
+    out.rootId = u.treeId;
     out.title = [u.couple[0]?.name, u.couple[1]?.name].filter(Boolean).join(' × ') || 'Unnamed tree';
     return out;
   });

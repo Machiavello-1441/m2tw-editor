@@ -4,6 +4,8 @@ import { layoutForest } from './familyGraphLayout';
 import { addChild, setParent, setSpouse, detach } from './familyGraphOps';
 import FamilyGraphCard, { usePortraits, portraitFor } from './FamilyGraphCard';
 import FamilyTreeProblems from './FamilyTreeProblems';
+import FamilyGraphLines from '@/components/map/FamilyGraphLines';
+import FamilyRulesStatus from '@/components/map/FamilyRulesStatus';
 
 function Pill({ pill, onDropChar }) {
   const [over, setOver] = useState(false);
@@ -20,7 +22,7 @@ function Pill({ pill, onDropChar }) {
 }
 
 // Visual family tree: drag characters onto slots (parents), cards (spouse) or "+ child" pills.
-export default function FamilyGraphView({ faction, chars, factionTrees, onTreesChange, onAddTree, problems, hideCharacterList = false, showPortraits: externalShowPortraits, onShowPortraitsChange, onClose }) {
+export default function FamilyGraphView({ faction, chars, factionTrees, onTreesChange, onAddTree, problems, rules, onSelectCharacter, selectedCharacterId, onSelectTree, hideCharacterList = false, showPortraits: externalShowPortraits, onShowPortraitsChange, onClose }) {
   const portraits = usePortraits();
   const [localShowPortraits, setLocalShowPortraits] = useState(true);
   const showPortraits = externalShowPortraits ?? localShowPortraits;
@@ -28,6 +30,9 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
   const [full, setFull] = useState(false);
   const [message, setMessage] = useState('');
   const forest = useMemo(() => layoutForest(factionTrees), [factionTrees]);
+  const [selectedTreeId, setSelectedTreeId] = useState('');
+  const activeTreeId = forest.some(tree => String(tree.rootId) === selectedTreeId) ? selectedTreeId : String(forest[0]?.rootId ?? '');
+  const visibleForest = forest.filter(tree => String(tree.rootId) === activeTreeId);
 
   const apply = (result) => {
     if (result.error) { setMessage(result.error); return; }
@@ -39,15 +44,15 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
   const dropOnNode = (node, id) => {
     const c = findChar(id);
     if (!c) return;
-    if (node.kind === 'slot' && !node.char) return apply(setParent(factionTrees, node.unit.treeId, node.slot, c));
+    if (node.kind === 'slot' && !node.char) return apply(setParent(factionTrees, node.unit.treeId, node.slot, c, rules?.values));
     if (node.kind === 'child' && !node.unit.isRoot && node.char && !node.unit.parents[1]) {
-      return apply(setSpouse(factionTrees, node.unit.treeId, node.char, c));
+      return apply(setSpouse(factionTrees, node.unit.treeId, node.char, c, rules?.values));
     }
     setMessage('Drop on an empty slot, a single person (spouse), or a "+ child" pill');
   };
   const dropOnPill = (pill, id) => {
     const c = findChar(id);
-    if (c) apply(addChild(factionTrees, chars, pill.unit, c));
+    if (c) apply(addChild(factionTrees, chars, pill.unit, c, rules?.values));
   };
 
   const placedIds = new Set(forest.flatMap((f) => f.nodes.map((n) => n.char?.id)).filter((x) => x != null));
@@ -56,8 +61,12 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
 
   return (
     <div className={`flex flex-col ${wrap}`}>
-      <div className="flex items-center gap-2 p-2 border-b border-slate-800 shrink-0">
-        <button onClick={onAddTree} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-600/40 text-slate-300 hover:text-white">
+      <div className="flex items-center gap-2 p-2 border-b border-slate-800 shrink-0 flex-wrap">
+        <label className="text-xs flex items-center gap-2">Family tree<select aria-label="Family tree" value={activeTreeId} onChange={event => { setSelectedTreeId(event.target.value); onSelectTree?.(); }} className="h-7 max-w-64 rounded border border-input bg-background text-foreground px-2">
+          {!forest.length && <option value="">No family trees</option>}
+          {forest.map((tree, index) => <option key={tree.rootId} value={String(tree.rootId)}>{index + 1}. {tree.title}</option>)}
+        </select></label>
+        <button onClick={() => { setSelectedTreeId(String(onAddTree())); onSelectTree?.(); }} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-600/40 text-slate-300 hover:text-white">
           <Plus className="w-3 h-3" /> New tree
         </button>
         <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
@@ -84,21 +93,20 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
         })}
       </div>}
 
-      {message && <p className="px-2 py-1 text-[10px] text-amber-400 bg-amber-900/20 shrink-0">{message}</p>}
-      <div className="px-2 pt-2 shrink-0"><FamilyTreeProblems problems={problems} /></div>
+      <FamilyRulesStatus rules={rules} />
+      {message && <p role="alert" className="px-2 py-1 text-xs text-destructive bg-destructive/10 shrink-0">{message}</p>}
+      <div className="px-2 pt-2 shrink-0 max-h-32 overflow-y-auto"><FamilyTreeProblems problems={problems} /></div>
 
-      <div className="flex-1 overflow-auto p-3 space-y-5">
+      <div className="flex-1 min-h-0 overflow-auto p-3 space-y-5">
         {forest.length === 0 && <p className="text-[10px] text-slate-600 italic text-center py-4">No family trees for {faction} — click "New tree"</p>}
-        {forest.map((f, i) => (
+        {visibleForest.map((f, i) => (
           <div key={i}>
             <p className="text-[10px] font-semibold text-amber-300 mb-1">{f.title}</p>
             <div className="relative" style={{ width: f.width, height: f.height, minWidth: 240 }}>
-              <svg className="absolute inset-0 pointer-events-none" width={f.width} height={f.height} style={{ overflow: 'visible' }}>
-                {f.edges.map((d, k) => <path key={k} d={d} stroke="rgb(148 163 184 / 0.6)" strokeWidth="1.5" fill="none" />)}
-              </svg>
+              <FamilyGraphLines forest={f} />
               {f.nodes.map((n) => (
                 <FamilyGraphCard key={n.key} node={n} portraits={portraits} showPortraits={showPortraits}
-                  onDropChar={dropOnNode}
+                  onDropChar={dropOnNode} onSelect={onSelectCharacter} selected={String(n.char?.id) === selectedCharacterId} errorMessages={problems.characterErrors?.[String(n.char?.id)]}
                   onDetach={(node) => onTreesChange((prev) => ({ ...prev, [faction]: detach(factionTrees, { ...node, treeId: node.unit.treeId, charId: node.char?.id }) }))} />
               ))}
               {f.pills.map((p) => <Pill key={p.key} pill={p} onDropChar={dropOnPill} />)}

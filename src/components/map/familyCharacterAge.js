@@ -18,7 +18,7 @@ export function syncFamilyTreeAges(trees, characters) {
   const sync = character => {
     if (!character) return character;
     const current = byId.get(String(character.id)) || byName.get(name(character));
-    return current ? { ...character, age: current.age, status: current.status, deadYears: current.deadYears } : character;
+    return current ? { ...character, ...current } : character;
   };
   return trees.map(tree => ({
     ...tree,

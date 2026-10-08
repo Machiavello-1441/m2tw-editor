@@ -3,8 +3,8 @@ import { Archive, ChevronDown, ChevronRight } from 'lucide-react';
 
 const ROLES = ['never_a_leader', 'past_leader', 'past_heir', 'leader', 'heir'];
 const inputClass = 'h-6 w-full rounded border border-input bg-background px-1.5 text-[11px] text-foreground font-mono';
-export default function CharacterRecordRow({ rec, factionName, onUpdate }) {
-  const [expanded, setExpanded] = useState(false);
+export default function CharacterRecordRow({ rec, factionName, onUpdate, initialExpanded = false }) {
+  const [expanded, setExpanded] = useState(initialExpanded);
   const set = (key, value) => onUpdate({ ...rec, [key]: value });
   const isDead = rec.status === 'dead';
   const role = rec.recordRole || (ROLES.includes(rec.status) ? rec.status : 'never_a_leader');

@@ -21,7 +21,7 @@ export function portraitFor(char, portraits) {
 
 const style = { width: CW, height: CH };
 
-export default function FamilyGraphCard({ node, portraits, showPortraits, onDropChar, onDetach, onSelect }) {
+export default function FamilyGraphCard({ node, portraits, showPortraits, onDropChar, onDetach, onSelect, selected, errorMessages }) {
   const [over, setOver] = useState(false);
   const { char, slot } = node;
   const dropProps = {
@@ -44,11 +44,11 @@ export default function FamilyGraphCard({ node, portraits, showPortraits, onDrop
   return (
     <div draggable {...dropProps}
       onDragStart={(e) => e.dataTransfer.setData('charId', String(char.id))}
-      onClick={() => onSelect?.(char)}
-      title={`${char.name}${char.surname ? ' ' + char.surname : ''} · ${char.charType || ''} · age ${char.age ?? '?'}${char.portrait ? ' · portrait: ' + char.portrait : ''}`}
+      onClick={() => onSelect?.(char)} role="button" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect?.(char); } }} aria-pressed={!!selected} aria-invalid={!!errorMessages?.length}
+      title={`${char.name}${char.surname ? ' ' + char.surname : ''} · ${char.charType || ''} · age ${char.age ?? '?'}${char.portrait ? ' · portrait: ' + char.portrait : ''}${errorMessages?.length ? '\n' + errorMessages.join('\n') : ''}`}
       style={{ ...style, left: node.x, top: node.y }}
-      className={`group absolute rounded border bg-slate-800 flex items-center gap-1.5 p-1 cursor-grab select-none ${
-        over ? ring : female ? 'border-pink-500/50' : 'border-sky-500/50'}`}>
+      className={`group absolute rounded border bg-slate-800 flex items-center gap-1.5 p-1 cursor-grab select-none ${selected ? 'ring-2 ring-primary' : ''} ${
+        errorMessages?.length ? 'border-destructive ring-2 ring-destructive' : over ? ring : female ? 'border-pink-500/50' : 'border-sky-500/50'}`}>
       {showPortraits && char.portrait && (
         src
           ? <img src={src} alt="" className="h-full w-9 rounded-sm object-cover shrink-0" />

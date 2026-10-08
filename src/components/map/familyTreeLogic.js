@@ -48,7 +48,7 @@ export function orderRelatives(rels) {
 }
 
 // -> { errors: [], warnings: [] }
-export function relativeProblems(rels, chars) {
+export function relativeProblems(rels, chars, minAgeDiff = 14) {
   const by = {};
   for (const c of chars) {
     by[fullName(c).toLowerCase()] = c;
@@ -71,7 +71,7 @@ export function relativeProblems(rels, chars) {
         const parent = look(p), child = look(k);
         if (p && parent?.age != null && child?.age != null) {
           const pa = familyCharacterAge(parent), ka = familyCharacterAge(child);
-          if (pa - ka < 14) {
+          if (pa - ka < minAgeDiff) {
             warnings.push(`${p} (${familyAgeDescription(parent)}) is only ${pa - ka} years older than the child ${k} (${familyAgeDescription(child)})`);
           }
         }

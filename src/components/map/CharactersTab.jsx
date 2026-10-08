@@ -3,6 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, 
 import FamilyTreeTab from './FamilyTreeTab';
 import { treeToRelatives, orderRelatives } from './familyTreeLogic';
 import CharacterRecordRow from '@/components/map/CharacterRecordRow';
+import { syncFamilyTreeAges } from '@/components/map/familyCharacterAge';
 import CharacterNameSelect from '@/components/map/CharacterNameSelect';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -687,7 +688,9 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
   const handleUpdate = (id, updatedChar) => {
     if (!stratData) return;
     const items = (stratData.items || []).map(i => i.id === id ? updatedChar : i);
-    onStratDataChange({ ...stratData, items });
+    const nextTrees = Object.fromEntries(Object.entries(familyTrees).map(([faction, trees]) => [faction, syncFamilyTreeAges(trees, [updatedChar])]));
+    setFamilyTrees(nextTrees);
+    onStratDataChange(treesInitialized ? serializeFamilyTreesToStratData({ ...stratData, items }, nextTrees) : { ...stratData, items });
   };
 
   const handleDelete = (id) => {
@@ -799,6 +802,11 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
           <FamilyTreeTab
             stratData={stratData}
             trees={familyTrees}
+            renderCharacterDetails={character => {
+              const record = allRecords.find(rec => rec._faction === character.faction && `rec_${rec._faction}_${rec._lineNum ?? rec._recordIndex}` === String(character.id));
+              return record ? <CharacterRecordRow key={character.id} rec={record} factionName={record._faction} initialExpanded onUpdate={updated => handleRecordUpdate(record._faction, record, updated)} /> :
+                <CharacterRow key={character.id} char={character} allFactions={allFactions} allStratFactions={allFactions} descrNames={descrNames} namesDisplayMap={namesDisplayMap} traitsList={traitsList} ancillariesList={ancillariesList} eduUnits={eduUnits} onUpdate={handleUpdate} onDelete={handleDelete} onSelect={onSelectItem} onPin={handlePin} onConfirmCreate={handleConfirmCreate} shouldOpen />;
+            }}
             onTreesChange={(updater) => {
               setFamilyTrees(prev => {
                 const next = typeof updater === 'function' ? updater(prev) : updater;

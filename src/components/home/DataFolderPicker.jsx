@@ -21,7 +21,7 @@ const TEXT_FILENAMES = new Set([
   'descr_mercenaries.txt','descr_win_conditions.txt','campaign_script.txt',
   'descr_event.txt','descr_sounds_music_types.txt','descr_terrain.txt',
   'descr_offmap_models.txt','descr_banners_new.xml','descr_character.txt','descr_settlement_mechanics.xml',
-  'descr_model_strat.txt','descr_models_strat.txt',
+  'descr_model_strat.txt','descr_models_strat.txt','descr_campaign_ai_db_ex.xml','descr_campaign_db.xml',
   'strategy.sd.xml','battle.sd.xml','shared.sd.xml','radar.sd.xml',
 ]);
 
