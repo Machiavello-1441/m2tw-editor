@@ -1502,7 +1502,7 @@ export default function CampaignMap() {
       )}
       <div className={show3D ? 'hidden' : 'flex-1 flex min-h-0'}>
         {/* Canvas */}
-        <div className="flex-1 relative min-w-0">
+        <div id="campaign-map-family-overlay" className="flex-1 relative min-w-0">
           <MapCanvas
             osmBbox={osmBbox}
             osmOpacity={osmOpacity}

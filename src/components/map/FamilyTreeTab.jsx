@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Users, AlertTriangle, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { treeToRelatives, orderRelatives, relativeProblems } from './familyTreeLogic';
 import FamilyTreeProblems from './FamilyTreeProblems';
-import FamilyGraphView from './FamilyGraphView';
+import FamilyVisualEditor from '@/components/map/FamilyVisualEditor';
 import familyCharacterAge, { syncFamilyTreeAges } from '@/components/map/familyCharacterAge';
 
 const MIN_PARENT_CHILD_AGE_DIFF = 16;
@@ -494,8 +494,8 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
 
       {view === 'visual' ? (
         <div className="flex-1 min-h-0">
-          <FamilyGraphView faction={activeFaction} chars={factionChars} factionTrees={factionTrees}
-            onTreesChange={onTreesChange} onAddTree={addTree} problems={problems} />
+          <FamilyVisualEditor faction={activeFaction} chars={factionChars} factionTrees={factionTrees}
+            onTreesChange={onTreesChange} onAddTree={addTree} problems={problems} onClose={() => setView('list')} />
         </div>
       ) : <>
 

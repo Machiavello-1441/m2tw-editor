@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Maximize2, Minimize2, Image } from 'lucide-react';
+import { Plus, Maximize2, Minimize2, Image, X } from 'lucide-react';
 import { layoutForest } from './familyGraphLayout';
 import { addChild, setParent, setSpouse, detach } from './familyGraphOps';
 import FamilyGraphCard, { usePortraits, portraitFor } from './FamilyGraphCard';
@@ -20,9 +20,11 @@ function Pill({ pill, onDropChar }) {
 }
 
 // Visual family tree: drag characters onto slots (parents), cards (spouse) or "+ child" pills.
-export default function FamilyGraphView({ faction, chars, factionTrees, onTreesChange, onAddTree, problems }) {
+export default function FamilyGraphView({ faction, chars, factionTrees, onTreesChange, onAddTree, problems, hideCharacterList = false, showPortraits: externalShowPortraits, onShowPortraitsChange, onClose }) {
   const portraits = usePortraits();
-  const [showPortraits, setShowPortraits] = useState(true);
+  const [localShowPortraits, setLocalShowPortraits] = useState(true);
+  const showPortraits = externalShowPortraits ?? localShowPortraits;
+  const setShowPortraits = onShowPortraitsChange || setLocalShowPortraits;
   const [full, setFull] = useState(false);
   const [message, setMessage] = useState('');
   const forest = useMemo(() => layoutForest(factionTrees), [factionTrees]);
@@ -62,12 +64,12 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
           <input type="checkbox" checked={showPortraits} onChange={(e) => setShowPortraits(e.target.checked)} className="accent-amber-500" />
           <Image className="w-3 h-3" /> Portraits ({withPortrait} unique)
         </label>
-        <button onClick={() => setFull((v) => !v)} className="ml-auto text-slate-400 hover:text-white" title="Toggle full screen">
+        {onClose ? <button onClick={onClose} className="ml-auto text-muted-foreground hover:text-foreground" title="Close visual family tree" aria-label="Close visual family tree"><X className="w-4 h-4" /></button> : <button onClick={() => setFull((v) => !v)} className="ml-auto text-slate-400 hover:text-white" title="Toggle full screen">
           {full ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-        </button>
+        </button>}
       </div>
 
-      <div className="flex gap-1 flex-wrap p-2 border-b border-slate-800 shrink-0 max-h-24 overflow-y-auto">
+      {!hideCharacterList && <div className="flex gap-1 flex-wrap p-2 border-b border-slate-800 shrink-0 max-h-24 overflow-y-auto">
         {chars.map((c) => {
           const src = showPortraits ? portraitFor(c, portraits) : null;
           return (
@@ -80,7 +82,7 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
             </div>
           );
         })}
-      </div>
+      </div>}
 
       {message && <p className="px-2 py-1 text-[10px] text-amber-400 bg-amber-900/20 shrink-0">{message}</p>}
       <div className="px-2 pt-2 shrink-0"><FamilyTreeProblems problems={problems} /></div>
