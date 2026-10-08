@@ -3,6 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, 
 import FamilyTreeTab from './FamilyTreeTab';
 import { treeToRelatives, orderRelatives } from './familyTreeLogic';
 import CharacterRecordRow from '@/components/map/CharacterRecordRow';
+import CharacterNameSelect from '@/components/map/CharacterNameSelect';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 // Small component that shows character portrait previews (young/old/dead variants)
@@ -141,8 +142,6 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
   const firstNames = useMemo(() => getNames(descrNames, nameFaction, effectiveSex), [descrNames, nameFaction, effectiveSex]);
   const surnameNames = useMemo(() => getSurnames(descrNames, nameFaction), [descrNames, nameFaction]);
 
-  const firstNameDisplay = getDisplayName(namesDisplayMap, c.name);
-  const surnameDisplay = getDisplayName(namesDisplayMap, c.surname);
 
   // EDU units: if sub_faction active, merge slave + sub_faction units
   const factionEduUnits = useMemo(() => {
@@ -248,33 +247,15 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
             <div className="grid grid-cols-2 gap-1.5">
               <div>
                 <span className="text-[9px] text-slate-500">First Name</span>
-                {firstNames.length > 0 ? (
-                  <select value={c.name || ''} onChange={e => set('name', e.target.value)}
-                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
-                    <option value="">— select —</option>
-                    {firstNames.map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                ) : (
-                  <input value={c.name || ''} onChange={e => set('name', e.target.value)}
-                    placeholder={descrNames ? 'no names for faction' : 'load descr_names.txt'}
-                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                )}
-                {firstNameDisplay && <p className="text-[9px] text-amber-300/70 mt-0.5 font-mono">"{firstNameDisplay}"</p>}
+                <CharacterNameSelect key={`${nameFaction}-${effectiveSex}`} value={c.name || ''} onChange={value => set('name', value)}
+                  options={firstNames} faction={nameFaction} section={effectiveSex === 'female' ? 'female' : 'male'}
+                  descrNames={descrNames} namesDisplayMap={namesDisplayMap} />
               </div>
               <div>
                 <span className="text-[9px] text-slate-500">Surname / Epithet</span>
-                {surnameNames.length > 0 ? (
-                  <select value={c.surname || ''} onChange={e => set('surname', e.target.value)}
-                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
-                    <option value="">— none —</option>
-                    {surnameNames.map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                ) : (
-                  <input value={c.surname || ''} onChange={e => set('surname', e.target.value)}
-                    placeholder="optional"
-                    className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                )}
-                {surnameDisplay && <p className="text-[9px] text-amber-300/70 mt-0.5 font-mono">"{surnameDisplay}"</p>}
+                <CharacterNameSelect key={`${nameFaction}-surname`} value={c.surname || ''} onChange={value => set('surname', value)}
+                  options={surnameNames} faction={nameFaction} section="_surnames"
+                  descrNames={descrNames} namesDisplayMap={namesDisplayMap} />
               </div>
             </div>
 

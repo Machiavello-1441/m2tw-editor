@@ -361,6 +361,13 @@ export default function Export() {
                 detail={hasAncText ? `${Object.keys(ancTextData).length} entries${ancBinMeta ? ' (.strings.bin)' : ' (.txt)'}` : 'No ancillaries text loaded'}
               />
               <ExportRow
+                icon={<FileText className="w-4 h-4 text-primary/70" />}
+                label="descr_names.txt + names.txt / names.txt.strings.bin"
+                path={`${modName}/data/ + data/text/`}
+                status={hasCharacterNames ? 'ready' : 'skip'}
+                detail={hasCharacterNames ? 'Faction lists and character display names' : 'No character names loaded'}
+              />
+              <ExportRow
                 icon={<Code2 className="w-4 h-4 text-green-500/70" />}
                 label="luaPluginScript.lua"
                 path={`${modName}/eopData/eopScripts/`}

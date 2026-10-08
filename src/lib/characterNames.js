@@ -33,8 +33,9 @@ export function addCharacterName({ faction, section, internalName, displayName, 
   const map = { ...displayMap, [key]: display };
   setFile('m2tw_names_file', raw);
   setFile('m2tw_names_bin_entries', JSON.stringify(map));
-  sessionStorage.setItem('m2tw_descr_names_raw', raw);
-  sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(map));
+  // Large mod files can exceed session storage; the shared persistent store remains available.
+  try { sessionStorage.setItem('m2tw_descr_names_raw', raw); } catch { sessionStorage.removeItem('m2tw_descr_names_raw'); }
+  try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(map)); } catch { sessionStorage.removeItem('m2tw_char_names_display'); }
   const stored = getCharacterNamesFile();
   updateStringsBinFile(stored?.[0] || 'names.txt.strings.bin', { ...stored?.[1],
     entries: Object.entries(map).map(([key, value]) => ({ key, value })),

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, Download, Plus, X, Search, Copy, GitMerge } from 'lucide-react';
 import MergeNamesModal from './MergeNamesModal';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
-import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { getCharacterNamesFile } from '@/lib/characterNames';
+import { getFile } from '@/lib/bigFileStore';
 import { useModData } from '@/components/shared/ModDataContext';
 
 // ─── descr_names.txt parser ─────────────────────────────────────────────────
@@ -154,13 +155,12 @@ export default function CharacterNamesTab() {
   // Auto-restore from localStorage / stringsBinStore on mount
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('m2tw_names_file');
+      const raw = getFile('m2tw_names_file');
       if (raw) applyDescrNames(raw);
     } catch {}
 
     try {
-      const store = getStringsBinStore();
-      const entry = Object.entries(store).find(([k]) => k.toLowerCase().includes('names'));
+      const entry = getCharacterNamesFile();
       if (entry?.[1]) {
         applyNamesBinEntries(entry[1].entries, { magic1: entry[1].magic1 ?? 2, magic2: entry[1].magic2 ?? 2048 });
       }
@@ -178,8 +178,7 @@ export default function CharacterNamesTab() {
     const onNamesLoaded = (e) => { if (e.detail?.raw) applyDescrNames(e.detail.raw); };
     const onStringsBinUpdated = () => {
       try {
-        const store = getStringsBinStore();
-        const entry = Object.entries(store).find(([k]) => k.toLowerCase().includes('names'));
+        const entry = getCharacterNamesFile();
         if (entry?.[1]) applyNamesBinEntries(entry[1].entries, { magic1: entry[1].magic1 ?? 2, magic2: entry[1].magic2 ?? 2048 });
       } catch {}
     };

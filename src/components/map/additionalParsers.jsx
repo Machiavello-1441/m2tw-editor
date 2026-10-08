@@ -79,7 +79,11 @@ export function parseDescrNames(text) {
     if (!line) continue;
     // "faction <name>" — starts a new faction block
     const fm = line.match(/^faction:?\s+(\S+)/i);
-    if (fm) { currentFaction = fm[1].toLowerCase(); currentSection = null; continue; }
+    if (fm) {
+      currentFaction = fm[1].toLowerCase(); currentSection = null;
+      for (const section of ['male', 'female', '_surnames']) result[section][currentFaction] ||= [];
+      continue;
+    }
     if (!currentFaction) continue;
     // Section headers
     if (/^characters$/i.test(line) || /^male$/i.test(line)) { currentSection = 'male'; continue; }
