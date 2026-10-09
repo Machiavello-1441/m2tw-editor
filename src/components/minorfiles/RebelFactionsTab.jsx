@@ -4,7 +4,6 @@ import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import RebelFactionRow from './RebelFactionRow';
 import { useRefData } from '../edb/RefDataContext';
-import useWorkspaceTextBuffer from '@/components/workspace/useWorkspaceTextBuffer';
 
 // ─── Parser ──────────────────────────────────────────────────────────────────
 // Format (M2TW descr_rebel_factions.txt):
@@ -76,7 +75,6 @@ export default function RebelFactionsTab() {
   const [names, setNames] = useState({});
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
-  useWorkspaceTextBuffer('m2tw_rebel_factions_file', factions, serializeRebelFactions, loaded);
   const [search, setSearch] = useState('');
   const txtInputRef = useRef(null);
   const binInputRef = useRef(null);

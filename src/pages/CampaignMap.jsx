@@ -25,7 +25,6 @@ import { setLayer, getLayer, getAllLayers, hasAnyLayer } from '../lib/mapLayerSt
 import { getFile, setFile } from '../lib/bigFileStore';
 import CampaignSelector from '@/components/map/CampaignSelector';
 import useCampaignSelection from '@/components/map/useCampaignSelection';
-import CampaignRecoveryStatus from '@/components/map/CampaignRecoveryStatus';
 import useSettlementChanges from '@/components/map/useSettlementChanges';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
@@ -565,7 +564,7 @@ export default function CampaignMap() {
   }, []);
 
   const campaignSelection = useCampaignSelection(
-    { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, factionColors, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, eduUnits, namesDisplayMap, edbData, savedSnapshot: savedSnapshot.current },
+    { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, factionColors, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, eduUnits, namesDisplayMap, savedSnapshot: savedSnapshot.current },
     (saved) => {
       setLayers(saved?.layers || Object.fromEntries(LAYER_DEFS.map(d => [d.id, { visible: d.defaultVisible, opacity: d.defaultOpacity }])));
       setStratDataRaw(saved?.stratData || null); setRegionsDataRaw(saved?.regionsData || null);
@@ -574,7 +573,6 @@ export default function CampaignMap() {
       setOverlayDirty(saved?.overlayDirty || false); setOsmBbox(saved?.osmBbox || null);
       setMercenaryPools(saved?.mercenaryPools || []); setMusicTypes(saved?.musicTypes || []);
       if (saved) {
-        if (saved.edbData) setEdbData(saved.edbData);
         setFactionColorsRaw(saved.factionColors); setRebelFactions(saved.rebelFactions); setReligions(saved.religions);
         setNaturalRes(saved.naturalResources); setCultures(saved.cultures); setDescrNames(saved.descrNames);
         setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList); setEduUnits(saved.eduUnits); setNamesDisplayMap(saved.namesDisplayMap);
@@ -1457,8 +1455,6 @@ export default function CampaignMap() {
           </span>
         )}
       </div>
-
-      <CampaignRecoveryStatus status={campaignSelection.recovery} recovered={campaignSelection.recovered} />
 
       {/* Region paint wizard panel */}
       {regionWizard && (

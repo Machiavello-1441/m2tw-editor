@@ -1,4 +1,3 @@
-import useLocalImage from '@/components/workspace/useLocalImage';
 import React, { useRef, useState } from 'react';
 import ImageCropModal from './ImageCropModal';
 import { useEDB } from './EDBContext';
@@ -63,10 +62,7 @@ function encodeTGA(canvas, tw, th) {
 function ImageSlot({ culture, levelName, slot }) {
   const { imageData, loadBuildingTgaImages, setImageData } = useEDB();
   const key = `${levelName}_${culture}_${slot.type}`;
-  const editedImage = imageData[key];
-  const localPath = `ui/${culture}/buildings/${slot.type === 'icon' ? 'constructed/' : ''}#${culture}_${levelName}${slot.type === 'construction' ? '_constructed' : ''}.tga`;
-  const localImage = useLocalImage(localPath, editedImage?.url);
-  const img = localImage.src ? { url: localImage.src } : null;
+  const img = imageData[key];
   const fileRef = useRef();
   const [preview, setPreview] = useState(null);
   const [customW, setCustomW] = useState('');

@@ -8,8 +8,6 @@ import { AncillariesProvider } from './components/ancillaries/AncillariesContext
 import { ModDataProvider } from './components/shared/ModDataContext';
 import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2, FileText, ScrollText, Gem, Image } from 'lucide-react';
 import AppErrorBoundary from './components/AppErrorBoundary';
-import LocalWorkspaceGate from '@/components/workspace/LocalWorkspaceGate';
-import useWorkspaceReset from '@/components/workspace/useWorkspaceReset';
 
 // localStorage keys that indicate a given editor has data loaded
 const NAV_DATA_KEYS = {
@@ -76,9 +74,8 @@ const navItems = [
 
 export default function Layout({ children, currentPageName }) {
   const loadedPages = useLoadedPages();
-  const workspaceRevision = useWorkspaceReset();
   return (
-    <RefDataProvider key={workspaceRevision}>
+    <RefDataProvider>
     <EDBProvider>
     <TraitsProvider>
     <AncillariesProvider>
@@ -130,7 +127,7 @@ export default function Layout({ children, currentPageName }) {
 
           <main className="flex-1 min-h-screen overflow-auto">
             <AppErrorBoundary>
-              <LocalWorkspaceGate page={currentPageName}>{children}</LocalWorkspaceGate>
+              {children}
             </AppErrorBoundary>
           </main>
         </div>

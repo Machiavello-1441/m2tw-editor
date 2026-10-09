@@ -9,9 +9,6 @@ import { parseModeldb, serializeModeldb } from '../lib/modeldbCodec';
 import { modeldbStore } from '../lib/modeldbStore';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
-import { getWorkspace } from '@/components/workspace/localWorkspace';
-import { setFile } from '@/lib/bigFileStore';
-import useWorkspaceTextBuffer from '@/components/workspace/useWorkspaceTextBuffer';
 
 const STORAGE_KEY = 'm2tw_edu_units';
 const EDU_FILE_KEY = 'm2tw_units_file';
@@ -151,7 +148,6 @@ export default function UnitEditorPage() {
       return merged;
     } catch { return {}; }
   });
-  useWorkspaceTextBuffer('m2tw_local_export_units', descrMap, JSON.stringify, Object.keys(descrMap).length > 0);
   const [unitImages, setUnitImages] = useState(() => window._m2tw_unit_images || loadUnitImages());
   const [modeldb, setModeldb] = useState(() => modeldbStore.get());
   const { factions: refFactions, loadFactionsFile } = useRefData();
@@ -276,10 +272,7 @@ export default function UnitEditorPage() {
   const active = units[activeIndex] || null;
   const activeDescr = active ? (descrMap[active.dictionary] ?? null) : null;
 
-  const update = (units) => {
-    setUnits(units); saveUnits(units);
-    if (getWorkspace()?.authorized) setFile(EDU_FILE_KEY, serializeEDU(units));
-  };
+  const update = (units) => { setUnits(units); saveUnits(units); };
 
   const handleDescrChange = (val) => {
     if (!active) return;

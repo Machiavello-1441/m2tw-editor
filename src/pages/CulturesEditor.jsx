@@ -4,7 +4,6 @@ import { getStringsBinStore, setStringsBinStore } from '../lib/stringsBinStore';
 import { Globe, FolderOpen, Download, Plus, Trash2, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseDescrCulturesFull, serializeDescrCulturesFull, SETTLEMENT_TYPES, AGENT_TYPES } from '../components/cultures/culturesParser';
-import useWorkspaceTextBuffer from '@/components/workspace/useWorkspaceTextBuffer';
 
 // Automatically add/update the 4 expanded.txt string entries for a culture
 // in the shared strings bin store (expanded.txt.strings.bin).
@@ -366,7 +365,6 @@ export default function CulturesEditor() {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [tab, setTab] = useState('general');
   const [rawText, setRawText] = useState(null); // stores original raw for re-load
-  useWorkspaceTextBuffer('m2tw_cultures_file', cultures, serializeDescrCulturesFull, cultures.length > 0);
 
   const selected = cultures[selectedIdx] || null;
 

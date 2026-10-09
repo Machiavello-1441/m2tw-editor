@@ -1,13 +1,8 @@
 import React from 'react';
 import { Image, AlertCircle } from 'lucide-react';
-import useLocalImage from '@/components/workspace/useLocalImage';
-import { getWorkspace } from '@/components/workspace/localWorkspace';
 
 export default function UnitImagesTab({ dictionary, unitImages }) {
-  const localCard = useLocalImage(`#${(dictionary || '').toLowerCase()}.tga`);
-  const localInfo = useLocalImage(`${(dictionary || '').toLowerCase()}_info.tga`);
-  if (localCard.loading || localInfo.loading) return <p className="p-4 text-xs text-muted-foreground">Reading unit images from your PC…</p>;
-  if (!unitImages && !getWorkspace()?.authorized) {
+  if (!unitImages) {
     return (
       <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground text-xs text-center px-6">
         <Image className="w-8 h-8 opacity-20" />
@@ -23,8 +18,8 @@ export default function UnitImagesTab({ dictionary, unitImages }) {
   const infoKey = `${dictLower}_info`;
 
   // Search all loaded image keys for matches
-  const cardImg = unitImages?.[cardKey] ?? findByKey(unitImages || {}, cardKey) ?? localCard.src;
-  const infoImg = unitImages?.[infoKey] ?? findByKey(unitImages || {}, infoKey) ?? localInfo.src;
+  const cardImg  = unitImages[cardKey]  ?? findByKey(unitImages, cardKey);
+  const infoImg  = unitImages[infoKey]  ?? findByKey(unitImages, infoKey);
 
   return (
     <div className="p-4 space-y-5">

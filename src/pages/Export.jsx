@@ -21,9 +21,6 @@ import TriggerValidationPanel from '../components/export/TriggerValidationPanel'
 import CampaignPackagePicker from '../components/export/CampaignPackagePicker';
 import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
 import { getCharacterNamesRaw } from '@/lib/characterNames';
-import WorkspaceSaveOptions from '@/components/workspace/WorkspaceSaveOptions';
-import appendWorkspaceEdits, { hasWorkspaceExports } from '@/components/workspace/appendWorkspaceEdits';
-import { confirmWorkspaceWrite, writeWorkspaceExport } from '@/components/workspace/writeWorkspaceExport';
 
 function getCampaigns() {
   try { const s = localStorage.getItem('m2tw_campaigns'); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -101,10 +98,7 @@ export default function Export() {
     try { return localStorage.getItem('m2tw_mod_name') || 'my_mod'; } catch { return 'my_mod'; }
   })();
 
-  const [saveMode, setSaveMode] = useState('copy');
-  const [saveError, setSaveError] = useState('');
-  const [completedMode, setCompletedMode] = useState('copy');
-  const buildExportZip = async () => {
+  const handleExportZip = async () => {
     setBuilding(true);
     setDone(false);
 
@@ -221,32 +215,21 @@ export default function Export() {
     }
 
     addCharacterNamesToZip(dataFolder);
-    appendWorkspaceEdits(zip, modName);
-    if (saveMode === 'source') await writeWorkspaceExport(zip, modName);
-    else {
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${modName}_data.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-    setCompletedMode(saveMode);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${modName}_data.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setBuilding(false);
     setDone(true);
   };
 
-  const handleExportZip = async () => {
-    setSaveError('');
-    try {
-      if (saveMode === 'source' && !await confirmWorkspaceWrite()) return;
-      await buildExportZip();
-    } catch (error) {
-      setSaveError(`${error.message} If a disk write was interrupted, some files may already have been saved.`);
-    } finally { setBuilding(false); }
-  };
-
-  // Validate before either a separate copy or a source-folder write.
+  // Automated validation runs before the zip is built — anything invalid
+  // (map placement, broken references, buggy features) is listed in a popup so
+  // it can be corrected first.
   const startExportZip = () => {
     const result = runExportValidation({ edbData, layers: getAllLayers() });
     if (result.errors.length > 0 || result.warnings.length > 0) {
@@ -451,22 +434,20 @@ export default function Export() {
             </CardContent>
           </Card>
 
-          <WorkspaceSaveOptions mode={saveMode} onChange={setSaveMode} disabled={building} />
-          {saveError && <p role="alert" className="text-xs text-destructive">{saveError}</p>}
           <Button
             className="w-full h-12 text-base gap-2"
             onClick={startExportZip}
-            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && !hasWorkspaceExports() && extraFiles.size === 0)}
+            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && extraFiles.size === 0)}
           >
             {building ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {saveMode === 'source' ? 'Writing exported files…' : 'Building separate copy…'}
+                Building zip…
               </>
             ) : (
               <>
                 <Download className="w-5 h-5" />
-                {saveMode === 'source' ? 'Save exported files to source folder' : `Download ${modName}_data.zip`}
+                Download {modName}_data.zip
               </>
             )}
           </Button>
@@ -474,11 +455,11 @@ export default function Export() {
           {done && (
             <div className="flex items-center gap-2 text-green-400 text-xs justify-center">
               <CheckCircle2 className="w-4 h-4" />
-              {completedMode === 'source' ? 'Exported files saved to your source folder.' : 'Separate ZIP copy downloaded. Your source folder was not changed.'}
+              Zip downloaded! Drop the <code className="font-mono bg-accent px-1 rounded">{modName}/</code> folder into your M2TW <code className="font-mono bg-accent px-1 rounded">mods/</code> directory.
             </div>
           )}
 
-          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && !hasWorkspaceExports() && extraFiles.size === 0 && (
+          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && extraFiles.size === 0 && (
             <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
               <AlertCircle className="w-3.5 h-3.5" />
               Load at least one moddable file to enable export.
@@ -491,7 +472,7 @@ export default function Export() {
         open={!!validation}
         onOpenChange={(o) => !o && setValidation(null)}
         result={validation}
-        exportLabel={saveMode === 'source' ? 'Continue to overwrite confirmation' : `Download ${modName}_data.zip anyway`}
+        exportLabel={`Download ${modName}_data.zip anyway`}
         onProceed={() => { setValidation(null); handleExportZip(); }} />
     </div>
   );

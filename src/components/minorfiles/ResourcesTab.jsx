@@ -3,8 +3,6 @@ import { Upload, Download, Plus, X, AlertCircle, ImageIcon } from 'lucide-react'
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
-import useWorkspaceTextBuffer from '@/components/workspace/useWorkspaceTextBuffer';
-import WorkspaceImage from '@/components/workspace/WorkspaceImage';
 
 function parseResourcesFull(text) {
   const resources = [];
@@ -73,7 +71,6 @@ export default function ResourcesTab() {
   const [names, setNames] = useState({});
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
-  useWorkspaceTextBuffer('m2tw_resources_file', resources, serializeResources, loaded);
   const txtInputRef = useRef(null);
   const binInputRef = useRef(null);
   const stratTxtInputRef = useRef(null);
@@ -303,7 +300,11 @@ export default function ResourcesTab() {
                     onClick={() => imgUploadRefs.current[idx]?.click()}
                     className="w-9 h-9 rounded border border-slate-600/50 bg-slate-800 hover:border-amber-400/60 hover:bg-slate-700 transition-colors flex items-center justify-center overflow-hidden"
                   >
-                    <WorkspaceImage paths={[r.icon?.replace(/^data[\\/]/i, ''), `ui/resources/resource_${r.name.toLowerCase()}.tga`]} fallback={iconUrl} alt={r.name} className="w-full h-full" style={{ imageRendering: 'pixelated' }} placeholder={<ImageIcon className="w-4 h-4 text-slate-500" />} />
+                    {iconUrl ? (
+                      <img src={iconUrl} alt={r.name} className="w-full h-full object-contain" style={{ imageRendering: 'pixelated' }} />
+                    ) : (
+                      <ImageIcon className="w-4 h-4 text-slate-500" />
+                    )}
                   </button>
                 </div>
 

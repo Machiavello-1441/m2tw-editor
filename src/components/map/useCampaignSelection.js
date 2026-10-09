@@ -1,19 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { campaignLibrary } from '@/components/map/campaignLibrary';
 import { captureCampaignStorage, restoreCampaignStorage } from '@/components/map/campaignSession';
-import { getWorkspace } from '@/components/workspace/localWorkspace';
-import { readCampaignRecovery, rebuildRecoveryLayers } from '@/components/map/campaignRecovery';
-import useCampaignRecovery from '@/components/map/useCampaignRecovery';
 
 export default function useCampaignSelection(snapshot, apply, load) {
   const library = campaignLibrary();
   const [active, setActive] = useState(library.active);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [initialized, setInitialized] = useState(false);
-  const [recovered, setRecovered] = useState(false);
-  const modName = getWorkspace()?.name || '';
-  const recovery = useCampaignRecovery(snapshot, initialized && !loading && !error, modName, active);
   const current = useRef({ snapshot, apply, load });
   current.current = { snapshot, apply, load };
   const committed = useRef('');
@@ -43,33 +36,14 @@ export default function useCampaignSelection(snapshot, apply, load) {
     } finally { busy.current = false; setLoading(false); }
   };
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const record = await readCampaignRecovery(modName);
-      if (!mounted) return;
-      const target = record && library.campaigns.find(c => c.id === record.active || c.name === record.snapshot.stratData?.campaignName);
-      if (record && (!library.campaigns.length || target)) {
-        const restored = await rebuildRecoveryLayers(record.snapshot);
-        if (!mounted) return;
-        restoreCampaignStorage(record.storage);
-        current.current.apply(restored);
-        const id = target?.id || '';
-        library.active = id; committed.current = id; setActive(id);
-        if (target) {
-          library.snapshots.set(id, { ...restored, storage: record.storage });
-          window._m2tw_map_files = target.files; window._m2tw_loaded_map_files = target.files;
-        }
-        setRecovered(true);
-      } else if (library.active) await select(library.active, true);
-      else if (window._m2tw_map_files?.length && window._m2tw_loaded_map_files !== window._m2tw_map_files) {
-        await current.current.load({ files: window._m2tw_map_files });
-        window._m2tw_loaded_map_files = window._m2tw_map_files;
-      }
-    })().catch(e => { if (mounted) setError(`Could not restore the local draft: ${e.message}`); })
-      .finally(() => { if (mounted) { setInitialized(true); setLoading(false); } });
+    if (library.active) select(library.active, true);
+    else if (window._m2tw_map_files?.length && window._m2tw_loaded_map_files !== window._m2tw_map_files) {
+      current.current.load({ files: window._m2tw_map_files });
+      window._m2tw_loaded_map_files = window._m2tw_map_files;
+    }
     const refresh = () => select(library.active, true);
     window.addEventListener('m2tw-campaign-library-updated', refresh);
-    return () => { mounted = false; save(); window.removeEventListener('m2tw-campaign-library-updated', refresh); };
+    return () => { save(); window.removeEventListener('m2tw-campaign-library-updated', refresh); };
   }, []);
-  return { active, loading, error, select, recovery: error ? { phase: 'error', error } : recovery, recovered };
+  return { active, loading, error, select };
 }

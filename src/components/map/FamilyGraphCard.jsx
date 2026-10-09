@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Star } from 'lucide-react';
 import { CW, CH } from './familyGraphLayout';
-import WorkspaceImage from '@/components/workspace/WorkspaceImage';
-import portraitPaths from '@/components/workspace/portraitPaths';
 
 // Custom portraits loaded from data/ui/custom_portraits (see Home page loader)
 export function usePortraits() {
@@ -52,7 +50,11 @@ export default function FamilyGraphCard({ node, portraits, showPortraits, onDrop
       style={{ ...style, left: node.x, top: node.y }}
       className={`group absolute rounded border bg-slate-800 flex items-center gap-1.5 p-1 cursor-grab select-none ${selected ? 'ring-2 ring-primary' : ''} ${
         errorMessages?.length ? 'border-destructive ring-2 ring-destructive' : over ? ring : female ? 'border-pink-500/50' : 'border-sky-500/50'}`}>
-      {showPortraits && char.portrait && <WorkspaceImage paths={portraitPaths(char)} fallback={src} className="h-full w-9 rounded-sm shrink-0" placeholder={<span className="text-[8px] text-muted-foreground">no img</span>} />}
+      {showPortraits && char.portrait && (
+        src
+          ? <img src={src} alt="" className="h-full w-9 rounded-sm object-cover shrink-0" />
+          : <div className="h-full w-9 rounded-sm bg-slate-700 text-[8px] text-slate-500 flex items-center justify-center text-center shrink-0" title="Load data/ui/custom_portraits to preview">no img</div>
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-mono text-slate-100 truncate flex items-center gap-0.5">
           {(char.role === 'leader' || char.role === 'heir') && <Star className="w-2.5 h-2.5 text-amber-400 shrink-0" />}

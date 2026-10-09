@@ -14,8 +14,6 @@ import { setFile } from '@/lib/bigFileStore';
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
 import DataFolderPicker from '../components/home/DataFolderPicker';
-import LocalFolderPanel from '@/components/workspace/LocalFolderPanel';
-import useWorkspaceSource from '@/components/workspace/useWorkspaceSource';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { loadFamilyRulesFile, FAMILY_RULE_FILES, FAMILY_RULES_KEY } from '@/components/map/familyRules';
 import { DESCR_CLIMATES_KEY, AERIAL_RAW_KEY, MOD_CLIMATES_EVT } from '@/lib/modClimates';
@@ -168,7 +166,6 @@ function FileStatus({ label, hint, status }) {
 }
 
 export default function Home() {
-  const workspaceSource = useWorkspaceSource();
   const { toast } = useToast();
   const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadSkeletonFile, loadMountFile, loadCampaignScript, loadGuildsFile } = useRefData();
@@ -1022,8 +1019,9 @@ export default function Home() {
         </div>
         <h1 className="text-2xl font-bold text-foreground">Mylae’s M2TW Mod Editor</h1>
         <p className="text-sm text-muted-foreground">This editor allows you to read, edit and export the Medieval 2 Total War files.
-Unpack your game files, then select the mod folder containing its data subfolder below. Read-only folder selection avoids the restricted direct-access picker and reads file contents locally only when needed.
-Use Export to create a separate edited ZIP copy by default, or explicitly save exported files back to your source folder. Manual import remains available for compatibility.</p>
+To do this, it is necessary to unpack the files in the main Medieval 2 Total War\data directory. 
+You may load all the editable files from the home or in the separate editors. 
+Use the Export page when done to download a complete [mod name]\data\ folder ready to drop into your M2TW mods directory.</p>
       </div>
 
       {/* Mod Name */}
@@ -1049,20 +1047,19 @@ Use Export to create a separate edited ZIP copy by default, or explicitly save e
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Castle className="w-4 h-4 text-primary" />
-            Step 1 — Connect your local mod folder
+            Step 1 — Load Mod Files &amp; Images
           </h2>
-          <p className="text-[11px] text-muted-foreground mt-1">Select one mod folder with a data subfolder, not the whole installation. The read-only picker lists local file references; file contents load when needed and are never uploaded.</p>
+          <p className="text-[11px] text-muted-foreground mt-1">This step browse your whole data\ folder to load all game files, then browse data\ui\ to load UI images.
+
+
+          </p>
         </div>
         <div className="p-4 space-y-4">
           {/* Text files */}
           <div className="space-y-2">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Game Data Files</p>
-            <LocalFolderPanel />
-            {!workspaceSource?.authorized && <details className="rounded-lg border border-border p-3">
-              <summary className="cursor-pointer text-xs text-muted-foreground">Manual import (compatibility option)</summary>
-              <div className="mt-3"><DataFolderPicker onLoad={handleDataFolderFromPicker} loading={loadingData} /></div>
-            </details>}
-            {!workspaceSource?.authorized && <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <DataFolderPicker onLoad={handleDataFolderFromPicker} loading={loadingData} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt" status={fileStatus.edb} />
               <FileStatus label="Building Text" hint="text\export_buildings.txt" status={fileStatus.txt} />
               <FileStatus label="Factions" hint="descr_sm_factions.txt" status={fileStatus.fac} />
@@ -1083,13 +1080,13 @@ Use Export to create a separate edited ZIP copy by default, or explicitly save e
               <FileStatus label="Offmap Models" hint="descr_offmap_models.txt" status={fileStatus.offmap} />
               <FileStatus label="Guilds" hint="export_descr_guilds.txt" status={fileStatus.guilds} />
               <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />
-            </div>}
+            </div>
           </div>
 
           
 
           {/* UI images */}
-          <div className={workspaceSource?.authorized ? 'hidden' : 'space-y-2'}>
+          <div className="space-y-2">
             
 
 
@@ -1238,8 +1235,8 @@ Use Export to create a separate edited ZIP copy by default, or explicitly save e
       <div className="w-full max-w-2xl flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
         <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Local folder access stays on your PC. When you're done editing, go to <strong className="text-foreground">Export</strong> to download edited editor files under
-          <code className="text-[10px] font-mono bg-accent px-1 rounded">{modName || 'my_mod'}\data\</code>. The ZIP does not duplicate every unedited game asset.
+          Browsers can read but not write to disk. When you're done editing, go to <strong className="text-foreground">Export</strong> to download a zip of your
+          complete <code className="text-[10px] font-mono bg-accent px-1 rounded">{modName || 'my_mod'}\data\</code> folder.
         </p>
       </div>
 
