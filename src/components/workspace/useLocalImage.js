@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { findWorkspaceFile } from '@/components/workspace/localWorkspace';
+import { resolveWorkspaceFile } from '@/components/workspace/localWorkspace';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
 
 const pending = new Map();
@@ -22,10 +22,15 @@ export default function useLocalImage(paths, fallback, enabled = true) {
   useEffect(() => {
     let active = true;
     if (!enabled || fallback) return;
-    const entry = JSON.parse(key).map(findWorkspaceFile).find(Boolean);
-    if (!entry) return;
     setImage({ key, src: null, loading: true, error: '' });
-    readImage(entry).then(src => { if (active) setImage({ key, src, loading: false, error: src ? '' : 'Unsupported image format' }); })
+    (async () => {
+      for (const path of JSON.parse(key)) {
+        if (!active) return null;
+        const entry = await resolveWorkspaceFile(path);
+        if (entry) return readImage(entry);
+      }
+      return null;
+    })().then(src => { if (active) setImage({ key, src, loading: false, error: '' }); })
       .catch(error => { if (active) setImage({ key, src: null, loading: false, error: error.message }); });
     return () => { active = false; };
   }, [key, fallback, enabled]);

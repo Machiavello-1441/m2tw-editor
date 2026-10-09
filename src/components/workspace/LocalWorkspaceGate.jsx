@@ -24,7 +24,7 @@ export default function LocalWorkspaceGate({ page, children }) {
       const home = page === 'Home';
       if (source?.authorized && !home) await loadWorkspacePage(page, bindings.current);
       if (active) setState({ page, error: '', needsAccess: !!source && !source.authorized && !home });
-    })().catch(error => { if (active) setState({ page, error: error.message, needsAccess: false }); });
+    })().catch(error => { if (active) setState({ page, error: page === 'Home' ? '' : error.message, needsAccess: false }); });
     return () => { active = false; };
   }, [page, revision]);
   if (state.page !== page) return <div className="p-6 text-sm text-muted-foreground">Reading this editor’s files from your PC…</div>;
