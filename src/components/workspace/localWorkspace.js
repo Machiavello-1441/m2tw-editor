@@ -2,6 +2,7 @@ import { workspaceSetting, clearEditorCaches } from '@/components/workspace/work
 import readOnlyWorkspace from '@/components/workspace/readOnlyWorkspace';
 import { awaitWorkspaceOperation } from '@/components/workspace/workspaceOperation';
 import { indexWorkspaceFolder, workspaceDirectory, workspaceFileEntry } from '@/components/workspace/workspaceDirectory';
+import { setWorkspaceProgress } from '@/components/workspace/workspaceProgress';
 import { clearStringsBinStore } from '@/lib/stringsBinStore';
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 
@@ -13,8 +14,16 @@ export const getWorkspace = () => workspace;
 export const supportsLocalWorkspace = () => typeof window.showDirectoryPicker === 'function';
 const announce = () => window.dispatchEvent(new Event(workspaceEvent));
 
-async function indexDirectory(root, options) {
-  return indexWorkspaceFolder(root, options);
+async function indexDirectory(root, options = {}) {
+  setWorkspaceProgress({ folder: root.name, phase: 'Checking data subfolder', current: 0 });
+  try {
+    return await indexWorkspaceFolder(root, { ...options, onProgress: value => {
+      setWorkspaceProgress({ ...value, folder: root.name });
+      options.onProgress?.(value);
+    } });
+  } finally {
+    setWorkspaceProgress(null);
+  }
 }
 export async function selectWorkspaceFolder() {
   const root = await window.showDirectoryPicker({ id: 'm2tw-mod-folder', mode: 'read' });

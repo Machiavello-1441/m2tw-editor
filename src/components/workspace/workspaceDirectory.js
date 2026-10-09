@@ -24,7 +24,7 @@ export async function indexWorkspaceFolder(root, { signal, onProgress = () => {}
       if (handle.kind === 'directory') {
         if (recursive) await walk(handle, path, true, pattern);
       } else if (pattern.test(name)) files.set(path.toLowerCase(), workspaceFileEntry(root, path, handle));
-      onProgress({ phase: 'Checking editor file locations', current: files.size, total: 0 });
+      onProgress({ phase: 'Checking editor file locations', name: path, current: files.size, total: 0 });
     }
   };
   // Do not walk the installation, other mods, UI art, sounds or model assets.
