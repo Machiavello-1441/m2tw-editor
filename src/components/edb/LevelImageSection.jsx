@@ -3,6 +3,7 @@ import { useEDB } from './EDBContext';
 import { useRefData } from './RefDataContext';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, ImageIcon } from 'lucide-react';
+import useLocalImage from '@/components/workspace/useLocalImage';
 
 // Image slots per level per culture
 // type: 'icon' | 'panel' | 'construction'
@@ -73,7 +74,10 @@ const SLOT_SIZES = { icon: [64, 51], panel: [78, 62], construction: [300, 245] }
 function ImageSlot({ culture, levelName, slot }) {
   const { imageData, loadBuildingTgaImages } = useEDB();
   const key = `${levelName}_${culture}_${slot.type}`;
-  const img = imageData[key];
+  const editedImage = imageData[key];
+  const localPath = `ui/${culture}/buildings/${slot.type === 'icon' ? 'constructed/' : ''}#${culture}_${levelName}${slot.type === 'construction' ? '_constructed' : ''}.tga`;
+  const localImage = useLocalImage(localPath, editedImage?.url);
+  const img = localImage.src ? { url: localImage.src } : null;
   const fileRef = useRef();
   const [preview, setPreview] = useState(null); // { dataUrl, canvas }
 

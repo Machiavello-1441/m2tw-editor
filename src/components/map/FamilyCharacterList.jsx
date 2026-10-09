@@ -1,5 +1,7 @@
 import React from 'react';
 import { usePortraits, portraitFor } from '@/components/map/FamilyGraphCard';
+import WorkspaceImage from '@/components/workspace/WorkspaceImage';
+import portraitPaths from '@/components/workspace/portraitPaths';
 
 export default function FamilyCharacterList({ chars, placedIds, showPortraits, characterErrors = {} }) {
   const portraits = usePortraits();
@@ -11,7 +13,7 @@ export default function FamilyCharacterList({ chars, placedIds, showPortraits, c
         return <div key={character.id} draggable onDragStart={event => event.dataTransfer.setData('charId', String(character.id))}
           className={`flex items-center gap-2 p-2 rounded border bg-card text-card-foreground cursor-grab select-none ${characterErrors[String(character.id)]?.length ? 'border-destructive' : 'border-border'} ${placedIds.has(character.id) ? 'opacity-50' : ''}`}
           title={characterErrors[String(character.id)]?.join('\n') || 'Drag onto the tree'}>
-          {src && <img src={src} alt="" className="w-8 h-8 rounded-sm object-cover shrink-0" />}
+          {showPortraits && character.portrait && <WorkspaceImage paths={portraitPaths(character)} fallback={src} className="w-8 h-8 rounded-sm shrink-0" />}
           <div className="min-w-0">
             <p className="text-[11px] font-mono truncate">{[character.name, character.surname].filter(Boolean).join(' ')}</p>
             <p className="text-[10px] text-muted-foreground">{character.sex === 'female' ? '♀' : '♂'} · age {character.age}{character.status === 'dead' ? ` · dead ${character.deadYears || 0}yr` : ''}</p>

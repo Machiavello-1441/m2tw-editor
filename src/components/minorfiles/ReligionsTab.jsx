@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Upload, Download, Plus, X, AlertCircle } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
+import useWorkspaceTextBuffer from '@/components/workspace/useWorkspaceTextBuffer';
+import WorkspaceImage from '@/components/workspace/WorkspaceImage';
 
 function parseReligionsFull(text) {
   const religions = [];
@@ -45,6 +47,7 @@ export default function ReligionsTab() {
   const [names, setNames] = useState({}); // internal→display from strings.bin
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  useWorkspaceTextBuffer('m2tw_religions_file', religions, serializeReligions, loaded);
   const txtInputRef = useRef(null);
   const binInputRef = useRef(null);
 
@@ -188,9 +191,7 @@ export default function ReligionsTab() {
                 <div className="flex items-center gap-1">
                   <input value={r.pip} onChange={e => updateReligion(idx, 'pip', e.target.value)}
                     className="flex-1 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                  {r.pip && window._m2tw_religion_pips?.[r.pip.split('/').pop()?.replace(/\.tga$/i, '').toLowerCase()] && (
-                    <img src={window._m2tw_religion_pips[r.pip.split('/').pop().replace(/\.tga$/i, '').toLowerCase()]} className="w-5 h-5 rounded border border-slate-600/40 object-contain" />
-                  )}
+                  {r.pip && <WorkspaceImage paths={[r.pip.replace(/^data[\\/]/i, ''), r.pip.split(/[\\/]/).pop()]} fallback={window._m2tw_religion_pips?.[r.pip.split('/').pop().replace(/\.tga$/i, '').toLowerCase()]} className="w-5 h-5 rounded border border-border" />}
                 </div>
               </div>
               <div>
@@ -198,9 +199,7 @@ export default function ReligionsTab() {
                 <div className="flex items-center gap-1">
                   <input value={r.antiPip} onChange={e => updateReligion(idx, 'antiPip', e.target.value)}
                     className="flex-1 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
-                  {r.antiPip && window._m2tw_religion_pips?.[r.antiPip.split('/').pop()?.replace(/\.tga$/i, '').toLowerCase()] && (
-                    <img src={window._m2tw_religion_pips[r.antiPip.split('/').pop().replace(/\.tga$/i, '').toLowerCase()]} className="w-5 h-5 rounded border border-slate-600/40 object-contain" />
-                  )}
+                  {r.antiPip && <WorkspaceImage paths={[r.antiPip.replace(/^data[\\/]/i, ''), r.antiPip.split(/[\\/]/).pop()]} fallback={window._m2tw_religion_pips?.[r.antiPip.split('/').pop().replace(/\.tga$/i, '').toLowerCase()]} className="w-5 h-5 rounded border border-border" />}
                 </div>
               </div>
               <div className="col-span-2">

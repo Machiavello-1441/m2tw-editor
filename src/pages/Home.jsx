@@ -14,6 +14,8 @@ import { setFile } from '@/lib/bigFileStore';
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
 import DataFolderPicker from '../components/home/DataFolderPicker';
+import LocalFolderPanel from '@/components/workspace/LocalFolderPanel';
+import { getWorkspace } from '@/components/workspace/localWorkspace';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { loadFamilyRulesFile, FAMILY_RULE_FILES, FAMILY_RULES_KEY } from '@/components/map/familyRules';
 import { DESCR_CLIMATES_KEY, AERIAL_RAW_KEY, MOD_CLIMATES_EVT } from '@/lib/modClimates';
@@ -1019,9 +1021,8 @@ export default function Home() {
         </div>
         <h1 className="text-2xl font-bold text-foreground">Mylae’s M2TW Mod Editor</h1>
         <p className="text-sm text-muted-foreground">This editor allows you to read, edit and export the Medieval 2 Total War files.
-To do this, it is necessary to unpack the files in the main Medieval 2 Total War\data directory. 
-You may load all the editable files from the home or in the separate editors. 
-Use the Export page when done to download a complete [mod name]\data\ folder ready to drop into your M2TW mods directory.</p>
+Unpack your game files, then connect your mod or data folder below. Local-folder mode reads supported editors’ files as needed instead of importing the entire collection.
+Use Export to create a separate edited ZIP copy by default, or explicitly save exported files back to your source folder. Manual import remains available for compatibility.</p>
       </div>
 
       {/* Mod Name */}
@@ -1047,18 +1048,19 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
         <div className="p-4 border-b border-border bg-accent/10">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Castle className="w-4 h-4 text-primary" />
-            Step 1 — Load Mod Files &amp; Images
+            Step 1 — Connect your local mod folder
           </h2>
-          <p className="text-[11px] text-muted-foreground mt-1">This step browse your whole data\ folder to load all game files, then browse data\ui\ to load UI images.
-
-
-          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">Choose your mod or data folder once. Supported editors read their files when opened, without preloading the entire UI image collection.</p>
         </div>
         <div className="p-4 space-y-4">
           {/* Text files */}
           <div className="space-y-2">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Game Data Files</p>
-            <DataFolderPicker onLoad={handleDataFolderFromPicker} loading={loadingData} />
+            <LocalFolderPanel />
+            {!getWorkspace()?.root && <details className="rounded-lg border border-border p-3">
+              <summary className="cursor-pointer text-xs text-muted-foreground">Manual import (compatibility option)</summary>
+              <div className="mt-3"><DataFolderPicker onLoad={handleDataFolderFromPicker} loading={loadingData} /></div>
+            </details>}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt" status={fileStatus.edb} />
               <FileStatus label="Building Text" hint="text\export_buildings.txt" status={fileStatus.txt} />
@@ -1235,7 +1237,7 @@ Use the Export page when done to download a complete [mod name]\data\ folder rea
       <div className="w-full max-w-2xl flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
         <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Browsers can read but not write to disk. When you're done editing, go to <strong className="text-foreground">Export</strong> to download a zip of your
+          Local folder access stays on your PC. When you're done editing, go to <strong className="text-foreground">Export</strong>; the default creates a separate zip of your
           complete <code className="text-[10px] font-mono bg-accent px-1 rounded">{modName || 'my_mod'}\data\</code> folder.
         </p>
       </div>

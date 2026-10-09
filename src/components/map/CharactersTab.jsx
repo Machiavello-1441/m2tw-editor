@@ -9,37 +9,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 // Small component that shows character portrait previews (young/old/dead variants)
 // Portrait field = folder name inside data/ui/custom_portraits/[name]/portrait_young.tga etc.
-function PortraitPreview({ name }) {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const h = () => setTick(t => t + 1);
-    window.addEventListener('load-portraits', h);
-    return () => window.removeEventListener('load-portraits', h);
-  }, []);
-
-  const folder = name.toLowerCase().replace(/\.tga$/i, '');
-  const portraits = window._m2tw_portraits || {};
-  const variants = ['portrait_young', 'portrait_old', 'portrait_dead'];
-  const found = variants.map(v => ({ label: v.replace('portrait_', ''), src: portraits[`${folder}/${v}`] || null })).filter(v => v.src);
-
-  if (found.length > 0) {
-    return (
-      <div className="mt-1 flex gap-1">
-        {found.map(({ label, src }) => (
-          <div key={label} className="flex flex-col items-center gap-0.5">
-            <img src={src} alt={label} className="rounded border border-slate-700/40 h-20 object-contain bg-black/40" />
-            <span className="text-[8px] text-slate-500">{label}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <p className="text-[8px] text-slate-600 mt-0.5 italic">
-      No preview — load data/ui/custom_portraits/ folder
-    </p>
-  );
-}
+import PortraitPreview from '@/components/workspace/CharacterPortraitPreview';
 
 // Types that force female sex
 const FEMALE_ONLY_TYPES = new Set(['princess', 'witch']);

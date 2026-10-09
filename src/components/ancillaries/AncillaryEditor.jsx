@@ -9,6 +9,7 @@ import EffectAttributeSelect from '../shared/EffectAttributeSelect';
 import TriggerEditor from '../shared/TriggerEditor';
 import ValidationPanel from '../shared/ValidationPanel';
 import { buildEffectsDescription, validateAncillariesData } from '../shared/effectsDescriptionBuilder';
+import useLocalImage from '@/components/workspace/useLocalImage';
 
 const ANCILLARY_TYPES = [
   'Academic', 'Court', 'Diplomacy', 'Entertain', 'Family',
@@ -37,6 +38,8 @@ function PreviewText({ text }) {
 export default function AncillaryEditor() {
   const { ancData, selectedAnc, updateAncillary, getText, getTgaImage, updateTextEntry, renameTextKey, updateTrigger, addTrigger, deleteTrigger } = useAncillaries();
   useModData(); // ensure context is consumed (data flows through TriggerEditor via useModData)
+  const imageName = ancData?.ancillaries?.[selectedAnc]?.image;
+  const localImage = useLocalImage(imageName ? `ui/ancillaries/${imageName}` : null, imageName ? getTgaImage(imageName) : null);
 
   if (selectedAnc === null || !ancData) {
     return (
@@ -87,7 +90,7 @@ export default function AncillaryEditor() {
   const descText = getText(anc.description);
   const effectsText = getText(anc.effectsDescription);
   const displayName = getText(anc.name) || getText(anc.description?.replace('_desc', ''));
-  const tgaDataUrl = getTgaImage(anc.image);
+  const tgaDataUrl = localImage.src;
 
   // All triggers that acquire this ancillary
   const allTriggers = ancData.triggers || [];
