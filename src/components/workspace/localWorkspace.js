@@ -5,6 +5,7 @@ import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 
 let workspace = null;
 let initialization;
+let workspaceGeneration = 0;
 export const workspaceEvent = 'm2tw-workspace-changed';
 export const getWorkspace = () => workspace;
 export const supportsLocalWorkspace = () => typeof window.showDirectoryPicker === 'function';
@@ -28,13 +29,15 @@ async function indexDirectory(root) {
 }
 export function restoreWorkspace() {
   if (!initialization) initialization = (async () => {
+    const generation = workspaceGeneration;
     const root = await workspaceSetting('source');
-    if (!root) return null;
-    workspace = { root, name: root.name, files: new Map(), loaded: new Set(), authorized: false };
+    if (!root || generation !== workspaceGeneration) return workspace;
+    const restored = { root, name: root.name, files: new Map(), loaded: new Set(), authorized: false };
     if (await root.queryPermission({ mode: 'read' }) === 'granted') {
-      workspace.files = await indexDirectory(root);
-      workspace.authorized = true;
+      restored.files = await indexDirectory(root);
+      restored.authorized = true;
     }
+    if (generation === workspaceGeneration) workspace = restored;
     return workspace;
   })();
   return initialization;
@@ -46,19 +49,23 @@ export async function connectWorkspace() {
   clearEditorCaches();
   window.location.assign('/Home');
 }
-export async function connectReadOnlyWorkspace(files) {
-  if (!files.length) return;
-  if (!window.confirm('Connect this folder read-only? Export unsaved edits first: existing editor caches will be cleared. Nothing will be uploaded or written to your installed mod.')) return;
-  // A blocked remembered handle must not prevent connecting newly selected files.
-  await restoreWorkspace().catch(() => null);
+export async function connectReadOnlyWorkspace(files, options = {}) {
+  if (!files.length) throw new Error('The selected folder contains no readable files');
+  // Confirmation is provided by the in-app folder review, not blocked iframe dialogs.
+  options.onProgress?.({ phase: 'Checking local file read access', current: 0, total: files.length });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  await files[0].slice(0, 1).arrayBuffer();
+  const nextWorkspace = await readOnlyWorkspace(files, options);
   await workspaceSetting('source', null);
+  workspaceGeneration++;
   clearEditorCaches();
   window.__m2twBigFileStore = {};
   clearStringsBinStore();
   for (const key of Object.keys(window)) if (key.startsWith('_m2tw_')) delete window[key];
   indexCampaignLibrary([]);
-  workspace = readOnlyWorkspace(files);
+  workspace = nextWorkspace;
   initialization = Promise.resolve(workspace);
+  options.onProgress?.({ phase: 'Ready to edit', current: files.length, total: files.length });
   window.dispatchEvent(new CustomEvent(workspaceEvent, { detail: { reset: true } }));
 }
 export async function authorizeWorkspace() {

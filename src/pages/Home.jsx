@@ -15,7 +15,7 @@ import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
 import DataFolderPicker from '../components/home/DataFolderPicker';
 import LocalFolderPanel from '@/components/workspace/LocalFolderPanel';
-import { getWorkspace } from '@/components/workspace/localWorkspace';
+import useWorkspaceSource from '@/components/workspace/useWorkspaceSource';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { loadFamilyRulesFile, FAMILY_RULE_FILES, FAMILY_RULES_KEY } from '@/components/map/familyRules';
 import { DESCR_CLIMATES_KEY, AERIAL_RAW_KEY, MOD_CLIMATES_EVT } from '@/lib/modClimates';
@@ -168,6 +168,7 @@ function FileStatus({ label, hint, status }) {
 }
 
 export default function Home() {
+  const workspaceSource = useWorkspaceSource();
   const { toast } = useToast();
   const { loadEDB, edbData, fileName, loadTextFile, loadBuildingTgaImages } = useEDB();
   const { loadFactionsFile, loadResourcesFile, loadEventsFile, loadUnitsFile, loadSkeletonFile, loadMountFile, loadCampaignScript, loadGuildsFile } = useRefData();
@@ -1057,11 +1058,11 @@ Use Export to create a separate edited ZIP copy by default, or explicitly save e
           <div className="space-y-2">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Game Data Files</p>
             <LocalFolderPanel />
-            {!getWorkspace()?.root && <details className="rounded-lg border border-border p-3">
+            {!workspaceSource?.authorized && <details className="rounded-lg border border-border p-3">
               <summary className="cursor-pointer text-xs text-muted-foreground">Manual import (compatibility option)</summary>
               <div className="mt-3"><DataFolderPicker onLoad={handleDataFolderFromPicker} loading={loadingData} /></div>
             </details>}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {!workspaceSource?.authorized && <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <FileStatus label="Buildings (EDB)" hint="export_descr_buildings.txt" status={fileStatus.edb} />
               <FileStatus label="Building Text" hint="text\export_buildings.txt" status={fileStatus.txt} />
               <FileStatus label="Factions" hint="descr_sm_factions.txt" status={fileStatus.fac} />
@@ -1082,13 +1083,13 @@ Use Export to create a separate edited ZIP copy by default, or explicitly save e
               <FileStatus label="Offmap Models" hint="descr_offmap_models.txt" status={fileStatus.offmap} />
               <FileStatus label="Guilds" hint="export_descr_guilds.txt" status={fileStatus.guilds} />
               <FileStatus label="Strings (.bin)" hint={fileStatus.strings_bin === 'ok' ? `${stringsBinCount} files loaded (incl. VnVs, ancillaries, regions…)` : 'text\\*.strings.bin (VnVs, ancillaries, regions…)'} status={fileStatus.strings_bin} />
-            </div>
+            </div>}
           </div>
 
           
 
           {/* UI images */}
-          <div className="space-y-2">
+          <div className={workspaceSource?.authorized ? 'hidden' : 'space-y-2'}>
             
 
 
@@ -1237,8 +1238,8 @@ Use Export to create a separate edited ZIP copy by default, or explicitly save e
       <div className="w-full max-w-2xl flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
         <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Local folder access stays on your PC. When you're done editing, go to <strong className="text-foreground">Export</strong>; the default creates a separate zip of your
-          complete <code className="text-[10px] font-mono bg-accent px-1 rounded">{modName || 'my_mod'}\data\</code> folder.
+          Local folder access stays on your PC. When you're done editing, go to <strong className="text-foreground">Export</strong> to download edited editor files under
+          <code className="text-[10px] font-mono bg-accent px-1 rounded">{modName || 'my_mod'}\data\</code>. The ZIP does not duplicate every unedited game asset.
         </p>
       </div>
 
