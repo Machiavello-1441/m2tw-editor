@@ -18,11 +18,12 @@ export function workspaceEditors(files) {
   if (files.some(file => /(?:^|\/)eopscripts\/[^/]+\.lua$/i.test(pathOf(file)))) result.push({ label: 'Lua Scripts', route: '/LuaScripts' });
   return result;
 }
-export async function discoverWorkspaceFolders(files, onProgress) {
+export async function discoverWorkspaceFolders(files, onProgress, signal) {
   const roots = new Map();
   for (let i = 0; i < files.length; i++) {
-    const file = files[i], path = pathOf(file), parts = path.split('/');
+    const file = files[i];
     if (known.has(file.name.toLowerCase()) || special(file)) {
+      const parts = pathOf(file).split('/');
       const lower = parts.map(part => part.toLowerCase());
       const data = lower.lastIndexOf('data');
       const anchor = data >= 0 ? data : lower.includes('eopdata') ? lower.lastIndexOf('eopdata') : lower.lastIndexOf('eopscripts');
@@ -30,19 +31,27 @@ export async function discoverWorkspaceFolders(files, onProgress) {
       roots.set(prefix.toLowerCase(), { prefix, name: prefix.split('/').pop(), files: [] });
     }
     if (i % 2000 === 0) {
+      signal?.throwIfAborted();
       onProgress({ phase: 'Finding mods and unpacked game files', current: i, total: files.length });
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   }
   const folders = [...roots.values()].sort((a, b) => b.prefix.length - a.prefix.length);
   for (let i = 0; i < files.length; i++) {
-    const path = pathOf(files[i]).toLowerCase();
-    const folder = folders.find(folder => path.startsWith(`${folder.prefix.toLowerCase()}/`));
+    let path = pathOf(files[i]).toLowerCase();
+    let folder;
+    // Walk ancestors instead of comparing each file with every installed mod.
+    while (!folder && path.includes('/')) {
+      path = path.slice(0, path.lastIndexOf('/'));
+      folder = roots.get(path);
+    }
     if (folder) folder.files.push(files[i]);
     if (i % 2000 === 0) {
+      signal?.throwIfAborted();
       onProgress({ phase: 'Grouping files by mod', current: i, total: files.length });
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   }
+  signal?.throwIfAborted();
   return folders.sort((a, b) => a.name.localeCompare(b.name));
 }

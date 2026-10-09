@@ -1,10 +1,11 @@
 // Index browser-selected files without reading their bytes or uploading them.
-export default async function readOnlyWorkspace(selectedFiles, { folder, onProgress = () => {} } = {}) {
+export default async function readOnlyWorkspace(selectedFiles, { folder, onProgress = () => {}, signal } = {}) {
   const files = new Map();
   const name = folder?.name || selectedFiles[0].webkitRelativePath.split('/')[0];
   for (let i = 0; i < selectedFiles.length; i++) {
     const file = selectedFiles[i];
     if (i % 1000 === 0) {
+      signal?.throwIfAborted();
       onProgress({ phase: 'Connecting file references', current: i, total: selectedFiles.length });
       await new Promise(resolve => setTimeout(resolve, 0));
     }
@@ -16,5 +17,6 @@ export default async function readOnlyWorkspace(selectedFiles, { folder, onProgr
       text: () => file.text(), arrayBuffer: () => file.arrayBuffer(),
     });
   }
+  signal?.throwIfAborted();
   return { root: null, name: name || 'Selected folder', files, loaded: new Set(), authorized: true, readOnly: true };
 }

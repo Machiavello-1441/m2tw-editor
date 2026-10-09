@@ -1,5 +1,6 @@
 import { workspaceSetting, clearEditorCaches } from '@/components/workspace/workspaceStorage';
 import readOnlyWorkspace from '@/components/workspace/readOnlyWorkspace';
+import { awaitWorkspaceOperation } from '@/components/workspace/workspaceOperation';
 import { clearStringsBinStore } from '@/lib/stringsBinStore';
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 
@@ -54,9 +55,12 @@ export async function connectReadOnlyWorkspace(files, options = {}) {
   // Confirmation is provided by the in-app folder review, not blocked iframe dialogs.
   options.onProgress?.({ phase: 'Checking local file read access', current: 0, total: files.length });
   await new Promise(resolve => setTimeout(resolve, 0));
-  await files[0].slice(0, 1).arrayBuffer();
+  options.signal?.throwIfAborted();
+  await awaitWorkspaceOperation(files[0].slice(0, 1).arrayBuffer(), options.signal);
   const nextWorkspace = await readOnlyWorkspace(files, options);
-  await workspaceSetting('source', null);
+  options.signal?.throwIfAborted();
+  await awaitWorkspaceOperation(workspaceSetting('source', null), options.signal);
+  options.signal?.throwIfAborted();
   workspaceGeneration++;
   clearEditorCaches();
   window.__m2twBigFileStore = {};
