@@ -12,7 +12,7 @@ export default function LocalFolderAccessButton({ busy, source, onConnect }) {
         <ExternalLink className="w-4 h-4" /> Open app to connect folder
       </a>
     </Button>
-    <p className="text-xs text-foreground">The embedded preview cannot open a local folder picker. Open the app in its own tab, then click “Connect local folder” there.</p>
+    <p className="text-xs text-foreground">The embedded preview cannot use direct folder access. Use the read-only folder option below, or open the app in its own tab for direct access.</p>
   </div>;
   return <Button variant="outline" className={className} disabled={busy || !supportsLocalWorkspace()} onClick={onConnect}>
     {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}

@@ -1,4 +1,7 @@
 import { workspaceSetting, clearEditorCaches } from '@/components/workspace/workspaceStorage';
+import readOnlyWorkspace from '@/components/workspace/readOnlyWorkspace';
+import { clearStringsBinStore } from '@/lib/stringsBinStore';
+import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 
 let workspace = null;
 let initialization;
@@ -42,6 +45,20 @@ export async function connectWorkspace() {
   await workspaceSetting('source', root);
   clearEditorCaches();
   window.location.assign('/Home');
+}
+export async function connectReadOnlyWorkspace(files) {
+  if (!files.length) return;
+  if (!window.confirm('Connect this folder read-only? Export unsaved edits first: existing editor caches will be cleared. Nothing will be uploaded or written to your installed mod.')) return;
+  await restoreWorkspace();
+  await workspaceSetting('source', null);
+  clearEditorCaches();
+  window.__m2twBigFileStore = {};
+  clearStringsBinStore();
+  for (const key of Object.keys(window)) if (key.startsWith('_m2tw_')) delete window[key];
+  indexCampaignLibrary([]);
+  workspace = readOnlyWorkspace(files);
+  initialization = Promise.resolve(workspace);
+  window.dispatchEvent(new CustomEvent(workspaceEvent, { detail: { reset: true } }));
 }
 export async function authorizeWorkspace() {
   if (await workspace.root.requestPermission({ mode: 'read' }) !== 'granted') throw new Error('Folder access was not granted.');

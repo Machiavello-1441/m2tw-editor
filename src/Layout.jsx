@@ -9,6 +9,7 @@ import { ModDataProvider } from './components/shared/ModDataContext';
 import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2, FileText, ScrollText, Gem, Image } from 'lucide-react';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import LocalWorkspaceGate from '@/components/workspace/LocalWorkspaceGate';
+import useWorkspaceReset from '@/components/workspace/useWorkspaceReset';
 
 // localStorage keys that indicate a given editor has data loaded
 const NAV_DATA_KEYS = {
@@ -75,8 +76,9 @@ const navItems = [
 
 export default function Layout({ children, currentPageName }) {
   const loadedPages = useLoadedPages();
+  const workspaceRevision = useWorkspaceReset();
   return (
-    <RefDataProvider>
+    <RefDataProvider key={workspaceRevision}>
     <EDBProvider>
     <TraitsProvider>
     <AncillariesProvider>

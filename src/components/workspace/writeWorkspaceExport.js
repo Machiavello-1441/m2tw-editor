@@ -3,12 +3,14 @@ import { findWorkspaceFile, getWorkspace } from '@/components/workspace/localWor
 export async function confirmWorkspaceWrite() {
   const workspace = getWorkspace();
   if (!workspace?.authorized) throw new Error('Reconnect your local source folder first.');
+  if (workspace.readOnly || !workspace.root) throw new Error('This folder is read-only. Download an edited ZIP and apply its files to your mod manually. No source files were changed.');
   if (!window.confirm('Overwrite the exported files in your original mod folder? This changes your source files. Choose Cancel to keep them unchanged.')) return false;
   if (await workspace.root.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Write permission was not granted. No source files were changed.');
   return true;
 }
 export async function writeWorkspaceExport(zip, modName) {
   const workspace = getWorkspace();
+  if (workspace?.readOnly || !workspace?.root) throw new Error('Direct writing is unavailable for this folder. Download a separate edited ZIP instead.');
   const dataOnly = workspace.root.name.toLowerCase() === 'data' || [...workspace.files.keys()].some(path => path === 'export_descr_buildings.txt' || path === 'descr_sm_factions.txt');
   const entries = Object.values(zip.files).filter(entry => !entry.dir);
   for (const entry of entries) {
