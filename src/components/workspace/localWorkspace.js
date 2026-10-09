@@ -49,7 +49,8 @@ export async function connectWorkspace() {
 export async function connectReadOnlyWorkspace(files) {
   if (!files.length) return;
   if (!window.confirm('Connect this folder read-only? Export unsaved edits first: existing editor caches will be cleared. Nothing will be uploaded or written to your installed mod.')) return;
-  await restoreWorkspace();
+  // A blocked remembered handle must not prevent connecting newly selected files.
+  await restoreWorkspace().catch(() => null);
   await workspaceSetting('source', null);
   clearEditorCaches();
   window.__m2twBigFileStore = {};

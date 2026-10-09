@@ -9,13 +9,13 @@ export default function LocalFolderAccessButton({ busy, source, onConnect }) {
   if (embedded) return <div className="space-y-2">
     <Button asChild variant="outline" className={className}>
       <a href="https://m2tw-editor.base44.app" target="_blank" rel="noopener noreferrer">
-        <ExternalLink className="w-4 h-4" /> Open app to connect folder
+        <ExternalLink className="w-4 h-4" /> Open app for remembered access
       </a>
     </Button>
-    <p className="text-xs text-foreground">The embedded preview cannot use direct folder access. Use the read-only folder option below, or open the app in its own tab for direct access.</p>
+    <p className="text-xs text-foreground">Use “Connect M2TW folder” above for Steam subfolders, including in this preview. Remembered folder access requires a separate tab and may be blocked for installed game folders.</p>
   </div>;
   return <Button variant="outline" className={className} disabled={busy || !supportsLocalWorkspace()} onClick={onConnect}>
     {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}
-    {source?.root && !source.authorized ? 'Grant folder access' : source?.root ? 'Change local folder' : 'Connect local folder'}
+    {source?.root && !source.authorized ? 'Reconnect remembered folder' : 'Remember folder access (optional)'}
   </Button>;
 }
