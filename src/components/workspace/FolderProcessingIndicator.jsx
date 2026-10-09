@@ -18,8 +18,8 @@ export default function FolderProcessingIndicator({ progress }) {
         <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Processing M2TW folder…</p><p className="truncate text-xs text-muted-foreground">{progress.folder}</p></div>
         <span aria-hidden="true" className="text-xs tabular-nums text-muted-foreground">{seconds}s</span>
       </div>
-      <progress aria-label="Processing M2TW folder; total file count is not yet known" className="mt-3 h-3 w-full accent-primary" />
-      <p className="mt-2 text-xs">{(progress.current || 0).toLocaleString()} editor file locations found</p>
+      <progress aria-label="Processing M2TW folder" value={progress.total ? Math.min(progress.current || 0, progress.total) : undefined} max={progress.total || 1} className="mt-3 h-3 w-full accent-primary" />
+      <p className="mt-2 text-xs">{(progress.current || 0).toLocaleString()}{progress.total ? ` / ${progress.total.toLocaleString()} file references processed` : ' editor file locations found'}</p>
       <p className="mt-1 truncate text-xs text-muted-foreground" title={progress.name}>{progress.name || progress.phase}</p>
       <p className="mt-2 text-xs text-muted-foreground">Checking local files. Please wait; nothing is being uploaded or changed.</p>
     </div>

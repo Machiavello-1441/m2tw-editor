@@ -64,10 +64,9 @@ export async function connectWorkspace(root, options = {}) {
 export async function connectReadOnlyWorkspace(files, options = {}) {
   if (!files.length) throw new Error('The selected folder contains no readable files');
   // Confirmation is provided by the in-app folder review, not blocked iframe dialogs.
-  options.onProgress?.({ phase: 'Checking local file read access', current: 0, total: files.length });
+  options.onProgress?.({ phase: 'Connecting local file references', current: 0, total: files.length });
   await new Promise(resolve => setTimeout(resolve, 0));
   options.signal?.throwIfAborted();
-  await awaitWorkspaceOperation(files[0].slice(0, 1).arrayBuffer(), options.signal);
   const nextWorkspace = await readOnlyWorkspace(files, options);
   options.signal?.throwIfAborted();
   await awaitWorkspaceOperation(workspaceSetting('source', null), options.signal);

@@ -1022,7 +1022,7 @@ export default function Home() {
         </div>
         <h1 className="text-2xl font-bold text-foreground">Mylae’s M2TW Mod Editor</h1>
         <p className="text-sm text-muted-foreground">This editor allows you to read, edit and export the Medieval 2 Total War files.
-Unpack your game files, then select the mod folder containing its data subfolder below. Direct folder access reads supported editors’ files locally as needed, without uploading the collection.
+Unpack your game files, then select the mod folder containing its data subfolder below. Read-only folder selection avoids the restricted direct-access picker and reads file contents locally only when needed.
 Use Export to create a separate edited ZIP copy by default, or explicitly save exported files back to your source folder. Manual import remains available for compatibility.</p>
       </div>
 
@@ -1051,7 +1051,7 @@ Use Export to create a separate edited ZIP copy by default, or explicitly save e
             <Castle className="w-4 h-4 text-primary" />
             Step 1 — Connect your local mod folder
           </h2>
-          <p className="text-[11px] text-muted-foreground mt-1">Select one mod folder with a data subfolder. Supported editors read their files when opened; the folder connection does not upload files or scan your whole installation.</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Select one mod folder with a data subfolder, not the whole installation. The read-only picker lists local file references; file contents load when needed and are never uploaded.</p>
         </div>
         <div className="p-4 space-y-4">
           {/* Text files */}
