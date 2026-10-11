@@ -9,6 +9,7 @@ import { AncillariesProvider } from './components/ancillaries/AncillariesContext
 import { ModDataProvider } from './components/shared/ModDataContext';
 import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2, FileText, ScrollText, Gem, Image } from 'lucide-react';
 import AppErrorBoundary from './components/AppErrorBoundary';
+import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
 
 // localStorage keys that indicate a given editor has data loaded
 const NAV_DATA_KEYS = {
@@ -22,7 +23,7 @@ const NAV_DATA_KEYS = {
   CulturesEditor:    ['m2tw_cultures_file'],
   UnitCardGenerator: ['m2tw_unitcard_entries'],
   FactionsEditor:    ['m2tw_factions_file'],
-  StringsBinEditor:  ['m2tw_edb_txt_file'],
+  StringsBinEditor:  ['m2tw_strings_bin_files'],
   LuaScripts:        ['m2tw_lua_scripts'],
 };
 
@@ -41,7 +42,7 @@ function useLoadedPages() {
     check();
     window.addEventListener('storage', check);
     // Also re-check when custom load events fire
-    const events = ['load-traits','load-ancillaries','load-export-units','strings-bin-updated','lua-scripts-loaded','modeldb-file-loaded'];
+    const events = [FILES_CHANGED_EVENT,'load-traits','load-ancillaries','load-export-units','strings-bin-updated','lua-scripts-loaded','modeldb-file-loaded'];
     events.forEach(e => window.addEventListener(e, check));
     return () => {
       window.removeEventListener('storage', check);
