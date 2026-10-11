@@ -5,6 +5,7 @@
  * Falls back to the vanilla preset list when nothing has been loaded.
  */
 import { useState, useEffect } from 'react';
+import { editorStorage as localStorage } from '@/lib/editorStorage';
 import { LAYER_PRESETS } from '@/components/map/paintPresets';
 
 export const DESCR_CLIMATES_KEY = 'm2tw_descr_climates';
