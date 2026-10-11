@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { DATA_FILE_MAP, EXTRA_TEXT_FILES } from '@/lib/modFileRegistry';
 import { Badge } from '@/components/ui/badge';
 import { FolderOpen, CheckCircle2, FileText, Image, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 
@@ -23,9 +24,10 @@ const TEXT_FILENAMES = new Set([
   'descr_offmap_models.txt','descr_banners_new.xml','descr_character.txt','descr_settlement_mechanics.xml',
   'descr_model_strat.txt','descr_models_strat.txt','descr_campaign_db.xml',
   'strategy.sd.xml','battle.sd.xml','shared.sd.xml','radar.sd.xml',
+  ...Object.keys(DATA_FILE_MAP), ...EXTRA_TEXT_FILES,
 ]);
 
-function categorizeFile(file) {
+export function categorizeFile(file) {
   const name = file.name.toLowerCase();
   const path = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
 
@@ -35,8 +37,8 @@ function categorizeFile(file) {
     return null;
   }
   if (name.endsWith('.tga')) {
+    if (path.includes('/terrain/aerial_map/ground_types/')) return 'images_terrain';
     if (!path.includes('/ui/')) return null;
-    if (path.includes('/terrain/')) return 'images_terrain';
     return 'images_ui';
   }
   if (TEXT_FILENAMES.has(name)) return 'text';
