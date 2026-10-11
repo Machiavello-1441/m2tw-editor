@@ -12,6 +12,8 @@
  *   'string'      — free string value
  *   'religion'    — religion name
  */
+import { editorStorage as localStorage } from '@/lib/editorStorage';
+
 export const CONDITION_DEFS = [
   // ─── Character / General ───────────────────────────────────────────────────
   { key: 'IsGeneral',             label: 'IsGeneral',              argType: 'bool',         hint: 'Is character a general?' },
