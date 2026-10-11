@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { FileText, Upload, Download, CheckCircle, AlertTriangle, XCircle, ChevronRight, ChevronDown, BookOpen, BookMarked, Sparkles } from 'lucide-react';
 import { AUTOCOMPLETE_BY_PREFIX } from './scriptAutocomplete';
 import ScriptTemplateSidebar from './ScriptTemplateSidebar';
