@@ -2,12 +2,16 @@
 import { getFile, setFile, removeFile } from './bigFileStore';
 import { canonicalFileKey } from './modFileRegistry';
 
-export const editorStorage = { getItem: getFile, setItem: setFile, removeItem: removeFile };
+export const editorStorage = {
+  getItem: key => getFile(String(key)),
+  setItem: (key, value) => setFile(String(key), String(value)),
+  removeItem: key => removeFile(String(key)),
+};
 const sharedSessionKeys = new Set([
   'm2tw_names_raw', 'm2tw_regions_raw', 'm2tw_music_types_raw', 'm2tw_names_bin_meta',
   'm2tw_char_names_display', 'm2tw_campaign_desc_strings', 'm2tw_campaign_description',
 ]);
-const shared = key => canonicalFileKey(key) !== key || sharedSessionKeys.has(key);
+const shared = key => canonicalFileKey(key) !== key || sharedSessionKeys.has(key) || /^m2tw_.*_raw$/.test(key);
 const memory = () => (window.__m2twEditorSession ||= {});
 export const editorSessionStorage = {
   getItem(key) {
