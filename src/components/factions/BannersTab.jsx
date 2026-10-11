@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { parseBannersXml, serialiseBannersXml } from '@/components/minorfiles/banners/bannersParser';
 import { getFile, setFile } from '@/lib/bigFileStore';
+import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
 
 export const BANNERS_GLOBAL_KEY = 'm2tw_banners_xml_global';
 
@@ -65,8 +66,11 @@ export default function BannersTab({ factionName }) {
 
   useEffect(() => {
     loadFromGlobal();
-    window.addEventListener('banners-xml-loaded', loadFromGlobal);
-    return () => window.removeEventListener('banners-xml-loaded', loadFromGlobal);
+    const onSharedChange = event => {
+      if (!event.detail?.keys || event.detail.keys.includes('m2tw_banners_file')) loadFromGlobal();
+    };
+    window.addEventListener(FILES_CHANGED_EVENT, onSharedChange);
+    return () => window.removeEventListener(FILES_CHANGED_EVENT, onSharedChange);
   }, [loadFromGlobal]);
 
   const saveUpdated = (updated) => {
