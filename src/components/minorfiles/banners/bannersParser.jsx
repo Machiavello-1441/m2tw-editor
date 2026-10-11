@@ -82,7 +82,7 @@ function parseFactionBanners(xml) {
   while ((m = re.exec(xml)) !== null) {
     const attrs = parseAttrs(m[1]);
     const textures = [];
-    const texRe = /<Texture([^/]*)\/?>/gi;
+    const texRe = /<Texture\b([^>]*?)\/?>/gi;
     let t;
     while ((t = texRe.exec(m[2])) !== null) {
       const ta = parseAttrs(t[1]);
@@ -105,7 +105,7 @@ function parseFactionBanners(xml) {
 
 function parseMeshAndTextures(xml) {
   const entries = [];
-  const re = /<MeshAndTexture([^/]*)\/?>/gi;
+  const re = /<MeshAndTexture\b([^>]*?)\/?>/gi;
   let m;
   while ((m = re.exec(xml)) !== null) {
     const a = parseAttrs(m[1]);
