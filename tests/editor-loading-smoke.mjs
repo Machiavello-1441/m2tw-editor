@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { build } from 'esbuild';
+import JSZip from 'jszip';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const testRequire = createRequire(process.env.M2TW_TEST_DEPS ? path.join(process.env.M2TW_TEST_DEPS, 'package.json') : import.meta.url);
@@ -25,7 +26,6 @@ const bundle = await build({
     export * from './src/lib/stringsBinStore';
     export * from './src/components/strings/stringsBinCodec';
     export * from './src/components/export/sharedStringsExport';
-    export { default as JSZip } from 'jszip';
     const pages = { Home, FactionsEditor, StringsBinEditor, UnitEditor };
     let root;
     const query = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -176,7 +176,7 @@ try {
   assert.equal(emitted.entries[0].value, updatedValue); assert.equal(emitted.trailerKind, 'none');
   console.log('PASS Ordered UI locks positions and count while saving and exporting edited text correctly');
 
-  const zip = new a.JSZip();
+  const zip = new JSZip();
   a.addSharedStringsToZip(zip.folder('data'));
   for (const name of orderedNames) {
     const data = await zip.file(`data/text/${name}`).async('uint8array');
