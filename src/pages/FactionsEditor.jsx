@@ -12,7 +12,7 @@ import FactionZipExport from '@/components/factions/FactionZipExport';
 import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership } from '@/components/factions/factionBulkDuplicate';
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { useToast } from '@/components/ui/use-toast';
-import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
 import DescriptionsTab from '@/components/factions/DescriptionsTab';
 import MiscTab, { hasFactionNavyEntry, insertFactionNavyEntry } from '@/components/factions/MiscTab';
 import FactionSymbolsTab from '@/components/factions/FactionSymbolsTab';
@@ -595,68 +595,36 @@ export default function FactionsEditor() {
   const [menuStringsLoaded, setMenuStringsLoaded] = useState(false);
 
   useEffect(() => {
-    // ── Reconcile files loaded on the Home page into the keys this editor uses ──
-    // Home stores each file under a canonical key; this editor historically read
-    // different keys, forcing a re-upload. Populate the editor's keys from Home's
-    // (only when the editor's own key is empty, so manual uploads are preserved).
-    try {
-      // Cultures / religions / EDU units — Home stores raw text; parse into lists.
-      const cultRaw = getFile('m2tw_cultures_file');
-      if (cultRaw && !getFile(LS_CULT)) {
-        const list = parseCultures(cultRaw);
-        if (list.length) setFile(LS_CULT, JSON.stringify(list));
+    const refresh = (event) => {
+      const keys = event?.detail?.keys;
+      const touched = key => !keys || keys.includes(key);
+      // Each dependency is read independently: a malformed list cannot prevent
+      // banners, names or descriptions from loading. Raw files beat old caches.
+      if (touched(LS_KEY)) {
+        try { const raw = getFile(LS_KEY); setFactions(raw ? parseDescrSmFactions(raw) : null); }
+        catch (error) { console.error('Could not read descr_sm_factions.txt', error); }
       }
-      const relRaw = getFile('m2tw_religions_file');
-      if (relRaw && !getFile(LS_REL)) {
-        const list = parseReligions(relRaw);
-        if (list.length) setFile(LS_REL, JSON.stringify(list));
+      for (const [rawKey, listKey, parser, setter] of [
+        ['m2tw_cultures_file', LS_CULT, parseCultures, setCultures],
+        ['m2tw_religions_file', LS_REL, parseReligions, setReligions],
+        ['m2tw_units_file', LS_UNITS, parseEduUnits, setEduUnits],
+      ]) {
+        if (!touched(rawKey) && !touched(listKey)) continue;
+        try { const raw = getFile(rawKey); setter(raw !== null ? parser(raw) : JSON.parse(getFile(listKey) || '[]')); }
+        catch (error) { console.error(`Could not read ${rawKey}`, error); setter([]); }
       }
-      const eduRaw = getFile('m2tw_units_file');
-      if (eduRaw && !getFile(LS_UNITS)) {
-        const list = parseEduUnits(eduRaw);
-        if (list.length) setFile(LS_UNITS, JSON.stringify(list));
+      for (const [key, setter] of [
+        ['m2tw_banners_file', setBannersLoaded],
+        ['m2tw_strings_bin_global', setStringsLoaded],
+        [LS_MENU_STRINGS, setMenuStringsLoaded],
+      ]) {
+        if (!touched(key)) continue;
+        try { setter(getFile(key) !== null); } catch { setter(false); }
       }
-      // Banners — Home writes raw XML to m2tw_banners_file; BannersTab reads BANNERS_GLOBAL_KEY.
-      const bannersRaw = getFile('m2tw_banners_file');
-      if (bannersRaw && !getFile(BANNERS_GLOBAL_KEY)) {
-        setFile(BANNERS_GLOBAL_KEY, bannersRaw);
-      }
-      // Strings.bin — Home stores every .strings.bin in the shared store (keyed by
-      // filename). Build the global keys this editor expects from the relevant entries.
-      const store = getStringsBinStore();
-      const findBin = (needle) => {
-        const key = Object.keys(store).find((k) => k.toLowerCase().includes(needle));
-        return key ? store[key] : null;
-      };
-      if (!getFile('m2tw_strings_bin_global')) {
-        const expanded = findBin('expanded');
-        if (expanded?.entries?.length) {
-          setFile('m2tw_strings_bin_global', JSON.stringify({
-            entries: expanded.entries, magic1: expanded.magic1 ?? 2, magic2: expanded.magic2 ?? 2048,
-          }));
-        }
-      }
-      if (!getFile(LS_MENU_STRINGS)) {
-        const menu = findBin('menu');
-        if (menu?.entries?.length) {
-          setFile(LS_MENU_STRINGS, JSON.stringify({
-            entries: menu.entries, magic1: menu.magic1 ?? 2, magic2: menu.magic2 ?? 2048,
-          }));
-        }
-      }
-    } catch {}
-
-    // ── Load everything from the (now reconciled) editor keys ──
-    try {
-      const r = getFile(LS_KEY) || getFile('m2tw_factions_file');
-      if (r) setFactions(parseDescrSmFactions(r));
-    } catch {}
-    try {const r = getFile(LS_CULT);if (r) setCultures(JSON.parse(r));} catch {}
-    try {const r = getFile(LS_REL);if (r) setReligions(JSON.parse(r));} catch {}
-    try {const r = getFile(LS_UNITS);if (r) setEduUnits(JSON.parse(r));} catch {}
-    try {if (getFile(BANNERS_GLOBAL_KEY)) setBannersLoaded(true);} catch {}
-    try {if (getFile('m2tw_strings_bin_global')) setStringsLoaded(true);} catch {}
-    try {if (getFile(LS_MENU_STRINGS)) setMenuStringsLoaded(true);} catch {}
+    };
+    refresh();
+    window.addEventListener(FILES_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(FILES_CHANGED_EVENT, refresh);
   }, []);
 
   const loadFactions = useCallback(async (e) => {
@@ -675,6 +643,7 @@ export default function FactionsEditor() {
     const file = e.target.files?.[0];if (!file) return;
     const text = await file.text();
     const list = parseCultures(text);
+    setFile('m2tw_cultures_file', text);
     setCultures(list);
     try {setFile(LS_CULT, JSON.stringify(list));} catch {}
     e.target.value = '';
@@ -684,6 +653,7 @@ export default function FactionsEditor() {
     const file = e.target.files?.[0];if (!file) return;
     const text = await file.text();
     const list = parseReligions(text);
+    setFile('m2tw_religions_file', text);
     setReligions(list);
     try {setFile(LS_REL, JSON.stringify(list));} catch {}
     e.target.value = '';
@@ -693,6 +663,7 @@ export default function FactionsEditor() {
     const file = e.target.files?.[0];if (!file) return;
     const text = await file.text();
     const list = parseEduUnits(text);
+    setFile('m2tw_units_file', text);
     setEduUnits(list);
     try {setFile(LS_UNITS, JSON.stringify(list));} catch {}
     e.target.value = '';
