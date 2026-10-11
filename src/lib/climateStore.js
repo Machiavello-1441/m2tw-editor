@@ -9,6 +9,7 @@
  *  - sourceId  → palette id of the vanilla climate the block is copied from
  */
 import { useState, useEffect } from 'react';
+import { editorStorage as localStorage } from '@/lib/editorStorage';
 import { CLIMATE_PALETTE } from '@/lib/mapLayerStore';
 
 const KEY = 'm2tw_custom_climates';
