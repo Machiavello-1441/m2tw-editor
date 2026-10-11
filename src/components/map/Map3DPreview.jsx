@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { editorStorage as localStorage } from '@/lib/editorStorage';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Globe } from 'lucide-react';
