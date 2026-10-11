@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { editorStorage as localStorage } from '@/lib/editorStorage';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Download, Copy, CheckCircle2, Code2, Info, Sparkles } from 'lucide-react';
