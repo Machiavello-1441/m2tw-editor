@@ -13,7 +13,7 @@ import { build } from 'esbuild';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const localRequire = createRequire(import.meta.url);
 const testRequire = process.env.M2TW_TEST_DEPS
-  ? createRequire(path.join(process.env.M2TW_TEST_DEPS, 'package.json')) : localRequire;
+  ? createRequire(path.resolve(process.env.M2TW_TEST_DEPS, 'package.json')) : localRequire;
 const { JSDOM } = testRequire('jsdom');
 const { IDBFactory } = testRequire('fake-indexeddb');
 const result = await build({
@@ -150,6 +150,30 @@ try {
     }
     assert.equal(a.categorizeFile({ name: 'EXPANDED.TXT.STRINGS.BIN' }), 'strings_bin');
     assert.equal(a.categorizeFile({ name: 'grass.tga', webkitRelativePath: 'data/terrain/aerial_map/ground_types/grass.tga' }), 'images_terrain');
+  });
+
+  await test('Banner paths containing forward slashes survive parsing and faction duplication', async () => {
+    const { api: a } = runtime();
+    await a.hydrateBigFiles();
+    const xml = '<Banners><FactionBanners><Banner Name="faction"><Textures><Texture Faction="england" DiffuseMap="data/banners/england.tga" TranslucencyMap="data/banners/alpha.tga"/></Textures></Banner></FactionBanners><RoyalBanner Name="royal"><MeshAndTexture Faction="england" Mesh="data/banners/royal.cas" DiffuseMap="data/banners/royal.tga"/></RoyalBanner></Banners>';
+    const parsed = a.parseBannersXml(xml);
+    assert.equal(parsed.factionBanners[0].textures.length, 1);
+    assert.equal(parsed.factionBanners[0].textures[0].diffuseMap, 'data/banners/england.tga');
+    assert.equal(parsed.royalBanner.meshesAndTextures[0].mesh, 'data/banners/royal.cas');
+    a.setFile('m2tw_banners_file', xml);
+    a.copyBannerEntries('england', 'england_copy');
+    const copied = a.parseBannersXml(a.getFile('m2tw_banners_file'));
+    assert.equal(copied.factionBanners[0].textures.find(t => t.faction === 'england_copy').diffuseMap, 'data/banners/england.tga');
+    await a.flushBigFiles();
+  });
+
+  await test('Truncated string binaries are rejected instead of loading a partial dictionary', () => {
+    const { api: a } = runtime();
+    const entries = [{ key: 'ENGLAND', value: 'Émilie and Henry' }, { key: 'EMPTY', value: '' }];
+    const valid = a.encodeStringsBin(entries);
+    assert.equal(JSON.stringify(a.parseStringsBin(valid).entries), JSON.stringify(entries));
+    assert.equal(a.parseStringsBin(valid.slice(0, 9)), null);
+    assert.equal(a.parseStringsBin(valid.slice(0, valid.byteLength - 3)), null);
   });
 
   await test('Faction duplicate reads character, strat-model, names and EDU dependencies without re-upload', async () => {
