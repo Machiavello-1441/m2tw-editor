@@ -5,6 +5,7 @@ import {
   FACTIONS as DEFAULT_FACTIONS, CULTURES as DEFAULT_CULTURES, HIDDEN_RESOURCES_DEFAULT
 } from './EDBParser';
 import { parseGuildsFile, serializeGuildsFile } from './GuildsParser';
+import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
 
 const RefDataContext = createContext(null);
 
@@ -65,48 +66,41 @@ export function RefDataProvider({ children }) {
   const [mountTypes, setMountTypes] = useState([]); // string[]
   const [guildData, setGuildData] = useState(null); // { guilds: [], triggers: [] } | null
 
-  // Auto-restore from localStorage on mount
+  // Keep references in sync even when Layout survives a page navigation.
   useEffect(() => {
-    try {
-      const facRaw = localStorage.getItem(LS_KEYS.factions);
-      if (facRaw) {
-        const result = parseFactionsFile(facRaw);
-        if (result.factions) setFactions(result.factions);
-        if (result.cultures) setCultures(result.cultures);
+    const refresh = (event) => {
+      const keys = event?.detail?.keys;
+      const touched = key => !keys || keys.includes(key);
+      const read = (key, apply) => {
+        if (!touched(key)) return;
+        try { apply(localStorage.getItem(key)); }
+        catch (error) { console.error(`Could not read shared reference ${key}`, error); }
+      };
+      read(LS_KEYS.factions, raw => {
+        const result = raw ? parseFactionsFile(raw) : {};
+        setFactions(result.factions || DEFAULT_FACTIONS);
+        setCultures(result.cultures || DEFAULT_CULTURES);
+      });
+      read(LS_KEYS.resources, raw => setMapResources(raw ? parseResourcesFile(raw) : []));
+      read(LS_KEYS.units, raw => setUnits(raw ? parseUnitsFile(raw) : []));
+      read(LS_KEYS.skeleton, raw => {
+        const result = raw ? parseSkeletonFile(raw) : { types: [], animations: [] };
+        setSkeletonTypes(result.types); setSkeletonAnimations(result.animations);
+      });
+      read(LS_KEYS.mount, raw => setMountTypes(raw ? parseMountFile(raw) : []));
+      read(LS_KEYS.guilds, raw => setGuildData(raw ? parseGuildsFile(raw) : null));
+      if (touched(LS_KEYS.events) || touched('m2tw_campaign_script')) {
+        const counters = new Set();
+        for (const [key, parse] of [[LS_KEYS.events, parseEventsFile], ['m2tw_campaign_script', parseCampaignScriptCounters]]) {
+          try { const raw = localStorage.getItem(key); if (raw) for (const counter of parse(raw)) counters.add(counter); }
+          catch (error) { console.error(`Could not read counters from ${key}`, error); }
+        }
+        setEventCounters([...counters]);
       }
-      const resRaw = localStorage.getItem(LS_KEYS.resources);
-      if (resRaw) {
-        const res = parseResourcesFile(resRaw);
-        if (res.length) setMapResources(res);
-      }
-      const evRaw = localStorage.getItem(LS_KEYS.events);
-      const scriptRaw = localStorage.getItem('m2tw_campaign_script');
-      const allCounters = new Set();
-      if (evRaw) { for (const e of parseEventsFile(evRaw)) allCounters.add(e); }
-      if (scriptRaw) { for (const e of parseCampaignScriptCounters(scriptRaw)) allCounters.add(e); }
-      if (allCounters.size) setEventCounters([...allCounters]);
-      const unitRaw = localStorage.getItem(LS_KEYS.units);
-      if (unitRaw) {
-        const u = parseUnitsFile(unitRaw);
-        if (u.length) setUnits(u);
-      }
-      const skelRaw = localStorage.getItem(LS_KEYS.skeleton);
-      if (skelRaw) {
-        const { types, animations } = parseSkeletonFile(skelRaw);
-        if (types.length) setSkeletonTypes(types);
-        if (animations.length) setSkeletonAnimations(animations);
-      }
-      const mountRaw = localStorage.getItem(LS_KEYS.mount);
-      if (mountRaw) {
-        const mt = parseMountFile(mountRaw);
-        if (mt.length) setMountTypes(mt);
-      }
-      const guildsRaw = localStorage.getItem(LS_KEYS.guilds);
-      if (guildsRaw) {
-        const g = parseGuildsFile(guildsRaw);
-        if (g.guilds?.length || g.triggers?.length) setGuildData(g);
-      }
-    } catch {}
+    };
+    refresh();
+    window.addEventListener(FILES_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(FILES_CHANGED_EVENT, refresh);
   }, []);
 
   const loadFactionsFile = useCallback((text) => {
