@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Download, Plus, Trash2, ExternalLink, Search, Info, RefreshCw, X, Image, ChevronDown, ChevronRight, CheckSquare, Square, Zap, FileText, AlertCircle } from 'lucide-react';
 import { Box } from 'lucide-react';
 import { parseEDU } from '../components/units/EDUParser';
