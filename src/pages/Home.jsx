@@ -251,32 +251,10 @@ export default function Home() {
     // make the "Load selected files" button appear dead even on later clicks).
     // `onTick(name)` is called as each file / image is consumed so the loading
     // banner reflects real progress (one tick = one unit of work).
-    const result = { ok: 0, errors: [] };
+    const result = { ok: 0, errors: [], skipped: [] };
     const tick = (name) => { onTick?.(name); };
-    // Only clear keys for the file types we are actually re-loading in this batch.
-    // Wiping everything upfront causes data loss if the browser crashes or the user
-    // only loads a partial set of files.
-    const fileNames = new Set(files.map(f => f.name.toLowerCase()));
-    const conditionalRemove = (key, condition) => { try { if (condition) localStorage.removeItem(key); } catch {} };
-    conditionalRemove('m2tw_edb_file',          fileNames.has('export_descr_buildings.txt'));
-    conditionalRemove('m2tw_edb_file_name',      fileNames.has('export_descr_buildings.txt'));
-    conditionalRemove('m2tw_edb_txt_file',       fileNames.has('export_buildings.txt') || fileNames.has('export_buildings.txt.strings.bin'));
-    conditionalRemove('m2tw_factions_file',      fileNames.has('descr_sm_factions.txt'));
-    conditionalRemove('m2tw_resources_file',     fileNames.has('descr_sm_resources.txt'));
-    conditionalRemove('m2tw_events_file',        fileNames.has('descr_events.txt'));
-    conditionalRemove('m2tw_units_file',         fileNames.has('export_descr_unit.txt'));
-    conditionalRemove('m2tw_traits_file',        fileNames.has('export_descr_character_traits.txt'));
-    conditionalRemove('m2tw_anc_file',           fileNames.has('export_descr_ancillaries.txt'));
-    conditionalRemove('m2tw_export_units_file',  fileNames.has('export_units.txt'));
-    conditionalRemove('m2tw_descr_character',    fileNames.has('descr_character.txt'));
-    conditionalRemove('m2tw_offmap_models',      fileNames.has('descr_offmap_models.txt'));
-    conditionalRemove('m2tw_descr_model_strat',  fileNames.has('descr_model_strat.txt') || fileNames.has('descr_models_strat.txt'));
-    conditionalRemove('m2tw_sm_factions',        fileNames.has('descr_sm_factions.txt'));
-    conditionalRemove('m2tw_banners_file',      fileNames.has('descr_banners_new.xml'));
-    conditionalRemove('m2tw_strategy_sd_xml',   fileNames.has('strategy.sd.xml'));
-    conditionalRemove('m2tw_battle_sd_xml',     fileNames.has('battle.sd.xml'));
-    conditionalRemove('m2tw_shared_sd_xml',      fileNames.has('shared.sd.xml'));
-    conditionalRemove('m2tw_radar_sd_xml',       fileNames.has('radar.sd.xml'));
+    // Keep the last readable copy until its replacement has actually been read.
+    // Deleting every selected file before parsing made a single bad import destructive.
 
 
     const loaderMap = {
@@ -342,17 +320,18 @@ export default function Home() {
 
     for (const file of files) {
       tick(file.name);
-      const name = file.name.toLowerCase();
+      const name = normalizedFileName(file.name);
       const pathLower = (file.webkitRelativePath || file.name).toLowerCase().replace(/\\/g, '/');
-
-      // Route .strings.bin files from text\ folder into shared store
+      let failed = false, skipped = false;
+      try {
+      // A failed read/parse affects this file, not all subsequent editor dependencies.
+      // .strings.bin files are recognized even when selected without a parent text folder.
       if (name.endsWith('.strings.bin') || name.endsWith('.bin')) {
-        if (pathLower.includes('/text/')) {
+        if (name.endsWith('.strings.bin') || pathLower.includes('/text/')) {
           const buf = await file.arrayBuffer();
           const parsed = parseStringsBin(buf);
-          if (parsed) {
-            stringsBinFiles[file.name] = { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 };
-          }
+          if (!parsed || !Array.isArray(parsed.entries)) throw new Error('Invalid strings binary');
+          stringsBinFiles[name] = { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 };
           continue;
         }
       }
@@ -453,13 +432,13 @@ export default function Home() {
           setFileStatus(prev => ({ ...prev, family_rules: 'ok' }));
         } catch (error) {
           setFileStatus(prev => ({ ...prev, family_rules: 'error' }));
-          result.errors.push(error.message);
+          throw error;
         }
         continue;
       }
       if (await loadSettlementMechanicsFile(file)) continue;
       const key = DATA_FILE_MAP[name];
-      if (!key) continue;
+      if (!key) { skipped = true; result.skipped.push(file.webkitRelativePath || file.name); continue; }
 
       setFileStatus((prev) => ({ ...prev, [key]: 'loading' }));
 
@@ -576,6 +555,14 @@ export default function Home() {
         }
       }
       setFileStatus((prev) => ({ ...prev, [key]: 'ok' }));
+      } catch (error) {
+        failed = true;
+        const statusKey = DATA_FILE_MAP[name] || (name.endsWith('.bin') ? 'strings_bin' : FAMILY_RULE_FILES.has(name) ? 'family_rules' : name);
+        setFileStatus(prev => ({ ...prev, [statusKey]: 'error' }));
+        result.errors.push(`${file.webkitRelativePath || file.name}: ${error.message || 'Read failed'}`);
+      } finally {
+        if (!failed && !skipped) result.ok++;
+      }
     }
 
     // Flush .strings.bin files into shared store
@@ -754,6 +741,8 @@ export default function Home() {
       setBldImgCount(parsed.length);
       setFileStatus((prev) => ({ ...prev, bld_images: 'ok' }));
     }
+    const persistence = await flushBigFiles();
+    if (persistence.warning) result.warning = persistence.warning;
     return result;
   };
 
