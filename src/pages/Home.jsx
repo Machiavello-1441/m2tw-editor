@@ -11,7 +11,8 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
-import { setFile } from '@/lib/bigFileStore';
+import { setFile, getFile, flushBigFiles } from '@/lib/bigFileStore';
+import { DATA_FILE_MAP, DATA_FILE_DEFINITIONS, normalizedFileName } from '@/lib/modFileRegistry';
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
 import DataFolderPicker from '../components/home/DataFolderPicker';
@@ -99,38 +100,7 @@ function parseDescrAerialGroundTypes(text) {
   return result;
 }
 
-// Files we look for in the data\ folder (matched by filename only, regardless of subfolder)
-const DATA_FILE_MAP = {
-  'descr_aerial_map_ground_types.txt': 'aerial_ground_types',
-  'descr_climates.txt': 'climates',
-  'export_descr_buildings.txt': 'edb',
-  'descr_sm_factions.txt': 'fac',
-  'descr_sm_resources.txt': 'res',
-  'export_descr_unit.txt': 'unit',
-  'descr_events.txt': 'ev',
-  'export_buildings.txt.strings.bin': 'txt_bin',
-  'export_buildings.txt': 'txt',
-  'export_descr_character_traits.txt': 'traits',
-  'export_descr_ancillaries.txt': 'anc',
-  'export_units.txt': 'expunits',
-  'descr_cultures.txt': 'cultures',
-  'descr_names.txt': 'names',
-  'descr_rebel_factions.txt': 'rebel_fac',
-  'descr_religions.txt': 'religions',
-  'battle_models.modeldb': 'modeldb',
-  'descr_skeleton.txt': 'skeleton',
-  'descr_mount.txt': 'mount',
-  'export_descr_guilds.txt': 'guilds',
-  'descr_character.txt': 'char',
-  'descr_offmap_models.txt': 'offmap',
-  'descr_model_strat.txt': 'strat_model',
-  'descr_models_strat.txt': 'strat_model',
-  'descr_banners_new.xml': 'banners',
-  'strategy.sd.xml': 'sd_strategy',
-  'battle.sd.xml': 'sd_battle',
-  'shared.sd.xml': 'sd_shared',
-  'radar.sd.xml': 'sd_radar',
-};
+// Picker and loader share DATA_FILE_MAP from modFileRegistry.
 
 
 
@@ -240,9 +210,11 @@ export default function Home() {
   const bldImagesFolderRef = useRef();
   const luaFolderRef = useRef();
 
-  const readText = (file) => new Promise((resolve) => {
+  const readText = (file) => new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = (e) => resolve(e.target.result);
+    r.onerror = () => reject(r.error || new Error(`Could not read ${file.name}`));
+    r.onabort = () => reject(new Error(`Reading ${file.name} was cancelled`));
     r.readAsText(file);
   });
 
