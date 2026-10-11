@@ -22,6 +22,8 @@ import TriggerValidationPanel from '../components/export/TriggerValidationPanel'
 import CampaignPackagePicker from '../components/export/CampaignPackagePicker';
 import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
 import { getCharacterNamesRaw } from '@/lib/characterNames';
+import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { addSharedStringsToZip } from '@/components/export/sharedStringsExport';
 
 function getCampaigns() {
   try { const s = localStorage.getItem('m2tw_campaigns'); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -86,6 +88,8 @@ export default function Export() {
   const { guildData, exportGuildsFile } = useRefData();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const sharedStringsCount = Object.keys(getStringsBinStore()).length;
   const [validation, setValidation] = useState(null);
   const [exportingTwemp, setExportingTwemp] = useState(false);
   // Map<relativePath, File> for extra files to bundle
@@ -102,9 +106,13 @@ export default function Export() {
   const handleExportZip = async () => {
     setBuilding(true);
     setDone(false);
-
+    setExportError('');
+    try {
     const zip = new JSZip();
     const dataFolder = zip.folder(`${modName}/data`);
+    // Preserve the format of loaded UI dictionaries. More specialised editor
+    // exports below may replace their own keyed dictionaries with edited data.
+    addSharedStringsToZip(dataFolder);
 
     if (edbData) {
       const edbText = exportEDB().replace(/\n/g, '\r\n');
@@ -224,8 +232,12 @@ export default function Export() {
     a.click();
     URL.revokeObjectURL(url);
 
-    setBuilding(false);
     setDone(true);
+    } catch (error) {
+      setExportError(error.message || String(error));
+    } finally {
+      setBuilding(false);
+    }
   };
 
   // Automated validation runs before the zip is built — anything invalid
@@ -438,7 +450,8 @@ export default function Export() {
           <Button
             className="w-full h-12 text-base gap-2"
             onClick={startExportZip}
-            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && extraFiles.size === 0)}
+            title={sharedStringsCount ? `${sharedStringsCount} shared strings binaries are included in their original formats` : undefined}
+            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && sharedStringsCount === 0 && extraFiles.size === 0)}
           >
             {building ? (
               <>
@@ -460,7 +473,9 @@ export default function Export() {
             </div>
           )}
 
-          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && extraFiles.size === 0 && (
+          {sharedStringsCount > 0 && <p className="text-xs text-muted-foreground">Includes {sharedStringsCount} shared strings binaries, preserving keyed or ordered format.</p>}
+          {exportError && <p role="alert" className="text-xs text-destructive whitespace-pre-wrap">{exportError}</p>}
+          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && sharedStringsCount === 0 && extraFiles.size === 0 && (
             <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
               <AlertCircle className="w-3.5 h-3.5" />
               Load at least one moddable file to enable export.
