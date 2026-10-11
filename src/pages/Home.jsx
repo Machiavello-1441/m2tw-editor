@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
-import { parseStringsBin } from '@/components/strings/stringsBinCodec';
+import { parseStringsBin, decodeStringsBin } from '@/components/strings/stringsBinCodec';
+import { formatImportSummary } from '@/lib/importReport';
 import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
 import { setFile, getFile, flushBigFiles, clearBigFiles } from '@/lib/bigFileStore';
 import { DATA_FILE_MAP, DATA_FILE_DEFINITIONS, normalizedFileName } from '@/lib/modFileRegistry';
@@ -230,22 +231,22 @@ export default function Home() {
     try {
       const result = await processDataFiles(files, tickProgress);
       if (allFiles) indexCampaignLibrary(allFiles, selectedCampaigns?.[0]);
-      setLoadResult(result);
+      setLoadResult({ ...result, total: files.length });
       if (result.errors.length > 0) {
         toast({
           variant: 'destructive',
-          title: `Loaded ${result.ok}/${files.length}, failed ${result.errors.length}`, 
+          title: formatImportSummary(result, files.length),
           description: result.errors.slice(0, 5).join('\n') + (result.errors.length > 5 ? `\n…(+${result.errors.length - 5} more)` : ''),
         });
       } else {
-        toast({ title: result.warning ? 'Loaded with a storage warning' : 'Data loaded', description: result.warning || `Loaded ${result.ok} file${result.ok === 1 ? '' : 's'}.${result.skipped?.length ? ` Skipped ${result.skipped.length} unsupported files.` : ' Shared files are ready in the editors.'}` });
+        toast({ title: formatImportSummary(result, files.length), description: result.warning || (result.skipped?.length ? 'See the import report for files without a supported loader.' : 'Shared files are ready in the editors.') });
       }
     } catch (err) {
       toast({ variant: 'destructive', title: 'Load failed', description: err?.message || String(err) });
     } finally {
       setLoadingData(false);
       // Keep the banner filled at 100% briefly so the user sees the finish.
-      setLoadProgress(p => ({ ...p, current: p?.total || 0, name: 'done', phase: 'Loaded' }));
+      setLoadProgress(p => ({ ...p, current: p?.total || 0, name: 'See the import report for results', phase: 'Finished' }));
       setTimeout(() => setLoadProgress(null), 900);
     }
   };
@@ -334,9 +335,8 @@ export default function Home() {
       if (name.endsWith('.strings.bin') || name.endsWith('.bin')) {
         if (name.endsWith('.strings.bin') || pathLower.includes('/text/')) {
           const buf = await file.arrayBuffer();
-          const parsed = parseStringsBin(buf);
-          if (!parsed || !Array.isArray(parsed.entries)) throw new Error('Invalid strings binary');
-          stringsBinFiles[name] = { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 };
+          const parsed = decodeStringsBin(buf);
+          stringsBinFiles[name] = parsed;
           continue;
         }
       }
@@ -580,6 +580,9 @@ export default function Home() {
       // Dispatch specific events for vnvs/ancillaries text bins so contexts pick them up directly
       for (const [filename, binData] of Object.entries(stringsBinFiles)) {
         const lname = filename.toLowerCase();
+        // Ordered files have display-only indices, not game identifiers. They
+        // remain available in Strings Editor but must not seed keyed maps.
+        if (binData.magic1 === 1 || binData.readOnly) continue;
         const map = {};
         for (const e of binData.entries) map[e.key] = e.value;
         const binMeta = { magic1: binData.magic1 ?? 2, magic2: binData.magic2 ?? 2048 };
@@ -599,7 +602,7 @@ export default function Home() {
       }
       window.dispatchEvent(new CustomEvent('strings-bin-updated', { detail: { bulk: true } }));
       setStringsBinCount(Object.keys(merged).length);
-      setFileStatus((prev) => ({ ...prev, strings_bin: 'ok' }));
+      setFileStatus((prev) => ({ ...prev, strings_bin: result.errors.some(message => /\.bin:/i.test(message)) ? 'error' : 'ok' }));
     }
 
     // Auto-load ancillary images
@@ -864,11 +867,8 @@ export default function Home() {
       // .strings.bin files (e.g. imperial_campaign_regions_and_settlement_names.txt.strings.bin from data\text\)
       if (name.endsWith('.strings.bin') || name.endsWith('.bin')) {
         const buf = await file.arrayBuffer();
-        const { parseStringsBin } = await import('@/components/strings/stringsBinCodec');
-        const parsed = parseStringsBin(buf);
-        if (parsed) {
-          stringsBinFiles[file.name] = { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 };
-        }
+        const parsed = decodeStringsBin(buf);
+        stringsBinFiles[normalizedFileName(file.name)] = parsed;
         continue;
       }
 
@@ -978,6 +978,9 @@ export default function Home() {
       {loadingData && <DataLoadingBanner progress={loadProgress} />}
       <div className="w-full max-w-2xl rounded-lg border border-border overflow-hidden">
         <FileDependencyStatus files={SHARED_FILES} />
+        {loadResult.total != null && <p role="status" className="px-4 py-2 text-xs font-semibold">{formatImportSummary(loadResult, loadResult.total)}</p>}
+        {loadResult.skipped?.length > 0 && <details className="px-4 py-2 text-xs text-muted-foreground"><summary>Skipped files ({loadResult.skipped.length}) — no supported loader</summary>{loadResult.skipped.map((name, i) => <p key={i} className="break-all mt-1">{name}</p>)}</details>}
+        {loadResult.warning && <p role="alert" className="px-4 py-2 text-xs text-amber-400">{loadResult.warning}</p>}
         {loadResult.errors.length > 0 && <div role="alert" className="px-4 py-3 text-xs text-destructive"><p className="font-semibold mb-1">Files that could not be read:</p>{loadResult.errors.map((message, i) => <p key={i} className="break-all">{message}</p>)}</div>}
       </div>
 
