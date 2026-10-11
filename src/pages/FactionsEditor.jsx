@@ -12,7 +12,8 @@ import FactionZipExport from '@/components/factions/FactionZipExport';
 import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership } from '@/components/factions/factionBulkDuplicate';
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { useToast } from '@/components/ui/use-toast';
-import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
+import { FILES_CHANGED_EVENT, FACTION_DEPENDENCIES } from '@/lib/modFileRegistry';
+import FileDependencyStatus from '@/components/shared/FileDependencyStatus';
 import DescriptionsTab from '@/components/factions/DescriptionsTab';
 import MiscTab, { hasFactionNavyEntry, insertFactionNavyEntry } from '@/components/factions/MiscTab';
 import FactionSymbolsTab from '@/components/factions/FactionSymbolsTab';
@@ -755,6 +756,7 @@ export default function FactionsEditor() {
     };
     const updated = [...(factions || []), newF];
     setFactions(updated);
+    setFile(LS_KEY, serialiseDescrSmFactions(updated));
     setSelectedIdx(updated.length - 1);
     autoInsertNavyEntry(newF.name);
     injectMenuStringsForFaction(newF.name, newF.name);
@@ -779,6 +781,13 @@ export default function FactionsEditor() {
 
   const confirmDuplicate = (payload) => {
     if (!payload?.newName?.trim() || duplicateSourceIdx === null) return;
+    // Do not create a half-duplicated faction when shared source files are absent.
+    const required = new Set(['descr_character.txt', 'descr_model_strat.txt', 'descr_names.txt', 'export_descr_unit.txt', 'descr_banners_new.xml', 'expanded.txt.strings.bin']);
+    const missingFiles = FACTION_DEPENDENCIES.filter(([name, key]) => required.has(name) && getFile(key) === null).map(([name]) => name);
+    if (missingFiles.length) {
+      toast({ variant: 'destructive', title: 'Duplication stopped — source files are missing', description: `No changes made. Load these files on Home: ${missingFiles.join(', ')}. See Faction file availability above.` });
+      return;
+    }
     const src = factions[duplicateSourceIdx];
     const newFactionName = payload.newName.trim();
     const nameUpper = newFactionName.toUpperCase();
@@ -848,6 +857,7 @@ export default function FactionsEditor() {
   const deleteFaction = (i) => {
     const updated = factions.filter((_, idx) => idx !== i);
     setFactions(updated);
+    setFile(LS_KEY, serialiseDescrSmFactions(updated));
     setSelectedIdx(updated.length > 0 ? Math.min(i, updated.length - 1) : null);
   };
 
@@ -946,6 +956,7 @@ export default function FactionsEditor() {
         </div>
       </div>
 
+      <FileDependencyStatus files={FACTION_DEPENDENCIES} title="Faction file availability" />
       {!factions ?
       <div className="flex flex-col items-center justify-center flex-1 gap-3 text-slate-500">
           <Shield className="w-10 h-10 opacity-30" />
