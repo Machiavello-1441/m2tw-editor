@@ -16,6 +16,7 @@ import { DATA_FILE_MAP, DATA_FILE_DEFINITIONS, normalizedFileName } from '@/lib/
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
 import DataFolderPicker from '../components/home/DataFolderPicker';
+import FileDependencyStatus from '@/components/shared/FileDependencyStatus';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { loadFamilyRulesFile, FAMILY_RULE_FILES, FAMILY_RULES_KEY } from '@/components/map/familyRules';
 import { DESCR_CLIMATES_KEY, AERIAL_RAW_KEY, MOD_CLIMATES_EVT } from '@/lib/modClimates';
@@ -101,6 +102,10 @@ function parseDescrAerialGroundTypes(text) {
 }
 
 // Picker and loader share DATA_FILE_MAP from modFileRegistry.
+const SHARED_FILES = Object.entries(DATA_FILE_DEFINITIONS)
+  .filter(([name, [, key]]) => key && name !== 'descr_models_strat.txt')
+  .map(([name, [, key]]) => [name, key]);
+SHARED_FILES.push(['expanded.txt.strings.bin', 'm2tw_strings_bin_global'], ['menu_english.txt.strings.bin', 'm2tw_menu_strings_bin']);
 
 
 
@@ -971,6 +976,10 @@ export default function Home() {
     <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-start gap-6 pt-12">
 
       {loadingData && <DataLoadingBanner progress={loadProgress} />}
+      <div className="w-full max-w-2xl rounded-lg border border-border overflow-hidden">
+        <FileDependencyStatus files={SHARED_FILES} />
+        {loadResult.errors.length > 0 && <div role="alert" className="px-4 py-3 text-xs text-destructive"><p className="font-semibold mb-1">Files that could not be read:</p>{loadResult.errors.map((message, i) => <p key={i} className="break-all">{message}</p>)}</div>}
+      </div>
 
       {/* Header */}
       <div className="text-center space-y-2 max-w-xl">
