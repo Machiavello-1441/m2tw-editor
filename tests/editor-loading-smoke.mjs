@@ -100,7 +100,7 @@ try {
     await pause(30);
   });
   const buttons = [...w.document.querySelectorAll('button')];
-  const load = buttons.find(button => /load selected files/i.test(button.textContent) && !button.disabled);
+  const load = buttons.find(button => /load\s+(?:\d+\s+)?selected files/i.test(button.textContent) && !button.disabled);
   assert.ok(load, `Load selected files button present. Buttons: ${buttons.map(b => b.textContent.trim()).join(' | ')}`);
   await a.act(async () => { load.click(); await pause(300); await a.flushBigFiles(); });
   assertNoCrash();
