@@ -184,7 +184,7 @@ export function serializeUnit(unit) {
 function serializeNewUnit(unit) {
   const lines = [];
   lines.push(`type             ${unit.type}`);
-  lines.push(`dictionary       ${unit.dictionary}      ; ${unit.dictionaryComment || unit.type}`);
+  lines.push(`dictionary       ${unit.dictionary}      ; ${unit.dictionaryComment || (unit._sourceText !== undefined ? '' : unit.type)}`);
   lines.push(`category         ${unit.category}`);
   lines.push(`class            ${unit.class}`);
   lines.push(`voice_type       ${unit.voice_type}`);
@@ -219,7 +219,7 @@ function serializeNewUnit(unit) {
   lines.push(`stat_food        ${unit.stat_food}`);
   lines.push(`stat_cost        ${unit.stat_cost}`);
   lines.push(`armour_ug_levels ${unit.armour_ug_levels}`);
-  lines.push(`armour_ug_models ${unit.armour_ug_models || unit.soldier_model}`);
+  lines.push(`armour_ug_models ${unit.armour_ug_models || (unit._sourceText !== undefined ? '' : unit.soldier_model)}`);
   lines.push(`ownership        ${unit.ownership.join(', ')}`);
   if (unit.era0.length) lines.push(`era 0            ${unit.era0.join(', ')}`);
   if (unit.era1.length) lines.push(`era 1            ${unit.era1.join(', ')}`);
