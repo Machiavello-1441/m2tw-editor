@@ -5,6 +5,8 @@
  * Shape: { [filename]: { entries: [{key, value}], magic1: number, magic2: number } }
  */
 
+import { getFile, setFile } from '@/lib/bigFileStore';
+
 const STORE_KEY = 'm2tw_strings_bin_files';
 
 // In-memory store — always available regardless of localStorage limits
@@ -14,7 +16,7 @@ function getMemoryStore() {
   if (_memoryStore === null) {
     // Try to hydrate from localStorage on first access
     try {
-      const raw = localStorage.getItem(STORE_KEY);
+      const raw = getFile(STORE_KEY);
       _memoryStore = raw ? JSON.parse(raw) : {};
     } catch {
       _memoryStore = {};
@@ -29,12 +31,7 @@ export function getStringsBinStore() {
 
 export function setStringsBinStore(store) {
   _memoryStore = store;
-  // Best-effort persist to localStorage
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(store));
-  } catch (e) {
-    console.warn('[StringsBinStore] localStorage write failed (quota), using in-memory only:', e.message);
-  }
+  setFile(STORE_KEY, JSON.stringify(store));
 }
 
 export function updateStringsBinFile(name, fileData) {
@@ -46,5 +43,5 @@ export function updateStringsBinFile(name, fileData) {
 
 export function clearStringsBinStore() {
   _memoryStore = {};
-  try { localStorage.removeItem(STORE_KEY); } catch {}
+  setFile(STORE_KEY, JSON.stringify({}));
 }

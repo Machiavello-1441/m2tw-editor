@@ -601,17 +601,17 @@ export default function FactionsEditor() {
     // (only when the editor's own key is empty, so manual uploads are preserved).
     try {
       // Cultures / religions / EDU units — Home stores raw text; parse into lists.
-      const cultRaw = localStorage.getItem('m2tw_cultures_file');
+      const cultRaw = getFile('m2tw_cultures_file');
       if (cultRaw && !localStorage.getItem(LS_CULT)) {
         const list = parseCultures(cultRaw);
         if (list.length) localStorage.setItem(LS_CULT, JSON.stringify(list));
       }
-      const relRaw = localStorage.getItem('m2tw_religions_file');
+      const relRaw = getFile('m2tw_religions_file');
       if (relRaw && !localStorage.getItem(LS_REL)) {
         const list = parseReligions(relRaw);
         if (list.length) localStorage.setItem(LS_REL, JSON.stringify(list));
       }
-      const eduRaw = localStorage.getItem('m2tw_units_file');
+      const eduRaw = getFile('m2tw_units_file');
       if (eduRaw && !localStorage.getItem(LS_UNITS)) {
         const list = parseEduUnits(eduRaw);
         if (list.length) localStorage.setItem(LS_UNITS, JSON.stringify(list));
@@ -648,7 +648,7 @@ export default function FactionsEditor() {
 
     // ── Load everything from the (now reconciled) editor keys ──
     try {
-      const r = localStorage.getItem(LS_KEY);
+      const r = localStorage.getItem(LS_KEY) || getFile('m2tw_factions_file');
       if (r) setFactions(parseDescrSmFactions(r));
     } catch {}
     try {const r = localStorage.getItem(LS_CULT);if (r) setCultures(JSON.parse(r));} catch {}
