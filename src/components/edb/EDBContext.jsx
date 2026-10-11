@@ -21,8 +21,8 @@ export function EDBProvider({ children }) {
 
   // Auto-restore from localStorage on mount
   useEffect(() => {
-    // Clear stale image data that may have filled the quota in older sessions
-    try { localStorage.removeItem(EDB_IMG_LS_KEY); } catch {}
+    // Large image metadata is now backed by the shared persistent store.
+    try { const images = localStorage.getItem(EDB_IMG_LS_KEY); if (images) setImageData(JSON.parse(images)); } catch {}
     try {
       const raw = localStorage.getItem(EDB_LS_KEY);
       const name = localStorage.getItem(EDB_LS_NAME_KEY);
@@ -36,7 +36,7 @@ export function EDBProvider({ children }) {
         const parsed = parseTextFile(txtRaw);
         setTextData(prev => ({ ...prev, ...parsed }));
       }
-      // Note: image data URLs are NOT restored from localStorage (too large, quota killer)
+      // Images are restored independently above; they cannot prevent text files from loading.
     } catch {}
   }, []);
 
