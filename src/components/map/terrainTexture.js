@@ -14,6 +14,7 @@ import { parseAerialGroundTypes, resolveGroundTexture, GROUND_ALIASES } from '@/
 import { parseDescrClimatesColours, DESCR_CLIMATES_KEY, AERIAL_RAW_KEY } from '@/lib/modClimates';
 import { CLIMATE_PALETTE, GROUND_TYPE_PALETTE, hexToRgb } from '@/lib/mapLayerStore';
 import { getCustomClimates, descrName } from '@/lib/climateStore';
+import { editorStorage as localStorage } from '@/lib/editorStorage';
 
 function loadImageData(dataUrl) {
   return new Promise((resolve) => {
