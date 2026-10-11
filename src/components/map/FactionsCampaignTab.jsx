@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Info, ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import { parseWinConditions, parseDescrStrat } from './stratParser';
 import { insertFactionIntoStrat, moveFactionInStrat } from './factionBlockOps';
