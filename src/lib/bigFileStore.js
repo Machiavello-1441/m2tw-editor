@@ -61,6 +61,7 @@ function notifyChange(key) {
 }
 
 export async function hydrateBigFiles() {
+  const restoredKeys = new Set();
   const db = await dbPromise;
   if (db) {
     await new Promise((resolve) => {
@@ -69,6 +70,7 @@ export async function hydrateBigFiles() {
         const cursor = req.result;
         if (!cursor) return resolve();
         if (mem()[cursor.key] === undefined) mem()[cursor.key] = cursor.value;
+        restoredKeys.add(cursor.key);
         cursor.continue();
       };
       req.onerror = () => resolve();
@@ -92,7 +94,10 @@ export async function hydrateBigFiles() {
     const canonical = canonicalFileKey(key);
     if (mem()[canonical] === undefined && value !== null) {
       mem()[canonical] = candidates[canonical] ?? value;
+    }
+    if (!restoredKeys.has(canonical) && mem()[canonical] != null) {
       savePersistent(canonical, mem()[canonical]);
+      restoredKeys.add(canonical);
     }
   }
   const marker = 'm2tw_shared_file_migration_v2';
@@ -126,9 +131,9 @@ export function setFile(key, value) {
   savePersistent(key, value);
   notifyChange(key);
   try {
-    // Large files belong in IndexedDB; avoid filling localStorage with copies.
-    if (String(value).length <= 131072) localStorage.setItem(key, value);
-    else localStorage.removeItem(key);
+    // Legacy readers can still use the native copy when it fits; shared readers
+    // do not depend on it, and IndexedDB retains files above the native quota.
+    localStorage.setItem(key, value);
   } catch {
     // Quota exceeded — drop any stale persisted copy so reads never return old data
     try { localStorage.removeItem(key); } catch {}
