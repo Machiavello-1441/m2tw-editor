@@ -470,6 +470,10 @@ export default function UnitEditorPage() {
 
   const handleCopyUnit = () => {
     if (!active) return;
+    if (!active._createdInEditor && typeof active._sourceText !== 'string') {
+      setEduError('Reload the original EDU before copying this unit; the old parsed cache may omit ship, engine or custom directives.');
+      return;
+    }
     navigator.clipboard.writeText(serializeUnit(active));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
