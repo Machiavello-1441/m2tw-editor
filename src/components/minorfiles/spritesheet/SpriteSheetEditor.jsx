@@ -47,7 +47,7 @@ export default function SpriteSheetEditor({ label, storageKey }) {
   useEffect(() => {
     // On mount, try to restore from localStorage
     try {
-      const stored = localStorage.getItem(storageKey);
+      const stored = getFile(storageKey);
       if (stored) {
         const parsed = parseSdXml(stored);
         setData(parsed);
