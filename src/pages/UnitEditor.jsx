@@ -10,6 +10,7 @@ import { parseModeldb, serializeModeldb } from '../lib/modeldbCodec';
 import { modeldbStore } from '../lib/modeldbStore';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
+import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
 
 const STORAGE_KEY = 'm2tw_edu_units';
 const EDU_FILE_KEY = 'm2tw_units_file';
@@ -19,6 +20,8 @@ const UNIT_IMAGES_KEY = 'm2tw_unit_images';
 
 function loadUnits() {
   try {
+    const raw = localStorage.getItem(EDU_FILE_KEY);
+    if (raw !== null) return parseEDU(raw);
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) return JSON.parse(s);
   } catch {}
@@ -134,6 +137,8 @@ export default function UnitEditorPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [filename, setFilename] = useState('export_descr_unit.txt');
   const [copied, setCopied] = useState(false);
+  const [eduError, setEduError] = useState('');
+  const eduSourceRef = useRef(null);
   const [descrMap, setDescrMap] = useState(() => {
     try {
       // Parse raw file, then overlay any manual edits saved on top
@@ -158,20 +163,30 @@ export default function UnitEditorPage() {
   const unitUiFolderRef = useRef();
   const factionsRef = useRef();
 
-  // Auto-load from cached EDU file on mount (always prefer the raw file over stale parsed cache)
+  // Read-only hydration. Never rebuild imported EDU text from the UI's field list.
+  // A faction change while mounted must also replace stale parsed views.
   useEffect(() => {
-    try {
-      const eduContent = localStorage.getItem(EDU_FILE_KEY);
-      const eduName = localStorage.getItem(EDU_FILE_NAME_KEY);
-      if (eduContent) {
-        const parsed = parseEDU(eduContent);
-        if (parsed.length > 0) {
-          setUnits(parsed);
-          saveUnits(parsed);
-          if (eduName) setFilename(eduName);
-        }
-      }
-    } catch {}
+    const refresh = event => {
+      if (event?.detail?.keys && !event.detail.keys.includes(EDU_FILE_KEY)) return;
+      try {
+        const raw = localStorage.getItem(EDU_FILE_KEY);
+        if (raw === eduSourceRef.current) return;
+        eduSourceRef.current = raw;
+        const parsed = raw === null ? [] : parseEDU(raw);
+        setUnits(parsed);
+        saveUnits(parsed);
+        const name = localStorage.getItem(EDU_FILE_NAME_KEY);
+        if (name) setFilename(name);
+        setEduError('');
+      } catch (error) { setEduError(error.message); }
+    };
+    refresh();
+    window.addEventListener(FILES_CHANGED_EVENT, refresh);
+    window.addEventListener('edu-file-loaded', refresh);
+    return () => {
+      window.removeEventListener(FILES_CHANGED_EVENT, refresh);
+      window.removeEventListener('edu-file-loaded', refresh);
+    };
   }, []);
 
   // Auto-load modeldb from localStorage if available
@@ -273,7 +288,21 @@ export default function UnitEditorPage() {
   const active = units[activeIndex] || null;
   const activeDescr = active ? (descrMap[active.dictionary] ?? null) : null;
 
-  const update = (units) => { setUnits(units); saveUnits(units); };
+  const update = next => {
+    try {
+      if (next.some(unit => !unit._createdInEditor && typeof unit._sourceText !== 'string')) {
+        throw new Error('This is an old parsed-only unit cache. Reload the original EDU before editing/exporting; rebuilding it could lose ship, engine or custom directives.');
+      }
+      const text = serializeEDU(next);
+      eduSourceRef.current = text;
+      localStorage.setItem(EDU_FILE_KEY, text);
+      setUnits(next);
+      saveUnits(next);
+      setEduError('');
+      window.dispatchEvent(new CustomEvent('edu-file-loaded'));
+      return true;
+    } catch (error) { setEduError(error.message); return false; }
+  };
 
   const handleDescrChange = (val) => {
     if (!active) return;
@@ -292,10 +321,13 @@ export default function UnitEditorPage() {
     reader.onload = (ev) => {
       const text = ev.target.result;
       const parsed = parseEDU(text);
-      update(parsed);
+      eduSourceRef.current = text;
+      setUnits(parsed);
+      saveUnits(parsed);
       setActiveIndex(0);
-      // Persist so Unit Card Generator (and other tools) can read it
-      try { localStorage.setItem(EDU_FILE_KEY, text); } catch {}
+      setEduError('');
+      // Retain the imported text exactly, including unrecognised directives.
+      localStorage.setItem(EDU_FILE_KEY, text);
       // Notify same-tab listeners (UnitCardGenerator etc.)
       window.dispatchEvent(new CustomEvent('edu-file-loaded'));
     };
@@ -416,15 +448,24 @@ export default function UnitEditorPage() {
     if (files.length > 50) setShowMemoryNotice(true);
   };
 
-  const handleDownload = () => {
-    const text = serializeEDU(units);
+  const downloadEduText = (text, name) => {
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = name;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownload = () => {
+    const raw = localStorage.getItem(EDU_FILE_KEY);
+    if (raw === null) {
+      setEduError('The original EDU is not loaded. Reload it rather than exporting a potentially incomplete parsed cache.');
+      return;
+    }
+    // Source text is authoritative; no template/serializer is invoked on download.
+    downloadEduText(raw, filename);
   };
 
   const handleCopyUnit = () => {
@@ -538,6 +579,11 @@ export default function UnitEditorPage() {
         </div>
       </div>
 
+      {eduError && <p role="alert" className="px-4 py-2 text-xs text-destructive whitespace-pre-wrap">{eduError}</p>}
+      {localStorage.getItem('m2tw_units_before_faction_patch') !== null && <div className="px-4 py-2 text-xs border-b border-border flex items-center gap-3">
+        <span className="text-muted-foreground">EDU source is preserved; faction duplication changes ownership/era entries only.</span>
+        <button className="underline text-primary" onClick={() => downloadEduText(localStorage.getItem('m2tw_units_before_faction_patch'), 'export_descr_unit.before-faction.txt')}>Download pre-faction EDU backup</button>
+      </div>}
       {/* Body */}
       <div className="flex-1 flex min-h-0">
         {/* Left: unit list */}
