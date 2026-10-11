@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import ImageCropModal from './ImageCropModal';
+import { editorStorage as localStorage } from '@/lib/editorStorage';
 import { useEDB } from './EDBContext';
 import { useRefData } from './RefDataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
