@@ -131,7 +131,17 @@ try {
   assertNoCrash();
   assert.ok(a.getFile('m2tw_names_file'));
   console.log('PASS Returning to Home retains the shared files');
-  console.log('\n5 editor loading smoke tests passed.');
+  await a.act(async () => {
+    w.dispatchEvent(new w.Event('beforeunload'));
+    await a.flushBigFiles();
+    w.__m2twBigFileStore = {};
+    await a.hydrateBigFiles();
+  });
+  for (const key of ['m2tw_factions_file', 'm2tw_names_file', 'm2tw_units_file', 'm2tw_banners_file']) {
+    assert.ok(a.getFile(key), `Page unload must not erase ${key}`);
+  }
+  console.log('PASS Page-unload handlers do not erase the imported files before a reload');
+  console.log('\n6 editor loading smoke tests passed.');
 } finally {
   await a.act(async () => { a.stop(); });
   dom.window.close();
