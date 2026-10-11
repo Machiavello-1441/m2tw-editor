@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Download, Upload, Trash2, Check, Edit2 } from 'lucide-react';
 import { parseStringsBin, encodeStringsBin } from '../strings/stringsBinCodec';
 import { getStringsBinStore } from '../../lib/stringsBinStore';
