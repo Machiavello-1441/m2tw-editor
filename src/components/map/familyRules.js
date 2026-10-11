@@ -1,3 +1,5 @@
+import { editorStorage as localStorage } from '@/lib/editorStorage';
+
 export const FAMILY_RULES_KEY = 'm2tw_family_tree_rules';
 export const FAMILY_RULES_EVENT = 'family-tree-rules-loaded';
 export const FAMILY_RULE_FILES = new Set(['descr_campaign_db.xml']);
