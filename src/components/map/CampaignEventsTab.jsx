@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Plus, Trash2, ChevronDown, ChevronRight, Download, Upload, Image, X } from 'lucide-react';
 import { EVENT_TYPES, serializeCampaignEvents } from './campaignEventsParser';
 import { downloadBlob, exportTGA } from './tgaExporter';
