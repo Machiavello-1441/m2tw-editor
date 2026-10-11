@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Eye } from 'lucide-react';
 import ChangePreviewDialog from './ChangePreviewDialog';
 
