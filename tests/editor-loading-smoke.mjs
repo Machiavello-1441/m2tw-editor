@@ -177,7 +177,8 @@ try {
   console.log('PASS Ordered UI locks positions and count while saving and exporting edited text correctly');
 
   const zip = new JSZip();
-  a.addSharedStringsToZip(zip.folder('data'));
+  // Bridge jsdom's Uint8Array realm to Node's JSZip byte type.
+  a.addSharedStringsToZip({ file: (name, data) => zip.file(`data/${name}`, Buffer.from(data)) });
   for (const name of orderedNames) {
     const data = await zip.file(`data/text/${name}`).async('uint8array');
     assert.equal(a.decodeStringsBin(data).magic1, 1);
