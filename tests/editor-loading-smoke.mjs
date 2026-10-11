@@ -20,7 +20,7 @@ const bundle = await build({
     import FactionsEditor from './src/pages/FactionsEditor';
     import StringsBinEditor from './src/pages/StringsBinEditor';
     import UnitEditor from './src/pages/UnitEditor';
-    export { act } from 'react-dom/test-utils';
+    export { act } from 'react';
     export * from './src/lib/bigFileStore';
     export * from './src/lib/stringsBinStore';
     export * from './src/components/strings/stringsBinCodec';
@@ -44,6 +44,13 @@ const w = dom.window;
 w.indexedDB = new IDBFactory();
 w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder; w.structuredClone = structuredClone;
 w.IS_REACT_ACT_ENVIRONMENT = true;
+// jsdom does not supply MessageChannel, used by React's async test scheduler.
+w.MessageChannel = class {
+  constructor() {
+    this.port1 = { onmessage: null };
+    this.port2 = { postMessage: () => setTimeout(() => this.port1.onmessage?.(), 0) };
+  }
+};
 w.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
 w.matchMedia = query => ({ media: query, matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } });
 w.fetch = async () => { throw new Error('Unexpected network request in synthetic UI test'); };
