@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsBinCodec';
+import { decodeStringsBin, encodeStoredStringsBin } from '@/components/strings/stringsBinCodec';
 import { getStringsBinStore, updateStringsBinFile } from '@/lib/stringsBinStore';
 import { FILES_CHANGED_EVENT, STRINGS_STORE_KEY, normalizedFileName } from '@/lib/modFileRegistry';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,7 @@ function loadFilesFromStore() {
   const store = getStringsBinStore();
   return Object.entries(store).map(([name, data]) => ({
     name,
-    entries: data.entries,
-    magic1: data.magic1,
-    magic2: data.magic2,
+    ...data,
     dirty: false,
   }));
 }
@@ -31,6 +29,7 @@ export default function StringsBinEditor() {
   const [search, setSearch] = useState('');
   const [isNew, setIsNew] = useState(false);
   const fileInputRef = useRef();
+  const [fileError, setFileError] = useState('');
 
   // Re-sync when another editor or Home updates the store
   useEffect(() => {
@@ -38,12 +37,12 @@ export default function StringsBinEditor() {
       if (event?.detail?.keys && !event.detail.keys.includes(STRINGS_STORE_KEY)) return;
       const fresh = loadFilesFromStore();
       setFiles((prev) => {
-        // Merge: keep local dirty edits, add new files from store, update clean files
+        // Saved edits already live in the shared store. Dirty means not exported,
+        // not a separate unsaved copy that should override a newly imported file.
         const prevByName = Object.fromEntries(prev.map((f) => [f.name, f]));
         const merged = fresh.map((f) => {
           const existing = prevByName[f.name];
-          if (existing?.dirty) return existing; // keep local unsaved changes
-          return f;
+          return { ...f, dirty: existing?.dirty || false };
         });
         // Also keep any local-only files not yet in store (shouldn't happen but safety)
         for (const p of prev) {
@@ -57,6 +56,8 @@ export default function StringsBinEditor() {
   }, []);
 
   const currentFile = activeFile !== null ? files[activeFile] : null;
+  const ordered = currentFile?.magic1 === 1;
+  const structureLocked = ordered || !!currentFile?.readOnly;
 
   const filteredEntries = useMemo(() => {
     if (!currentFile) return [];
@@ -79,21 +80,25 @@ export default function StringsBinEditor() {
   const handleLoad = async (e) => {
     const fileList = Array.from(e.target.files || []);
     e.target.value = '';
+    const failures = [];
+    let lastLoadedName = null;
     for (const f of fileList) {
-      const buf = await f.arrayBuffer();
-      const parsed = parseStringsBin(buf);
-      if (parsed) {
-        const fileData = { entries: parsed.entries, magic1: parsed.magic1, magic2: parsed.magic2 };
-        // Persist to shared store so other editors see it
-        updateStringsBinFile(f.name, fileData);
-        // Local state is updated via the 'strings-bin-updated' event above
+      try {
+        const parsed = decodeStringsBin(await f.arrayBuffer());
+        updateStringsBinFile(f.name, parsed);
+        lastLoadedName = normalizedFileName(f.name);
+        const loadedName = lastLoadedName;
+        setFiles(prev => prev.map(existing => existing.name === loadedName ? { ...parsed, name: loadedName, dirty: false } : existing));
+      } catch (error) {
+        failures.push(`${f.name}: ${error.message}`);
       }
     }
-    // Select the last loaded file
-    if (fileList.length > 0) {
+    setFileError(failures.join('\n'));
+    // Select the last successfully loaded file, not a rejected one.
+    if (lastLoadedName) {
       setTimeout(() => {
         setFiles((prev) => {
-          const idx = prev.findIndex((f) => f.name === normalizedFileName(fileList[fileList.length - 1].name));
+          const idx = prev.findIndex((f) => f.name === lastLoadedName);
           if (idx >= 0) setActiveFile(idx);
           return prev;
         });
@@ -110,46 +115,46 @@ export default function StringsBinEditor() {
   };
 
   const handleSaveEntry = () => {
-    if (!currentFile) return;
+    if (!currentFile || currentFile.readOnly || (ordered && isNew)) return;
     let newEntries;
     if (isNew) {
       newEntries = [...currentFile.entries, { key: editKey, value: editValue }];
       setIsNew(false);
     } else if (selected !== null) {
       newEntries = [...currentFile.entries];
-      newEntries[selected] = { key: editKey, value: editValue };
+      newEntries[selected] = { ...newEntries[selected], key: ordered ? newEntries[selected].key : editKey, value: editValue };
     } else return;
 
     updateFiles((f) => ({ ...f, entries: newEntries, dirty: true }));
     // Immediately persist to shared store so other editors see the change
-    updateStringsBinFile(currentFile.name, {
-      entries: newEntries,
-      magic1: currentFile.magic1,
-      magic2: currentFile.magic2,
-    });
+    updateStringsBinFile(currentFile.name, { ...currentFile, entries: newEntries });
   };
 
   const handleDelete = (idx) => {
+    if (structureLocked) return;
     const newEntries = currentFile.entries.filter((_, i) => i !== idx);
     updateFiles((f) => ({ ...f, entries: newEntries, dirty: true }));
-    updateStringsBinFile(currentFile.name, { entries: newEntries, magic1: currentFile.magic1, magic2: currentFile.magic2 });
+    updateStringsBinFile(currentFile.name, { ...currentFile, entries: newEntries });
     if (selected === idx) { setSelected(null); setEditKey(''); setEditValue(''); }
     else if (selected > idx) setSelected(selected - 1);
   };
 
   const handleMove = (idx, dir) => {
+    if (structureLocked) return;
     const newIdx = idx + dir;
     if (newIdx < 0 || newIdx >= currentFile.entries.length) return;
     const newEntries = [...currentFile.entries];
     [newEntries[idx], newEntries[newIdx]] = [newEntries[newIdx], newEntries[idx]];
     updateFiles((f) => ({ ...f, entries: newEntries, dirty: true }));
-    updateStringsBinFile(currentFile.name, { entries: newEntries, magic1: currentFile.magic1, magic2: currentFile.magic2 });
+    updateStringsBinFile(currentFile.name, { ...currentFile, entries: newEntries });
     if (selected === idx) setSelected(newIdx);
   };
 
   const handleExport = () => {
     if (!currentFile) return;
-    const buf = encodeStringsBin(currentFile.entries, currentFile.magic1, currentFile.magic2);
+    let buf;
+    try { buf = encodeStoredStringsBin(currentFile); setFileError(''); }
+    catch (error) { setFileError(error.message); return; }
     const blob = new Blob([buf], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -191,6 +196,9 @@ export default function StringsBinEditor() {
         )}
       </div>
 
+      {fileError && <p role="alert" className="px-4 py-3 text-xs text-red-300 whitespace-pre-wrap">{fileError}</p>}
+      {ordered && <p className="px-4 py-3 text-xs text-amber-200 bg-amber-950/30">Ordered / index-based strings: this file stores values without named keys. Numeric labels are display-only. Edit text values only; record order and count are locked to preserve game references.</p>}
+      {currentFile?.readOnly && <p className="px-4 py-3 text-xs text-amber-200">This file has an unknown binary trailer. It is available for viewing and unchanged export; editing is locked to avoid damaging it.</p>}
       {/* File tabs */}
       {files.length > 0 && (
         <div className="flex gap-1 px-3 pt-2 pb-0 border-b border-slate-700 bg-slate-900 overflow-x-auto">
@@ -253,7 +261,7 @@ export default function StringsBinEditor() {
                     <p className="text-[11px] font-mono font-semibold truncate text-slate-200">{entry.key || <span className="opacity-30">(empty key)</span>}</p>
                     <p className="text-[10px] text-slate-400 truncate">{entry.value || <span className="opacity-30">(no value)</span>}</p>
                   </div>
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
+                  {!structureLocked && <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
                     <button onClick={(e) => { e.stopPropagation(); handleMove(entry.originalIndex, -1); }} className="p-0.5 rounded hover:bg-slate-600 text-slate-300">
                       <ChevronUp className="w-3 h-3" />
                     </button>
@@ -263,13 +271,14 @@ export default function StringsBinEditor() {
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(entry.originalIndex); }} className="p-0.5 rounded hover:bg-red-900 text-red-400">
                       <Trash2 className="w-3 h-3" />
                     </button>
-                  </div>
+                  </div>}
                 </div>
               ))}
             </div>
 
             <div className="p-2 border-t border-slate-700">
               <Button size="sm" variant="outline" className="w-full gap-1.5 h-8 border-slate-600 text-slate-200 hover:bg-slate-700"
+                disabled={structureLocked}
                 onClick={() => { setIsNew(true); setSelected(null); setEditKey(''); setEditValue(''); }}>
                 <Plus className="w-3.5 h-3.5" /> New Entry
               </Button>
@@ -281,9 +290,10 @@ export default function StringsBinEditor() {
             {(selected !== null || isNew) ? (
               <>
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Internal Key (identifier)</label>
+                  <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{ordered ? 'Record index (read-only)' : 'Internal Key (identifier)'}</label>
                   <Input
                     value={editKey}
+                    readOnly={structureLocked}
                     onChange={(e) => setEditKey(e.target.value)}
                     className="font-mono text-sm h-9 bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500"
                     placeholder="KEY_NAME"
@@ -293,13 +303,14 @@ export default function StringsBinEditor() {
                   <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Display Text (value)</label>
                   <Textarea
                     value={editValue}
+                    readOnly={!!currentFile.readOnly}
                     onChange={(e) => setEditValue(e.target.value)}
                     className="flex-1 font-mono text-sm resize-none min-h-[200px] bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500"
                     placeholder="Text displayed in-game…"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleSaveEntry} className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white">
+                  <Button onClick={handleSaveEntry} disabled={!!currentFile.readOnly} className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white">
                     <Save className="w-3.5 h-3.5" />
                     {isNew ? 'Add Entry' : 'Save Changes'}
                   </Button>
