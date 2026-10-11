@@ -11,7 +11,7 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
-import { setFile, getFile, flushBigFiles } from '@/lib/bigFileStore';
+import { setFile, getFile, flushBigFiles, clearBigFiles } from '@/lib/bigFileStore';
 import { DATA_FILE_MAP, DATA_FILE_DEFINITIONS, normalizedFileName } from '@/lib/modFileRegistry';
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
@@ -229,11 +229,11 @@ export default function Home() {
       if (result.errors.length > 0) {
         toast({
           variant: 'destructive',
-          title: `Loaded ${files.length - result.errors.length}/${files.length}, failed ${result.errors.length}`,
+          title: `Loaded ${result.ok}/${files.length}, failed ${result.errors.length}`, 
           description: result.errors.slice(0, 5).join('\n') + (result.errors.length > 5 ? `\n…(+${result.errors.length - 5} more)` : ''),
         });
       } else {
-        toast({ title: 'Data loaded', description: `Loaded ${files.length} file${files.length === 1 ? '' : 's'}` });
+        toast({ title: result.warning ? 'Loaded with a storage warning' : 'Data loaded', description: result.warning || `Loaded ${result.ok} file${result.ok === 1 ? '' : 's'}.${result.skipped?.length ? ` Skipped ${result.skipped.length} unsupported files.` : ' Shared files are ready in the editors.'}` });
       }
     } catch (err) {
       toast({ variant: 'destructive', title: 'Load failed', description: err?.message || String(err) });
@@ -954,12 +954,10 @@ export default function Home() {
 
   const edbLoaded = fileStatus.edb === 'ok' || !!edbData?.buildings?.length;
 
-  const handleClearMemory = () => {
+  const handleClearMemory = async () => {
+    if (!window.confirm('Clear all loaded mod files and editor changes from this browser? Export your changes first.')) return;
     try {
-      // Nuke everything — localStorage, sessionStorage, and window globals
-      localStorage.clear();
-      sessionStorage.clear();
-      clearStringsBinStore();
+      await clearBigFiles();
       window._m2tw_resource_icons = {};
       window._m2tw_map_files = [];
       window._m2tw_unit_images = {};
