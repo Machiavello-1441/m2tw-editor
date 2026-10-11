@@ -1,7 +1,7 @@
-import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
+import { editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 /**
- * Bulk faction duplication helpers — operate on the shared localStorage keys
- * that Home + editors use, and dispatch update events so open tabs refresh.
+ * Bulk faction duplication helpers — operate on shared files from Home and
+ * dispatch update events so open tabs refresh. EDU edits are insertion-only.
  */
 import { parseBannersXml, serialiseBannersXml } from '@/components/minorfiles/banners/bannersParser';
 import { BANNERS_GLOBAL_KEY } from './BannersTab';
