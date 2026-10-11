@@ -1,5 +1,5 @@
 import React from 'react';
-import { usePortraits, portraitFor } from '@/components/map/FamilyGraphCard';
+import { usePortraits, portraitFor } from '@/components/map/characterPortraits';
 
 export default function FamilyCharacterList({ chars, placedIds, showPortraits, characterErrors = {} }) {
   const portraits = usePortraits();

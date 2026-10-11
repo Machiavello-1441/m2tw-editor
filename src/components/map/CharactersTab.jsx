@@ -5,22 +5,14 @@ import { treeToRelatives, orderRelatives } from './familyTreeLogic';
 import CharacterRecordRow from '@/components/map/CharacterRecordRow';
 import { syncFamilyTreeAges } from '@/components/map/familyCharacterAge';
 import CharacterNameSelect from '@/components/map/CharacterNameSelect';
+import { usePortraits, portraitVariants } from '@/components/map/characterPortraits';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 // Small component that shows character portrait previews (young/old/dead variants)
 // Portrait field = folder name inside data/ui/custom_portraits/[name]/portrait_young.tga etc.
 function PortraitPreview({ name }) {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const h = () => setTick(t => t + 1);
-    window.addEventListener('load-portraits', h);
-    return () => window.removeEventListener('load-portraits', h);
-  }, []);
-
-  const folder = name.toLowerCase().replace(/\.tga$/i, '');
-  const portraits = window._m2tw_portraits || {};
-  const variants = ['portrait_young', 'portrait_old', 'portrait_dead'];
-  const found = variants.map(v => ({ label: v.replace('portrait_', ''), src: portraits[`${folder}/${v}`] || null })).filter(v => v.src);
+  const portraits = usePortraits();
+  const found = portraitVariants(name, portraits);
 
   if (found.length > 0) {
     return (

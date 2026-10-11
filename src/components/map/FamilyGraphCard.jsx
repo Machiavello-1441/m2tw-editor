@@ -1,24 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Star } from 'lucide-react';
 import { CW, CH } from './familyGraphLayout';
-
-// Custom portraits loaded from data/ui/custom_portraits (see Home page loader)
-export function usePortraits() {
-  const [p, setP] = useState(() => window._m2tw_portraits || {});
-  useEffect(() => {
-    const h = () => setP({ ...(window._m2tw_portraits || {}) });
-    window.addEventListener('load-portraits', h);
-    return () => window.removeEventListener('load-portraits', h);
-  }, []);
-  return p;
-}
-
-export function portraitFor(char, portraits) {
-  if (!char?.portrait) return null;
-  // Use the same folder normalization as the character panel preview.
-  const folder = char.portrait.toLowerCase().replace(/\.tga$/i, '');
-  return portraits[`${folder}/portrait_young`] || portraits[`${folder}/portrait_old`] || portraits[`${folder}/portrait_dead`] || null;
-}
+import { portraitFor } from '@/components/map/characterPortraits';
 
 const style = { width: CW, height: CH };
 

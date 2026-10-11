@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { Plus, Maximize2, Minimize2, Image, X } from 'lucide-react';
 import { layoutForest } from './familyGraphLayout';
 import { addChild, setParent, setSpouse, detach } from './familyGraphOps';
-import FamilyGraphCard, { usePortraits, portraitFor } from './FamilyGraphCard';
+import FamilyGraphCard from './FamilyGraphCard';
+import { usePortraits, portraitFor } from '@/components/map/characterPortraits';
+import familyPortraitCharacters from '@/components/map/familyPortraitCharacters';
 import FamilyTreeProblems from './FamilyTreeProblems';
 import FamilyGraphLines from '@/components/map/FamilyGraphLines';
 import FamilyRulesStatus from '@/components/map/FamilyRulesStatus';
@@ -32,6 +34,7 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
   const setShowPortraits = onShowPortraitsChange || setLocalShowPortraits;
   const [full, setFull] = useState(false);
   const [message, setMessage] = useState('');
+  const currentCharacter = useMemo(() => familyPortraitCharacters(chars), [chars]);
   const forest = useMemo(() => layoutForest(factionTrees), [factionTrees]);
   const [selectedTreeId, setSelectedTreeId] = useState('');
   const activeTreeId = forest.some(tree => String(tree.rootId) === selectedTreeId) ? selectedTreeId : String(forest.find(tree => tree.nodes.some(node => String(node.char?.id) === selectedCharacterId))?.rootId ?? forest[0]?.rootId ?? '');
@@ -111,7 +114,7 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
               <div className="relative" style={{ top: f.nodes.includes(pendingNode) && pendingMember.kind === 'parent' ? 100 : 0 }}>
               <FamilyGraphLines forest={f} />
               {f.nodes.map((n) => (
-                <FamilyGraphCard key={n.key} node={n} portraits={portraits} showPortraits={showPortraits}
+                <FamilyGraphCard key={n.key} node={{ ...n, char: currentCharacter(n.char) }} portraits={portraits} showPortraits={showPortraits}
                   onDropChar={dropOnNode} onSelect={onSelectCharacter} onSelectSlot={node => onRequestMember?.({ kind: 'slot', treeId: node.unit.treeId, slot: node.slot, sex: node.slot === 'father' ? 'male' : 'female', label: node.slot }, true)} selected={String(n.char?.id) === selectedCharacterId} errorMessages={problems.characterErrors?.[String(n.char?.id)]}
                   onDetach={(node) => onTreesChange((prev) => ({ ...prev, [faction]: detach(factionTrees, { ...node, treeId: node.unit.treeId, charId: node.char?.id }) }))} />
               ))}
