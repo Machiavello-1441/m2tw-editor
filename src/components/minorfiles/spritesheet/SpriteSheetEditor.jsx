@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { parseSdXml, serialiseSdXml } from './sdXmlParser';
 import SpriteCanvas from './SpriteCanvas';
+import { getFile } from '@/lib/bigFileStore';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
 
 async function loadImageAsDataUrl(file) {
