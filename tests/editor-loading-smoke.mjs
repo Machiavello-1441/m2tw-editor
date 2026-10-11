@@ -50,9 +50,11 @@ w.IS_REACT_ACT_ENVIRONMENT = true;
 w.MessageChannel = class {
   constructor() {
     this.port1 = { onmessage: null };
-    this.port2 = { postMessage: () => setTimeout(() => this.port1.onmessage?.(), 0) };
+    this.port2 = { postMessage: data => setTimeout(() => this.port1.onmessage?.({ data }), 0) };
   }
 };
+w.setImmediate = callback => setTimeout(callback, 0);
+w.clearImmediate = handle => clearTimeout(handle);
 w.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
 w.matchMedia = query => ({ media: query, matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } });
 w.fetch = async () => { throw new Error('Unexpected network request in synthetic UI test'); };
@@ -75,6 +77,18 @@ function file(name, content, directory = 'data') {
   f.arrayBuffer = async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
   return f;
 }
+
+// Mixed foot/naval/siege source with directives the old serializer omitted.
+const eduSource = '; Original EDU header\r\n'
+  + 'type Test Spearmen\r\ndictionary Test_Spearmen\r\ncategory infantry\r\nclass spearmen\r\nownership england\r\nera 0 england\r\n'
+  + 'type\tTest Ship\r\ndictionary Test_Ship\r\ncategory ship\r\nship\theavy cog ; critical naval line\r\nownership\tengland,france  ; keep this comment\r\nera 1 england\r\n'
+  + 'type Test Engine\ndictionary Test_Engine\ncategory siege\nengine huge_bombard\ncustom_extension keep, this, unchanged\nownership england\nera 2 england\n; final comment';
+const expectedEdu = eduSource
+  .replaceAll('ownership england', 'ownership england, england_copy')
+  .replace('ownership\tengland,france', 'ownership\tengland, england_copy,france')
+  .replace('era 0 england', 'era 0 england, england_copy')
+  .replace('era 1 england', 'era 1 england, england_copy')
+  .replace('era 2 england', 'era 2 england, england_copy');
 
 const orderedNames = ['battle', 'battle_ed', 'shared', 'strat', 'tooltips'].map(name => `${name}.txt.strings.bin`);
 // An independent fixture builder; intentionally does not use the app encoder.
@@ -105,7 +119,7 @@ try {
     file('descr_names.txt', 'faction: england\n\tcharacters\n\t\tHenry\n\tsurnames\n\t\tYork\n'),
     file('descr_offmap_models.txt', 'type navy_england\n'),
     file('descr_banners_new.xml', '<Banners><FactionBanners><Banner Name="faction"><Textures><Texture Faction="england" DiffuseMap="banner.tga" TranslucencyMap="alpha.tga"/></Textures></Banner></FactionBanners></Banners>'),
-    file('export_descr_unit.txt', 'type Test Spearmen\ndictionary Test_Spearmen\ncategory infantry\nclass spearmen\nownership england\nera 0 england\n'),
+    file('export_descr_unit.txt', eduSource),
     file('EXPANDED.TXT.STRINGS.BIN', a.encodeStringsBin([{ key: 'ENGLAND', value: 'England test description' }]), 'data/text'),
     file('menu_english.txt.strings.bin', a.encodeStringsBin([{ key: 'UI_FACTION_ENGLAND', value: 'England menu' }]), 'data/text'),
     ...orderedNames.map(name => file(name, orderedFixture([`${name} first value`, '', 'Zürich %S']), 'data/text')),
@@ -142,6 +156,30 @@ try {
   assertNoCrash();
   assert.match(w.document.body.textContent, /Faction file availability: 11\/11 available/);
   console.log('PASS Factions Editor renders all 11 shared dependencies after Home, without re-uploading');
+  assert.equal(a.getFile('m2tw_units_file'), eduSource);
+  const findButton = (text, scope = w.document) => [...scope.querySelectorAll('button')].find(button => button.textContent.trim() === text);
+  await a.act(async () => { findButton('england').click(); await pause(10); });
+  await a.act(async () => { findButton('Duplicate').click(); await pause(20); });
+  const dialog = w.document.querySelector('[role="dialog"]');
+  assert.ok(dialog, 'Faction duplication modal opens');
+  assert.equal(dialog.querySelector('input[placeholder="e.g. mantua"]').value, 'england_copy');
+  await a.act(async () => { findButton('Duplicate', dialog).click(); await a.flushBigFiles(); await pause(20); });
+  assertNoCrash();
+  assert.equal(a.getFile('m2tw_units_file'), expectedEdu);
+  assert.equal(a.getFile('m2tw_units_before_faction_patch'), eduSource);
+  console.log('PASS Actual Factions duplicate action changes only six EDU ownership/era insertions');
+
+  const oldBlobCount = exportedBlobs.length;
+  await a.act(async () => {
+    findButton('Download all (zip)').click();
+    for (let i = 0; i < 100 && exportedBlobs.length === oldBlobCount; i++) await pause(10);
+  });
+  assert.ok(exportedBlobs.length > oldBlobCount, 'Faction ZIP download completes');
+  const factionZip = await JSZip.loadAsync(Buffer.from(await readBlob(exportedBlobs.at(-1))));
+  const zippedEdu = await factionZip.file('data/export_descr_unit.txt').async('nodebuffer');
+  assert.deepEqual(zippedEdu, Buffer.from(expectedEdu));
+  console.log('PASS Actual faction ZIP download retains all ship/engine directives and original formatting');
+
 
   await a.act(async () => { a.show('StringsBinEditor'); await pause(30); });
   assertNoCrash();
@@ -190,6 +228,16 @@ try {
   assertNoCrash();
   assert.match(w.document.body.textContent, /Test Spearmen/);
   console.log('PASS Unit Editor reads the EDU loaded on Home');
+  assert.match(w.document.body.textContent, /Test Ship/);
+  assert.match(w.document.body.textContent, /Test Engine/);
+  await a.act(async () => { findButton('Download EDU').click(); });
+  assert.deepEqual(Buffer.from(await readBlob(exportedBlobs.at(-1))), Buffer.from(expectedEdu));
+  assert.equal(a.getFile('m2tw_units_file'), expectedEdu, 'Rendering/downloading never rewrites source');
+  console.log('PASS Actual Unit Editor download matches the raw patched EDU byte for byte');
+  await a.act(async () => { findButton('Download pre-faction EDU backup').click(); });
+  assert.deepEqual(Buffer.from(await readBlob(exportedBlobs.at(-1))), Buffer.from(eduSource));
+  console.log('PASS Pre-faction backup button downloads the exact prior EDU');
+
 
   await a.act(async () => { a.show('Home'); await pause(30); });
   assertNoCrash();
@@ -211,7 +259,11 @@ try {
     assert.equal(a.decodeStringsBin(a.encodeStoredStringsBin(restored)).entries.length, 3);
   }
   console.log('PASS All five ordered files retain their layout metadata after persistent restoration');
-  console.log('\n10 editor loading smoke tests passed.');
+  await a.act(async () => { a.show('UnitEditor'); await pause(20); });
+  await a.act(async () => { findButton('Download EDU').click(); });
+  assert.deepEqual(Buffer.from(await readBlob(exportedBlobs.at(-1))), Buffer.from(expectedEdu));
+  console.log('PASS Unit Editor export remains unchanged after navigation and persistent restoration');
+  console.log('\n15 editor loading smoke tests passed.');
 } finally {
   await a.act(async () => { a.stop(); });
   dom.window.close();
