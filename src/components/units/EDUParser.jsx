@@ -1,4 +1,5 @@
-// Parser and serializer for export_descr_unit.txt (EDU)
+// Parser and source-preserving serializer for export_descr_unit.txt (EDU)
+import { patchEditedUnit } from './eduSourceEdits';
 
 export const CATEGORIES = ['infantry', 'cavalry', 'siege', 'ship'];
 export const CLASSES = ['light', 'heavy', 'missile', 'spearmen'];
@@ -30,9 +31,8 @@ export const OWNERSHIP_FACTIONS = [
 ];
 
 function parseKV(line) {
-  const idx = line.indexOf(' ');
-  if (idx < 0) return { key: line.trim(), value: '' };
-  return { key: line.slice(0, idx).trim(), value: line.slice(idx + 1).trim() };
+  const match = line.match(/^(\S+)(?:[ \t]+(.*))?$/);
+  return match ? { key: match[1].toLowerCase(), value: (match[2] || '').trim() } : { key: '', value: '' };
 }
 
 function parseUnit(lines) {
@@ -97,7 +97,7 @@ function parseUnit(lines) {
       case 'accent': unit.accent = cleanVal; break;
       case 'banner': {
         // "banner faction main_spear" or "banner holy crusade" or "banner unit dragon_standard"
-        const rest = value.trim();
+        const rest = cleanVal;
         if (rest.startsWith('faction')) unit.banner_faction = rest.replace('faction', '').trim();
         else if (rest.startsWith('holy')) unit.banner_holy = rest.replace('holy', '').trim();
         else if (rest.startsWith('unit')) unit.banner_unit = rest.replace('unit', '').trim();
@@ -139,7 +139,7 @@ function parseUnit(lines) {
       case 'armour_ug_models': unit.armour_ug_models = cleanVal; break;
       case 'ownership': unit.ownership = cleanVal.split(',').map(s => s.trim()).filter(Boolean); break;
       case 'era': {
-        const rest = value.trim();
+        const rest = cleanVal;
         if (rest.startsWith('0')) unit.era0 = rest.replace(/^0\s+/, '').split(',').map(s => s.trim()).filter(Boolean);
         else if (rest.startsWith('1')) unit.era1 = rest.replace(/^1\s+/, '').split(',').map(s => s.trim()).filter(Boolean);
         else if (rest.startsWith('2')) unit.era2 = rest.replace(/^2\s+/, '').split(',').map(s => s.trim()).filter(Boolean);
@@ -155,28 +155,33 @@ function parseUnit(lines) {
 }
 
 export function parseEDU(text) {
-  const lines = text.split('\n');
-  const units = [];
-  let currentLines = [];
-  let inUnit = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('type ') && !trimmed.startsWith('voice_type')) {
-      if (inUnit && currentLines.length > 0) {
-        units.push(parseUnit(currentLines));
-      }
-      inUnit = true;
-      currentLines = [line];
-    } else if (inUnit) {
-      currentLines.push(line);
-    }
-  }
-  if (inUnit && currentLines.length > 0) units.push(parseUnit(currentLines));
+  if (typeof text !== 'string') throw new TypeError('EDU source must be text.');
+  // Locate blocks without normalising whitespace/newlines or discarding headers.
+  const starts = [...text.matchAll(/^[ \t\uFEFF]*type[ \t]+[^\r\n]*(?:\r\n|\r|\n|$)/gmi)];
+  const prefix = text.slice(0, starts[0]?.index ?? text.length);
+  const units = starts.map((match, index) => {
+    const source = text.slice(match.index, starts[index + 1]?.index ?? text.length);
+    const unit = parseUnit(source.split(/\r\n|\r|\n/));
+    unit._sourceText = source;
+    unit._sourcePrefix = prefix;
+    unit._sourceGenerated = serializeNewUnit(unit);
+    return unit;
+  });
+  units._sourcePrefix = prefix;
   return units;
 }
 
 export function serializeUnit(unit) {
+  const generated = serializeNewUnit(unit);
+  if (typeof unit._sourceText === 'string' && typeof unit._sourceGenerated === 'string') {
+    return patchEditedUnit(unit._sourceText, unit._sourceGenerated, generated);
+  }
+  // Templates are for deliberately created new units, never a fallback for
+  // faction duplication or reconstruction of an imported EDU.
+  return generated;
+}
+
+function serializeNewUnit(unit) {
   const lines = [];
   lines.push(`type             ${unit.type}`);
   lines.push(`dictionary       ${unit.dictionary}      ; ${unit.dictionaryComment || unit.type}`);
@@ -226,12 +231,20 @@ export function serializeUnit(unit) {
 }
 
 export function serializeEDU(units) {
-  return units.map(serializeUnit).join('\n\n');
+  const original = units.find(unit => typeof unit._sourceText === 'string');
+  if (!original) return (units._sourcePrefix || '') + units.map(serializeUnit).join('\n\n');
+  const newline = original._sourceText.match(/\r\n|\r|\n/)?.[0] || '\n';
+  let out = units._sourcePrefix ?? original._sourcePrefix ?? '';
+  for (let index = 0; index < units.length; index++) {
+    if (index > 0 && out && !/[\r\n]$/.test(out)) out += newline;
+    out += serializeUnit(units[index]);
+  }
+  return out;
 }
 
 export function createDefaultUnit() {
   return {
-    type: 'New_Unit', dictionary: 'New_Unit', dictionaryComment: 'New Unit',
+    _createdInEditor: true, type: 'New_Unit', dictionary: 'New_Unit', dictionaryComment: 'New Unit',
     category: 'infantry', class: 'heavy', voice_type: 'Heavy', accent: '',
     banner_faction: 'main_infantry', banner_unit: '', banner_holy: 'none',
     soldier_model: 'New_Unit', soldier_num: 60, soldier_extras: 0, soldier_mass: 1,
