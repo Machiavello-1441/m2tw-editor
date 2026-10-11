@@ -22,10 +22,13 @@ export function parseStringsBin(buffer) {
   const totalStrings = entryCount * 2; // each entry = 2 strings (key + value)
 
   for (let i = 0; i < totalStrings; i++) {
-    if (pos + 2 > buffer.byteLength) break;
+    if (pos + 2 > buffer.byteLength) return null;
     const charLen = view.getUint16(pos, true); pos += 2;
     let str = '';
-    if (charLen > 0 && pos + charLen * 2 <= buffer.byteLength) {
+    // A truncated entry is not a successfully loaded file. Do not return a
+    // partial dictionary and silently overwrite the last readable copy.
+    if (pos + charLen * 2 > buffer.byteLength) return null;
+    if (charLen > 0) {
       const bytes = new Uint8Array(buffer, pos, charLen * 2);
       str = new TextDecoder('utf-16le').decode(bytes);
       pos += charLen * 2;
