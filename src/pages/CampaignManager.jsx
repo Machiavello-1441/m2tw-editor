@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { editorStorage as localStorage } from '@/lib/editorStorage';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
