@@ -3,6 +3,7 @@ import { Upload, Download, Copy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsBinCodec';
 import { getFile, setFile } from '@/lib/bigFileStore';
+import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
 
 const GLOBAL_STRINGS_KEY = 'm2tw_strings_bin_global';
 
@@ -79,8 +80,11 @@ export default function DescriptionsTab({ factionName }) {
     loadStrings();
 
     // Listen for updates from other editors
-    window.addEventListener('strings-bin-updated', loadStrings);
-    return () => window.removeEventListener('strings-bin-updated', loadStrings);
+    const onSharedChange = event => {
+      if (!event.detail?.keys || event.detail.keys.includes(GLOBAL_STRINGS_KEY)) loadStrings();
+    };
+    window.addEventListener(FILES_CHANGED_EVENT, onSharedChange);
+    return () => window.removeEventListener(FILES_CHANGED_EVENT, onSharedChange);
   }, [factionName]);
 
   const [showCopyModal, setShowCopyModal] = useState(false);
