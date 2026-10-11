@@ -1,4 +1,5 @@
 import React from 'react';
+import { clearBigFiles } from '@/lib/bigFileStore';
 
 export default class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -14,12 +15,14 @@ export default class AppErrorBoundary extends React.Component {
     console.error('[AppErrorBoundary] Render crash:', error, info?.componentStack);
   }
 
-  handleClear = () => {
+  handleClear = async () => {
+    if (!window.confirm('Clear loaded mod files and editor changes from this browser? Export your changes first.')) return;
     try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch {}
-    window.location.reload();
+      await clearBigFiles();
+      window.location.reload();
+    } catch (error) {
+      this.setState({ error });
+    }
   };
 
   handleDismiss = () => {
@@ -34,7 +37,7 @@ export default class AppErrorBoundary extends React.Component {
           <div className="max-w-lg w-full rounded-xl border border-red-500/40 bg-slate-900 p-6 space-y-4">
             <h2 className="text-red-400 font-bold text-lg">Render Error</h2>
             <p className="text-slate-300 text-sm">
-              A component crashed while rendering. This is usually caused by corrupt or oversized cached data in localStorage.
+              A component crashed while rendering. Dismiss the error to retry, or clear loaded editor data after exporting any changes you need to keep.
             </p>
             <pre className="text-[11px] text-red-300 bg-slate-800 rounded p-3 overflow-auto max-h-40 whitespace-pre-wrap break-all">
               {msg}
