@@ -9,7 +9,7 @@ import BannersTab, { BANNERS_GLOBAL_KEY } from '@/components/factions/BannersTab
 import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsBinCodec';
 import DuplicateFactionModal from '@/components/factions/DuplicateFactionModal';
 import FactionZipExport from '@/components/factions/FactionZipExport';
-import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership } from '@/components/factions/factionBulkDuplicate';
+import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership, prepareEduOwnership } from '@/components/factions/factionBulkDuplicate';
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { useToast } from '@/components/ui/use-toast';
 import { FILES_CHANGED_EVENT, FACTION_DEPENDENCIES } from '@/lib/modFileRegistry';
@@ -790,6 +790,17 @@ export default function FactionsEditor() {
     }
     const src = factions[duplicateSourceIdx];
     const newFactionName = payload.newName.trim();
+    if (factions.some(faction => faction.name.toLowerCase() === newFactionName.toLowerCase())) {
+      toast({ variant: 'destructive', title: 'Faction already exists', description: 'No changes made. Choose a unique internal faction name.' });
+      return;
+    }
+    try {
+      // Validate the insertion-only EDU change before touching any faction file.
+      prepareEduOwnership(src.name, newFactionName, src.culture);
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Duplication stopped — original EDU required', description: error.message });
+      return;
+    }
     const nameUpper = newFactionName.toUpperCase();
 
     const dup = {
@@ -827,7 +838,7 @@ export default function FactionsEditor() {
     if (charRes.stratLoaded) done.push(`${charRes.stratTextures} strat textures`); else missing.push('descr_model_strat.txt');
     if (namesRes.loaded) done.push(namesRes.ok ? 'names block' : 'names block (already exists / source not found)'); else missing.push('descr_names.txt');
     if (eduRes.loaded) {
-      if (eduRes.count > 0) done.push(`${eduRes.count} unit ownerships`);
+      if (eduRes.count > 0) done.push(`faction added on ${eduRes.ownershipLines} ownership and ${eduRes.eraLines} era lines (other EDU text unchanged)`);
       else if (eduRes.already > 0) done.push(`unit ownerships (already on ${eduRes.already} lines)`);
       else done.push(`unit ownerships: "${src.name}" not found on any ownership/era line (${eduRes.srcLines} matches)`);
     } else missing.push('export_descr_unit.txt');
