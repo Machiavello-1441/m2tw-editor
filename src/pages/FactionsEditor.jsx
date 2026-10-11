@@ -602,19 +602,19 @@ export default function FactionsEditor() {
     try {
       // Cultures / religions / EDU units — Home stores raw text; parse into lists.
       const cultRaw = getFile('m2tw_cultures_file');
-      if (cultRaw && !localStorage.getItem(LS_CULT)) {
+      if (cultRaw && !getFile(LS_CULT)) {
         const list = parseCultures(cultRaw);
-        if (list.length) localStorage.setItem(LS_CULT, JSON.stringify(list));
+        if (list.length) setFile(LS_CULT, JSON.stringify(list));
       }
       const relRaw = getFile('m2tw_religions_file');
-      if (relRaw && !localStorage.getItem(LS_REL)) {
+      if (relRaw && !getFile(LS_REL)) {
         const list = parseReligions(relRaw);
-        if (list.length) localStorage.setItem(LS_REL, JSON.stringify(list));
+        if (list.length) setFile(LS_REL, JSON.stringify(list));
       }
       const eduRaw = getFile('m2tw_units_file');
-      if (eduRaw && !localStorage.getItem(LS_UNITS)) {
+      if (eduRaw && !getFile(LS_UNITS)) {
         const list = parseEduUnits(eduRaw);
-        if (list.length) localStorage.setItem(LS_UNITS, JSON.stringify(list));
+        if (list.length) setFile(LS_UNITS, JSON.stringify(list));
       }
       // Banners — Home writes raw XML to m2tw_banners_file; BannersTab reads BANNERS_GLOBAL_KEY.
       const bannersRaw = getFile('m2tw_banners_file');
@@ -648,12 +648,12 @@ export default function FactionsEditor() {
 
     // ── Load everything from the (now reconciled) editor keys ──
     try {
-      const r = localStorage.getItem(LS_KEY) || getFile('m2tw_factions_file');
+      const r = getFile(LS_KEY) || getFile('m2tw_factions_file');
       if (r) setFactions(parseDescrSmFactions(r));
     } catch {}
-    try {const r = localStorage.getItem(LS_CULT);if (r) setCultures(JSON.parse(r));} catch {}
-    try {const r = localStorage.getItem(LS_REL);if (r) setReligions(JSON.parse(r));} catch {}
-    try {const r = localStorage.getItem(LS_UNITS);if (r) setEduUnits(JSON.parse(r));} catch {}
+    try {const r = getFile(LS_CULT);if (r) setCultures(JSON.parse(r));} catch {}
+    try {const r = getFile(LS_REL);if (r) setReligions(JSON.parse(r));} catch {}
+    try {const r = getFile(LS_UNITS);if (r) setEduUnits(JSON.parse(r));} catch {}
     try {if (getFile(BANNERS_GLOBAL_KEY)) setBannersLoaded(true);} catch {}
     try {if (getFile('m2tw_strings_bin_global')) setStringsLoaded(true);} catch {}
     try {if (getFile(LS_MENU_STRINGS)) setMenuStringsLoaded(true);} catch {}
@@ -663,7 +663,7 @@ export default function FactionsEditor() {
     const file = e.target.files?.[0];if (!file) return;
     const text = await file.text();
     try {
-      localStorage.setItem(LS_KEY, text);
+      setFile(LS_KEY, text);
     } catch {}
     const parsed = parseDescrSmFactions(text);
     setFactions(parsed);
@@ -676,7 +676,7 @@ export default function FactionsEditor() {
     const text = await file.text();
     const list = parseCultures(text);
     setCultures(list);
-    try {localStorage.setItem(LS_CULT, JSON.stringify(list));} catch {}
+    try {setFile(LS_CULT, JSON.stringify(list));} catch {}
     e.target.value = '';
   }, []);
 
@@ -685,7 +685,7 @@ export default function FactionsEditor() {
     const text = await file.text();
     const list = parseReligions(text);
     setReligions(list);
-    try {localStorage.setItem(LS_REL, JSON.stringify(list));} catch {}
+    try {setFile(LS_REL, JSON.stringify(list));} catch {}
     e.target.value = '';
   }, []);
 
@@ -694,7 +694,7 @@ export default function FactionsEditor() {
     const text = await file.text();
     const list = parseEduUnits(text);
     setEduUnits(list);
-    try {localStorage.setItem(LS_UNITS, JSON.stringify(list));} catch {}
+    try {setFile(LS_UNITS, JSON.stringify(list));} catch {}
     e.target.value = '';
   }, []);
 
@@ -748,7 +748,7 @@ export default function FactionsEditor() {
   const updateFaction = (i, f) => {
     const updated = factions.map((x, idx) => idx === i ? f : x);
     setFactions(updated);
-    try {localStorage.setItem(LS_KEY, serialiseDescrSmFactions(updated));} catch {}
+    try {setFile(LS_KEY, serialiseDescrSmFactions(updated));} catch {}
   };
 
   const addFaction = () => {
@@ -829,7 +829,7 @@ export default function FactionsEditor() {
     updated.splice(duplicateSourceIdx + 1, 0, dup);
     setFactions(updated);
     setSelectedIdx(duplicateSourceIdx + 1);
-    try { localStorage.setItem(LS_KEY, serialiseDescrSmFactions(updated)); } catch {}
+    try { setFile(LS_KEY, serialiseDescrSmFactions(updated)); } catch {}
 
     // Bulk duplication across all related files
     copyBannerEntries(src.name, newFactionName);
@@ -867,7 +867,7 @@ export default function FactionsEditor() {
     const [reordered] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reordered);
     setFactions(items);
-    try { localStorage.setItem(LS_KEY, serialiseDescrSmFactions(items)); } catch {}
+    try { setFile(LS_KEY, serialiseDescrSmFactions(items)); } catch {}
     if (selectedIdx !== null) {
       const newIdx = items.findIndex(f => f.name === factions[selectedIdx].name);
       setSelectedIdx(newIdx >= 0 ? newIdx : null);
