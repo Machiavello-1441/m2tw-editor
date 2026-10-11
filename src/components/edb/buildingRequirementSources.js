@@ -1,3 +1,4 @@
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 const clean = text => (text || '').split('\n').map(line => line.replace(/;.*$/, '').trim()).join('\n');
 const names = (text, pattern) => new Set([...clean(text).matchAll(pattern)].map(match => match[1]));
 const source = (text, pattern, file) => ({ names: names(text, pattern), loaded: text !== null, file });

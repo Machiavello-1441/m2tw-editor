@@ -1,3 +1,4 @@
+import { editorStorage as localStorage } from "@/lib/editorStorage";
 import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, Download, Plus, X, Search, Copy, GitMerge } from 'lucide-react';
 import MergeNamesModal from './MergeNamesModal';

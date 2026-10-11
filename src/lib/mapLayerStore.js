@@ -1,3 +1,4 @@
+import { editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 /**
  * Module-level in-memory store for M2TW map layer pixel data.
  * Survives React component unmount/remount (navigation between pages).

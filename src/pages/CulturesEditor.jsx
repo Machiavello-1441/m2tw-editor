@@ -1,3 +1,4 @@
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import React, { useState, useCallback, useMemo } from 'react';
 import { encodeStringsBin } from '../components/strings/stringsBinCodec';
 import { getStringsBinStore, setStringsBinStore } from '../lib/stringsBinStore';

@@ -1,3 +1,4 @@
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import React, { useState } from 'react';
 import { useEDB } from '../components/edb/EDBContext';
 import { useTraits } from '../components/traits/TraitsContext';

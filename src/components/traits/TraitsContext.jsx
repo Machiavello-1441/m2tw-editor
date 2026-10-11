@@ -1,3 +1,4 @@
+import { editorStorage as localStorage } from "@/lib/editorStorage";
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { parseTraitsFile, serializeTraitsFile, parseTextFile, serializeTextFile } from './TraitsParser';
 import { getStringsBinStore } from '@/lib/stringsBinStore';

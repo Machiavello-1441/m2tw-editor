@@ -1,3 +1,4 @@
+import { editorStorage as localStorage } from "@/lib/editorStorage";
 /**
  * ModDataContext — single live source of truth for cross-editor reference data.
  *

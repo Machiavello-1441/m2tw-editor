@@ -1,3 +1,4 @@
+import { editorStorage as localStorage } from "@/lib/editorStorage";
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { parseEDB, serializeEDB, createDefaultBuilding, createDefaultLevel, parseTextFile, serializeTextFile, parseBuildingImageKey } from './EDBParser';
 import { useEDBAutoSave } from './useEDBAutoSave';

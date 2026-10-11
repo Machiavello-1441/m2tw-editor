@@ -1,3 +1,4 @@
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';

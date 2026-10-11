@@ -1,3 +1,4 @@
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Upload, Download, Plus, X, AlertCircle } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';

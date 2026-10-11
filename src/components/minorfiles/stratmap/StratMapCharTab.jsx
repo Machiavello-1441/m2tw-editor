@@ -1,3 +1,4 @@
+import { editorStorage as localStorage } from "@/lib/editorStorage";
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Upload, Download, Plus, Trash2, Copy, ChevronDown, ChevronRight, Eye, X, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';

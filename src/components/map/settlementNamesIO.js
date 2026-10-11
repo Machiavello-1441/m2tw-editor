@@ -1,3 +1,4 @@
+import { editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { parseSettlementNames } from '@/components/map/stratParser';
 import { getStringsBinStore } from '@/lib/stringsBinStore';

@@ -1,3 +1,4 @@
+import { editorStorage as localStorage } from "@/lib/editorStorage";
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import {
   parseFactionsFile, parseResourcesFile, parseEventsFile, parseUnitsFile,

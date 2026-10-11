@@ -1,3 +1,4 @@
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import React, { useRef, useState, useCallback } from 'react';
 import DataLoadingBanner from '../components/home/DataLoadingBanner';
 import { useEDB } from '../components/edb/EDBContext';

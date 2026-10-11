@@ -1,3 +1,4 @@
+import { editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { getStringsBinStore, updateStringsBinFile } from '@/lib/stringsBinStore';
 import { parseDescrNames } from '@/components/map/additionalParsers';

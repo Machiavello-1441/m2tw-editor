@@ -1,3 +1,4 @@
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Map, CheckSquare, Globe, FolderOpen, Box, Layers } from 'lucide-react';
 import CoastlineTracer from '../components/map/CoastlineTracer';

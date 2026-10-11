@@ -1,3 +1,4 @@
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 /**
  * Bulk faction duplication helpers — operate on the shared localStorage keys
  * that Home + editors use, and dispatch update events so open tabs refresh.
