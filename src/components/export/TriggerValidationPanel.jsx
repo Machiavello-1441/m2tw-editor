@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { editorStorage as localStorage } from '@/lib/editorStorage';
 import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Zap, Info } from 'lucide-react';
 import { parseTraitsFile } from '../traits/TraitsParser';
 import { parseAncillariesFile } from '../ancillaries/AncillariesParser';
