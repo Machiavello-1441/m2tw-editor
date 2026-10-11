@@ -1,4 +1,4 @@
-import { editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
+import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { clearAllLayers } from '@/lib/mapLayerStore';
 
