@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsBinCodec';
 import { getStringsBinStore, updateStringsBinFile } from '@/lib/stringsBinStore';
+import { FILES_CHANGED_EVENT, STRINGS_STORE_KEY, normalizedFileName } from '@/lib/modFileRegistry';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,7 +34,8 @@ export default function StringsBinEditor() {
 
   // Re-sync when another editor or Home updates the store
   useEffect(() => {
-    const handler = () => {
+    const handler = event => {
+      if (event?.detail?.keys && !event.detail.keys.includes(STRINGS_STORE_KEY)) return;
       const fresh = loadFilesFromStore();
       setFiles((prev) => {
         // Merge: keep local dirty edits, add new files from store, update clean files
@@ -50,8 +52,8 @@ export default function StringsBinEditor() {
         return merged;
       });
     };
-    window.addEventListener('strings-bin-updated', handler);
-    return () => window.removeEventListener('strings-bin-updated', handler);
+    window.addEventListener(FILES_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(FILES_CHANGED_EVENT, handler);
   }, []);
 
   const currentFile = activeFile !== null ? files[activeFile] : null;
@@ -91,7 +93,7 @@ export default function StringsBinEditor() {
     if (fileList.length > 0) {
       setTimeout(() => {
         setFiles((prev) => {
-          const idx = prev.findIndex((f) => f.name === fileList[fileList.length - 1].name);
+          const idx = prev.findIndex((f) => f.name === normalizedFileName(fileList[fileList.length - 1].name));
           if (idx >= 0) setActiveFile(idx);
           return prev;
         });
