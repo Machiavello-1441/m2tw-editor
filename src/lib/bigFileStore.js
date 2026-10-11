@@ -62,17 +62,53 @@ function notifyChange(key) {
 
 export async function hydrateBigFiles() {
   const db = await dbPromise;
-  if (!db) return;
-  await new Promise((resolve) => {
-    const req = db.transaction(STORE).objectStore(STORE).openCursor();
-    req.onsuccess = () => {
-      const cursor = req.result;
-      if (!cursor) return resolve();
-      if (mem()[cursor.key] === undefined) mem()[cursor.key] = cursor.value;
-      cursor.continue();
-    };
-    req.onerror = () => resolve();
-  });
+  if (db) {
+    await new Promise((resolve) => {
+      const req = db.transaction(STORE).objectStore(STORE).openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) return resolve();
+        if (mem()[cursor.key] === undefined) mem()[cursor.key] = cursor.value;
+        cursor.continue();
+      };
+      req.onerror = () => resolve();
+    });
+  }
+  // Upgrade previously loaded files, including session-only and large in-memory
+  // copies. Never assume that every editor used the same historic key.
+  const legacy = {};
+  for (const storageName of ['sessionStorage', 'localStorage']) {
+    try {
+      const storage = window[storageName];
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (key?.startsWith('m2tw_')) legacy[key] = storage.getItem(key);
+      }
+    } catch { /* Storage can be disabled independently of IndexedDB. */ }
+  }
+  const candidates = { ...legacy, ...mem() };
+  for (const [key, value] of Object.entries(candidates)) {
+    if (STRING_FILE_KEYS[key]) continue;
+    const canonical = canonicalFileKey(key);
+    if (mem()[canonical] === undefined && value !== null) {
+      mem()[canonical] = candidates[canonical] ?? value;
+      savePersistent(canonical, mem()[canonical]);
+    }
+  }
+  const marker = 'm2tw_shared_file_migration_v2';
+  if (!getFile(marker)) {
+    let strings;
+    try { strings = JSON.parse(getFile(STRINGS_STORE_KEY) || '{}'); } catch { strings = {}; }
+    for (const [key, name] of Object.entries(STRING_FILE_KEYS)) {
+      try {
+        const data = JSON.parse(candidates[key] || 'null');
+        if (Array.isArray(data?.entries)) strings[name] = data;
+      } catch { /* A broken legacy alias must not block other files. */ }
+    }
+    if (Object.keys(strings).length) setFile(STRINGS_STORE_KEY, JSON.stringify(strings));
+    setFile(marker, '1');
+  }
+  await flushBigFiles();
 }
 
 export function setFile(key, value) {
@@ -90,7 +126,9 @@ export function setFile(key, value) {
   savePersistent(key, value);
   notifyChange(key);
   try {
-    localStorage.setItem(key, value);
+    // Large files belong in IndexedDB; avoid filling localStorage with copies.
+    if (String(value).length <= 131072) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
   } catch {
     // Quota exceeded — drop any stale persisted copy so reads never return old data
     try { localStorage.removeItem(key); } catch {}
@@ -111,7 +149,9 @@ export function getFile(key) {
   if (m[key] !== undefined) return m[key];
   for (const alias of fileKeyAliases(key)) {
     if (m[alias] !== undefined) return m[alias];
-    try { const value = localStorage.getItem(alias); if (value !== null) return value; } catch { /* Try another legacy alias. */ }
+    for (const name of ['localStorage', 'sessionStorage']) {
+      try { const value = window[name].getItem(alias); if (value !== null) return value; } catch { /* Try another legacy source. */ }
+    }
   }
   return null;
 }
@@ -127,8 +167,33 @@ export function removeFile(key) {
   mem()[key] = null;
   for (const alias of fileKeyAliases(key)) {
     if (alias !== key) delete mem()[alias];
-    try { localStorage.removeItem(alias); } catch { /* Native storage may be disabled. */ }
+    for (const name of ['localStorage', 'sessionStorage']) {
+      try { window[name].removeItem(alias); } catch { /* Native storage may be disabled. */ }
+    }
   }
-  savePersistent(key, null);
+  for (const alias of fileKeyAliases(key)) savePersistent(alias, null);
   notifyChange(key);
+}
+
+/** Used only by the explicit Clear Memory / Clear Cache actions. */
+export async function clearBigFiles() {
+  await flushBigFiles();
+  const db = await dbPromise;
+  if (db) await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.oncomplete = () => resolve();
+    tx.onerror = tx.onabort = () => reject(tx.error || new Error('Could not clear file storage'));
+    tx.objectStore(STORE).clear();
+  });
+  window.__m2twBigFileStore = {};
+  window.__m2twEditorSession = {};
+  for (const name of ['localStorage', 'sessionStorage']) {
+    try {
+      const storage = window[name];
+      const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i));
+      for (const key of keys) if (key?.startsWith('m2tw_')) storage.removeItem(key);
+    } catch { /* Storage can be disabled. */ }
+  }
+  storageWarning = '';
+  window.dispatchEvent(new CustomEvent(FILES_CHANGED_EVENT));
 }
