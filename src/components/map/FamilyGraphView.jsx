@@ -5,6 +5,8 @@ import { addChild, setParent, setSpouse, detach } from './familyGraphOps';
 import FamilyGraphCard from './FamilyGraphCard';
 import { usePortraits, portraitFor } from '@/components/map/characterPortraits';
 import familyPortraitCharacters from '@/components/map/familyPortraitCharacters';
+import { syncFamilyTreeAges } from '@/components/map/familyCharacterAge';
+import FamilyTreeSelect from '@/components/map/FamilyTreeSelect';
 import FamilyTreeProblems from './FamilyTreeProblems';
 import FamilyGraphLines from '@/components/map/FamilyGraphLines';
 import FamilyRulesStatus from '@/components/map/FamilyRulesStatus';
@@ -35,7 +37,7 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
   const [full, setFull] = useState(false);
   const [message, setMessage] = useState('');
   const currentCharacter = useMemo(() => familyPortraitCharacters(chars), [chars]);
-  const forest = useMemo(() => layoutForest(factionTrees), [factionTrees]);
+  const forest = useMemo(() => layoutForest(syncFamilyTreeAges(factionTrees, chars)), [factionTrees, chars]);
   const [selectedTreeId, setSelectedTreeId] = useState('');
   const activeTreeId = forest.some(tree => String(tree.rootId) === selectedTreeId) ? selectedTreeId : String(forest.find(tree => tree.nodes.some(node => String(node.char?.id) === selectedCharacterId))?.rootId ?? forest[0]?.rootId ?? '');
   const pendingNode = pendingMember?.anchorId != null ? forest.flatMap(tree => tree.nodes).find(node => String(node.char?.id) === String(pendingMember.anchorId)) : null;
@@ -69,10 +71,7 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
   return (
     <div className={`flex flex-col ${wrap}`}>
       <div className="flex items-center gap-2 p-2 border-b border-slate-800 shrink-0 flex-wrap">
-        <label className="text-xs flex items-center gap-2">Family tree<select aria-label="Family tree" value={activeTreeId} onChange={event => { setSelectedTreeId(event.target.value); onSelectTree?.(); }} className="h-7 max-w-64 rounded border border-input bg-background text-foreground px-2">
-          {!forest.length && <option value="">No family trees</option>}
-          {forest.map((tree, index) => <option key={tree.rootId} value={String(tree.rootId)}>{index + 1}. {tree.title}</option>)}
-        </select></label>
+        <FamilyTreeSelect forest={forest} value={activeTreeId} onChange={id => { setSelectedTreeId(id); setMessage(''); onSelectTree?.(id); }} />
         <button onClick={() => { setSelectedTreeId(String(onAddTree())); onSelectTree?.(); }} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-600/40 text-slate-300 hover:text-white">
           <Plus className="w-3 h-3" /> New tree
         </button>
@@ -108,7 +107,7 @@ export default function FamilyGraphView({ faction, chars, factionTrees, onTreesC
       <div className="flex-1 min-h-0 overflow-auto p-3 space-y-5">
         {forest.length === 0 && <p className="text-[10px] text-slate-600 italic text-center py-4">No family trees for {faction} — click "New tree"</p>}
         {visibleForest.map((f, i) => (
-          <div key={i}>
+          <div key={f.rootId}>
             <p className="text-[10px] font-semibold text-amber-300 mb-1">{f.title}</p>
             <div className="relative" style={{ width: f.width + (f.nodes.includes(pendingNode) && pendingMember.kind === 'spouse' ? 140 : 0), height: f.height + (f.nodes.includes(pendingNode) && pendingMember.kind !== 'spouse' ? 100 : 0), minWidth: 240 }}>
               <div className="relative" style={{ top: f.nodes.includes(pendingNode) && pendingMember.kind === 'parent' ? 100 : 0 }}>

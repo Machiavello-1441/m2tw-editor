@@ -35,7 +35,7 @@ export default function FamilyGraphCard({ node, portraits, showPortraits, onDrop
         errorMessages?.length ? 'border-destructive ring-2 ring-destructive' : over ? ring : female ? 'border-pink-500/50' : 'border-sky-500/50'}`}>
       {showPortraits && char.portrait && (
         src
-          ? <img src={src} alt="" className="h-full w-9 rounded-sm object-cover shrink-0" />
+          ? <img src={src} alt={`${char.name} portrait`} className="h-full w-9 rounded-sm object-cover shrink-0" />
           : <div className="h-full w-9 rounded-sm bg-slate-700 text-[8px] text-slate-500 flex items-center justify-center text-center shrink-0" title="Load data/ui/custom_portraits to preview">no img</div>
       )}
       <div className="min-w-0 flex-1">
