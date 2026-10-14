@@ -71,7 +71,7 @@ export default function useHydroRivers({ bbox, mapWidth, mapHeight, featuresLaye
     if (!draft || busy || !draft.stats.selected) return;
     const merged = mergeHydroDraft(featuresLayer, draft.imageData);
     onApply(merged); onRiverPreviewChange?.(null);
-    setMessage(`Applied river draft. ${merged.protectedPixels} conflicting pixels preserved from existing features. Review sources, fords, junctions and outlets manually.`);
+    setMessage(`Applied repaired river draft. ${merged.protectedPixels} conflicting pixels preserved from existing features. Run River Validator on the merged layer; review inferred source direction and ford placement.`);
   };
   return { names, minOrder: threshold, maxOrder, setMinOrder, draft, busy, error, message, loadFiles, apply,
     hidePreview: () => onRiverPreviewChange?.(null), showPreview: () => onRiverPreviewChange?.(draft) };

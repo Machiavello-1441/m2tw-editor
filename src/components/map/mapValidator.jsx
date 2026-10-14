@@ -85,9 +85,9 @@ export function validateLayers(layers, step = 4) {
     }
   }
 
-  // Check 2: map_features.tga topology — invalid colours, blue crossroads,
-  // 2×2 river blocks, orphan white sources, isolated river pixels, and river
-  // networks without a white source. Full-resolution, exact-colour scan.
+  // Check 2: shared M2TW river topology and exact feature colours.
+  // Tributaries and forked outlets are allowed; solid blocks, closed loops,
+  // diagonal gaps, invalid sources and missing outlets are reported.
   if (features?.data) checkMapFeatures(features, push);
 
   // Check 3: City/port markers in sea region

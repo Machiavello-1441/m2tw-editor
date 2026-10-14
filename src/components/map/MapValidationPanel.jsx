@@ -30,8 +30,8 @@ export default function MapValidationPanel({ layers, onJumpTo }) {
     <div className="flex flex-col h-full">
       <div className="shrink-0 p-3 border-b border-slate-800 space-y-2">
         <p className="text-[10px] text-slate-500 leading-relaxed">
-          Scans loaded layer pixel data for common modding errors: river crossroads, 2×2 river
-          blocks, orphan/missing white river sources, isolated river pixels, invalid feature
+          Scans loaded layer pixel data for common modding errors: river loops, 2×2 river
+          blocks, diagonal gaps, invalid/missing sources or outlets, isolated pixels, invalid feature
           colours, mismatched map sizes, and city/port markers on impassable or feature pixels.
         </p>
         <button
