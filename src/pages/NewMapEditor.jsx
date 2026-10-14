@@ -51,6 +51,7 @@ const TAB_META = {
 export default function NewMapEditor() {
   const [phase, setPhase] = useState('browse');
   const [layers, setLayers] = useState({});
+  const [riverPreview, setRiverPreview] = useState(null);
   const [workflowStep, setWorkflowStep] = useState('heights');
   const [activeLayerId, setActiveLayerId] = useState('heights');
   const [activeTool, setActiveTool] = useState('brush');
@@ -156,7 +157,7 @@ export default function NewMapEditor() {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(source, 0, 0, width, height);
       const imageData = ctx.getImageData(0, 0, width, height);
-      handleLayerUpdate(layerId, { imageData, visible: true, opacity: 0.8, dirty: true });
+      handleLayerUpdate(layerId, { imageData, visible: true, opacity: 0.8, dirty: true, ...(layerId === 'features' ? { hydroRiverPatch: null } : {}) });
       URL.revokeObjectURL(url);
     };
 
@@ -598,6 +599,7 @@ export default function NewMapEditor() {
                   mapWidth={workWidth}
                   mapHeight={workHeight}
                   onAssetReady={registerExtraAsset}
+                  onRiverPreviewChange={setRiverPreview}
                 />
                 {workflowStep === 'regions' && (
                   <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2 space-y-3">
@@ -668,6 +670,7 @@ export default function NewMapEditor() {
             box={box}
             onBoxChange={setBox}
             historicOverlays={historicOverlays}
+            riverPreview={riverPreview}
             portMode={!!portTarget}
             onPortPicked={handlePortPicked}
             showTileGrid={showTileGrid && tiles.length > 1}

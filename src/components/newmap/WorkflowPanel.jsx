@@ -20,7 +20,7 @@ const STEPS = [
   { id: 'heights',  label: 'Heightmap',    file: 'map_heights.tga',      desc: 'Paint elevation. Sea = blue (0,0,255). Land = grayscale 1–255.' },
   { id: 'ground',   label: 'Ground Types', file: 'map_ground_types.tga', desc: 'Terrain type per tile. Configure height ranges below, then auto-generate.' },
   { id: 'climates', label: 'Climates',     file: 'map_climates.tga',     desc: 'Climate zones per tile. Auto-generate from ground types or fill with a single climate.' },
-  { id: 'features', label: 'Features',     file: 'map_features.tga',     desc: 'Rivers, cliffs, fords. Rivers = 1px pure blue (0,0,255). Origin pixel = white (255,255,255). Each river pixel has at most 2 river neighbors.' },
+  { id: 'features', label: 'Features',     file: 'map_features.tga',     desc: 'Rivers, cliffs, fords. Rivers = 1px pure blue (0,0,255), connected edge-to-edge. Sources = white; fords = cyan. Review the TWC rules below; imported rivers are drafts.' },
   { id: 'regions',  label: 'Regions',      file: 'map_regions.tga',      desc: 'Settlement placement. Each region = black pixel + unique RGB surround.' },
 ];
 
@@ -35,6 +35,7 @@ export default function WorkflowPanel({
   bbox,
   mapWidth, mapHeight,
   onAssetReady,
+  onRiverPreviewChange,
 }) {
   const currentIdx = STEPS.findIndex(s => s.id === currentStepId);
   const CLIMATE_PALETTE = useClimatePalette();
@@ -71,7 +72,7 @@ export default function WorkflowPanel({
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 0, 0, width, height);
-      onLayerUpdate(layerId, { imageData: ctx.getImageData(0, 0, width, height), visible: true, opacity: 1, dirty: true });
+      onLayerUpdate(layerId, { imageData: ctx.getImageData(0, 0, width, height), visible: true, opacity: 1, dirty: true, ...(layerId === 'features' ? { hydroRiverPatch: null } : {}) });
       if (typeof onDone === 'function') onDone();
     };
     img.src = dataUrl;
@@ -259,6 +260,7 @@ export default function WorkflowPanel({
                       mapHeight={mapHeight}
                       onLayerUpdate={onLayerUpdate}
                       featuresLayer={layers.features}
+                      onRiverPreviewChange={onRiverPreviewChange}
                     />
                     <RiverChecker
                       featuresLayer={layers.features}

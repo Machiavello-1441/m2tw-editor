@@ -104,6 +104,7 @@ export default function MapCanvas({
   box, onBoxChange,
   // Historic tag overlays: key → ImageData
   historicOverlays = {},
+  riverPreview = null,
   // Port placement: when active, a single map click places a white port pixel.
   portMode, onPortPicked,
   // Tile grid overlay: array of { south, north, west, east }
@@ -246,6 +247,9 @@ export default function MapCanvas({
           />
         );
       })}
+
+      {riverPreview && <ImageOverlay url={riverPreview.url} bounds={layerBounds}
+        opacity={1} zIndex={450} className="pixelated-overlay" interactive={false} />}
 
       {/* Historic tag overlays (show/hide from sidebar) */}
       {Object.entries(historicOverlays).map(([key, imageData]) => {

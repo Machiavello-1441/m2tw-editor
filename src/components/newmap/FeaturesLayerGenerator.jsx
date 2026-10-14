@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { RefreshCw, Check, Mountain, AlertTriangle, Download, Waves } from 'lucide-react';
+import { Check, Mountain, Download, Waves } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
+import HydroRiversPanel from '@/components/newmap/hydrorivers/HydroRiversPanel';
 
 const OSM_OVERPASS_MIRRORS = [
   'https://overpass.kumi.systems/api/interpreter',
@@ -54,49 +55,9 @@ function bresenhamLine(data, width, height, x0, y0, x1, y1, r, g, b) {
   }
 }
 
-function chainPolylines(polylines) {
-  if (!polylines.length) return [];
-  const PREC = 4;
-  const k = (pt) => `${pt.lat.toFixed(PREC)},${pt.lon.toFixed(PREC)}`;
-  const endpointMap = new Map();
-  const used = new Array(polylines.length).fill(false);
-  polylines.forEach((pl, idx) => {
-    const sk = k(pl[0]), ek = k(pl[pl.length - 1]);
-    [sk, ek].forEach(key => { if (!endpointMap.has(key)) endpointMap.set(key, []); });
-    endpointMap.get(sk).push({ idx, isStart: true });
-    endpointMap.get(ek).push({ idx, isStart: false });
-  });
-  const chains = [];
-  for (let start = 0; start < polylines.length; start++) {
-    if (used[start]) continue;
-    used[start] = true;
-    let chain = [...polylines[start]];
-    for (let dir = 0; dir < 2; dir++) {
-      let extended = true;
-      while (extended) {
-        extended = false;
-        const endPt = dir === 0 ? chain[chain.length - 1] : chain[0];
-        for (const { idx, isStart } of (endpointMap.get(k(endPt)) ?? [])) {
-          if (used[idx]) continue;
-          used[idx] = true;
-          const seg = polylines[idx];
-          if (dir === 0) chain = chain.concat(isStart ? seg.slice(1) : [...seg].reverse().slice(1));
-          else chain = (isStart ? [...seg].reverse() : seg).concat(chain.slice(1));
-          extended = true;
-          break;
-        }
-      }
-    }
-    chains.push(chain);
-  }
-  return chains;
-}
 
-const RIVER_DETAIL_LEVELS = [
-  { id: 'major',  label: 'Major rivers only',       filter: 'river' },
-  { id: 'medium', label: 'Rivers + canals',          filter: 'river|canal' },
-  { id: 'all',    label: 'Rivers, streams & canals', filter: 'river|stream|canal' },
-];
+
+
 
 function StatusMsg({ msg }) {
   if (!msg) return null;
@@ -106,17 +67,15 @@ function StatusMsg({ msg }) {
   return <p className={`text-[9px] px-2 py-1 rounded border ${cls}`}>{msg}</p>;
 }
 
-export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, featuresLayer }) {
+export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, featuresLayer, onRiverPreviewChange }) {
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState({});
-  const [riverDetail, setRiverDetail] = useState('major');
-  const [riverStatus, setRiverStatus] = useState('');
+
   const [cliffStatus, setCliffStatus] = useState('');
   const [volcanoStatus, setVolcanoStatus] = useState('');
 
   // Tracks the accumulated features ImageData across all sub-steps
   const featuresImageDataRef = useRef(null);
-  const riversImageDataRef = useRef(null);
 
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
 
@@ -133,58 +92,9 @@ export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLa
     a.href = canvas.toDataURL('image/png'); a.download = filename; a.click();
   };
 
-  // ── Rivers ────────────────────────────────────────────────────────────────
-  const generateRivers = async () => {
-    const detail = RIVER_DETAIL_LEVELS.find(d => d.id === riverDetail) ?? RIVER_DETAIL_LEVELS[0];
-    setRiverStatus(`Fetching rivers (${detail.label})…`);
-    const { width, height } = getFeatDims();
-    const rToXY = makeToXY(bbox, width, height);
-
-    const osmQuery = `[out:json][timeout:180][maxsize:536870912];\n(\n  way["waterway"~"^(${detail.filter})$"](${bboxStr});\n);\nout geom;`;
-
-    let elements = [];
-    try {
-      const data = await fetchOverpass(osmQuery);
-      elements = (data.elements || []).filter(e => e.type === 'way' && e.geometry?.length > 1);
-    } catch (e) { setRiverStatus(`Error: ${e.message}`); return; }
-
-    if (!elements.length) { setRiverStatus('No waterways found.'); return; }
-
-    const polylines = elements.map(el => el.geometry);
-    const chains = chainPolylines(polylines);
-
-    // Rivers-only transparent download layer
-    const riverID = new ImageData(new Uint8ClampedArray(width * height * 4), width, height);
-    const rd = riverID.data;
-    for (const chain of chains) {
-      if (chain.length < 2) continue;
-      for (let s = 0; s < chain.length - 1; s++) {
-        const [x0, y0] = rToXY(chain[s].lat, chain[s].lon);
-        const [x1, y1] = rToXY(chain[s + 1].lat, chain[s + 1].lon);
-        bresenhamLine(rd, width, height, x0, y0, x1, y1, 0, 0, 255);
-      }
-      const [ox, oy] = rToXY(chain[0].lat, chain[0].lon);
-      if (ox >= 0 && ox < width && oy >= 0 && oy < height) {
-        const oi = (oy * width + ox) * 4;
-        rd[oi] = 255; rd[oi + 1] = 255; rd[oi + 2] = 255; rd[oi + 3] = 255;
-      }
-    }
-    riversImageDataRef.current = riverID;
-
-    // Merge onto accumulated features layer
-    const base = featuresImageDataRef.current
-      || (featuresLayer?.imageData ? new ImageData(new Uint8ClampedArray(featuresLayer.imageData.data), width, height) : null)
-      || new ImageData(new Uint8ClampedArray(width * height * 4), width, height);
-    const merged = new ImageData(new Uint8ClampedArray(base.data), width, height);
-    const d = merged.data;
-    for (let i = 0; i < rd.length; i += 4) {
-      if (rd[i + 3] > 0) { d[i] = rd[i]; d[i+1] = rd[i+1]; d[i+2] = rd[i+2]; d[i+3] = 255; }
-    }
-
-    setRiverStatus(`✓ ${chains.length} river chains painted.`);
-    featuresImageDataRef.current = merged;
-    onLayerUpdate('features', { imageData: merged, visible: true, opacity: 0.9, dirty: true });
-    setGenerated(p => ({ ...p, rivers: true }));
+  const applyHydroRivers = ({ imageData, hydroRiverPatch }) => {
+    featuresImageDataRef.current = imageData;
+    onLayerUpdate('features', { imageData, hydroRiverPatch, visible: true, opacity: 0.9, dirty: true });
   };
 
   // ── Cliffs ────────────────────────────────────────────────────────────────
@@ -205,8 +115,7 @@ export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLa
 
     if (!elements.length) { setCliffStatus('No cliffs found in this area.'); return; }
 
-    const base = featuresImageDataRef.current
-      || (featuresLayer?.imageData ? new ImageData(new Uint8ClampedArray(featuresLayer.imageData.data), width, height) : null)
+    const base = featuresLayer?.imageData || featuresImageDataRef.current
       || new ImageData(new Uint8ClampedArray(width * height * 4), width, height);
     const merged = new ImageData(new Uint8ClampedArray(base.data), width, height);
     const d = merged.data;
@@ -245,8 +154,7 @@ export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLa
 
     if (!elements.length) { setVolcanoStatus('No volcanoes found in this area.'); return; }
 
-    const base = featuresImageDataRef.current
-      || (featuresLayer?.imageData ? new ImageData(new Uint8ClampedArray(featuresLayer.imageData.data), width, height) : null)
+    const base = featuresLayer?.imageData || featuresImageDataRef.current
       || new ImageData(new Uint8ClampedArray(width * height * 4), width, height);
     const merged = new ImageData(new Uint8ClampedArray(base.data), width, height);
     const d = merged.data;
@@ -284,44 +192,11 @@ export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLa
   return (
     <div className="space-y-3">
       <p className="text-[9px] text-slate-500 leading-relaxed">
-        Fetch rivers, cliffs, and volcanoes from OSM and merge them onto the features layer. Each step adds onto the previous result.
+        Import rivers from HydroRIVERS; fetch cliffs and volcanoes from OSM. Manual painting remains available in the Layers tab.
       </p>
 
-      {/* Rivers */}
-      <div className="border border-slate-700 rounded p-2.5 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-bold bg-indigo-700 text-white rounded-full w-4 h-4 flex items-center justify-center shrink-0">~</span>
-          <p className="text-[10px] text-slate-300 font-semibold">Rivers</p>
-          {generated.rivers && <Check className="w-3 h-3 text-green-400 ml-auto" />}
-        </div>
-        <StatusMsg msg={riverStatus} />
-        <p className="text-[9px] text-slate-500">
-          Fetches <code className="text-amber-300">waterway</code> lines as 1px blue <code className="text-amber-300">(0,0,255)</code>. River sources marked white <code className="text-amber-300">(255,255,255)</code>.
-        </p>
-        <div className="flex items-start gap-1.5 bg-amber-900/25 border border-amber-600/30 rounded px-2 py-1.5">
-          <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-[9px] text-amber-300 leading-snug">Always review and correct the features layer by hand — OSM data may produce branching artefacts or incorrect source placements.</p>
-        </div>
-        <div className="bg-slate-800 border border-slate-700 rounded p-2 space-y-1">
-          {RIVER_DETAIL_LEVELS.map(d => (
-            <label key={d.id} className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="riverDetail" value={d.id} checked={riverDetail === d.id} onChange={() => setRiverDetail(d.id)} className="accent-indigo-400" />
-              <span className={`text-[10px] ${riverDetail === d.id ? 'text-indigo-300' : 'text-slate-400'}`}>{d.label}</span>
-            </label>
-          ))}
-        </div>
-        <button onClick={() => run(generateRivers)} disabled={generating}
-          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.rivers ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-indigo-800 border-indigo-600 text-white hover:bg-indigo-700'}`}>
-          <RefreshCw className={`w-3 h-3 ${generating ? 'animate-spin' : ''}`} />
-          {generated.rivers ? '✓ Re-fetch Rivers' : 'Fetch Rivers'}
-        </button>
-        {riversImageDataRef.current && (
-          <button onClick={() => downloadImageData(riversImageDataRef.current, 'rivers.png')}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors font-semibold bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600">
-            <Download className="w-3 h-3" /> Download Rivers (PNG, transparent)
-          </button>
-        )}
-      </div>
+      <HydroRiversPanel bbox={bbox} mapWidth={mapWidth} mapHeight={mapHeight}
+        featuresLayer={featuresLayer} onApply={applyHydroRivers} onRiverPreviewChange={onRiverPreviewChange} />
 
       {/* Cliffs */}
       <div className="border border-slate-700 rounded p-2.5 space-y-2">
@@ -361,7 +236,7 @@ export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLa
 
       {/* Download combined features */}
       {featuresImageDataRef.current && (
-        <button onClick={() => downloadImageData(featuresImageDataRef.current, 'map_features.png')}
+        <button onClick={() => downloadImageData(featuresLayer?.imageData || featuresImageDataRef.current, 'map_features.png')}
           className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors font-semibold bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600">
           <Download className="w-3 h-3" /> Download Features Layer (PNG)
         </button>
