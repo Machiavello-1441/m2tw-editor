@@ -52,6 +52,14 @@ export default function NewMapEditor() {
   const [phase, setPhase] = useState('browse');
   const [layers, setLayers] = useState({});
   const [riverPreview, setRiverPreview] = useState(null);
+  const [riverIssue, setRiverIssue] = useState(null);
+  const focusRiverIssue = useCallback(issue => {
+    setRiverIssue(issue ? { ...issue } : null);
+    if (!issue) return;
+    setRiverPreview(null);
+    setLayers(previous => ({ ...previous, features: { ...previous.features, visible: true, opacity: 1 } }));
+  }, []);
+  useEffect(() => { setRiverIssue(null); }, [layers.features?.imageData]);
   const [workflowStep, setWorkflowStep] = useState('heights');
   const [activeLayerId, setActiveLayerId] = useState('heights');
   const [activeTool, setActiveTool] = useState('brush');
@@ -600,6 +608,7 @@ export default function NewMapEditor() {
                   mapHeight={workHeight}
                   onAssetReady={registerExtraAsset}
                   onRiverPreviewChange={setRiverPreview}
+                  onRiverIssueSelect={focusRiverIssue}
                 />
                 {workflowStep === 'regions' && (
                   <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2 space-y-3">
@@ -671,6 +680,7 @@ export default function NewMapEditor() {
             onBoxChange={setBox}
             historicOverlays={historicOverlays}
             riverPreview={riverPreview}
+            riverIssue={riverIssue}
             portMode={!!portTarget}
             onPortPicked={handlePortPicked}
             showTileGrid={showTileGrid && tiles.length > 1}

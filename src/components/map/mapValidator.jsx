@@ -88,7 +88,7 @@ export function validateLayers(layers, step = 4) {
   // Check 2: shared M2TW river topology and exact feature colours.
   // Tributaries and forked outlets are allowed; solid blocks, closed loops,
   // diagonal gaps, invalid sources and missing outlets are reported.
-  if (features?.data) checkMapFeatures(features, push);
+  if (features?.data) checkMapFeatures(features, push, heights);
 
   // Check 3: City/port markers in sea region
   if (regions?.data && heights?.data) {

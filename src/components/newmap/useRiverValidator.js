@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export default function useRiverValidator(featuresLayer, onLayerUpdate) {
+export default function useRiverValidator(featuresLayer, onLayerUpdate, heightLayer) {
   const [result, setResult] = useState(null), [repairs, setRepairs] = useState(null);
   const [running, setRunning] = useState(false), [error, setError] = useState(''), [undo, setUndo] = useState(null);
   const worker = useRef(null), current = useRef(featuresLayer?.imageData), applying = useRef(false);
@@ -8,7 +8,7 @@ export default function useRiverValidator(featuresLayer, onLayerUpdate) {
     current.current = featuresLayer?.imageData;
     if (!applying.current) { worker.current?.terminate(); worker.current = null; setRunning(false); setResult(null); setRepairs(null); setUndo(null); }
     applying.current = false;
-  }, [featuresLayer?.imageData]);
+  }, [featuresLayer?.imageData, heightLayer?.imageData]);
   useEffect(() => () => worker.current?.terminate(), []);
   const run = kind => {
     const image = featuresLayer?.imageData;
@@ -29,7 +29,7 @@ export default function useRiverValidator(featuresLayer, onLayerUpdate) {
       }
     };
     instance.onerror = event => { instance.terminate(); worker.current = null; setRunning(false); setError(event.message || 'River repair failed. The layer was not changed.'); };
-    instance.postMessage({ kind, image: { data: image.data, width: image.width, height: image.height } });
+    instance.postMessage({ kind, image: { data: image.data, width: image.width, height: image.height }, heights: heightLayer?.imageData });
   };
   return { result, repairs, running, error, undo, check: () => run('check'), repair: () => run('repair'),
     restore: () => { if (!undo) return; onLayerUpdate('features', { ...undo, dirty: true }); setUndo(null); } };

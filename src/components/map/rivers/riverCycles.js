@@ -1,3 +1,6 @@
+import { chooseLoopCut } from '@/components/map/rivers/riverLoopFallback';
+import { riverLoopCorridor } from '@/components/map/rivers/riverLoopCorridor';
+
 function cycleIn(grid, nodes) {
   const visited = new Set(), active = new Set(), parent = new Map();
   for (const root of nodes) {
@@ -31,18 +34,20 @@ function safeRemoval(grid, n) {
   return !remaining.size;
 }
 export function openRiverLoops(grid, components, protectedPixels, clear) {
-  let removed = 0;
+  let removed = 0, pruned = 0;
   for (const nodes of components) {
-    // A deletion is permitted only if ALL its neighbours remain connected.
-    // Degree alone is never a reason to cut a tributary or a staircase bend.
     for (;;) {
       const cycle = cycleIn(grid, nodes);
       if (!cycle) break;
-      const candidates = cycle.filter(n => !protectedPixels[n]).sort((a, b) => grid.neighbors(a).length - grid.neighbors(b).length);
-      const n = candidates.find(candidate => safeRemoval(grid, candidate));
-      if (n == null) break; // Protected sources/fords: leave intact and report.
-      clear(n); removed++;
+      const corridor = riverLoopCorridor(grid,cycle,protectedPixels);
+      if (corridor?.length) { corridor.forEach(clear); removed += corridor.length; continue; }
+      const candidates = cycle.filter(n => !protectedPixels[n]).sort((a,b) => grid.neighbors(a).length - grid.neighbors(b).length);
+      const n = candidates.find(candidate => safeRemoval(grid,candidate));
+      if (n != null) { clear(n); removed++; continue; }
+      const fallback = chooseLoopCut(grid,cycle);
+      if (!fallback) break;
+      fallback.discarded.forEach(clear); removed += fallback.discarded.length; pruned += fallback.detached;
     }
   }
-  return removed;
+  return { removed, pruned };
 }

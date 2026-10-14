@@ -7,13 +7,15 @@ export default function HydroRiverPreview({ draft, busy, minOrder, maxOrder, onO
         <input type="range" min="1" max={maxOrder} value={maxOrder - minOrder + 1} disabled={!!busy && !draft} onChange={event => onOrderChange(maxOrder - Number(event.target.value) + 1)} className="block w-full mt-1 accent-primary" />
       </label>
       <div className="flex justify-between text-[9px] text-muted-foreground"><span>Main channels</span><span>More tributaries</span></div>
-      <p className="text-[9px] text-muted-foreground">Minimum Strahler order: {minOrder}. Downstream connections are retained. Maximum detail is limited by the source dataset.</p>
+      <p className="text-[9px] text-muted-foreground">Minimum Strahler order: {minOrder}. Downstream links are preferred; tiny tributaries and redundant loop arms may be removed during repair.</p>
       {draft && <>
         <img src={draft.url} alt="HydroRIVERS draft for the selected map area" className="w-full max-h-48 object-contain bg-background border rounded" style={{ imageRendering: 'pixelated' }} />
         <p className="text-[9px] text-muted-foreground">Draft: {draft.stats.selected.toLocaleString()} / {draft.stats.available.toLocaleString()} reaches; {draft.stats.origins} source markers. Overlay is not saved until applied.</p>
         {!draft.stats.selected && <p className="text-[10px] text-muted-foreground">No visible reaches at this density. Include more tributaries.</p>}
         <p className="text-[9px] text-muted-foreground">Automatically repaired {draft.stats.repairs.blocksThinned.toLocaleString()} thick-block pixels and {draft.stats.repairs.loopsOpened} loop pixels; relocated {draft.stats.repairs.relocated} sources and merged {draft.stats.repairs.merged} coincident heads.</p>
-        {!!draft.stats.issues && <p className="text-[10px] text-destructive">{draft.stats.issues} issues remain after safe repair ({draft.stats.blocks} solid blocks, {draft.stats.loops} loops, {draft.stats.unresolved} source issues). Check the applied layer with River Validator.</p>}
+        <p className="text-[9px] text-muted-foreground">Removed {draft.stats.repairs.shortFragmentsRemoved} fragments shorter than 3 pixels and {draft.stats.repairs.branchesPruned} minor-stub pixels. Review any ford relocations in River Validator after applying.</p>
+        {!!draft.stats.errors && <p className="text-[10px] text-destructive">{draft.stats.errors} errors remain ({draft.stats.blocks} solid blocks, {draft.stats.loops} loops, {draft.stats.unresolved} source issues). Apply and click their categories in River Validator to inspect each location.</p>}
+        {!!draft.stats.warnings && <p className="text-[9px] text-muted-foreground">{draft.stats.warnings} estuary/source review warnings, separate from topology errors. Apply and use River Validator to visit them.</p>}
         {(!!draft.stats.repairs.inferred || !!draft.stats.directionAmbiguities) && <p className="text-[9px] text-muted-foreground">Some source/outlet direction was inferred from endpoints ({draft.stats.directionAmbiguities} ambiguous reaches). Review geographic direction, not thousands of thick blocks.</p>}
         <div className="flex gap-1">
           <button onClick={onShow} disabled={!!busy} className="flex-1 border rounded bg-secondary text-secondary-foreground p-1 text-[9px]">Show draft</button>

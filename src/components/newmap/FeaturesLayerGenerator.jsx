@@ -67,7 +67,7 @@ function StatusMsg({ msg }) {
   return <p className={`text-[9px] px-2 py-1 rounded border ${cls}`}>{msg}</p>;
 }
 
-export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, featuresLayer, onRiverPreviewChange }) {
+export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLayerUpdate, featuresLayer, heightLayer, onRiverPreviewChange }) {
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState({});
 
@@ -196,7 +196,7 @@ export default function FeaturesLayerGenerator({ bbox, mapWidth, mapHeight, onLa
       </p>
 
       <HydroRiversPanel bbox={bbox} mapWidth={mapWidth} mapHeight={mapHeight}
-        featuresLayer={featuresLayer} onApply={applyHydroRivers} onRiverPreviewChange={onRiverPreviewChange} />
+        featuresLayer={featuresLayer} heightLayer={heightLayer} onApply={applyHydroRivers} onRiverPreviewChange={onRiverPreviewChange} />
 
       {/* Cliffs */}
       <div className="border border-slate-700 rounded p-2.5 space-y-2">

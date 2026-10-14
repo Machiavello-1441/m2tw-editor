@@ -3,8 +3,8 @@ import { Loader2, RefreshCw, Wand2 } from 'lucide-react';
 import useRiverValidator from '@/components/newmap/useRiverValidator';
 import RiverValidationResult from '@/components/newmap/RiverValidationResult';
 
-export default function RiverChecker({ featuresLayer, onLayerUpdate }) {
-  const validator = useRiverValidator(featuresLayer, onLayerUpdate);
+export default function RiverChecker({ featuresLayer, onLayerUpdate, heightLayer, onIssueSelect }) {
+  const validator = useRiverValidator(featuresLayer, onLayerUpdate, heightLayer);
   return <section className="space-y-2 rounded border bg-card text-card-foreground p-2" aria-label="River validator">
     <h3 className="text-[10px] font-semibold uppercase tracking-wider">River Validator</h3>
     {!featuresLayer?.imageData ? <p className="text-[10px] text-muted-foreground">No features layer loaded yet.</p> : <>
@@ -14,9 +14,9 @@ export default function RiverChecker({ featuresLayer, onLayerUpdate }) {
       </div>
       {validator.running && <p role="status" className="flex items-center gap-1 text-[10px] text-muted-foreground"><Loader2 className="w-3 h-3 animate-spin" />Processing river topology…</p>}
       {validator.error && <p role="alert" className="text-[10px] text-destructive">{validator.error}</p>}
-      <RiverValidationResult result={validator.result} repairs={validator.repairs} />
+      <RiverValidationResult result={validator.result} repairs={validator.repairs} onIssueSelect={onIssueSelect} />
       {validator.undo && <button disabled={validator.running} onClick={validator.restore} className="w-full border rounded bg-secondary text-secondary-foreground p-1.5 text-[10px]">Undo last river repair</button>}
-      <p className="text-[9px] text-muted-foreground">Repair preserves channel connections and endpoints instead of deleting branch pixels. Reapply the HydroRIVERS draft to recover stretches removed by the old fixer; missing geography cannot be reconstructed from scattered pixels.</p>
+      <p className="text-[9px] text-muted-foreground">Minimum river: one white source and two channel pixels. Tiny fragments are removed; redundant loop routes are simplified, with minor stubs pruned only when necessary. Heightmap water guides estuaries and inland sources; inland outlets are review warnings, not crash errors.</p>
     </>}
   </section>;
 }

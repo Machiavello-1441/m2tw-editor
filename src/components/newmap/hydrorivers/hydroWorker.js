@@ -15,7 +15,7 @@ self.onmessage = async ({ data }) => {
       }
       self.postMessage({ id, result: [...byId.values()] });
     } else {
-      const result = rasterizeHydroRivers(data.reaches, data.bbox, data.width, data.height, data.minOrder);
+      const result = rasterizeHydroRivers(data.reaches, data.bbox, data.width, data.height, data.minOrder, data.heights);
       self.postMessage({ id, result }, [result.pixels.buffer]);
     }
   } catch (error) { self.postMessage({ id, error: error.message }); }

@@ -5,6 +5,7 @@ import { hexToRgb } from '@/lib/mapLayerStore';
 import { ReferenceLayerTiles } from './ReferenceLayers';
 import OhmOverlay from './OhmOverlay';
 import SelectionBox from './SelectionBox';
+import RiverIssueFocus from '@/components/newmap/RiverIssueFocus';
 import 'leaflet/dist/leaflet.css';
 
 function floodFill(imageData, startX, startY, fillColor) {
@@ -105,6 +106,7 @@ export default function MapCanvas({
   // Historic tag overlays: key → ImageData
   historicOverlays = {},
   riverPreview = null,
+  riverIssue = null,
   // Port placement: when active, a single map click places a white port pixel.
   portMode, onPortPicked,
   // Tile grid overlay: array of { south, north, west, east }
@@ -313,6 +315,7 @@ export default function MapCanvas({
         />
       )}
 
+      <RiverIssueFocus issue={riverIssue} bbox={bboxBounds} width={layers.features?.imageData?.width} height={layers.features?.imageData?.height} />
       <DragController disabled={dragDisabled || selectionMode || portMode} />
       <ZoomController disabled={selectionMode || portMode} />
       <MapEventHandler

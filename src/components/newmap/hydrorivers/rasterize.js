@@ -2,7 +2,7 @@ import { selectHydroReaches, upstreamEndpoint, hydroEndpoints } from '@/componen
 import { repairRivers } from '@/components/map/rivers/riverRepair';
 import { hydroProjection, clipPixelSegment, paintRiverSegment } from '@/components/newmap/hydrorivers/pixelGeometry';
 
-export function rasterizeHydroRivers(reaches, bbox, width, height, minOrder) {
+export function rasterizeHydroRivers(reaches, bbox, width, height, minOrder, heights = null) {
   const selected = selectHydroReaches(reaches, minOrder), all = new Map(reaches.map(r => [r.HYRIV_ID, r]));
   const incoming = new Map(), selectedIncoming = new Set();
   for (const reach of reaches) {
@@ -33,12 +33,12 @@ export function rasterizeHydroRivers(reaches, bbox, width, height, minOrder) {
   }
   const pixels = new Uint8ClampedArray(width * height * 4);
   for (let n = 0; n < mask.length; n++) if (mask[n]) pixels.set([0,0,255,255], n * 4);
-  const repaired = repairRivers({ data: pixels, width, height }, { sourceHints: sources, outletHints: outlets, transparentBackground: true });
+  const repaired = repairRivers({ data: pixels, width, height }, { sourceHints: sources, outletHints: outlets, transparentBackground: true, heights });
   const result = repaired.result;
   return { pixels: repaired.data, stats: {
     selected: painted, available: reaches.length, origins: result.stats.sources,
     unresolved: (result.counts.source_position || 0) + (result.counts.missing_source || 0),
-    blocks: result.stats.blocks, loops: result.stats.cycles, issues: result.total,
+    blocks: result.stats.blocks, loops: result.stats.cycles, issues: result.total, errors: result.errors, warnings: result.warnings,
     directionAmbiguities, repairs: repaired.repairs,
   }, width, height };
 }

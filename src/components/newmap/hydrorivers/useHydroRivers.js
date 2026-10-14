@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mergeHydroDraft } from '@/components/newmap/hydrorivers/mergeDraft';
 
 let session = { key: '', reaches: [], names: [] };
-export default function useHydroRivers({ bbox, mapWidth, mapHeight, featuresLayer, onApply, onRiverPreviewChange }) {
+export default function useHydroRivers({ bbox, mapWidth, mapHeight, featuresLayer, heightLayer, onApply, onRiverPreviewChange }) {
   const key = JSON.stringify([bbox?.west, bbox?.south, bbox?.east, bbox?.north]);
   const [reaches, setReaches] = useState(() => session.key === key ? session.reaches : []);
   const [names, setNames] = useState(() => session.key === key ? session.names : []);
@@ -44,7 +44,7 @@ export default function useHydroRivers({ bbox, mapWidth, mapHeight, featuresLaye
     if (!bbox || !reaches.length) return;
     let cancelled = false;
     setBusy('Building river preview…'); setError(''); setMessage('');
-    request({ kind: 'preview', reaches, bbox, width: mapWidth, height: mapHeight, minOrder: threshold }).then(result => {
+    request({ kind: 'preview', reaches, bbox, width: mapWidth, height: mapHeight, minOrder: threshold, heights: heightLayer?.imageData }).then(result => {
       if (cancelled) return;
       const imageData = new ImageData(result.pixels, result.width, result.height);
       const canvas = document.createElement('canvas'); canvas.width = result.width; canvas.height = result.height;
@@ -53,7 +53,7 @@ export default function useHydroRivers({ bbox, mapWidth, mapHeight, featuresLaye
       setDraft(next); setBusy(''); onRiverPreviewChange?.(next);
     }).catch(reason => { if (!cancelled) { setBusy(''); setError(reason.message); } });
     return () => { cancelled = true; };
-  }, [reaches, key, mapWidth, mapHeight, threshold, request, onRiverPreviewChange]);
+  }, [reaches, key, mapWidth, mapHeight, threshold, request, onRiverPreviewChange, heightLayer?.imageData]);
   const loadFiles = async files => {
     if (!files.length) return;
     setBusy('Opening regional data…'); setError(''); setMessage('');

@@ -4,6 +4,8 @@ import { openRiverLoops } from '@/components/map/rivers/riverCycles';
 import { placeRiverSources } from '@/components/map/rivers/riverSources';
 import { analyzeRivers } from '@/components/map/rivers/riverAnalysis';
 import { joinRiverDiagonals } from '@/components/map/rivers/riverDiagonals';
+import { removeShortRivers, restoreRiverFords } from '@/components/map/rivers/riverFinalCleanup';
+import { riverWater } from '@/components/map/rivers/riverWater';
 
 export function repairRivers(image, options = {}) {
   const data = new Uint8ClampedArray(image.data), output = { data, width: image.width, height: image.height };
@@ -15,20 +17,24 @@ export function repairRivers(image, options = {}) {
   const grid = riverGrid(output);
   const diagonalsJoined = joinRiverDiagonals(grid, data);
   const original = riverComponents(grid), protectedPixels = new Uint8Array(grid.mask.length);
-  const anchors = [];
+  const anchors = [], originalFords = [];
   for (let n = 0; n < grid.mask.length; n++) {
     if (!grid.mask[n]) continue;
     if (grid.mask[n] === 2) anchors.push(n);
+    if (grid.mask[n] === 3) originalFords.push(n);
     if (grid.neighbors(n).length <= 1 || grid.mask[n] === 3) protectedPixels[n] = 1;
   }
   const index = ([x,y]) => Math.max(0, Math.min(grid.height - 1, Math.round(y))) * grid.width + Math.max(0, Math.min(grid.width - 1, Math.round(x)));
   for (const hint of options.sourceHints || []) anchors.push(index(hint));
   const clear = n => { grid.mask[n] = 0; data.set([0,0,0,options.transparentBackground ? 0 : 255], n * 4); };
   const blocksThinned = thinRiverBlocks(grid, protectedPixels, clear);
-  const loopsOpened = openRiverLoops(grid, original.components, protectedPixels, clear);
+  const loops = openRiverLoops(grid, original.components, protectedPixels, clear);
+  const short = removeShortRivers(grid, clear);
+  const final = riverComponents(grid), water = riverWater(options.heights, grid.width, grid.height);
   // White interior markers are relocated, never collapsed to one global source.
   for (let n = 0; n < grid.mask.length; n++) if (grid.mask[n] === 2 && grid.neighbors(n).length !== 1) { grid.mask[n] = 1; writeRiverPixel(data, n, 1); }
-  const sources = placeRiverSources(grid, data, original.components, [...new Set(anchors)], original.labels, (options.outletHints || []).map(index));
-  const result = analyzeRivers(output);
-  return { ...output, result, repairs: { blocksThinned, loopsOpened, diagonalsJoined, normalized, ...sources } };
+  const sources = placeRiverSources(grid, data, final.components, [...new Set(anchors)], final.labels, (options.outletHints || []).map(index), water);
+  const fords = restoreRiverFords(grid,data,originalFords);
+  const result = analyzeRivers(output, { heights: options.heights });
+  return { ...output, result, repairs: { blocksThinned, loopsOpened: loops.removed, branchesPruned: loops.pruned, shortFragmentsRemoved: short.fragments, shortPixelsRemoved: short.pixels, diagonalsJoined, normalized, ...sources, ...fords } };
 }

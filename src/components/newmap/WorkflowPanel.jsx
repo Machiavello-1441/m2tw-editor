@@ -36,6 +36,7 @@ export default function WorkflowPanel({
   mapWidth, mapHeight,
   onAssetReady,
   onRiverPreviewChange,
+  onRiverIssueSelect,
 }) {
   const currentIdx = STEPS.findIndex(s => s.id === currentStepId);
   const CLIMATE_PALETTE = useClimatePalette();
@@ -260,11 +261,14 @@ export default function WorkflowPanel({
                       mapHeight={mapHeight}
                       onLayerUpdate={onLayerUpdate}
                       featuresLayer={layers.features}
+                      heightLayer={layers.heights}
                       onRiverPreviewChange={onRiverPreviewChange}
                     />
                     <RiverChecker
                       featuresLayer={layers.features}
                       onLayerUpdate={onLayerUpdate}
+                      heightLayer={layers.heights}
+                      onIssueSelect={onRiverIssueSelect}
                     />
                     <div className="text-[9px] text-slate-500 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5 space-y-1">
                       <p>Paint with pure blue <span className="font-mono">(0,0,255)</span> — 1px brush recommended. Run the checker after painting.</p>
