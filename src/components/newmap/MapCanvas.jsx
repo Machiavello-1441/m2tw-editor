@@ -6,6 +6,7 @@ import { ReferenceLayerTiles } from './ReferenceLayers';
 import OhmOverlay from './OhmOverlay';
 import SelectionBox from './SelectionBox';
 import RiverIssueFocus from '@/components/newmap/RiverIssueFocus';
+import RiverEndpointPicker from '@/components/newmap/RiverEndpointPicker';
 import 'leaflet/dist/leaflet.css';
 
 function floodFill(imageData, startX, startY, fillColor) {
@@ -107,6 +108,7 @@ export default function MapCanvas({
   historicOverlays = {},
   riverPreview = null,
   riverIssue = null,
+  riverEndpointMode = false, onRiverEndpointPicked, onCancelRiverEndpoint,
   // Port placement: when active, a single map click places a white port pixel.
   portMode, onPortPicked,
   // Tile grid overlay: array of { south, north, west, east }
@@ -177,6 +179,7 @@ export default function MapCanvas({
   }, [layers, activeLayerId, bboxBounds, onPickColor]);
 
   const handleMouseDown = useCallback((latlng) => {
+    if (riverEndpointMode) return;
     if (portMode) { onPortPicked(latlng); return; }
     if (activeTool === 'picker') {
       pickColor(latlng);
@@ -187,7 +190,7 @@ export default function MapCanvas({
       setDragDisabled(true);
       applyPaint(latlng);
     }
-  }, [activeTool, isPaintTool, applyPaint, pickColor, portMode, onPortPicked]);
+  }, [activeTool, isPaintTool, applyPaint, pickColor, portMode, onPortPicked, riverEndpointMode]);
 
   const handleMouseMove = useCallback((latlng) => {
     if (isPainting.current && isPaintTool) {
@@ -284,7 +287,7 @@ export default function MapCanvas({
               dashArray: '4 2',
             }}
             eventHandlers={{
-              click: () => onTileClick?.(i),
+              click: () => { if (!riverEndpointMode) onTileClick?.(i); },
             }}
           />
           {/* Tile number label in the top-left corner */}
@@ -316,6 +319,7 @@ export default function MapCanvas({
       )}
 
       <RiverIssueFocus issue={riverIssue} bbox={bboxBounds} width={layers.features?.imageData?.width} height={layers.features?.imageData?.height} />
+      <RiverEndpointPicker active={riverEndpointMode} bbox={bboxBounds} image={layers.features?.imageData} onPick={onRiverEndpointPicked} onCancel={onCancelRiverEndpoint} />
       <DragController disabled={dragDisabled || selectionMode || portMode} />
       <ZoomController disabled={selectionMode || portMode} />
       <MapEventHandler

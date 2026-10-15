@@ -21,6 +21,8 @@ import { autoGenerateGroundTypesAsync, autoGenerateClimates, fillSolidColor } fr
 import { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import { computeTiles } from '@/lib/osmTiles';
 import { computeWorkArea } from '@/lib/rotatedBbox';
+import useRiverIssueEditor from '@/components/newmap/useRiverIssueEditor';
+import RiverEndpointPrompt from '@/components/newmap/RiverEndpointPrompt';
 
 const PHASES = [
   { id: 'browse',     label: 'Select Area',     icon: MousePointer },
@@ -140,6 +142,8 @@ export default function NewMapEditor() {
   const handleLayerUpdate = useCallback((layerId, data) => {
     setLayers(prev => ({ ...prev, [layerId]: { ...prev[layerId], ...data } }));
   }, []);
+
+  const riverEditor = useRiverIssueEditor({ issue: riverIssue, layer: layers.features, heights: layers.heights, onLayerUpdate: handleLayerUpdate, active: phase === 'edit' && sideTab === 'workflow' && workflowStep === 'features' });
 
   const handleToggleVisible = (layerId) => {
     setLayers(prev => ({
@@ -609,6 +613,8 @@ export default function NewMapEditor() {
                   onAssetReady={registerExtraAsset}
                   onRiverPreviewChange={setRiverPreview}
                   onRiverIssueSelect={focusRiverIssue}
+                  riverIssue={riverIssue}
+                  riverEditor={riverEditor}
                 />
                 {workflowStep === 'regions' && (
                   <div className="px-3 pb-3 border-t border-slate-700 mt-2 pt-2 space-y-3">
@@ -681,12 +687,16 @@ export default function NewMapEditor() {
             historicOverlays={historicOverlays}
             riverPreview={riverPreview}
             riverIssue={riverIssue}
+            riverEndpointMode={!!riverEditor.pending}
+            onRiverEndpointPicked={riverEditor.pick}
+            onCancelRiverEndpoint={riverEditor.cancel}
             portMode={!!portTarget}
             onPortPicked={handlePortPicked}
             showTileGrid={showTileGrid && tiles.length > 1}
             tiles={tiles}
             onTileClick={handleTileClick}
           />
+          <RiverEndpointPrompt editor={riverEditor} />
           <MapStatusBar
             coords={coords}
             activeLayerId={activeLayerId}

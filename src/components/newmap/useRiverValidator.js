@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export default function useRiverValidator(featuresLayer, onLayerUpdate, heightLayer) {
+export default function useRiverValidator(featuresLayer, onLayerUpdate, heightLayer, reviewRevision = 0) {
   const [result, setResult] = useState(null), [repairs, setRepairs] = useState(null);
   const [running, setRunning] = useState(false), [error, setError] = useState(''), [undo, setUndo] = useState(null);
   const worker = useRef(null), current = useRef(featuresLayer?.imageData), applying = useRef(false);
@@ -31,6 +31,7 @@ export default function useRiverValidator(featuresLayer, onLayerUpdate, heightLa
     instance.onerror = event => { instance.terminate(); worker.current = null; setRunning(false); setError(event.message || 'River repair failed. The layer was not changed.'); };
     instance.postMessage({ kind, image: { data: image.data, width: image.width, height: image.height }, heights: heightLayer?.imageData });
   };
+  useEffect(() => { if (reviewRevision) run('check'); }, [reviewRevision]);
   return { result, repairs, running, error, undo, check: () => run('check'), repair: () => run('repair'),
     restore: () => { if (!undo) return; onLayerUpdate('features', { ...undo, dirty: true }); setUndo(null); } };
 }
