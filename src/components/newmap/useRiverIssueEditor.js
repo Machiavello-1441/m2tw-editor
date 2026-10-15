@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { editRiverIssue } from '@/components/map/rivers/riverIssueEdits';
+import { deleteFlaggedOutlets } from '@/components/map/rivers/deleteFlaggedOutlets';
 
 export default function useRiverIssueEditor({ issue, layer, heights, onLayerUpdate, active }) {
   const [pending, setPending] = useState(null), [error, setError] = useState('');
@@ -25,6 +26,10 @@ export default function useRiverIssueEditor({ issue, layer, heights, onLayerUpda
   };
   return { pending, error, undo, revision,
     remove: () => apply(issue,null),
+    removeAllOutlets: issues => {
+      const changed = deleteFlaggedOutlets(layer?.imageData,issues);
+      if (changed) commit({ imageData: new ImageData(changed.data,changed.width,changed.height), hydroRiverPatch: layer.hydroRiverPatch });
+    },
     begin: () => { setPending(issue); setError(''); },
     cancel: () => { setPending(null); setError(''); },
     pick: target => { if (pending) apply(pending,target); },

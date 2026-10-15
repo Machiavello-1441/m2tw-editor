@@ -3,6 +3,7 @@ import { Loader2, RefreshCw, Wand2 } from 'lucide-react';
 import useRiverValidator from '@/components/newmap/useRiverValidator';
 import RiverValidationResult from '@/components/newmap/RiverValidationResult';
 import RiverIssueActions from '@/components/newmap/RiverIssueActions';
+import RiverBulkOutletDelete from '@/components/newmap/RiverBulkOutletDelete';
 
 export default function RiverChecker({ featuresLayer, onLayerUpdate, heightLayer, onIssueSelect, selectedIssue, issueEditor }) {
   const validator = useRiverValidator(featuresLayer, onLayerUpdate, heightLayer, issueEditor?.revision);
@@ -15,6 +16,7 @@ export default function RiverChecker({ featuresLayer, onLayerUpdate, heightLayer
       </div>
       {validator.running && <p role="status" className="flex items-center gap-1 text-[10px] text-muted-foreground"><Loader2 className="w-3 h-3 animate-spin" />Processing river topology…</p>}
       {validator.error && <p role="alert" className="text-[10px] text-destructive">{validator.error}</p>}
+      <RiverBulkOutletDelete result={validator.result} editor={issueEditor} running={validator.running} />
       <RiverValidationResult result={validator.result} repairs={validator.repairs} onIssueSelect={onIssueSelect} />
       <RiverIssueActions issue={selectedIssue} editor={issueEditor} disabled={validator.running || !!issueEditor?.pending} />
       {validator.undo && <button disabled={validator.running || !!issueEditor?.pending} onClick={validator.restore} className="w-full border rounded bg-secondary text-secondary-foreground p-1.5 text-[10px]">Undo last river repair</button>}
