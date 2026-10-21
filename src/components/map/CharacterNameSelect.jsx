@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import campaignDropdownKeyboard from '@/components/map/campaignDropdownKeyboard';
 import { ChevronDown } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import NewCharacterNameForm from '@/components/map/NewCharacterNameForm';
@@ -15,7 +16,7 @@ export default function CharacterNameSelect({ value, onChange, options, faction,
   return <div className="space-y-1">
     <Popover open={open} onOpenChange={next => { setOpen(next); setQuery(''); }}>
       <PopoverTrigger asChild>
-        <button type="button" className="flex h-6 w-full items-center justify-between rounded border border-input bg-background px-1.5 text-[11px] text-foreground">
+        <button type="button" onKeyDown={event => campaignDropdownKeyboard(event, ['', ...new Set(options)], value, select)} className="flex h-6 w-full items-center justify-between rounded border border-input bg-background px-1.5 text-[11px] text-foreground">
           <span className="truncate">{value ? display(value) : 'Select or add name…'}</span><ChevronDown className="h-3 w-3 shrink-0" />
         </button>
       </PopoverTrigger>

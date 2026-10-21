@@ -1,4 +1,5 @@
 import CampaignDropdown from '@/components/map/CampaignDropdown';
+import campaignDropdownKeyboard from '@/components/map/campaignDropdownKeyboard';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { X, Download, ChevronDown } from 'lucide-react';
 import { serializeDescrRegions, serializeDescrStrat } from './stratParser';
@@ -18,6 +19,7 @@ function SearchableSelect({ value, onChange, options, placeholder = 'Select…' 
       <button
         type="button"
         onClick={() => { setOpen(o => !o); setQ(''); }}
+        onKeyDown={event => campaignDropdownKeyboard(event, ['', ...(options || [])], value, next => { onChange(next); setOpen(false); })}
         className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex items-center justify-between font-mono"
       >
         <span className="truncate">{value || placeholder}</span>

@@ -2,9 +2,10 @@ import React, { useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import campaignDropdownOptions from '@/components/map/campaignDropdownOptions';
+import campaignDropdownKeyboard from '@/components/map/campaignDropdownKeyboard';
 import CampaignDropdownMenu from '@/components/map/CampaignDropdownMenu';
 
-export default function CampaignDropdown({ children, value, defaultValue, onChange, disabled, className = '', name, required, ...props }) {
+export default function CampaignDropdown({ children, value, defaultValue, onChange, disabled, className = '', name, required, onKeyDown, ...props }) {
   const [open, setOpen] = useState(false), [query, setQuery] = useState('');
   const [selected, setSelected] = useState(defaultValue);
   const select = useRef(null);
@@ -20,7 +21,7 @@ export default function CampaignDropdown({ children, value, defaultValue, onChan
     <select ref={select} hidden tabIndex={-1} aria-hidden="true" name={name} required={required} disabled={disabled} value={value} defaultValue={defaultValue} onChange={event => { onChange?.(event); setSelected(event.currentTarget.value); }}>{children}</select>
     <Popover open={open} onOpenChange={next => { setOpen(next); setQuery(''); }}>
       <PopoverTrigger asChild>
-        <button {...props} type="button" disabled={disabled} className={`inline-flex min-w-0 items-center justify-between gap-1 text-left ${className}`}>
+        <button {...props} type="button" disabled={disabled} onKeyDown={event => { onKeyDown?.(event); campaignDropdownKeyboard(event, options, current, choose); }} className={`inline-flex min-w-0 items-center justify-between gap-1 text-left ${className}`}>
           <span className="truncate">{label}</span><ChevronDown className="h-3 w-3 shrink-0" />
         </button>
       </PopoverTrigger>

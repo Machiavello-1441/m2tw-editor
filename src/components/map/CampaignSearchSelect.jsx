@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import campaignDropdownKeyboard from '@/components/map/campaignDropdownKeyboard';
 import { ChevronDown } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
@@ -14,7 +15,7 @@ export default function CampaignSearchSelect({ value = '', onChange, options = [
   return (
     <Popover open={open} onOpenChange={next => { setOpen(next); setQuery(''); }}>
       <PopoverTrigger asChild>
-        <button type="button" disabled={disabled} aria-label={placeholder} className="flex h-6 w-full min-w-0 items-center justify-between gap-1 rounded border border-input bg-background px-1.5 text-left text-[11px] text-foreground disabled:opacity-40">
+        <button type="button" disabled={disabled} onKeyDown={event => campaignDropdownKeyboard(event, allowClear ? ['', ...new Set(options)] : [...new Set(options)], value, select)} aria-label={placeholder} className="flex h-6 w-full min-w-0 items-center justify-between gap-1 rounded border border-input bg-background px-1.5 text-left text-[11px] text-foreground disabled:opacity-40">
           <span className="truncate">{value || placeholder}</span><ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>

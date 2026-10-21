@@ -839,15 +839,6 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
               </button>
             </div>
             <CampaignDropdown aria-label="Filter characters by faction" value={filterFaction} onChange={e => setFilterFaction(e.target.value)}
-              onKeyDown={event => {
-                if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
-                event.preventDefault();
-                event.stopPropagation();
-                const factions = ['', ...allFactions];
-                const index = factions.indexOf(filterFaction);
-                const next = Math.max(0, Math.min(factions.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
-                setFilterFaction(factions[next]);
-              }}
               className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
               <option value="">All factions</option>
               {allFactions.map(f => <option key={f}>{f}</option>)}

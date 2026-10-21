@@ -1,4 +1,5 @@
 import CampaignDropdown from '@/components/map/CampaignDropdown';
+import campaignDropdownKeyboard from '@/components/map/campaignDropdownKeyboard';
 import React, { useState, useMemo } from 'react';
 import { editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Info, ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown } from 'lucide-react';
@@ -85,6 +86,7 @@ function SearchableSelect({ value, options, onChange, infoMap, className, placeh
     <div className="relative">
       <button
         onClick={() => setOpen(v => !v)}
+        onKeyDown={event => campaignDropdownKeyboard(event, options, value, next => { onChange(next); setOpen(false); setSearch(''); })}
         className={`w-full flex items-center justify-between h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 ${className || ''}`}
       >
         <span className="truncate">{value || placeholder || '—'}</span>
