@@ -607,6 +607,7 @@ export default function UnitEditorPage() {
           {active ? (
             <UnitEditorPanel
               unit={active}
+              units={units}
               onChange={handleChange}
               descr={activeDescr}
               onDescrChange={handleDescrChange}

@@ -9,6 +9,7 @@ import { serializeUnit } from './EDUParser';
 import UnitDescriptionTab from './UnitDescriptionTab';
 import ModelDbPanel from './ModelDbPanel';
 import OwnershipTab from './OwnershipTab';
+import ArmoryTab from '@/components/units/armory/ArmoryTab';
 
 // Parse a comma-separated stat string into an array
 function splitStat(str, count) {
@@ -18,7 +19,7 @@ function splitStat(str, count) {
 }
 function joinStat(parts) { return parts.join(', '); }
 
-export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitImages, onImageUpload, onImageDelete, modeldb, onUpdateModeldbEntry, onDownloadModeldb }) {
+export default function UnitEditor({ unit, units = [], onChange, descr, onDescrChange, unitImages, onImageUpload, onImageDelete, modeldb, onUpdateModeldbEntry, onDownloadModeldb }) {
   const [tab, setTab] = useState('identity');
 
   const set = (key, val) => onChange({ ...unit, [key]: val });
@@ -42,13 +43,14 @@ export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitI
     { id: 'ownership', label: 'Ownership' },
     { id: 'description', label: 'Description & Images' },
     { id: 'modeldb', label: 'ModelDB' },
+    { id: 'armory', label: 'Armory 3D' },
     { id: 'preview', label: 'Preview' },
   ];
 
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar */}
-      <div className="flex border-b border-border shrink-0 px-3">
+      <div className="flex overflow-x-auto border-b border-border shrink-0 px-3">
         {tabs.map(t => (
           <button
             key={t.id}
@@ -70,7 +72,8 @@ export default function UnitEditor({ unit, onChange, descr, onDescrChange, unitI
         />
       ) : null}
 
-      <ScrollArea className={`flex-1 ${tab === 'modeldb' ? 'hidden' : ''}`}>
+      {tab === 'armory' && <ArmoryTab key={unit.dictionary || unit.type} unit={unit} units={units} modeldb={modeldb} />}
+      <ScrollArea className={`flex-1 ${tab === 'modeldb' || tab === 'armory' ? 'hidden' : ''}`}>
         <div className="p-4 space-y-5">
 
           {/* ── Identity ── */}

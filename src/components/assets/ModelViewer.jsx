@@ -67,7 +67,7 @@ function buildSuperGroups(meshNames, groupComments) {
   return result;
 }
 
-export default function ModelViewer({ parsedMesh, skeletonData, groupComments, modelName = '', onLoadModel, autoSkin = null, className = '' }) {
+export default function ModelViewer({ parsedMesh, skeletonData, groupComments, modelName = '', onLoadModel, autoSkin = null, hideSidebar = false, className = '' }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -188,6 +188,13 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
         wireframe: false,
         side: THREE.DoubleSide,
       });
+      if (mesh.armoryAtlas) {
+        const texture = new THREE.CanvasTexture(mesh.armoryAtlas);
+        texture.flipY = false;
+        texture.repeat.set(0.5, 1);
+        mat.map = texture;
+        mat.color.set(0xffffff);
+      }
       const obj = new THREE.Mesh(geo, mat);
       obj.name = meshName;
       mainGroup.add(obj);
@@ -200,6 +207,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
         new THREE.LineBasicMaterial({ color: 0x334466, opacity: 0.3, transparent: true })
       );
       wf.name = meshName + '_wire';
+      wf.visible = !mesh.armoryAtlas;
       obj.add(wf);
 
       infos.push({
@@ -759,7 +767,7 @@ export default function ModelViewer({ parsedMesh, skeletonData, groupComments, m
       </div>
 
       {/* Sidebar with tabs */}
-      <div className="w-60 border-l border-slate-700 bg-slate-900 flex flex-col shrink-0">
+      <div className={`${hideSidebar ? 'hidden' : 'flex'} w-60 border-l border-slate-700 bg-slate-900 flex-col shrink-0`}>
         {/* Tab switcher */}
         <div className="flex border-b border-slate-700">
           <button
