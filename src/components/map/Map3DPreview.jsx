@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useEffect, useRef, useState } from 'react';
 import { editorStorage as localStorage } from '@/lib/editorStorage';
 import * as THREE from 'three';
@@ -519,11 +520,11 @@ export default function Map3DPreview({ layers }) {
               <div className="ml-5 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-500 text-[10px]">Season:</span>
-                  <select value={season} onChange={e => setSeason(e.target.value)}
+                  <CampaignDropdown value={season} onChange={e => setSeason(e.target.value)}
                     className="bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-[10px] text-slate-300">
                     <option value="summer">Summer</option>
                     <option value="winter">Winter</option>
-                  </select>
+                  </CampaignDropdown>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400 w-16 shrink-0 text-[10px]">Tile size</span>
@@ -565,11 +566,11 @@ export default function Map3DPreview({ layers }) {
                   <SliderRow label="Opacity" value={regionsOpacity} onChange={setRegionsOpacity} />
                   <div className="flex items-center gap-2">
                     <span className="text-slate-500 text-[10px] w-24 shrink-0">Show</span>
-                    <select value={regionsMode} onChange={e => setRegionsMode(e.target.value)}
+                    <CampaignDropdown value={regionsMode} onChange={e => setRegionsMode(e.target.value)}
                       className="flex-1 bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5 text-[10px] text-slate-300">
                       <option value="full">Fill + cities/ports</option>
                       <option value="citiesports">Cities &amp; ports only</option>
-                    </select>
+                    </CampaignDropdown>
                   </div>
                 </div>
               )}

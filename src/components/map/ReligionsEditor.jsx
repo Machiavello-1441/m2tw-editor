@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useMemo } from 'react';
 import { X } from 'lucide-react';
 
@@ -101,7 +102,7 @@ export default function ReligionsEditor({ religions, availableReligions = [], on
         Total: {total} / 100 {total !== 100 && '⚠ Must equal 100'}
       </div>
       {!showAll && availableReligions?.filter(r => !(r in (religions || {}))).length > 0 && (
-        <select
+        <CampaignDropdown
           defaultValue=""
           onChange={e => { add(e.target.value); e.target.value = ''; }}
           className="w-full h-5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-400"
@@ -110,7 +111,7 @@ export default function ReligionsEditor({ religions, availableReligions = [], on
           {availableReligions.filter(r => !(r in (religions || {}))).map(r => (
             <option key={r} value={r}>{r}</option>
           ))}
-        </select>
+        </CampaignDropdown>
       )}
     </div>
   );

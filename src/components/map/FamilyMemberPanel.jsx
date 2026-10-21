@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import FamilyMemberCreateForm from '@/components/map/FamilyMemberCreateForm';
@@ -16,7 +17,7 @@ export default function FamilyMemberPanel({ request, chars, faction, rules, erro
     {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
     {mode === 'existing' ? <div className="space-y-2">
       <input aria-label="Search existing characters" placeholder="Search characters…" value={search} onChange={event => setSearch(event.target.value)} className="w-full rounded border border-input bg-background p-2 text-xs" />
-      <select aria-label="Existing family member" value={id} onChange={event => setId(event.target.value)} className="w-full rounded border border-input bg-background p-2 text-xs"><option value="">Select a character</option>{eligible.map(c => <option key={c.id} value={String(c.id)}>{fullName(c)} · {c.sex} · age {c.age}{c.status === 'dead' ? ' · dead' : ''}</option>)}</select>
+      <CampaignDropdown aria-label="Existing family member" value={id} onChange={event => setId(event.target.value)} className="w-full rounded border border-input bg-background p-2 text-xs"><option value="">Select a character</option>{eligible.map(c => <option key={c.id} value={String(c.id)}>{fullName(c)} · {c.sex} · age {c.age}{c.status === 'dead' ? ' · dead' : ''}</option>)}</CampaignDropdown>
       {!eligible.length && <p className="text-xs text-muted-foreground">No matching characters. Create a new one instead.</p>}
       <Button size="sm" disabled={!eligible.some(c => String(c.id) === id)} onClick={() => onAssign(eligible.find(c => String(c.id) === id), false)}>Link character</Button>
     </div> : <FamilyMemberCreateForm request={request} faction={faction} anchor={anchor} rules={rules} onSubmit={character => onAssign(character, true)} />}

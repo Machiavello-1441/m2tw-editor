@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -8,9 +9,9 @@ export default function CampaignSelector({ value, onChange, loading, error }) {
   const selected = campaigns.find(c => c.id === value);
   return <div className="ml-auto flex items-center gap-2 text-[11px] relative">
     {campaigns.length ? <>
-      <select aria-label="Campaign folder" disabled={loading} value={value} onChange={e => onChange(e.target.value)} className="bg-card text-foreground border border-border rounded px-2 py-1 max-w-56">
+      <CampaignDropdown aria-label="Campaign folder" disabled={loading} value={value} onChange={e => onChange(e.target.value)} className="bg-card text-foreground border border-border rounded px-2 py-1 max-w-56">
         {campaigns.map(c => <option key={c.id} value={c.id}>{c.id} ({c.files.length} files)</option>)}
-      </select>
+      </CampaignDropdown>
       <details className="relative">
         <summary className="cursor-pointer text-muted-foreground">Files</summary>
         <div className="absolute right-0 top-full mt-2 z-50 w-80 max-h-80 overflow-auto rounded border border-border bg-popover text-popover-foreground p-3 shadow-lg">

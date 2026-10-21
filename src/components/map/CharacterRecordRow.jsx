@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState } from 'react';
 import { Archive, ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -18,11 +19,11 @@ export default function CharacterRecordRow({ rec, factionName, onUpdate, initial
       {expanded && <div className="grid grid-cols-2 gap-1.5 border-t border-border p-2 text-[9px] text-muted-foreground">
         <label>Name<input value={rec.name || ''} onChange={event => set('name', event.target.value)} className={inputClass} /></label>
         <label>Surname<input value={rec.surname || ''} onChange={event => set('surname', event.target.value)} placeholder="optional" className={inputClass} /></label>
-        <label>Sex<select value={fixedSex || rec.sex || 'male'} disabled={!!fixedSex} onChange={event => set('sex', event.target.value)} className={inputClass}><option value="male">male</option><option value="female">female</option></select></label>
+        <label>Sex<CampaignDropdown value={fixedSex || rec.sex || 'male'} disabled={!!fixedSex} onChange={event => set('sex', event.target.value)} className={inputClass}><option value="male">male</option><option value="female">female</option></CampaignDropdown></label>
         <label>Age<input type="number" min={0} value={rec.age ?? 0} onChange={event => set('age', Math.max(0, parseInt(event.target.value) || 0))} className={inputClass} /></label>
-        <label>Alive / Dead<select value={isDead ? 'dead' : 'alive'} onChange={event => onUpdate({ ...rec, status: event.target.value, recordRole: role })} className={inputClass}><option value="alive">alive</option><option value="dead">dead</option></select></label>
+        <label>Alive / Dead<CampaignDropdown value={isDead ? 'dead' : 'alive'} onChange={event => onUpdate({ ...rec, status: event.target.value, recordRole: role })} className={inputClass}><option value="alive">alive</option><option value="dead">dead</option></CampaignDropdown></label>
         {isDead && <label>Years Dead<input type="number" min={0} value={rec.deadYears ?? 0} onChange={event => set('deadYears', Math.max(0, parseInt(event.target.value) || 0))} className={inputClass} /></label>}
-        <label>Role<select value={role} onChange={event => set('recordRole', event.target.value)} className={inputClass}>{ROLES.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        <label>Role<CampaignDropdown value={role} onChange={event => set('recordRole', event.target.value)} className={inputClass}>{ROLES.map(value => <option key={value} value={value}>{value}</option>)}</CampaignDropdown></label>
         <p className="col-span-2">Changes are applied immediately and included in campaign exports.</p>
       </div>}
     </div>

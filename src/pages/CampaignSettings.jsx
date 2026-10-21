@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Globe, Save, Loader2, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
@@ -44,10 +45,10 @@ function HistoricEventRow({ event, onDelete, onEdit }) {
         <div className="p-3 bg-slate-900 space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <Field label="Type">
-              <select value={form.event_type} onChange={e => set('event_type', e.target.value)}
+              <CampaignDropdown value={form.event_type} onChange={e => set('event_type', e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
                 {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              </CampaignDropdown>
             </Field>
             <Field label="Date (year)">
               <input type="number" value={form.date1 ?? 0} onChange={e => set('date1', Number(e.target.value))}
@@ -166,20 +167,20 @@ export default function CampaignSettings() {
                 className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200" />
             </Field>
             <Field label="Start Season">
-              <select value={form.start_season || 'summer'} onChange={e => set('start_season', e.target.value)}
+              <CampaignDropdown value={form.start_season || 'summer'} onChange={e => set('start_season', e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200">
                 {SEASONS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </CampaignDropdown>
             </Field>
             <Field label="End Year">
               <input type="number" value={form.end_year ?? 1530} onChange={e => set('end_year', Number(e.target.value))}
                 className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200" />
             </Field>
             <Field label="End Season">
-              <select value={form.end_season || 'winter'} onChange={e => set('end_season', e.target.value)}
+              <CampaignDropdown value={form.end_season || 'winter'} onChange={e => set('end_season', e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200">
                 {SEASONS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </CampaignDropdown>
             </Field>
           </div>
 

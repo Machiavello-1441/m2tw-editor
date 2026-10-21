@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Users, AlertTriangle, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { treeToRelatives, orderRelatives, relativeProblems } from './familyTreeLogic';
@@ -172,7 +173,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
                 <button onClick={() => onAssignSpouse(char.id, null)} className="text-slate-600 hover:text-red-400"><X className="w-2.5 h-2.5" /></button>
               </div>
             ) : (
-              <select
+              <CampaignDropdown
                 defaultValue=""
                 onChange={e => {
                   const s = allChars.find(c => String(c.id) === e.target.value);
@@ -183,7 +184,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
               >
                 <option value="">— assign spouse ({opposSex}) —</option>
                 {eligibleSpouses.map(c => <option key={c.id} value={c.id}>{c.name} (age {c.age})</option>)}
-              </select>
+              </CampaignDropdown>
             )}
           </div>
 
@@ -207,7 +208,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
           {canAddChild ? (
             showAddChild ? (
               <div className="flex items-center gap-1">
-                <select
+                <CampaignDropdown
                   defaultValue=""
                   onChange={e => {
                     const c = allChars.find(x => String(x.id) === e.target.value);
@@ -218,7 +219,7 @@ function ChildNode({ char, depth, allChars, onRemove, onAssignSpouse, onAddChild
                 >
                   <option value="">— select child (max age {ageLimit}) —</option>
                   {eligibleChildren.map(c => <option key={c.id} value={c.id}>{c.name} (age {c.age}, {c.sex})</option>)}
-                </select>
+                </CampaignDropdown>
                 <button onClick={() => setShowAddChild(false)} className="text-slate-600 hover:text-red-400"><X className="w-3 h-3" /></button>
               </div>
             ) : (
@@ -359,7 +360,7 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTre
         {canAddChild ? (
           showAddChild ? (
             <div className="flex items-center gap-1 mt-1">
-              <select
+              <CampaignDropdown
                 defaultValue=""
                 onChange={e => {
                   handleAddRootChild(e.target.value);
@@ -370,7 +371,7 @@ function FamilyTree({ tree, allChars, onUpdate, onDelete, faction, allFactionTre
               >
                 <option value="">— select child —</option>
                 {eligibleChildren.map(c => <option key={c.id} value={c.id}>{c.name} (age {c.age}, {c.sex})</option>)}
-              </select>
+              </CampaignDropdown>
               <button onClick={() => setShowAddChild(false)} className="text-slate-600 hover:text-red-400"><X className="w-3 h-3" /></button>
             </div>
           ) : (
@@ -485,13 +486,13 @@ export default function FamilyTreeTab({ stratData, trees, onTreesChange, initial
   return (
     <div className="flex flex-col h-full">
       <div className="p-2 border-b border-slate-800 shrink-0 space-y-1.5">
-        <select
+        <CampaignDropdown
           value={activeFaction}
           onChange={e => setFactionFilter(e.target.value)}
           className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200"
         >
           {allFactions.map(f => <option key={f}>{f}</option>)}
-        </select>
+        </CampaignDropdown>
         <div className="flex items-center gap-2">
           <p className="text-[9px] text-slate-500 flex-1">{factionChars.length} characters ({maleChars.length}♂ {femaleChars.length}♀)</p>
           {[['visual', 'Visual'], ['list', 'List']].map(([id, label]) => (

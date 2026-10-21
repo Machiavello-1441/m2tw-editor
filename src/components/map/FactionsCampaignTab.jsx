@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useMemo } from 'react';
 import { editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Info, ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown } from 'lucide-react';
@@ -369,17 +370,17 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
           <div className="flex-1 overflow-y-auto space-y-1">
             {standings.map((s, i) => (
               <div key={i} className="flex items-center gap-1">
-                <select value={s.faction} onChange={e => updateStanding(i, 'faction', e.target.value)}
+                <CampaignDropdown value={s.faction} onChange={e => updateStanding(i, 'faction', e.target.value)}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
                   {allFactionNames.map(f => <option key={f}>{f}</option>)}
-                </select>
+                </CampaignDropdown>
                 <input type="number" step="0.1" min="-1" max="1" value={s.value}
                   onChange={e => updateStanding(i, 'value', parseFloat(e.target.value))}
                   className="h-5 w-14 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400 font-mono text-center" />
-                <select value={s.targets?.[0] || ''} onChange={e => updateStanding(i, 'targets', [e.target.value])}
+                <CampaignDropdown value={s.targets?.[0] || ''} onChange={e => updateStanding(i, 'targets', [e.target.value])}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
                   {allFactionNames.map(f => <option key={f}>{f}</option>)}
-                </select>
+                </CampaignDropdown>
                 <button onClick={() => removeStanding(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
               </div>
             ))}
@@ -400,19 +401,19 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
           <div className="flex-1 overflow-y-auto space-y-1">
             {relationships.map((r, i) => (
               <div key={i} className="flex items-center gap-1">
-                <select value={r.faction} onChange={e => updateRelationship(i, 'faction', e.target.value)}
+                <CampaignDropdown value={r.faction} onChange={e => updateRelationship(i, 'faction', e.target.value)}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
                   {allFactionNames.map(f => <option key={f}>{f}</option>)}
-                </select>
-                <select value={r.relation} onChange={e => updateRelationship(i, 'relation', e.target.value)}
+                </CampaignDropdown>
+                <CampaignDropdown value={r.relation} onChange={e => updateRelationship(i, 'relation', e.target.value)}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400">
                   <option value="at_war_with">at_war_with</option>
                   <option value="allied_to">allied_to</option>
-                </select>
-                <select value={r.targets?.[0] || ''} onChange={e => updateRelationship(i, 'targets', [e.target.value])}
+                </CampaignDropdown>
+                <CampaignDropdown value={r.targets?.[0] || ''} onChange={e => updateRelationship(i, 'targets', [e.target.value])}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
                   {allFactionNames.map(f => <option key={f}>{f}</option>)}
-                </select>
+                </CampaignDropdown>
                 <button onClick={() => removeRelationship(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
               </div>
             ))}
@@ -518,11 +519,11 @@ function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames
                       </span>
                     ))}
                   </div>
-                  <select value="" onChange={e => { if (e.target.value) setCondField(faction, 'outlive', [...(cond.outlive||[]), e.target.value]); }}
+                  <CampaignDropdown value="" onChange={e => { if (e.target.value) setCondField(faction, 'outlive', [...(cond.outlive||[]), e.target.value]); }}
                     className="w-full h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 mt-0.5">
                     <option value="">— outlive faction —</option>
                     {allFactionNames.filter(f => !(cond.outlive||[]).includes(f)).map(f => <option key={f}>{f}</option>)}
-                  </select>
+                  </CampaignDropdown>
                 </div>
               </div>
 
@@ -559,11 +560,11 @@ function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames
                       </span>
                     ))}
                   </div>
-                  <select value="" onChange={e => { if (e.target.value) setShortField(faction, 'outlive', [...(cond.short?.outlive||[]), e.target.value]); }}
+                  <CampaignDropdown value="" onChange={e => { if (e.target.value) setShortField(faction, 'outlive', [...(cond.short?.outlive||[]), e.target.value]); }}
                     className="w-full h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 mt-0.5">
                     <option value="">— outlive faction —</option>
                     {allFactionNames.filter(f => !(cond.short?.outlive||[]).includes(f)).map(f => <option key={f}>{f}</option>)}
-                  </select>
+                  </CampaignDropdown>
                 </div>
               </div>
 

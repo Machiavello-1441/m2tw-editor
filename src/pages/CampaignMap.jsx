@@ -1,4 +1,5 @@
 import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Map, CheckSquare, Globe, FolderOpen, Box, Layers } from 'lucide-react';
 import CoastlineTracer from '../components/map/CoastlineTracer';
@@ -1403,14 +1404,14 @@ export default function CampaignMap() {
         >Grid</button>
 
         {/* Regions mode */}
-        <select
+        <CampaignDropdown
           value={regionsMode}
           onChange={e => setRegionsMode(e.target.value)}
           className="h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-300"
         >
           <option value="fill">Regions: fill</option>
           <option value="citiesports">Regions: cities+ports</option>
-        </select>
+        </CampaignDropdown>
 
         {/* DB import progress */}
         {importProgress && (

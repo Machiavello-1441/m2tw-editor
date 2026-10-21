@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Info, Globe2, Calendar } from 'lucide-react';
@@ -60,7 +61,7 @@ export default function CampaignEditor({ campaign, onChange }) {
             </div>
             <div>
               <label className="text-[11px] text-muted-foreground block mb-1">Campaign Type</label>
-              <select
+              <CampaignDropdown
                 className="w-full bg-input border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 value={s.type || 'custom'}
                 onChange={e => set('type', e.target.value)}
@@ -68,7 +69,7 @@ export default function CampaignEditor({ campaign, onChange }) {
                 <option value="custom">Custom</option>
                 <option value="imperial_clone">Imperial Campaign Clone</option>
                 <option value="provincial">Provincial Campaign</option>
-              </select>
+              </CampaignDropdown>
             </div>
           </div>
           <div>

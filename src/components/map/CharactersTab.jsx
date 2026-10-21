@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Archive, MapPin, CheckCircle, AlertTriangle, GripVertical, ArrowDownAZ } from 'lucide-react';
 import FamilyTreeTab from './FamilyTreeTab';
@@ -199,39 +200,39 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
             {/* Row 1: Type (full width) */}
             <div>
               <span className="text-[9px] text-slate-500">Type</span>
-              <select value={c.charType || 'general'} onChange={e => {
+              <CampaignDropdown value={c.charType || 'general'} onChange={e => {
                 const newType = e.target.value;
                 const newForcedSex = getSexForType(newType);
                 onUpdate(c.id, { ...c, charType: newType, sex: newForcedSex || c.sex || 'male' });
               }}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                 {ALL_CHARACTER_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              </CampaignDropdown>
             </div>
 
             {/* Row 2: Faction + Sub-Faction */}
             <div className="grid grid-cols-2 gap-1.5">
               <div>
                 <span className="text-[9px] text-slate-500">Faction</span>
-                <select value={c.faction || ''} onChange={e => {
+                <CampaignDropdown value={c.faction || ''} onChange={e => {
                   const newFaction = e.target.value;
                   onUpdate(c.id, { ...c, faction: newFaction, subFaction: newFaction === 'slave' ? (c.subFaction || '') : '' });
                 }}
                   className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                   <option value="">— select —</option>
                   {allFactions.map(f => <option key={f}>{f}</option>)}
-                </select>
+                </CampaignDropdown>
               </div>
               <div className={!isSlave ? 'opacity-40 pointer-events-none' : ''}>
                 <span className={`text-[9px] ${isSlave ? 'text-amber-400' : 'text-slate-600'}`}>
                   Sub-Faction {!isSlave && <span className="text-slate-700">(slave only)</span>}
                 </span>
-                <select value={c.subFaction || ''} onChange={e => set('subFaction', e.target.value)}
+                <CampaignDropdown value={c.subFaction || ''} onChange={e => set('subFaction', e.target.value)}
                   disabled={!isSlave}
                   className={`w-full h-6 px-1.5 text-[11px] rounded border font-mono ${isSlave ? 'bg-slate-800 border-amber-600/40 text-amber-200' : 'bg-slate-800/40 border-slate-700/20 text-slate-600'}`}>
                   <option value="">— none —</option>
                   {(allStratFactions || allFactions).filter(f => f !== 'slave').map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
+                </CampaignDropdown>
                 {subFactionActive && <p className="text-[8px] text-amber-400/70 mt-0.5">Names & units from slave + {c.subFaction}</p>}
               </div>
             </div>
@@ -261,11 +262,11 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                     {forcedSex} <span className="ml-1 text-[9px] text-slate-600">(fixed)</span>
                   </div>
                 ) : (
-                  <select value={effectiveSex} onChange={e => set('sex', e.target.value)}
+                  <CampaignDropdown value={effectiveSex} onChange={e => set('sex', e.target.value)}
                     className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                     <option value="male">male</option>
                     <option value="female">female</option>
-                  </select>
+                  </CampaignDropdown>
                 )}
               </div>
               <div>
@@ -281,13 +282,13 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 <div className="grid grid-cols-2 gap-1.5">
                   <div>
                     <span className="text-[9px] text-slate-500">Status</span>
-                    <select value={c.status === 'dead' ? 'dead' : 'alive'} onChange={e => {
+                    <CampaignDropdown value={c.status === 'dead' ? 'dead' : 'alive'} onChange={e => {
                       if (e.target.value === 'dead') set('status', 'dead');
                       else onUpdate(c.id, { ...c, status: 'alive', deadYears: 0 });
                     }} className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                       <option value="alive">alive</option>
                       <option value="dead">dead</option>
-                    </select>
+                    </CampaignDropdown>
                   </div>
                   <div>
                     <span className="text-[9px] text-slate-500">Years Dead</span>
@@ -298,22 +299,22 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 </div>
                 <div>
                   <span className="text-[9px] text-slate-500">Record Role</span>
-                  <select value={c.recordRole || 'never_a_leader'} onChange={e => set('recordRole', e.target.value)}
+                  <CampaignDropdown value={c.recordRole || 'never_a_leader'} onChange={e => set('recordRole', e.target.value)}
                     className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                     {RECORD_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
+                  </CampaignDropdown>
                 </div>
               </div>
             ) : (
               <div>
                 <span className="text-[9px] text-slate-500">Role</span>
-                <select value={c.role || ''} onChange={e => set('role', e.target.value)}
+                <CampaignDropdown value={c.role || ''} onChange={e => set('role', e.target.value)}
                   disabled={!canHaveRole}
                   className={`w-full h-6 px-1.5 text-[11px] rounded border ${canHaveRole ? 'bg-slate-800 border-slate-600/40 text-slate-200' : 'bg-slate-800/40 border-slate-700/20 text-slate-600 opacity-40'}`}>
                   <option value="">— none —</option>
                   <option value="leader">leader</option>
                   <option value="heir">heir</option>
-                </select>
+                </CampaignDropdown>
               </div>
             )}
 
@@ -346,13 +347,13 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
               {(c.traits || []).map((t, i) => (
                 <div key={i} className="flex items-center gap-1 mb-0.5">
                   {traitsList.length > 0 ? (
-                    <select value={t.name} onChange={e => {
+                    <CampaignDropdown value={t.name} onChange={e => {
                       const traits = c.traits.map((x, j) => j === i ? { ...x, name: e.target.value } : x);
                       set('traits', traits);
                     }} className="flex-1 h-5 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
                       <option value="">— select trait —</option>
                       {traitsList.map(tr => <option key={tr} value={tr}>{tr}</option>)}
-                    </select>
+                    </CampaignDropdown>
                   ) : (
                     <input value={t.name} onChange={e => {
                       const traits = c.traits.map((x, j) => j === i ? { ...x, name: e.target.value } : x);
@@ -385,7 +386,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 ))}
               </div>
               {ancillariesList.length > 0 ? (
-                <select defaultValue="" onChange={e => {
+                <CampaignDropdown defaultValue="" onChange={e => {
                   if (e.target.value && !(c.ancillaries || []).includes(e.target.value)) {
                     set('ancillaries', [...(c.ancillaries || []), e.target.value]);
                   }
@@ -393,7 +394,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 }} className="w-full h-7 px-1.5 text-[10px] font-semibold bg-slate-800 border border-slate-600/50 rounded text-slate-300 hover:border-slate-500 transition-colors cursor-pointer">
                   <option value="">＋ Add Ancillary…</option>
                   {ancillariesList.filter(a => !(c.ancillaries || []).includes(a)).map(a => <option key={a} value={a}>{a}</option>)}
-                </select>
+                </CampaignDropdown>
               ) : (
                 <div className="flex gap-1">
                   <input id={`anc-${c.id}`} placeholder="ancillary_name (load file for dropdown)" className="flex-1 h-7 px-1.5 text-[10px] bg-slate-800 border border-slate-600/50 rounded text-slate-200 font-mono" />
@@ -424,13 +425,13 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                       u.attributes?.includes('general_unit') || u.attributes?.includes('general_unit_upgrade')
                     );
                     return (
-                      <select defaultValue="" onChange={e => {
+                      <CampaignDropdown defaultValue="" onChange={e => {
                         if (e.target.value) set('army', [{ unit: e.target.value, exp: 0, armour: 0, weaponLvl: 0 }, ...(c.army || [])]);
                         e.target.value = '';
                       }} className="w-full h-6 px-1 text-[9px] bg-slate-800 border border-amber-500/40 rounded text-amber-200 font-mono">
                         <option value="">{generalUnits.length ? '— select general unit —' : 'No general units in EDU (load EDU)'}</option>
                         {generalUnits.map(u => <option key={u.type} value={u.type}>{u.type}</option>)}
-                      </select>
+                      </CampaignDropdown>
                     );
                   })()}
                 </div>
@@ -443,13 +444,13 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                   return (
                     <div key={i} className={`flex items-center gap-1 ${isNamedChar && isGeneralUnit ? 'ring-1 ring-amber-500/30 rounded' : ''}`}>
                       {availableUnits.length > 0 ? (
-                        <select value={u.unit} onChange={e => {
+                        <CampaignDropdown value={u.unit} onChange={e => {
                           const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
                           set('army', army);
                         }} className={`flex-1 h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded font-mono ${isNamedChar && isGeneralUnit ? 'text-amber-300' : 'text-slate-200'}`}>
                           <option value="">— select unit —</option>
                           {availableUnits.map(u2 => <option key={u2.type} value={u2.type}>{u2.type}</option>)}
-                        </select>
+                        </CampaignDropdown>
                       ) : (
                         <input value={u.unit} onChange={e => {
                           const army = c.army.map((x, j) => j === i ? { ...x, unit: e.target.value } : x);
@@ -528,11 +529,11 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 {/* Direction */}
                 <div>
                   <span className="text-[9px] text-slate-500">Direction</span>
-                  <select value={c.direction || ''} onChange={e => set('direction', e.target.value)}
+                  <CampaignDropdown value={c.direction || ''} onChange={e => set('direction', e.target.value)}
                     className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                     <option value="">— none —</option>
                     {DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                  </CampaignDropdown>
                 </div>
               </div>
 
@@ -541,11 +542,11 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                 <div>
                   <span className="text-[9px] text-slate-500">Hero Ability</span>
                   <div className="flex gap-1">
-                    <select value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
+                    <CampaignDropdown value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
                       className="flex-1 h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono">
                       <option value="">— none —</option>
                       {HERO_ABILITIES.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
+                    </CampaignDropdown>
                     <input value={c.heroAbility || ''} onChange={e => set('heroAbility', e.target.value)}
                       placeholder="custom ability"
                       className="w-28 h-6 px-1.5 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
@@ -831,11 +832,11 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
             <div className="flex gap-1">
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or type…"
                 className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
-              <select value={filterFaction} onChange={e => setFilterFaction(e.target.value)}
+              <CampaignDropdown value={filterFaction} onChange={e => setFilterFaction(e.target.value)}
                 className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                 <option value="">All factions</option>
                 {allFactions.map(f => <option key={f}>{f}</option>)}
-              </select>
+              </CampaignDropdown>
               <button onClick={() => setSortAlpha(v => !v)}
                 title="Sort by surname (leader & heir always first)"
                 className={`h-6 px-1.5 flex items-center gap-0.5 rounded text-[10px] border transition-colors ${sortAlpha ? 'border-amber-500/50 text-amber-400 bg-amber-500/10' : 'border-slate-600/40 text-slate-500 hover:text-slate-200'}`}>

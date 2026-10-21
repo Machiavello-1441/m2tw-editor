@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, X, Check, Search, Copy } from 'lucide-react';
 import { extractHiddenResourcesFromEDB } from './additionalParsers';
@@ -270,11 +271,11 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
             <Copy className="w-3 h-3 text-amber-400 shrink-0" />
             <span className="text-[9px] font-semibold text-amber-400 uppercase tracking-wider">Clone fields from region</span>
           </div>
-          <select value={cloneChoice} onChange={e => setCloneChoice(e.target.value)}
+          <CampaignDropdown value={cloneChoice} onChange={e => setCloneChoice(e.target.value)}
             className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
             <option value="">— pick a region —</option>
             {cloneSources.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
+          </CampaignDropdown>
           <button type="button" onClick={applyClone} disabled={!cloneChoice}
             className="w-full h-6 rounded text-[10px] bg-amber-600/30 hover:bg-amber-600/40 border border-amber-500/30 text-amber-300 disabled:opacity-40 transition-colors">
             Apply (keeps names & colours, copies the rest)
@@ -408,12 +409,12 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
         )}
         {buildingTrees.length > 0 ? (
           <div className="grid grid-cols-2 gap-1">
-            <select value={selectedTree} onChange={e => setSelectedTree(e.target.value)}
+            <CampaignDropdown value={selectedTree} onChange={e => setSelectedTree(e.target.value)}
               className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
               <option value="">— tree —</option>
               {buildingTrees.map(([tree]) => <option key={tree} value={tree}>{tree}</option>)}
-            </select>
-            <select value="" onChange={e => {
+            </CampaignDropdown>
+            <CampaignDropdown value="" onChange={e => {
               const val = e.target.value;
               if (val) {
                 // Store as "treeName levelName" so serializer outputs "type tree level"
@@ -427,7 +428,7 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
               className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 disabled:opacity-40">
               <option value="">— level —</option>
               {treeLevels.map(lv => <option key={lv} value={lv}>{lv}</option>)}
-            </select>
+            </CampaignDropdown>
           </div>
         ) : (
           <p className="text-[9px] text-slate-600 italic">Load EDB to add buildings</p>
@@ -449,14 +450,14 @@ export default function NewRegionForm({ factionColors, onAdd, onCancel, edbData,
           </div>
         )}
         {naturalResList?.length > 0 ? (
-          <select value="" onChange={e => {
+          <CampaignDropdown value="" onChange={e => {
             const val = e.target.value;
             if (val && !draft.resources.includes(val))
               setDraft(d => ({ ...d, resources: [...d.resources, val] }));
           }} className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
             <option value="">— add resource —</option>
             {naturalResList.filter(r => !draft.resources.includes(r)).map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+          </CampaignDropdown>
         ) : (
           <p className="text-[9px] text-slate-600 italic">Load descr_sm_resources.txt for list</p>
         )}

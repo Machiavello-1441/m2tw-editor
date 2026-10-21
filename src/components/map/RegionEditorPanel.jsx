@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { X, Download, ChevronDown } from 'lucide-react';
 import { serializeDescrRegions, serializeDescrStrat } from './stratParser';
@@ -318,11 +319,11 @@ export default function RegionEditorPanel({
               </Field>
 
               <Field label="Settlement Level">
-                <select value={strat.level || 'village'}
+                <CampaignDropdown value={strat.level || 'village'}
                   onChange={e => updateStrat('level', e.target.value)}
                   className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                   {SETTLEMENT_LEVELS.map(l => <option key={l}>{l}</option>)}
-                </select>
+                </CampaignDropdown>
               </Field>
 
               <Field label="Type">
@@ -361,7 +362,7 @@ export default function RegionEditorPanel({
                     ))}
                   </div>
                   {buildingLevelList?.length > 0 && (
-                    <select defaultValue=""
+                    <CampaignDropdown defaultValue=""
                       onChange={e => {
                         if (!e.target.value) return;
                         if (!(strat.upgrades || []).includes(e.target.value)) {
@@ -374,7 +375,7 @@ export default function RegionEditorPanel({
                       {buildingLevelList.map(b => (
                         <option key={b.name} value={b.name}>{b.name} ({b.building})</option>
                       ))}
-                    </select>
+                    </CampaignDropdown>
                   )}
                 </div>
               </Field>

@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState } from 'react';
 import { Pencil, PaintBucket, RotateCcw, Save, Download, Pipette, SprayCan, Box } from 'lucide-react';
 import { LAYER_DEFS } from './mapLayerConstants';
@@ -104,7 +105,7 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
         {active && (
           <>
             {/* Layer select */}
-            <select
+            <CampaignDropdown
               value={layerId}
               onChange={e => onPaintChange({ ...paintState, layerId: e.target.value })}
               className="h-7 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200"
@@ -112,7 +113,7 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
               {paintableLayers.map(d => (
                 <option key={d.id} value={d.id}>{d.label}</option>
               ))}
-            </select>
+            </CampaignDropdown>
 
             {/* Tools */}
             <div className="flex gap-0.5 rounded bg-slate-800 border border-slate-600/40 p-0.5">

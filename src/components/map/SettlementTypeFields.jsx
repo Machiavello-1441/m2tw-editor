@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useEffect, useState } from 'react';
 import { SETTLEMENT_LEVELS } from '@/components/map/stratParser';
 import { normalizeSettlement, settlementLevelLabel } from '@/components/map/settlementBuildings';
@@ -24,9 +25,9 @@ export default function SettlementTypeFields({ value, onChange, edbData }) {
       <input type="number" min="0" step="1" value={value.population ?? 0} onChange={e => change({ population: Number(e.target.value) })} className="h-7 w-full rounded border border-input bg-background px-1 text-foreground" />
     </label>
     <label className="block text-muted-foreground">Settlement level
-      <select disabled={!!autoLevel} value={autoLevel || value.level || 'village'} onChange={e => change({ level: e.target.value })} className="h-7 w-full rounded border border-input bg-background px-1 text-foreground disabled:opacity-70">
+      <CampaignDropdown disabled={!!autoLevel} value={autoLevel || value.level || 'village'} onChange={e => change({ level: e.target.value })} className="h-7 w-full rounded border border-input bg-background px-1 text-foreground disabled:opacity-70">
         {(value.castle ? SETTLEMENT_LEVELS.slice(0, 5) : SETTLEMENT_LEVELS).map(level => <option key={level} value={level}>{settlementLevelLabel(level, value.castle)}</option>)}
-      </select>
+      </CampaignDropdown>
     </label>
     <SettlementMechanicsStatus />
     <p className="text-[9px] text-muted-foreground">Type and tier changes replace the core building and remove incompatible buildings.</p>

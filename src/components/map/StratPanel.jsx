@@ -1,4 +1,5 @@
 import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -50,10 +51,10 @@ function ResourceEditor({ item, onSave, resourceList }) {
       <div className="space-y-1">
         <div>
           <span className="text-[9px] text-slate-500">Type</span>
-          <select value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}
+          <CampaignDropdown value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}
           className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
             {resOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          </CampaignDropdown>
         </div>
         <div>
           <span className="text-[9px] text-slate-500">X / Y</span>
@@ -101,19 +102,19 @@ function FortEditor({ item, cultureList, onSave }) {
         <>
             <div>
               <span className="text-[9px] text-slate-500">Fort Type</span>
-              <select value={draft.fortType} onChange={(e) => setDraft((d) => ({ ...d, fortType: e.target.value }))}
+              <CampaignDropdown value={draft.fortType} onChange={(e) => setDraft((d) => ({ ...d, fortType: e.target.value }))}
             className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                 {FORT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
+              </CampaignDropdown>
             </div>
             <div>
               <span className="text-[9px] text-slate-500">Culture</span>
               {cultureList?.length > 0 ?
-            <select value={draft.culture} onChange={(e) => setDraft((d) => ({ ...d, culture: e.target.value }))}
+            <CampaignDropdown value={draft.culture} onChange={(e) => setDraft((d) => ({ ...d, culture: e.target.value }))}
             className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                   <option value="">— none —</option>
                   {cultureList.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select> :
+                </CampaignDropdown> :
 
             <input value={draft.culture} onChange={(e) => setDraft((d) => ({ ...d, culture: e.target.value }))}
             placeholder="culture"
@@ -207,10 +208,10 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
         </div>
         <div className="space-y-0.5">
           <p className="text-[9px] text-slate-500">Start Season</p>
-          <select value={season || 'summer'} onChange={(e) => set('startDate', `${year || 1080} ${e.target.value}`)}
+          <CampaignDropdown value={season || 'summer'} onChange={(e) => set('startDate', `${year || 1080} ${e.target.value}`)}
           className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
             {SEASONS.map((s) => <option key={s}>{s}</option>)}
-          </select>
+          </CampaignDropdown>
         </div>
         <div className="space-y-0.5">
           <p className="text-[9px] text-slate-500">End Year</p>
@@ -219,10 +220,10 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
         </div>
         <div className="space-y-0.5">
           <p className="text-[9px] text-slate-500">End Season</p>
-          <select value={endSeason || 'winter'} onChange={(e) => set('endDate', `${endYear || 1530} ${e.target.value}`)}
+          <CampaignDropdown value={endSeason || 'winter'} onChange={(e) => set('endDate', `${endYear || 1530} ${e.target.value}`)}
           className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
             {SEASONS.map((s) => <option key={s}>{s}</option>)}
-          </select>
+          </CampaignDropdown>
         </div>
       </div>
 
@@ -279,13 +280,13 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
             return (
               <div key={name} className="flex items-center gap-1.5 px-1">
                   <span className={`text-[10px] font-mono flex-1 truncate ${colors[current]}`}>{name}</span>
-                  <select value={current} onChange={(e) => moveFaction(name, current, e.target.value === 'none' ? null : e.target.value)}
+                  <CampaignDropdown value={current} onChange={(e) => moveFaction(name, current, e.target.value === 'none' ? null : e.target.value)}
                 className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-300">
                     <option value="none">—</option>
                     <option value="playable">playable</option>
                     <option value="unlockable">unlockable</option>
                     <option value="nonplayable">nonplayable</option>
-                  </select>
+                  </CampaignDropdown>
                 </div>);
 
           })}
@@ -1436,11 +1437,11 @@ export default function StratPanel({
             {/* ── Resource placer (always visible) ── */}
             <div className="space-y-1.5 border-b border-slate-700/40 pb-1.5">
               <p className="text-[9px] text-slate-500 uppercase font-semibold">💎 Resources</p>
-              <select value={newType} onChange={(e) => setNewType(e.target.value)}
+              <CampaignDropdown value={newType} onChange={(e) => setNewType(e.target.value)}
               className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                 <option value="">— pick resource —</option>
                 {(naturalResList?.length ? naturalResList : RESOURCE_TYPES_LIST).map((t) => <option key={t}>{t}</option>)}
-              </select>
+              </CampaignDropdown>
               {pendingPlace?.category === 'resource' ? (
                 <button onClick={() => onCancelPlacement?.()}
                 className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] bg-red-600/80 hover:bg-red-600 text-slate-100 font-semibold transition-colors">
@@ -1485,23 +1486,23 @@ export default function StratPanel({
               </button>
               {addMode?.category === 'fortification' &&
               <div className="space-y-1.5 border-t border-slate-700/40 pt-1.5">
-                  <select value={newType} onChange={(e) => setNewType(e.target.value)}
+                  <CampaignDropdown value={newType} onChange={(e) => setNewType(e.target.value)}
               className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                     <option value="fort">Fort</option>
                     <option value="watchtower">Watchtower</option>
-                  </select>
+                  </CampaignDropdown>
                   {(newType === 'fort' || newType === '') &&
               <>
-                      <select value={newFortType} onChange={(e) => setNewFortType(e.target.value)}
+                      <CampaignDropdown value={newFortType} onChange={(e) => setNewFortType(e.target.value)}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                         {FORT_TYPES.map((t) => <option key={t}>{t}</option>)}
-                      </select>
+                      </CampaignDropdown>
                       {cultureList?.length > 0 ?
-                <select value={newFortCulture} onChange={(e) => setNewFortCulture(e.target.value)}
+                <CampaignDropdown value={newFortCulture} onChange={(e) => setNewFortCulture(e.target.value)}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                           <option value="">— culture (optional) —</option>
                           {cultureList.map((c) => <option key={c}>{c}</option>)}
-                        </select> :
+                        </CampaignDropdown> :
 
                 <input value={newFortCulture} onChange={(e) => setNewFortCulture(e.target.value)}
                 placeholder="culture name (optional)"

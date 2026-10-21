@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useCallback } from 'react';
 import { Map as MapIcon, Download, Eye, EyeOff, Loader2, Layers } from 'lucide-react';
 
@@ -238,13 +239,13 @@ export default function OverlayMapGenerator({
         Colour-code every region by a hidden resource, religion, owning faction, or faction creator — show it on the map or download it as a PNG named after the key (e.g. <span className="font-mono">area_italy.png</span>, <span className="font-mono">england_owner.png</span>).
       </p>
 
-      <select
+      <CampaignDropdown
         value={category}
         onChange={e => { setCategory(e.target.value); setSelected(''); }}
         className="w-full h-7 px-2 text-[11px] bg-slate-800 border border-slate-700 rounded text-slate-200"
       >
         {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-      </select>
+      </CampaignDropdown>
 
       {!hasRegions && (
         <p className="text-[10px] text-slate-600">Load the regions TGA and descr_regions.txt first.</p>
@@ -260,14 +261,14 @@ export default function OverlayMapGenerator({
 
       {hasRegions && hasList && (!needsStrat || stratLoaded) && (
         <>
-          <select
+          <CampaignDropdown
             value={selected}
             onChange={e => setSelected(e.target.value)}
             className="w-full h-7 px-2 text-[11px] bg-slate-800 border border-slate-700 rounded text-slate-200"
           >
             <option value="">— select {CATEGORIES.find(c => c.id === category)?.label.toLowerCase()} —</option>
             {list.map(name => <option key={name} value={name}>{name}</option>)}
-          </select>
+          </CampaignDropdown>
 
           <div className="flex gap-1.5">
             <button

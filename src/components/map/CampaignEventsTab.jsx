@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Plus, Trash2, ChevronDown, ChevronRight, Download, Upload, Image, X } from 'lucide-react';
@@ -162,10 +163,10 @@ function EventRow({ event, idx, onChange, onDelete, onPickFromMap }) {
           <div className="grid grid-cols-2 gap-1.5">
             <div>
               <span className="text-[9px] text-slate-500">Event Type</span>
-              <select value={ev.eventType} onChange={e => set('eventType', e.target.value)}
+              <CampaignDropdown value={ev.eventType} onChange={e => set('eventType', e.target.value)}
                 className="w-full h-6 px-1 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                 {EVENT_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              </CampaignDropdown>
             </div>
             <div>
               <span className="text-[9px] text-slate-500">Internal Name</span>

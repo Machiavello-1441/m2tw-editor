@@ -1,3 +1,4 @@
+import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Upload, Download } from 'lucide-react';
 import { DISASTER_TYPES, serializeDisasters } from './disastersParser';
@@ -43,10 +44,10 @@ function DisasterRow({ disaster, idx, regionNames, onChange, onDelete, onPickFro
           {/* Event type */}
           <div>
             <span className="text-[9px] text-slate-500">Event Type</span>
-            <select value={d.eventType} onChange={e => set('eventType', e.target.value)}
+            <CampaignDropdown value={d.eventType} onChange={e => set('eventType', e.target.value)}
               className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
               {DISASTER_TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
+            </CampaignDropdown>
           </div>
 
           {/* Frequency + scale */}
@@ -89,11 +90,11 @@ function DisasterRow({ disaster, idx, regionNames, onChange, onDelete, onPickFro
                 </span>
               ))}
             </div>
-            <select defaultValue="" onChange={e => { if (e.target.value) addItem('climates', e.target.value); }}
+            <CampaignDropdown defaultValue="" onChange={e => { if (e.target.value) addItem('climates', e.target.value); }}
               className="w-full h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
               <option value="">+ add climate…</option>
               {KNOWN_CLIMATES.filter(c => !(d.climates||[]).includes(c)).map(c => <option key={c}>{c}</option>)}
-            </select>
+            </CampaignDropdown>
           </div>
 
           {/* Regions */}
@@ -107,11 +108,11 @@ function DisasterRow({ disaster, idx, regionNames, onChange, onDelete, onPickFro
               ))}
             </div>
             {regionNames?.length > 0 ? (
-              <select defaultValue="" onChange={e => { if (e.target.value) addItem('regions', e.target.value); }}
+              <CampaignDropdown defaultValue="" onChange={e => { if (e.target.value) addItem('regions', e.target.value); }}
                 className="w-full h-5 px-1 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                 <option value="">+ add region…</option>
                 {regionNames.filter(r => !(d.regions||[]).includes(r)).map(r => <option key={r}>{r}</option>)}
-              </select>
+              </CampaignDropdown>
             ) : (
               <RegionInputAdd onAdd={v => addItem('regions', v)} />
             )}
