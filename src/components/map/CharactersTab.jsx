@@ -832,17 +832,26 @@ export default function CharactersTab({ stratData, onStratDataChange, onSelectIt
             <div className="flex gap-1">
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or type…"
                 className="flex-1 h-6 px-2 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 placeholder-slate-600" />
-              <CampaignDropdown value={filterFaction} onChange={e => setFilterFaction(e.target.value)}
-                className="h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                <option value="">All factions</option>
-                {allFactions.map(f => <option key={f}>{f}</option>)}
-              </CampaignDropdown>
               <button onClick={() => setSortAlpha(v => !v)}
                 title="Sort by surname (leader & heir always first)"
                 className={`h-6 px-1.5 flex items-center gap-0.5 rounded text-[10px] border transition-colors ${sortAlpha ? 'border-amber-500/50 text-amber-400 bg-amber-500/10' : 'border-slate-600/40 text-slate-500 hover:text-slate-200'}`}>
                 <ArrowDownAZ className="w-3 h-3" />A-Z
               </button>
             </div>
+            <CampaignDropdown aria-label="Filter characters by faction" value={filterFaction} onChange={e => setFilterFaction(e.target.value)}
+              onKeyDown={event => {
+                if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const factions = ['', ...allFactions];
+                const index = factions.indexOf(filterFaction);
+                const next = Math.max(0, Math.min(factions.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+                setFilterFaction(factions[next]);
+              }}
+              className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+              <option value="">All factions</option>
+              {allFactions.map(f => <option key={f}>{f}</option>)}
+            </CampaignDropdown>
             {/* File status hints */}
             <div className="flex flex-wrap gap-1">
               {!descrNames && <span className="text-[8px] text-amber-500/70 bg-amber-900/20 px-1 rounded">Load descr_names.txt for name dropdowns</span>}
