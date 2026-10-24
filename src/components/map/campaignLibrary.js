@@ -1,4 +1,5 @@
 import { restoreCampaignStorage } from '@/components/map/campaignSession';
+import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 
 const state = { campaigns: [], active: '', snapshots: new Map() };
 const pathOf = f => (f.webkitRelativePath || f.name).replace(/\\/g, '/').toLowerCase();
@@ -27,6 +28,7 @@ export function indexCampaignLibrary(files, preferred) {
   restoreCampaignStorage();
   window._m2tw_loaded_map_files = null;
   window._m2tw_map_files = state.campaigns.find(c => c.id === state.active)?.files || base;
+  rememberCampaignSourceFiles(window._m2tw_map_files, state.campaigns.find(c => c.id === state.active)?.name, true);
   window.dispatchEvent(new Event('m2tw-campaign-library-updated'));
   return state;
 }

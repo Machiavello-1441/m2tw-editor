@@ -24,6 +24,7 @@ import { addCharacterNamesToZip } from '@/components/export/characterNamesExport
 import { getCharacterNamesRaw } from '@/lib/characterNames';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import { addSharedStringsToZip } from '@/components/export/sharedStringsExport';
+import { getCampaignExportPaths } from '@/components/map/campaignSourcePaths';
 
 function getCampaigns() {
   try { const s = localStorage.getItem('m2tw_campaigns'); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -195,7 +196,8 @@ export default function Export() {
     // Include campaigns — use modified strat data from sessionStorage if available
     const campaigns = getCampaigns();
     for (const c of campaigns) {
-      const campFolder = zip.folder(`${modName}/data/world/maps/campaign/custom/${c.name}`);
+      const sourcePaths = getCampaignExportPaths(c.name, `data/world/maps/campaign/custom/${c.name}`, true);
+      const campFolder = zip.folder(`${modName}/${sourcePaths.directory}`);
       // Check if there's a modified version in sessionStorage (from CampaignMap edits)
       let stratText = c.descrStrat || `campaign\t${c.name}\n`;
       try {
@@ -390,8 +392,8 @@ export default function Export() {
               />
               <ExportRow
                 icon={<Globe2 className="w-4 h-4 text-blue-400/70" />}
-                label="Custom Campaigns"
-                path={`${modName}/data/world/maps/campaign/custom/`}
+                label="Campaigns"
+                path={campaigns.map(c => `${modName}/${getCampaignExportPaths(c.name, `data/world/maps/campaign/custom/${c.name}`, true).directory}/`).join(', ') || `${modName}/data/world/maps/campaign/`}
                 status={hasCampaigns ? 'ready' : 'skip'}
                 detail={hasCampaigns ? `${campaigns.length} campaign(s) — descr_strat.txt per campaign` : 'No campaigns — edit on Campaigns page'}
               />

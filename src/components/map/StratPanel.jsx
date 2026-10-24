@@ -35,6 +35,7 @@ import BulkSettlementEditor from '@/components/map/BulkSettlementEditor';
 import SettlementTypeFields from '@/components/map/SettlementTypeFields';
 import StratPanelTabs from '@/components/map/StratPanelTabs';
 import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
+import { getCampaignExportPaths, rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 
 // Ensure Windows line endings (CRLF) for all exported .txt files
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
@@ -970,6 +971,7 @@ export default function StratPanel({
     setLoadError('');
     try {
     const text = type === 'names' ? await readNamesFile(file) : await file.text();
+    rememberCampaignSourceFiles([file], stratData?.campaignName);
     if (type === 'strat') { rememberOriginalStrat(text); onStratLoad(text, file.name); } else
     if (type === 'regions') onRegionsLoad(text);else
     if (type === 'names') onNamesLoad(text);else
@@ -1056,53 +1058,55 @@ export default function StratPanel({
   const handleExportCampaignZip = async () => {
     const zip = new JSZip();
     const campaignName = stratData?.campaignName || 'imperial_campaign';
-    const basePath = `data/world/maps/campaign/custom/${campaignName}`;
+    const sourcePaths = getCampaignExportPaths(campaignName);
+    const basePath = sourcePaths.directory;
+    const writeFile = (path, content) => zip.file(sourcePaths.resolve(path), content);
     addCharacterNamesToZip(zip.folder('data'), descrNames, namesDisplayMap);
 
     // export_descr_buildings.txt — carries hidden_resources that were added
     // from the region form, plus any other EDB edits
     if (edbData) {
-      zip.file('data/export_descr_buildings.txt', toCRLF(serializeEDB(edbData)));
+      writeFile('data/export_descr_buildings.txt', toCRLF(serializeEDB(edbData)));
     }
 
     // descr_strat.txt
     if (stratData?.raw) {
-      zip.file(`${basePath}/descr_strat.txt`, toCRLF(serializeDescrStrat(
+      writeFile(`${basePath}/descr_strat.txt`, toCRLF(serializeDescrStrat(
         { ...stratData, _regionsLookup: regionsData, _regionsLayer: regionsLayer },
         overlayItems, editedSettlements
       )));
     }
     // descr_regions.txt
     if (regionsData?.length) {
-      zip.file(`${basePath}/descr_regions.txt`, toCRLF(serializeDescrRegions(regionsData, religionList)));
+      writeFile(`${basePath}/descr_regions.txt`, toCRLF(serializeDescrRegions(regionsData, religionList)));
     }
     // campaign script file
     const scriptName = stratData?.scriptFile || 'campaign_script.txt';
     const scriptRaw = sessionStorage.getItem('m2tw_script_raw');
     if (scriptRaw) {
-      zip.file(`${basePath}/${scriptName}`, toCRLF(scriptRaw));
+      writeFile(`${basePath}/${scriptName}`, toCRLF(scriptRaw));
     }
     // descr_faction_movies.xml
     if (factionMovies && Object.keys(factionMovies).length > 0) {
-      zip.file(`${basePath}/descr_faction_movies.xml`, serializeFactionMovies(factionMovies));
+      writeFile(`${basePath}/descr_faction_movies.xml`, serializeFactionMovies(factionMovies));
     } else {
       const moviesRaw = sessionStorage.getItem('m2tw_faction_movies_raw');
-      if (moviesRaw) zip.file(`${basePath}/descr_faction_movies.xml`, moviesRaw);
+      if (moviesRaw) writeFile(`${basePath}/descr_faction_movies.xml`, moviesRaw);
     }
     // descr_disasters.txt (in campaign folder)
     if (disasters?.length) {
-      zip.file(`${basePath}/descr_disasters.txt`, toCRLF(serializeDisasters(disasters)));
+      writeFile(`${basePath}/descr_disasters.txt`, toCRLF(serializeDisasters(disasters)));
     } else {
       const disastersRaw = sessionStorage.getItem('m2tw_disasters_raw') || getFile('m2tw_campaign_disasters');
-      if (disastersRaw) zip.file(`${basePath}/descr_disasters.txt`, toCRLF(disastersRaw));
+      if (disastersRaw) writeFile(`${basePath}/descr_disasters.txt`, toCRLF(disastersRaw));
     }
     // descr_events.txt
     if (campaignEvents?.length) {
-      zip.file(`${basePath}/descr_events.txt`, toCRLF(serializeCampaignEvents(campaignEvents)));
+      writeFile(`${basePath}/descr_events.txt`, toCRLF(serializeCampaignEvents(campaignEvents)));
     }
     // description.txt
     if (campaignDescription) {
-      zip.file(`${basePath}/description.txt`, toCRLF(campaignDescription));
+      writeFile(`${basePath}/description.txt`, toCRLF(campaignDescription));
     }
     // Other text files from sessionStorage if present
     const extraFiles = [
@@ -1114,7 +1118,7 @@ export default function StratPanel({
     for (const { key, name } of extraFiles) {
       const raw = sessionStorage.getItem(key) || (
       key === 'm2tw_win_conditions_raw' ? getFile('m2tw_campaign_win_conditions') : null);
-      if (raw) zip.file(`${basePath}/${name}`, toCRLF(raw));
+      if (raw) writeFile(`${basePath}/${name}`, toCRLF(raw));
     }
     // TGA map layers
     const tgaLayerMap = {
@@ -1129,7 +1133,7 @@ export default function StratPanel({
       const layer = layers?.[layerId];
       if (layer?.data) {
         const blob = exportTGA(layer.data, layer.width, layer.height);
-        zip.file(`${basePath}/${filename}`, blob);
+        writeFile(`${basePath}/${filename}`, blob);
       }
     }
     // Settlement names as .strings.bin
@@ -1137,9 +1141,9 @@ export default function StratPanel({
       const entries = Object.entries(settlementNames).map(([key, value]) => ({ key, value }));
       const meta = JSON.parse(sessionStorage.getItem('m2tw_names_bin_meta') || '{}');
       const binBuf = encodeStringsBin(entries, meta.magic1 ?? 2, meta.magic2 ?? 2048);
-      zip.file(`data/text/${campaignName}_regions_and_settlement_names.txt.strings.bin`, binBuf);
+      writeFile(`data/text/${campaignName}_regions_and_settlement_names.txt.strings.bin`, binBuf);
       // Plain-text twin of the same strings (UTF-16LE)
-      zip.file(`data/text/${campaignName}_regions_and_settlement_names.txt`, entriesToTextBytes(entries));
+      writeFile(`data/text/${campaignName}_regions_and_settlement_names.txt`, entriesToTextBytes(entries));
     }
     // Campaign descriptions as .strings.bin
     try {
@@ -1149,9 +1153,9 @@ export default function StratPanel({
         if (descMap && Object.keys(descMap).length > 0) {
           const descEntries = Object.entries(descMap).map(([k, v]) => ({ key: k, value: v }));
           const descBinBuf = encodeStringsBin(descEntries);
-          zip.file(`data/text/campaign_descriptions.txt.strings.bin`, descBinBuf);
+          writeFile(`data/text/campaign_descriptions.txt.strings.bin`, descBinBuf);
           // Plain-text twin of the same strings (UTF-16LE)
-          zip.file('data/text/campaign_descriptions.txt', entriesToTextBytes(descEntries));
+          writeFile('data/text/campaign_descriptions.txt', entriesToTextBytes(descEntries));
         }
       }
     } catch (e) { console.warn('campaign_descriptions export failed', e); }

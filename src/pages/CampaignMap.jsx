@@ -31,6 +31,7 @@ import useSettlementChanges from '@/components/map/useSettlementChanges';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
 import { getCharacterNamesRaw, getCharacterDisplayNames } from '@/lib/characterNames';
+import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 
 const INITIAL_PAINT = {
   active: false,
@@ -329,6 +330,7 @@ export default function CampaignMap() {
     const buf = await file.arrayBuffer();
     const result = await loadTGA(buf);
     if (!result) return;
+    rememberCampaignSourceFiles([file]);
     setLayers(prev => {
       const next = { ...prev, [layerId]: { ...prev[layerId], ...result } };
       // Re-compute settlement positions when regions layer loads
@@ -540,6 +542,7 @@ export default function CampaignMap() {
     }
 
     const importedCampaign = e.campaignName || parseDescrStrat(sessionStorage.getItem('m2tw_strat_raw') || '').campaignName;
+    rememberCampaignSourceFiles(files, importedCampaign, files.some(file => file.name.toLowerCase() === 'descr_strat.txt'));
     if (importedCampaign) {
       const originalNames = storedCampaignNames(importedCampaign);
       setSettlementNamesRaw(prev => ({ ...originalNames, ...(prev || {}) }));
