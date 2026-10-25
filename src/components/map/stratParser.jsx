@@ -3,6 +3,8 @@
  * *_regions_and_settlement_names.txt, and descr_sm_factions.txt
  */
 
+import settlementOwnershipTransfers from '@/components/map/settlementOwnershipTransfers';
+
 export const SETTLEMENT_LEVELS = ['village', 'town', 'large_town', 'city', 'large_city', 'huge_city'];
 export const SETTLEMENT_LEVEL_ICONS = {
   village: '🏘️', town: '🏚️', large_town: '🏠',
@@ -633,11 +635,16 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   }
   // Settlement and fort-comment edits use ORIGINAL coordinates. Apply them
   // together before faction/global insertions shift any of those coordinates.
-  for (const [id, edits] of Object.entries(editedSettlements)) {
+  const transferredSettlements = settlementOwnershipTransfers(lines, stratData.items || [], overlayItems, editedSettlements);
+  const settlementIds = new Set([...Object.keys(editedSettlements), ...transferredSettlements.keys()]);
+  for (const id of settlementIds) {
     const orig = stratData.items?.find(it => it.id == id && it.category === 'settlement');
     if (!orig || orig.id < 0 || orig._lineStart === undefined) continue;
+    const edits = editedSettlements[id] || {};
     const indent = (lines[orig._lineStart] || '').match(/^(\s*)/)?.[1] || '';
-    replacements.push({ start: orig._lineStart, end: orig._lineEnd, newLines: generateSettlementBlock({ ...orig, ...edits }, indent) });
+    // A transfer must remove the old block before inserting it under the new
+    // faction. Rewriting it in place would restore the old owner on reparse.
+    replacements.push({ start: orig._lineStart, end: orig._lineEnd, newLines: transferredSettlements.has(id) ? [] : generateSettlementBlock({ ...orig, ...edits }, indent) });
   }
   for (const change of fortCommentChanges) {
     replacements.push({ start: change.lineNum, end: change.action === 'insert' ? change.lineNum - 1 : change.lineNum, newLines: change.action === 'insert' ? [change.text] : [] });
@@ -807,7 +814,10 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   // New items added by the user have negative IDs (id: -(Date.now())).
   // We detect "new" items as those with negative IDs — they need to be appended.
   const origIds = new Set((stratData.items || []).filter(i => i.id >= 0).map(i => i.id));
-  const newSettlements = overlayItems.filter(i => i.id < 0 && i.category === 'settlement');
+  const newSettlements = [
+    ...overlayItems.filter(i => i.id < 0 && i.category === 'settlement'),
+    ...transferredSettlements.values(),
+  ];
   if (newSettlements.length > 0) {
     for (const s of newSettlements) {
       const factionName = s.faction || 'slave';

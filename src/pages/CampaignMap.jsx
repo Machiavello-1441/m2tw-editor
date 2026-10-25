@@ -1270,6 +1270,9 @@ export default function CampaignMap() {
         const enriched = applySettlementPositions(reparsed, regionsData, layers['regions']);
         setStratDataRaw(enriched);
         setOverlayItems(enriched.items || []);
+        setSelectedItem(previous => previous?.category === 'settlement'
+          ? enriched.items?.find(item => item.category === 'settlement' && item.region === previous.region) || null
+          : previous);
         setEditedSettlements({});
         updatedRaw = enriched.raw || updatedRaw;
         savedItems = enriched.items || [];
