@@ -252,6 +252,22 @@ export default function CharacterNamesTab() {
     setSelectedFaction(name);
   };
 
+  const addMissingFactionNames = (target, source) => {
+    const names = descrNames[source];
+    if (!names || Object.keys(descrNames).some(name => name.toLowerCase() === target.toLowerCase())) return;
+    setDescrNames(previous => ({
+      ...previous,
+      [target]: {
+        characters: [...names.characters],
+        surnames: [...names.surnames],
+        females: [...names.females],
+      },
+    }));
+    setSelectedFaction(target);
+    setFactionSearch('');
+    setSearch('');
+  };
+
   // ─── Duplicate faction names ────────────────────────────────────────────────
   const [showDupModal, setShowDupModal] = useState(false);
   const [dupTargetFaction, setDupTargetFaction] = useState('');
@@ -327,7 +343,7 @@ export default function CharacterNamesTab() {
         <p className="text-[10px] text-red-400 bg-red-900/20 border border-red-700/40 rounded px-2.5 py-1.5">{parseError}</p>
       )}
 
-      <FactionNamesCheck names={descrNames} />
+      <FactionNamesCheck names={descrNames} onAddFaction={addMissingFactionNames} />
 
       {noneLoaded ? (
         <p className="text-[10px] text-slate-600 text-center py-6">
