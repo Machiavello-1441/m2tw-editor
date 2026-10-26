@@ -9,7 +9,7 @@ import BannersTab, { BANNERS_GLOBAL_KEY } from '@/components/factions/BannersTab
 import { parseStringsBin, encodeStringsBin } from '@/components/strings/stringsBinCodec';
 import DuplicateFactionModal from '@/components/factions/DuplicateFactionModal';
 import FactionZipExport from '@/components/factions/FactionZipExport';
-import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership, prepareEduOwnership } from '@/components/factions/factionBulkDuplicate';
+import { copyBannerEntries, duplicateFactionStrings, duplicateStratmapCharacters, duplicateFactionNames, duplicateEduOwnership, prepareEduOwnership, prepareFactionNames } from '@/components/factions/factionBulkDuplicate';
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { useToast } from '@/components/ui/use-toast';
 import { FILES_CHANGED_EVENT, FACTION_DEPENDENCIES } from '@/lib/modFileRegistry';
@@ -794,11 +794,13 @@ export default function FactionsEditor() {
       toast({ variant: 'destructive', title: 'Faction already exists', description: 'No changes made. Choose a unique internal faction name.' });
       return;
     }
+    let preparedNames;
     try {
-      // Validate the insertion-only EDU change before touching any faction file.
+      // Validate both source files before creating a partially duplicated faction.
       prepareEduOwnership(src.name, newFactionName, src.culture);
+      preparedNames = prepareFactionNames(src.name, newFactionName);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Duplication stopped — original EDU required', description: error.message });
+      toast({ variant: 'destructive', title: 'Duplication stopped — source data required', description: error.message });
       return;
     }
     const nameUpper = newFactionName.toUpperCase();
@@ -826,7 +828,7 @@ export default function FactionsEditor() {
     copyBannerEntries(src.name, newFactionName);
     duplicateFactionStrings(src.name, newFactionName, payload);
     const charRes = duplicateStratmapCharacters(src.name, newFactionName);
-    const namesRes = duplicateFactionNames(src.name, newFactionName);
+    const namesRes = duplicateFactionNames(src.name, newFactionName, preparedNames);
     const eduRes = duplicateEduOwnership(src.name, newFactionName, src.culture);
     autoInsertNavyEntry(newFactionName);
     injectMenuStringsForFaction(newFactionName, payload.displayName || newFactionName);
@@ -836,7 +838,7 @@ export default function FactionsEditor() {
     const missing = [];
     if (charRes.charLoaded) done.push(`${charRes.charTypes} character types`); else missing.push('descr_character.txt');
     if (charRes.stratLoaded) done.push(`${charRes.stratTextures} strat textures`); else missing.push('descr_model_strat.txt');
-    if (namesRes.loaded) done.push(namesRes.ok ? 'names block' : 'names block (already exists / source not found)'); else missing.push('descr_names.txt');
+    if (namesRes.loaded) done.push(namesRes.ok ? `${namesRes.count} name entries across ${namesRes.blocks} names block(s)` : 'names block (already exists)'); else missing.push('descr_names.txt');
     if (eduRes.loaded) {
       if (eduRes.count > 0) done.push(`faction added on ${eduRes.ownershipLines} ownership and ${eduRes.eraLines} era lines (other EDU text unchanged)`);
       else if (eduRes.already > 0) done.push(`unit ownerships (already on ${eduRes.already} lines)`);

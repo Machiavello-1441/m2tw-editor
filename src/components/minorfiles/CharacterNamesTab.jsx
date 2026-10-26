@@ -4,63 +4,10 @@ import { Upload, Download, Plus, X, Search, Copy, GitMerge } from 'lucide-react'
 import MergeNamesModal from './MergeNamesModal';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getCharacterNamesFile } from '@/lib/characterNames';
-import { getFile } from '@/lib/bigFileStore';
+import { getFile, setFile } from '@/lib/bigFileStore';
+import { parseDescrNames, serializeDescrNames } from '@/lib/descrNamesCodec';
+import FactionNamesCheck from '@/components/minorfiles/FactionNamesCheck';
 import { useModData } from '@/components/shared/ModDataContext';
-
-// ─── descr_names.txt parser ─────────────────────────────────────────────────
-// Grammar:
-//   faction: [name]
-//   \tcharacters / surnames / women   (section headers)
-//   \t\t[name]                        (one per line)
-function parseDescrNames(text) {
-  const factions = {};
-  let currentFaction = null;
-  let currentSection = null;
-
-  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-
-  for (const raw of lines) {
-    const noComment = raw.replace(/;.*$/, '');
-    const trimmed = noComment.trim();
-    if (!trimmed) continue;
-
-    // "faction: [name]"
-    const factionMatch = trimmed.match(/^faction:\s*(\S+)/i);
-    if (factionMatch) {
-      currentFaction = factionMatch[1];
-      factions[currentFaction] = { characters: [], surnames: [], females: [] };
-      currentSection = null;
-      continue;
-    }
-
-    if (!currentFaction) continue;
-
-    if (/^characters$/i.test(trimmed)) { currentSection = 'characters'; continue; }
-    if (/^surnames$/i.test(trimmed))   { currentSection = 'surnames';   continue; }
-    if (/^women$/i.test(trimmed))      { currentSection = 'females';    continue; }
-    if (/^females?$/i.test(trimmed))   { currentSection = 'females';    continue; }
-    if (/^male$/i.test(trimmed))       { currentSection = 'characters'; continue; }
-
-    if (currentSection) {
-      factions[currentFaction][currentSection].push(trimmed);
-    }
-  }
-  return factions;
-}
-
-// ─── descr_names.txt serializer ───────────────────────────────────────────────
-function serializeDescrNames(factions) {
-  return Object.entries(factions).map(([name, data]) => {
-    const lines = [`faction: ${name}`];
-    lines.push('\tcharacters');
-    for (const n of data.characters) lines.push(`\t\t${n}`);
-    lines.push('\tsurnames');
-    for (const n of data.surnames) lines.push(`\t\t${n}`);
-    lines.push('\twomen');
-    for (const n of data.females) lines.push(`\t\t${n}`);
-    return lines.join('\n');
-  }).join('\n\n');
-}
 
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob);
@@ -106,7 +53,14 @@ function NameRow({ internalName, displayName, onDisplayChange, onRemoveInternal,
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CharacterNamesTab() {
-  const [descrNames, setDescrNames] = useState({});
+  const [descrNames, setDescrNamesState] = useState({});
+  const setDescrNames = update => {
+    const next = typeof update === 'function' ? update(descrNames) : update;
+    const raw = serializeDescrNames(next);
+    setFile('m2tw_names_file', raw);
+    setDescrNamesState(next);
+    window.dispatchEvent(new CustomEvent('load-character-names', { detail: { raw } }));
+  };
   const [displayNames, setDisplayNames] = useState({});
   const [binMeta, setBinMeta] = useState(null);
 
@@ -124,8 +78,8 @@ export default function CharacterNamesTab() {
       setParseError('No factions found. The file may use an unsupported format or be empty.');
       return;
     }
-    setDescrNames(parsed);
-    setSelectedFaction(factions[0]);
+    setDescrNamesState(parsed);
+    setSelectedFaction(previous => parsed[previous] ? previous : factions[0]);
   };
 
   const applyNamesBin = (buf) => {
@@ -372,6 +326,8 @@ export default function CharacterNamesTab() {
       {parseError && (
         <p className="text-[10px] text-red-400 bg-red-900/20 border border-red-700/40 rounded px-2.5 py-1.5">{parseError}</p>
       )}
+
+      <FactionNamesCheck names={descrNames} />
 
       {noneLoaded ? (
         <p className="text-[10px] text-slate-600 text-center py-6">

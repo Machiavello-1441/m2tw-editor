@@ -2,6 +2,8 @@
  * Additional M2TW file parsers for Campaign Map region editing
  */
 
+import { parseDescrNames as parseFactionNames } from '@/lib/descrNamesCodec';
+
 // descr_rebel_factions.txt → array of faction name strings
 // Supports rebel_type (correct M2TW keyword), rebel_faction and faction (legacy)
 export function parseDescrRebelFactions(text) {
@@ -72,33 +74,10 @@ export function parseDescrCultures(text) {
 //     end
 export function parseDescrNames(text) {
   const result = { male: {}, female: {}, _surnames: {} };
-  let currentFaction = null;
-  let currentSection = null; // 'male', 'female', 'surname'
-  for (const raw of text.split('\n')) {
-    const line = raw.replace(/;.*$/, '').trim();
-    if (!line) continue;
-    // "faction <name>" — starts a new faction block
-    const fm = line.match(/^faction:?\s+(\S+)/i);
-    if (fm) {
-      currentFaction = fm[1].toLowerCase(); currentSection = null;
-      for (const section of ['male', 'female', '_surnames']) result[section][currentFaction] ||= [];
-      continue;
-    }
-    if (!currentFaction) continue;
-    // Section headers
-    if (/^characters$/i.test(line) || /^male$/i.test(line)) { currentSection = 'male'; continue; }
-    if (/^women$/i.test(line) || /^females?$/i.test(line) || /^female$/i.test(line)) { currentSection = 'female'; continue; }
-    if (/^surnames?$/i.test(line)) { currentSection = 'surname'; continue; }
-    if (/^end$/i.test(line)) { currentFaction = null; currentSection = null; continue; }
-    // Name entries (single word, no spaces)
-    if (currentSection && /^\S+$/.test(line)) {
-      if (currentSection === 'surname') {
-        if (!result._surnames[currentFaction]) result._surnames[currentFaction] = [];
-        result._surnames[currentFaction].push(line);
-      } else {
-        if (!result[currentSection][currentFaction]) result[currentSection][currentFaction] = [];
-        result[currentSection][currentFaction].push(line);
-      }
+  for (const [faction, names] of Object.entries(parseFactionNames(text))) {
+    const key = faction.toLowerCase();
+    for (const [section, source] of [['male', 'characters'], ['female', 'females'], ['_surnames', 'surnames']]) {
+      result[section][key] = [...(result[section][key] || []), ...names[source]];
     }
   }
   return result;

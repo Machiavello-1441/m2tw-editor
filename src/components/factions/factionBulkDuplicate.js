@@ -12,6 +12,7 @@ import {
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import { patchEduOwnership, verifyEduOwnershipPatch } from '@/components/units/eduOwnershipPatch';
+import { duplicateDescrNames } from '@/lib/descrNamesCodec';
 
 const EXPANDED_KEY = 'm2tw_strings_bin_global';
 const MENU_KEY = 'm2tw_menu_strings_bin';
@@ -211,33 +212,19 @@ export function duplicateStratmapCharacters(srcName, dstName) {
  * Duplicate the source faction's names block in descr_names.txt,
  * inserting the copy right after the source block.
  */
-export function duplicateFactionNames(srcName, dstName) {
-  try {
-    const raw = getFile(NAMES_KEY);
-    if (!raw) return { ok: false, loaded: false };
-    const lines = raw.split('\n');
-    // faction lines can list multiple factions: "faction: normans, sicily"
-    const facRe = /^\s*faction\s*:\s*(.+)$/i;
-    const SRC = srcName.toLowerCase(), DST = dstName.toLowerCase();
-    let start = -1, end = lines.length, endSet = false;
-    for (let i = 0; i < lines.length; i++) {
-      const m = lines[i].match(facRe);
-      if (!m) continue;
-      const facs = m[1].split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-      if (facs.includes(DST)) return { ok: false, loaded: true }; // already exists
-      if (facs.includes(SRC) && start === -1) { start = i; continue; }
-      if (start !== -1 && !endSet) { end = i; endSet = true; }
-    }
-    if (start === -1) return { ok: false, loaded: true };
-    const block = lines.slice(start, end);
-    const newBlock = [...block];
-    newBlock[0] = `faction: ${dstName}`;
-    const out = [...lines.slice(0, end), '', ...newBlock, ...lines.slice(end)].join('\n');
-    setFile(NAMES_KEY, out);
-    try { sessionStorage.setItem('m2tw_descr_names_raw', out); } catch {}
-    window.dispatchEvent(new CustomEvent('load-character-names', { detail: { raw: out } }));
-    return { ok: true, loaded: true };
-  } catch { return { ok: false, loaded: true }; }
+export function prepareFactionNames(srcName, dstName) {
+  const raw = getFile(NAMES_KEY);
+  if (!raw) throw new Error('Load descr_names.txt before duplicating a faction. No changes made.');
+  return { ...duplicateDescrNames(raw, srcName, dstName), loaded: true };
+}
+
+export function duplicateFactionNames(srcName, dstName, prepared) {
+  const result = prepared || prepareFactionNames(srcName, dstName);
+  if (result.ok) {
+    setFile(NAMES_KEY, result.out);
+    window.dispatchEvent(new CustomEvent('load-character-names', { detail: { raw: result.out } }));
+  }
+  return result;
 }
 
 /**
