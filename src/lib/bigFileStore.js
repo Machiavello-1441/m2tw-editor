@@ -9,6 +9,8 @@ import { canonicalFileKey, fileKeyAliases, STRING_FILE_KEYS, STRINGS_STORE_KEY, 
 const mem = () => (window.__m2twBigFileStore = window.__m2twBigFileStore || {});
 const DB_NAME = 'm2tw_big_files';
 const STORE = 'files';
+// Campaign payloads are loaded on demand, not duplicated for every saved map at startup.
+const lazyCampaignKey = key => /^(m2tw_saved_campaign:|m2tw_campaign_recovery:|m2tw_campaign_pixels:)/.test(String(key));
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -21,11 +23,11 @@ function openDb() {
 }
 const dbPromise = typeof indexedDB !== 'undefined' ? openDb().catch(() => null) : Promise.resolve(null);
 
-async function persistEntries(entries) {
+async function persistEntries(entries, options) {
   const db = await dbPromise;
   if (!db) throw new Error('Persistent file storage is unavailable');
   await new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
+    const tx = db.transaction(STORE, 'readwrite', options);
     tx.oncomplete = () => resolve();
     tx.onerror = tx.onabort = () => reject(tx.error || new Error('File storage write failed'));
     try {
@@ -42,12 +44,24 @@ async function persistEntries(entries) {
 async function persist(key, value) { await persistEntries([[key, value]]); }
 
 /** Atomically store structured editor data, including typed pixel buffers. */
-export async function setStoredFiles(entries) {
-  await persistEntries(entries);
+export async function setStoredFiles(entries, { cache = true } = {}) {
+  await persistEntries(entries, { durability: 'strict' });
   for (const [key, value] of entries) {
-    mem()[key] = value;
+    if (typeof cache === 'function' ? cache(key) : cache) mem()[key] = value;
+    else delete mem()[key];
     notifyChange(key);
   }
+}
+
+/** Read one structured record without retaining its pixel buffers globally. */
+export async function readStoredFile(key) {
+  const db = await dbPromise;
+  if (!db) throw new Error('Persistent file storage is unavailable');
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE).objectStore(STORE).get(key);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error || new Error('Could not read saved campaign'));
+  });
 }
 
 const pendingWrites = new Set();
@@ -82,13 +96,16 @@ export async function hydrateBigFiles() {
   const db = await dbPromise;
   if (db) {
     await new Promise((resolve) => {
-      const req = db.transaction(STORE).objectStore(STORE).openCursor();
+      const store = db.transaction(STORE).objectStore(STORE);
+      const req = store.openKeyCursor();
       req.onsuccess = () => {
         const cursor = req.result;
         if (!cursor) return resolve();
-        if (mem()[cursor.key] === undefined) mem()[cursor.key] = cursor.value;
         restoredKeys.add(cursor.key);
-        cursor.continue();
+        if (lazyCampaignKey(cursor.key) || mem()[cursor.key] !== undefined) { cursor.continue(); return; }
+        const value = store.get(cursor.key);
+        value.onsuccess = () => { mem()[cursor.key] = value.result; cursor.continue(); };
+        value.onerror = () => resolve();
       };
       req.onerror = () => resolve();
     });
@@ -107,7 +124,7 @@ export async function hydrateBigFiles() {
   }
   const candidates = { ...legacy, ...mem() };
   for (const [key, value] of Object.entries(candidates)) {
-    if (STRING_FILE_KEYS[key]) continue;
+    if (STRING_FILE_KEYS[key] || lazyCampaignKey(key)) continue;
     const canonical = canonicalFileKey(key);
     if (mem()[canonical] === undefined && value !== null) {
       mem()[canonical] = candidates[canonical] ?? value;

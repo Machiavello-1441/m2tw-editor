@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { History, Undo2 } from 'lucide-react';
+import { History, Undo2, Redo2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-export default function CampaignUndoControls({ entries, onUndo, disabled }) {
+export default function CampaignUndoControls({ entries, redoEntries = [], onUndo, onRedo, disabled }) {
   const [open, setOpen] = useState(false);
   const undo = index => { setOpen(false); onUndo(index); };
   const buttonClass = 'flex items-center gap-1 rounded border border-border bg-secondary px-2 py-1 text-[10px] text-secondary-foreground hover:bg-accent disabled:text-muted-foreground';
@@ -10,6 +10,10 @@ export default function CampaignUndoControls({ entries, onUndo, disabled }) {
     <button type="button" onClick={() => undo(entries.length - 1)} disabled={disabled || !entries.length}
       title={entries.length ? `Undo: ${entries[entries.length - 1].label}` : 'No unsaved changes to undo'} className={buttonClass}>
       <Undo2 className="h-3 w-3" /> Undo {entries.length > 0 && <span>({entries.length})</span>}
+    </button>
+    <button type="button" onClick={onRedo} disabled={disabled || !redoEntries.length}
+      title={redoEntries.length ? `Redo: ${redoEntries[redoEntries.length - 1].label}` : 'No undone changes to restore'} className={buttonClass}>
+      <Redo2 className="h-3 w-3" /> Redo {redoEntries.length > 0 && <span>({redoEntries.length})</span>}
     </button>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild><button type="button" disabled={disabled} className={buttonClass} aria-label="Open undo history" title="Recent unsaved changes"><History className="h-3 w-3" /></button></PopoverTrigger>

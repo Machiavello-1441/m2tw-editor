@@ -69,7 +69,7 @@ function PresetPicker({ layerId, paintColor, onColorChange }) {
   );
 }
 
-export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onUndo, undoEntries, historyDisabled, onExport, hasUnsaved, dirtyLayers, show3D, onToggle3D }) {
+export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onUndo, onRedo, undoEntries, redoEntries, historyDisabled, onExport, hasUnsaved, dirtyLayers, show3D, onToggle3D }) {
   const { active, layerId, paintColor, tool, brushSize } = paintState;
   const [showPresets, setShowPresets] = useState(false);
 
@@ -190,7 +190,7 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onU
             }`}>
             <Save className="w-3 h-3" /> Save
           </button>
-          <CampaignUndoControls entries={undoEntries} onUndo={onUndo} disabled={historyDisabled} />
+          <CampaignUndoControls entries={undoEntries} redoEntries={redoEntries} onUndo={onUndo} onRedo={onRedo} disabled={historyDisabled} />
           {dirtyLayers && dirtyLayers.size > 0 && (
             <button onClick={onExport} title="Export modified layers as TGA files"
               className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 border border-amber-500/40 text-slate-900 font-semibold transition-colors">

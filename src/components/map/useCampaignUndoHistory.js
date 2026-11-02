@@ -4,15 +4,18 @@ import { isUndoStorageEvent } from '@/components/map/campaignUndoStorage';
 import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
 
 export default function useCampaignUndoHistory(state, apply, disabled) {
-  const [entries, setEntries] = useState([]);
+  const [{ entries, redoEntries }, setEntries] = useState({ entries: [], redoEntries: [] });
   const controller = useRef(null), current = useRef(null), timers = useRef(new Set());
+  const groups = useRef({ fields: new WeakMap(), next: 0 });
   if (!controller.current) controller.current = new CampaignUndoHistory(setEntries);
   current.current = { state, apply, disabled };
   const record = () => {
     if (current.current.disabled) return;
     const field = document.activeElement;
     const typing = field?.matches('textarea, input:not([type="checkbox"]):not([type="file"]):not([type="range"]):not([type="radio"])');
-    controller.current.record(current.current.state, typing ? field : null);
+    if (typing && !groups.current.fields.has(field)) groups.current.fields.set(field, ++groups.current.next);
+    // Never retain DOM nodes: their React references can keep entire old maps alive.
+    controller.current.record(current.current.state, typing ? groups.current.fields.get(field) : null);
   };
   const later = fn => {
     const timer = setTimeout(() => { timers.current.delete(timer); fn(); }, 0);
@@ -28,7 +31,8 @@ export default function useCampaignUndoHistory(state, apply, disabled) {
     };
   }, []);
   return {
-    entries,
+    entries, redoEntries,
+    redo: () => controller.current.redo(current.current.state, current.current.apply),
     reset: () => controller.current.reset(),
     begin: () => { if (!current.current.disabled) controller.current.begin(current.current.state); },
     end: () => later(() => { if (!current.current.disabled) controller.current.end(current.current.state); else controller.current.depth = 0; }),

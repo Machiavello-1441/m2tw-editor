@@ -18,8 +18,8 @@ export function isUndoStorageEvent(event) {
   const keys = new Set(Object.values(storage).flatMap(values => Object.keys(values).map(canonicalFileKey)));
   return !event.detail?.keys || event.detail.keys.some(key => keys.has(key));
 }
-export function restoreUndoStorage(storage, model) {
-  restoreCampaignStorage(storage, false);
+export function restoreUndoStorage(storage, model, clearLayers = false) {
+  restoreCampaignStorage(storage, clearLayers);
   for (const [key, value] of Object.entries(storage.extra)) {
     if (value == null) removeFile(key); else setFile(key, value);
   }

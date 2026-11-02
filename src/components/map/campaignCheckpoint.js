@@ -31,10 +31,5 @@ export default function campaignCheckpoint({ layers, stratData, regionsData, set
   }
   if (settlementNames) storage.session.m2tw_names_raw = namesToText(settlementNames);
   storage.session.m2tw_overlay_items_json = JSON.stringify(savedItems);
-  const savedSnapshot = {
-    layers: Object.fromEntries(Object.entries(layerSnap).filter(([, layer]) => layer.data)),
-    overlayItems: structuredClone(savedItems), stratRaw: savedStrat?.raw || null,
-    regionsData: structuredClone(regionsData), settlementNames: structuredClone(settlementNames), storage,
-  };
-  return { layers: layerSnap, stratData: savedStrat, overlayItems: savedItems, editedSettlements: {}, dirtyLayers: new Set(), overlayDirty: false, storage, savedSnapshot };
+  return { layers: layerSnap, stratData: savedStrat, overlayItems: savedItems, editedSettlements: {}, dirtyLayers: new Set(), overlayDirty: false, storage };
 }

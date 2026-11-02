@@ -1,26 +1,30 @@
 import isEqual from 'lodash/isEqual';
-import { captureUndoLayers, diffUndoLayers, restoreUndoLayers } from '@/components/map/campaignUndoLayers';
+import { captureUndoLayers, diffUndoLayers } from '@/components/map/campaignUndoLayers';
+import campaignHistoryMove from '@/components/map/campaignHistoryMove';
+import campaignHistoryBudget from '@/components/map/campaignHistoryBudget';
 import { captureUndoStorage, comparableUndoStorage } from '@/components/map/campaignUndoStorage';
 import campaignUndoLabel from '@/components/map/campaignUndoLabel';
 
 const modelOf = ({ layers, ...model }) => model;
 const flags = new Set(['dirtyLayers', 'overlayDirty']);
-const LIMIT = 50, MEMORY_LIMIT = 128 * 1024 * 1024;
-
-/** In-memory, inverse-only history. Recording never serializes or commits a draft. */
+/** Bounded in-memory undo/redo, with inverse patches exchanged on demand. */
 export default class CampaignUndoHistory {
   constructor(notify) {
     this.notify = notify;
     this.entries = [];
+    this.future = [];
     this.sequence = 0;
     this.depth = 0;
     this.busy = false;
     this.baseline = null;
     this.input = null;
   }
-  publish() { this.notify(this.entries.map(({ id, label, time }) => ({ id, label, time }))); }
+  publish() {
+    const summary = items => items.map(({ id, label, time }) => ({ id, label, time }));
+    this.notify({ entries: summary(this.entries), redoEntries: summary(this.future) });
+  }
   reset() {
-    this.entries = []; this.baseline = null; this.input = null; this.depth = 0;
+    this.entries = []; this.future = []; this.baseline = null; this.input = null; this.depth = 0;
     this.publish();
   }
   record(state, group = null) {
@@ -41,6 +45,7 @@ export default class CampaignUndoHistory {
     const storageChanged = !isEqual(comparableUndoStorage(this.baseline.storage), comparableUndoStorage(storage));
     const meaningful = Object.keys(before).some(key => !flags.has(key)) || Object.keys(pixels.changes).length || storageChanged;
     if (meaningful) {
+      this.future = [];
       // Always retain pre-action flags, even when only a side-file changed.
       before.dirtyLayers = this.baseline.model.dirtyLayers;
       before.overlayDirty = this.baseline.model.overlayDirty;
@@ -53,8 +58,7 @@ export default class CampaignUndoHistory {
         const bytes = JSON.stringify(before).length * 2 + Object.values(pixels.changes).reduce((sum, patch) => sum + (patch.data?.byteLength || 0) + (patch.indices?.byteLength || 0) + (patch.values?.byteLength || 0), 0);
         this.entries.push({ id: ++this.sequence, label, time, group, before, layers: pixels.changes, storage: this.baseline.storage, bytes });
       }
-      let bytes = this.entries.reduce((sum, entry) => sum + entry.bytes, 0);
-      while (this.entries.length > 1 && (this.entries.length > LIMIT || bytes > MEMORY_LIMIT)) bytes -= this.entries.shift().bytes;
+      campaignHistoryBudget(this.entries, this.future);
       this.publish();
     }
     this.baseline = { model: nextModel, layers: pixels.next, storage };
@@ -68,12 +72,26 @@ export default class CampaignUndoHistory {
     if (index < 0 || index >= this.entries.length) return;
     this.busy = true;
     try {
-      const entries = this.entries.slice(index).reverse();
-      const model = { ...modelOf(state) };
-      for (const entry of entries) Object.assign(model, structuredClone(entry.before));
-      const layers = await restoreUndoLayers(state.layers, entries, state.dirtyLayers);
-      apply({ ...model, layers, storage: entries[entries.length - 1].storage });
+      const { restored, inverses } = await campaignHistoryMove(state, this.entries.slice(index).reverse());
+      apply(restored);
       this.entries.splice(index);
+      this.future.push(...inverses);
+      campaignHistoryBudget(this.entries, this.future);
+      this.baseline = null; this.input = null;
+      this.publish();
+    } finally { this.busy = false; }
+  }
+  async redo(state, apply) {
+    if (this.busy || this.depth) return;
+    this.record(state);
+    const entry = this.future[this.future.length - 1];
+    if (!entry) return;
+    this.busy = true;
+    try {
+      const { restored, inverses } = await campaignHistoryMove(state, [entry]);
+      apply(restored);
+      this.future.pop(); this.entries.push(...inverses);
+      campaignHistoryBudget(this.entries, this.future);
       this.baseline = null; this.input = null;
       this.publish();
     } finally { this.busy = false; }

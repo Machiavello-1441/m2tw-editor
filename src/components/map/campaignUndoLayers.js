@@ -31,13 +31,21 @@ export function diffUndoLayers(previous, layers, input, scanPixels) {
   return { changes, next };
 }
 
-export async function restoreUndoLayers(layers, entries, dirtyLayers = new Set()) {
+export async function restoreUndoLayers(layers, entries, dirtyLayers = new Set(), inverses) {
   const restored = { ...layers }, changed = new Set();
-  for (const entry of entries) for (const [id, patch] of Object.entries(entry.layers)) {
-    if (!changed.has(id)) restored[id] = { ...restored[id], data: restored[id]?.data ? new Uint8ClampedArray(restored[id].data) : null };
-    changed.add(id);
-    if (patch.full) restored[id] = { ...restored[id], width: patch.width, height: patch.height, data: patch.data ? new Uint8ClampedArray(patch.data) : null };
-    else for (let i = 0; i < patch.indices.length; i++) restored[id].data[patch.indices[i]] = patch.values[i];
+  for (const entry of entries) {
+    const inverse = {};
+    for (const [id, patch] of Object.entries(entry.layers)) {
+      const layer = restored[id];
+      if (inverses) inverse[id] = patch.full
+        ? { full: true, width: layer?.width, height: layer?.height, data: layer?.data ? new Uint8ClampedArray(layer.data) : null }
+        : { indices: patch.indices, values: Uint8ClampedArray.from(patch.indices, index => layer.data[index]) };
+      if (!changed.has(id)) restored[id] = { ...layer, data: layer?.data ? new Uint8ClampedArray(layer.data) : null };
+      changed.add(id);
+      if (patch.full) restored[id] = { ...restored[id], width: patch.width, height: patch.height, data: patch.data ? new Uint8ClampedArray(patch.data) : null };
+      else for (let i = 0; i < patch.indices.length; i++) restored[id].data[patch.indices[i]] = patch.values[i];
+    }
+    inverses?.push(inverse);
   }
   // A preceding paint stroke may still be waiting for its bitmap rebuild.
   // Give dirty buffers fresh identities so stale rebuilds cannot win after undo.

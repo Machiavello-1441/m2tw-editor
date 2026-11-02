@@ -37,6 +37,8 @@ import { restoreCampaignStorage } from '@/components/map/campaignSession';
 import useCampaignUndoHistory from '@/components/map/useCampaignUndoHistory';
 import { restoreUndoStorage } from '@/components/map/campaignUndoStorage';
 import readCampaignDetails from '@/components/map/readCampaignDetails';
+import useCampaignRecovery from '@/components/map/useCampaignRecovery';
+import CampaignRecoveryStatus from '@/components/map/CampaignRecoveryStatus';
 
 const INITIAL_PAINT = {
   active: false,
@@ -295,10 +297,6 @@ export default function CampaignMap() {
 
   const jumpRef = useRef(null);
   const folderInputRef = useRef();
-
-  // ── Saved campaign checkpoint ──────────────────────────────────────────────
-  // Persistent checkpoint; the separate undo history tracks unsaved edits.
-  const savedSnapshot = useRef(null);
 
   // Auto-load files pre-staged from Home page (keep them in window for re-navigation)
   React.useEffect(() => {
@@ -582,8 +580,9 @@ export default function CampaignMap() {
     }
   }, []);
 
+  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, factionColors, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, eduUnits, namesDisplayMap, campaignDetails, edbData, regionWizard, pendingPlace, paintState };
   const campaignSelection = useCampaignSelection(
-    { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, factionColors, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, eduUnits, namesDisplayMap, campaignDetails, savedSnapshot: savedSnapshot.current },
+    campaignSnapshot,
     (saved) => {
       undoHistoryRef.current?.reset();
       movingUndoRef.current = false;
@@ -598,11 +597,11 @@ export default function CampaignMap() {
         setNaturalRes(saved.naturalResources); setCultures(saved.cultures); setDescrNames(saved.descrNames);
         setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList); setEduUnits(saved.eduUnits); setNamesDisplayMap(saved.namesDisplayMap);
       }
-      savedSnapshot.current = saved?.savedSnapshot || null;
+      if (saved?.edbData) setEdbData(saved.edbData);
       setCampaignDetails(saved?.campaignDetails || readCampaignDetails());
       setSaveError(''); setSaveMessage('');
-      setSelectedItem(null); setSelectedRegion(null); setPendingPlace(null); setPendingRelocate(null);
-      setRegionWizard(null); setPendingCoordPick(null); setPaintState(INITIAL_PAINT); setOverlayMap(null);
+      setSelectedItem(null); setSelectedRegion(null); setPendingPlace(saved?.pendingPlace || null); setPendingRelocate(null);
+      setRegionWizard(saved?.regionWizard || null); setPendingCoordPick(null); setPaintState(saved?.paintState || INITIAL_PAINT); setOverlayMap(null);
     },
     handleFolderImport
   );
@@ -632,6 +631,9 @@ export default function CampaignMap() {
     saving || undoing || campaignSelection.loading
   );
   undoHistoryRef.current = undoHistory;
+  const recovery = useCampaignRecovery(campaignSnapshot, campaignSelection.active,
+    !saving && !undoing && !campaignSelection.loading && !campaignSelection.error,
+    saving || undoing || overlayDirty || dirtyLayers.size > 0 || undoHistory.entries.length > 0 || Boolean(regionWizard || pendingPlace));
 
   // ── Painting ───────────────────────────────────────────────────────────────
   // Debounce handle for bitmap rebuilds during painting. Using a timeout
@@ -1309,18 +1311,19 @@ export default function CampaignMap() {
     setSaving(true);
     try {
       if (bitmapTimerRef.current) { clearTimeout(bitmapTimerRef.current); flushBitmaps(); }
+      await recovery.flush();
       const saved = campaignCheckpoint({ layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, religionList });
       // Keep the draft and dirty flags untouched until persistent storage confirms the save.
       await campaignSelection.commit(saved);
       restoreCampaignStorage(saved.storage, false);
       undoHistory.reset();
+      recovery.committed();
       setStratDataRaw(saved.stratData);
       setOverlayItems(saved.overlayItems);
       setSelectedItem(previous => previous?.category === 'settlement'
         ? saved.overlayItems.find(item => item.category === 'settlement' && item.region === previous.region) || null
         : previous);
       setEditedSettlements({});
-      savedSnapshot.current = saved.savedSnapshot;
       setDirtyLayers(new Set()); setOverlayDirty(false);
       setSaveMessage('Saved inside the editor on this browser.');
     } catch (error) {
@@ -1328,15 +1331,15 @@ export default function CampaignMap() {
     } finally { setSaving(false); }
   };
 
-  const handleUndo = async index => {
+  const handleHistoryChange = async (index, redo = false) => {
     if (saving || undoing || campaignSelection.loading) return;
     setUndoing(true); setSaveError(''); setSaveMessage('');
     clearTimeout(bitmapTimerRef.current);
     bitmapTimerRef.current = null; pendingBitmapRef.current = {};
     try {
-      await undoHistory.undo(index);
+      if (redo) await undoHistory.redo(); else await undoHistory.undo(index);
     } catch (error) {
-      setSaveError(error.message || 'Could not undo this change. Your current edits have been kept.');
+      setSaveError(error.message || 'Could not restore this change. Your current edits have been kept.');
     } finally { setUndoing(false); }
   };
   const handleExportTGA = () => {
@@ -1372,7 +1375,8 @@ export default function CampaignMap() {
         <span className="text-xs font-semibold">Campaign Map Editor</span>
         <span className="text-[10px] text-slate-500 font-mono hidden lg:block">— M2TW map_*.tga + descr_strat.txt</span>
 
-        <CampaignSelector value={campaignSelection.active} loading={campaignSelection.loading} error={campaignSelection.error} onChange={(id) => {
+        <CampaignSelector value={campaignSelection.active} loading={campaignSelection.loading} error={campaignSelection.error} onChange={async id => {
+          if (await recovery.flush() === false) return;
           clearTimeout(bitmapTimerRef.current); pendingBitmapRef.current = {};
           campaignSelection.select(id);
         }} />
@@ -1507,8 +1511,10 @@ export default function CampaignMap() {
         paintState={paintState}
         onPaintChange={setPaintState}
         onSave={handleSave}
-        onUndo={handleUndo}
+        onUndo={index => handleHistoryChange(index)}
+        onRedo={() => handleHistoryChange(null, true)}
         undoEntries={undoHistory.entries}
+        redoEntries={undoHistory.redoEntries}
         historyDisabled={saving || undoing || campaignSelection.loading}
         onExport={handleExportTGA}
         hasUnsaved={dirtyLayers.size > 0 || overlayDirty || undoHistory.entries.length > 0}
@@ -1517,6 +1523,7 @@ export default function CampaignMap() {
         onToggle3D={() => setShow3D(v => !v)}
       />
 
+      <CampaignRecoveryStatus status={recovery.status} recoveredAt={campaignSelection.recoveredAt} />
       {saveError && <p role="alert" className="border-b border-destructive bg-card px-3 py-2 text-xs text-destructive">{saveError}</p>}
       {saveMessage && !overlayDirty && dirtyLayers.size === 0 && undoHistory.entries.length === 0 && <p role="status" className="border-b border-border bg-card px-3 py-2 text-xs text-foreground">{saveMessage}</p>}
 
@@ -1706,7 +1713,7 @@ export default function CampaignMap() {
       </div>
 
     </div>
-    {(saving || undoing) && <div role="status" className="fixed inset-0 z-[1200] flex items-center justify-center bg-background/80 text-sm text-foreground">{undoing ? 'Undoing changes…' : 'Saving campaign…'}</div>}
+    {(saving || undoing) && <div role="status" className="fixed inset-0 z-[1200] flex items-center justify-center bg-background/80 text-sm text-foreground">{undoing ? 'Restoring changes…' : 'Saving campaign…'}</div>}
     </>
   );
 }
