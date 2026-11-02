@@ -34,6 +34,7 @@ import { getCharacterNamesRaw, getCharacterDisplayNames } from '@/lib/characterN
 import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 import campaignCheckpoint from '@/components/map/campaignCheckpoint';
 import { restoreCampaignStorage } from '@/components/map/campaignSession';
+import restoreCampaignCheckpoint from '@/components/map/restoreCampaignCheckpoint';
 
 const INITIAL_PAINT = {
   active: false,
@@ -156,6 +157,8 @@ export default function CampaignMap() {
   const [editedSettlements, setEditedSettlements] = useState({});
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [reverting, setReverting] = useState(false);
+  const [revertRevision, setRevertRevision] = useState(0);
   const [saveMessage, setSaveMessage] = useState('');
   const updateSettlements = useSettlementChanges({ setEditedSettlements, setOverlayItems, setStratDataRaw, setSelectedItem, setOverlayDirty });
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
@@ -620,6 +623,8 @@ export default function CampaignMap() {
       // underlying array is mutated in place by subsequent paint strokes.
       const copy = new Uint8ClampedArray(data);
       createImageBitmap(new ImageData(copy, layer.width, layer.height)).then(bitmap => {
+        // A completed paint rebuild must not overwrite a reverted layer's bitmap.
+        if (layersRef.current[layerId]?.data !== data) { bitmap.close(); return; }
         setLayers(p2 => ({ ...p2, [layerId]: { ...p2[layerId], bitmap } }));
       });
     }
@@ -1242,7 +1247,7 @@ export default function CampaignMap() {
 
   // ── Save / Revert / Export TGA ─────────────────────────────────────────────
   const handleSave = async () => {
-    if (saving || campaignSelection.loading) return;
+    if (saving || reverting || campaignSelection.loading) return;
     setSaveError(''); setSaveMessage('');
     if (!stratData && !regionsData && !Object.values(layers).some(layer => layer.data)) {
       setSaveError('Load a campaign or map layer before saving.');
@@ -1269,39 +1274,30 @@ export default function CampaignMap() {
     } finally { setSaving(false); }
   };
 
-  const handleRevert = useCallback(() => {
+  const handleRevert = async () => {
     const snap = savedSnapshot.current;
-    if (!snap) return;
-    clearTimeout(bitmapTimerRef.current); pendingBitmapRef.current = {};
-    // Restore layer pixel data + bitmaps
-    const promises = Object.entries(snap.layers).map(([id, { data, width, height }]) =>
-      createImageBitmap(new ImageData(new Uint8ClampedArray(data), width, height)).then(bitmap => ({ id, data, width, height, bitmap }))
-    );
-    Promise.all(promises).then(results => {
-      setLayers(prev => {
-        const next = { ...prev };
-        for (const { id, data, width, height, bitmap } of results) {
-          next[id] = { ...prev[id], data: new Uint8ClampedArray(data), width, height, bitmap };
-        }
-        return next;
-      });
-    });
-    // Restore region details and names along with the saved map and campaign text.
-    if (snap.storage) restoreCampaignStorage(snap.storage, false);
-    if ('regionsData' in snap) setRegionsDataRaw(structuredClone(snap.regionsData));
-    if ('settlementNames' in snap) setSettlementNamesRaw(structuredClone(snap.settlementNames));
-    setEditedSettlements({});
-    setSaveError(''); setSaveMessage('');
-    const restoredItems = JSON.parse(JSON.stringify(snap.overlayItems));
-    setOverlayItems(restoredItems);
-    if (snap.stratRaw) {
-      try { sessionStorage.setItem('m2tw_strat_raw', snap.stratRaw); } catch {}
-      setStratDataRaw({ ...parseDescrStrat(snap.stratRaw), items: restoredItems });
-    }
-    setSelectedItem(null);
-    setDirtyLayers(new Set());
-    setOverlayDirty(false);
-  }, []);
+    if (!snap || saving || reverting || campaignSelection.loading) return;
+    setReverting(true); setSaveError(''); setSaveMessage('');
+    clearTimeout(bitmapTimerRef.current);
+    bitmapTimerRef.current = null; pendingBitmapRef.current = {};
+    try {
+      const restored = await restoreCampaignCheckpoint(snap);
+      if (snap.storage) restoreCampaignStorage(snap.storage);
+      layersRef.current = restored.layers;
+      setLayers(restored.layers);
+      setStratDataRaw(restored.stratData); setOverlayItems(restored.overlayItems);
+      setRegionsDataRaw(restored.regionsData); setSettlementNamesRaw(restored.settlementNames);
+      setEditedSettlements({}); setSelectedItem(null); setSelectedRegion(null);
+      setPendingPlace(null); setPendingRelocate(null); setPendingCoordPick(null);
+      setRegionWizard(null); setStratPanelOpenItemId(null); clearOverlayMap();
+      // Remount draft forms so cached text and pending edits cannot reapply discarded changes.
+      setRevertRevision(revision => revision + 1);
+      setDirtyLayers(new Set()); setOverlayDirty(false);
+      setSaveMessage('Reverted all changes since the last save.');
+    } catch (error) {
+      setSaveError(error.message || 'Could not restore the last save. Your current edits have been kept.');
+    } finally { setReverting(false); }
+  };
   const handleExportTGA = () => {
     dirtyLayers.forEach(layerId => {
       const layer = layers[layerId];
@@ -1327,7 +1323,7 @@ export default function CampaignMap() {
 
   return (
     <>
-    <div inert={saving ? '' : undefined} className="h-screen flex flex-col bg-slate-950 text-slate-200 relative">
+    <div inert={saving || reverting ? '' : undefined} className="h-screen flex flex-col bg-slate-950 text-slate-200 relative">
       {campaignSelection.loading && <div className="absolute inset-0 top-9 z-50 bg-background/90 flex items-center justify-center text-foreground">Loading campaign files…</div>}
       {/* Toolbar */}
       <div className="h-9 border-b border-slate-800 flex items-center px-3 gap-2 shrink-0 bg-slate-900/80">
@@ -1555,7 +1551,7 @@ export default function CampaignMap() {
           <div className="flex-1 overflow-hidden">
             {activeTab === 'strat' && !campaignSelection.loading && (
               <div className="h-full overflow-hidden">
-                <StratPanel key={campaignSelection.active}
+                <StratPanel key={`${campaignSelection.active}:${revertRevision}`}
                   stratData={stratData}
                   regionsData={regionsData}
                   settlementNames={settlementNames}
@@ -1665,7 +1661,7 @@ export default function CampaignMap() {
       </div>
 
     </div>
-    {saving && <div role="status" className="fixed inset-0 z-[1200] flex items-center justify-center bg-background/80 text-sm text-foreground">Saving campaign…</div>}
+    {(saving || reverting) && <div role="status" className="fixed inset-0 z-[1200] flex items-center justify-center bg-background/80 text-sm text-foreground">{reverting ? 'Reverting to last save…' : 'Saving campaign…'}</div>}
     </>
   );
 }

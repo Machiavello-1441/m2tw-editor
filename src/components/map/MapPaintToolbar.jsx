@@ -1,6 +1,7 @@
 import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState } from 'react';
-import { Pencil, PaintBucket, RotateCcw, Save, Download, Pipette, SprayCan, Box } from 'lucide-react';
+import { Pencil, PaintBucket, Save, Download, Pipette, SprayCan, Box } from 'lucide-react';
+import CampaignRevertButton from '@/components/map/CampaignRevertButton';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { LAYER_PRESETS } from './paintPresets';
 import { useModClimatePresets } from '@/lib/modClimates';
@@ -181,17 +182,6 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
 
         {/* Save / Revert / Export */}
         <div className="ml-auto flex items-center gap-1.5">
-          {hasSavedSnapshot && (
-            <button onClick={onRevert} title="Revert to last save"
-              disabled={!hasUnsaved}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] border transition-colors ${
-                hasUnsaved
-                  ? 'bg-slate-700/60 hover:bg-slate-700 border-slate-600/40 text-slate-300'
-                  : 'border-slate-700/30 text-slate-600 cursor-not-allowed'
-              }`}>
-              <RotateCcw className="w-3 h-3" /> Revert
-            </button>
-          )}
           <button onClick={onSave} title="Save campaign changes inside this editor on this browser"
             className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] border font-semibold transition-colors ${
               hasUnsaved
@@ -200,6 +190,7 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
             }`}>
             <Save className="w-3 h-3" /> Save
           </button>
+          <CampaignRevertButton onRevert={onRevert} hasSavedSnapshot={hasSavedSnapshot} />
           {dirtyLayers && dirtyLayers.size > 0 && (
             <button onClick={onExport} title="Export modified layers as TGA files"
               className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 border border-amber-500/40 text-slate-900 font-semibold transition-colors">
