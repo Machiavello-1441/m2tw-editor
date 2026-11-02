@@ -8,7 +8,8 @@ import { restoreUndoStorage } from '@/components/map/campaignUndoStorage';
 export default function useCampaignSelection(snapshot, apply, load) {
   const library = campaignLibrary();
   const [active, setActive] = useState(library.active);
-  const [loading, setLoading] = useState(false);
+  // Do not let an initial raw-file draft overwrite a recovery copy while it loads.
+  const [loading, setLoading] = useState(() => Boolean(library.active));
   const [error, setError] = useState('');
   const [recoveredAt, setRecoveredAt] = useState(null);
   const current = useRef({ snapshot, apply, load });

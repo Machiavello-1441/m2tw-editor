@@ -34,7 +34,7 @@ export default class CampaignRecoveryController {
         this.notify({ pending: this.revision > this.durable, savedAt: this.previous.recoveryAt, error: '' });
         return true;
       } catch (error) {
-        this.notify({ pending: true, error: `Recovery could not be saved: ${error.message}. Keep this tab open and export your work.` });
+        this.notify({ pending: true, error: `Auto-save failed: ${error.message}. Retrying in the background. Keep this tab open and export your work if this continues.` });
         return false;
       } finally { this.running = null; }
     })();

@@ -6,7 +6,7 @@ export default function CampaignRecoveryStatus({ status, recoveredAt }) {
   if (!status.pending && !status.savedAt && !recoveredAt) return null;
   return <div role="status" className="flex items-center gap-2 border-b border-border bg-card px-3 py-1.5 text-[10px] text-muted-foreground">
     {status.pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />}
-    <span>{status.pending ? 'Saving recovery copy…' : `Recovery copy saved on this browser at ${new Date(status.savedAt || recoveredAt).toLocaleTimeString()}.`}
+    <span>{status.pending ? 'Auto-saving changes…' : `Auto-saved in this browser at ${new Date(status.savedAt || recoveredAt).toLocaleTimeString()}.`}
       {recoveredAt ? ' Your previous work was restored.' : ''}</span>
   </div>;
 }
