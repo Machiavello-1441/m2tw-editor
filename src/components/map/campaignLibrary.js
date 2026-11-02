@@ -1,11 +1,18 @@
 import { restoreCampaignStorage } from '@/components/map/campaignSession';
 import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
+import { getFile, setFile } from '@/lib/bigFileStore';
+import { CAMPAIGN_SAVE_INDEX, restoreSavedCampaignLibrary } from '@/components/map/campaignSavePersistence';
 
 const state = { campaigns: [], active: '', snapshots: new Map() };
 const pathOf = f => (f.webkitRelativePath || f.name).replace(/\\/g, '/').toLowerCase();
 const globals = new Set(['descr_sm_factions.txt', 'descr_rebel_factions.txt', 'descr_religions.txt', 'descr_sm_resources.txt', 'descr_cultures.txt', 'descr_names.txt', 'export_descr_character_traits.txt', 'export_descr_ancillaries.txt', 'export_descr_unit.txt', 'descr_sounds_music_types.txt', 'names.txt.strings.bin']);
-export const campaignLibrary = () => state;
+export const campaignLibrary = () => {
+  if (!state.campaigns.length && getFile(CAMPAIGN_SAVE_INDEX)) restoreSavedCampaignLibrary(state);
+  return state;
+};
 export function indexCampaignLibrary(files, preferred) {
+  // An explicitly imported mod starts its own workspace, never another mod's saved maps.
+  setFile(CAMPAIGN_SAVE_INDEX, '');
   const groups = new Map(), base = [], shared = [], names = [];
   for (const file of files) {
     const path = pathOf(file), name = file.name.toLowerCase();

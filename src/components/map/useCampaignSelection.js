@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { campaignLibrary } from '@/components/map/campaignLibrary';
 import { captureCampaignStorage, restoreCampaignStorage } from '@/components/map/campaignSession';
+import { persistSavedCampaign, reviveCampaignSnapshot } from '@/components/map/campaignSavePersistence';
 
 export default function useCampaignSelection(snapshot, apply, load) {
   const library = campaignLibrary();
@@ -22,7 +23,8 @@ export default function useCampaignSelection(snapshot, apply, load) {
     const previous = library.snapshots.get(committed.current);
     busy.current = true; setLoading(true); setError('');
     try {
-      const saved = library.snapshots.get(id);
+      const stored = library.snapshots.get(id);
+      const saved = stored ? await reviveCampaignSnapshot(stored) : null;
       restoreCampaignStorage(saved?.storage);
       if (saved) current.current.apply(saved);
       else { current.current.apply(null); await current.current.load({ files: campaign.files, campaignName: campaign.name }); }
@@ -45,5 +47,17 @@ export default function useCampaignSelection(snapshot, apply, load) {
     window.addEventListener('m2tw-campaign-library-updated', refresh);
     return () => { save(); window.removeEventListener('m2tw-campaign-library-updated', refresh); };
   }, []);
-  return { active, loading, error, select };
+  const commit = async changes => {
+    if (busy.current) throw new Error('Wait for the campaign to finish loading before saving.');
+    busy.current = true;
+    try {
+      const id = committed.current || changes.stratData?.campaignName || 'campaign';
+      const saved = { ...current.current.snapshot, ...changes };
+      await persistSavedCampaign(library, id, saved);
+      library.snapshots.set(id, saved);
+      current.current.snapshot = saved;
+      library.active = id; committed.current = id; setActive(id);
+    } finally { busy.current = false; }
+  };
+  return { active, loading, error, select, commit };
 }

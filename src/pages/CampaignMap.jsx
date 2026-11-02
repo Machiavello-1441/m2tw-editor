@@ -13,7 +13,7 @@ import NewRegionPaintWizard from '../components/map/NewRegionPaintWizard';
 import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
-import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat, serializeDescrRegions } from '../components/map/stratParser';
+import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat } from '../components/map/stratParser';
 import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB, parseDescrNames, parseExportDescrTraits, parseExportDescrAncillaries } from '../components/map/additionalParsers';
 import { parseFactionMovies } from '../components/map/factionMoviesParser';
 import { parseEDU } from '../components/units/EDUParser';
@@ -32,6 +32,8 @@ import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanic
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
 import { getCharacterNamesRaw, getCharacterDisplayNames } from '@/lib/characterNames';
 import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
+import campaignCheckpoint from '@/components/map/campaignCheckpoint';
+import { restoreCampaignStorage } from '@/components/map/campaignSession';
 
 const INITIAL_PAINT = {
   active: false,
@@ -153,6 +155,8 @@ export default function CampaignMap() {
   const [visibleCategories, setVisibleCategories] = useState(new Set(['settlement', 'resource', 'character', 'fortification']));
   const [editedSettlements, setEditedSettlements] = useState({});
   const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const updateSettlements = useSettlementChanges({ setEditedSettlements, setOverlayItems, setStratDataRaw, setSelectedItem, setOverlayDirty });
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
   const [regionWizard, setRegionWizard] = useState(null); // { draft, step: 'paint'|'city'|'port' }
@@ -584,6 +588,7 @@ export default function CampaignMap() {
         setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList); setEduUnits(saved.eduUnits); setNamesDisplayMap(saved.namesDisplayMap);
       }
       savedSnapshot.current = saved?.savedSnapshot || null;
+      setSaveError(''); setSaveMessage('');
       setSelectedItem(null); setSelectedRegion(null); setPendingPlace(null); setPendingRelocate(null);
       setRegionWizard(null); setPendingCoordPick(null); setPaintState(INITIAL_PAINT); setOverlayMap(null);
     },
@@ -1236,72 +1241,38 @@ export default function CampaignMap() {
   }, []);
 
   // ── Save / Revert / Export TGA ─────────────────────────────────────────────
-  const handleSave = useCallback(() => {
-    setSaveError('');
-    // Flush any pending bitmap rebuilds so the display matches the saved data
-    if (bitmapTimerRef.current) { clearTimeout(bitmapTimerRef.current); flushBitmaps(); }
-    // Snapshot current layer pixel data + overlay items
-    const layerSnap = {};
-    for (const [id, layer] of Object.entries(layers)) {
-      if (layer?.data) {
-        layerSnap[id] = {
-          data: new Uint8ClampedArray(layer.data),
-          width: layer.width,
-          height: layer.height,
-        };
-      }
+  const handleSave = async () => {
+    if (saving || campaignSelection.loading) return;
+    setSaveError(''); setSaveMessage('');
+    if (!stratData && !regionsData && !Object.values(layers).some(layer => layer.data)) {
+      setSaveError('Load a campaign or map layer before saving.');
+      return;
     }
-    // Serialize the updated strat text (includes newly placed forts/watchtowers/characters)
-    // and persist it to sessionStorage so the Export page and re-navigation pick it up.
-    let updatedRaw = stratData?.raw ?? null;
-    let savedItems = overlayItems;
-    if (stratData?.raw) {
-      try {
-        updatedRaw = serializeDescrStrat(
-          { ...stratData, _regionsLookup: regionsData, _regionsLayer: layers['regions'] },
-          overlayItems, editedSettlements
-        );
-        // Re-parse the serialized text so _lineNum / _lineStart / _lineEnd values
-        // stay in sync with the modified raw. Without this, the line indices
-        // become stale after splices (new settlements/characters/forts inserted,
-        // faction header rewrites) and the NEXT save would patch the wrong
-        // lines — overwriting settlement lines with character lines and
-        // corrupting the file (characters interspersed with settlements).
-        const reparsed = parseDescrStrat(updatedRaw);
-        const savedOwners = new Map(reparsed.items.filter(item => item.category === 'settlement').map(item => [item.region, item.faction]));
-        for (const item of overlayItems.filter(item => item.category === 'settlement')) {
-          const expected = { ...item, ...editedSettlements[item.id] };
-          if (savedOwners.get(expected.region) !== expected.faction) {
-            throw new Error(`Ownership for ${expected.region} could not be saved. Your edits have been kept.`);
-          }
-        }
-        const enriched = applySettlementPositions(reparsed, regionsData, layers['regions']);
-        sessionStorage.setItem('m2tw_strat_raw', updatedRaw);
-        setStratDataRaw(enriched);
-        setOverlayItems(enriched.items || []);
-        setSelectedItem(previous => previous?.category === 'settlement'
-          ? enriched.items?.find(item => item.category === 'settlement' && item.region === previous.region) || null
-          : previous);
-        setEditedSettlements({});
-        updatedRaw = enriched.raw || updatedRaw;
-        savedItems = enriched.items || [];
-      } catch (error) {
-        setSaveError(error.message || 'Could not save campaign changes. Your edits have been kept.');
-        return;
-      }
-    }
-    savedSnapshot.current = {
-      layers: layerSnap,
-      overlayItems: JSON.parse(JSON.stringify(savedItems)),
-      stratRaw: updatedRaw,
-    };
-    setDirtyLayers(new Set());
-    setOverlayDirty(false);
-  }, [layers, overlayItems, stratData, editedSettlements, regionsData, applySettlementPositions, flushBitmaps]);
+    setSaving(true);
+    try {
+      if (bitmapTimerRef.current) { clearTimeout(bitmapTimerRef.current); flushBitmaps(); }
+      const saved = campaignCheckpoint({ layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, religionList });
+      // Keep the draft and dirty flags untouched until persistent storage confirms the save.
+      await campaignSelection.commit(saved);
+      restoreCampaignStorage(saved.storage, false);
+      setStratDataRaw(saved.stratData);
+      setOverlayItems(saved.overlayItems);
+      setSelectedItem(previous => previous?.category === 'settlement'
+        ? saved.overlayItems.find(item => item.category === 'settlement' && item.region === previous.region) || null
+        : previous);
+      setEditedSettlements({});
+      savedSnapshot.current = saved.savedSnapshot;
+      setDirtyLayers(new Set()); setOverlayDirty(false);
+      setSaveMessage('Saved inside the editor on this browser.');
+    } catch (error) {
+      setSaveError(error.message || 'Could not save campaign changes. Your edits have been kept.');
+    } finally { setSaving(false); }
+  };
 
   const handleRevert = useCallback(() => {
     const snap = savedSnapshot.current;
     if (!snap) return;
+    clearTimeout(bitmapTimerRef.current); pendingBitmapRef.current = {};
     // Restore layer pixel data + bitmaps
     const promises = Object.entries(snap.layers).map(([id, { data, width, height }]) =>
       createImageBitmap(new ImageData(new Uint8ClampedArray(data), width, height)).then(bitmap => ({ id, data, width, height, bitmap }))
@@ -1315,14 +1286,17 @@ export default function CampaignMap() {
         return next;
       });
     });
-    // Restore overlay items and discard ownership edits from the reverted draft.
+    // Restore region details and names along with the saved map and campaign text.
+    if (snap.storage) restoreCampaignStorage(snap.storage, false);
+    if ('regionsData' in snap) setRegionsDataRaw(structuredClone(snap.regionsData));
+    if ('settlementNames' in snap) setSettlementNamesRaw(structuredClone(snap.settlementNames));
     setEditedSettlements({});
-    setSaveError('');
+    setSaveError(''); setSaveMessage('');
     const restoredItems = JSON.parse(JSON.stringify(snap.overlayItems));
     setOverlayItems(restoredItems);
     if (snap.stratRaw) {
       try { sessionStorage.setItem('m2tw_strat_raw', snap.stratRaw); } catch {}
-      setStratDataRaw(prev => prev ? { ...prev, items: restoredItems, raw: snap.stratRaw } : prev);
+      setStratDataRaw({ ...parseDescrStrat(snap.stratRaw), items: restoredItems });
     }
     setSelectedItem(null);
     setDirtyLayers(new Set());
@@ -1352,7 +1326,8 @@ export default function CampaignMap() {
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-200 relative">
+    <>
+    <div inert={saving ? '' : undefined} className="h-screen flex flex-col bg-slate-950 text-slate-200 relative">
       {campaignSelection.loading && <div className="absolute inset-0 top-9 z-50 bg-background/90 flex items-center justify-center text-foreground">Loading campaign files…</div>}
       {/* Toolbar */}
       <div className="h-9 border-b border-slate-800 flex items-center px-3 gap-2 shrink-0 bg-slate-900/80">
@@ -1505,6 +1480,7 @@ export default function CampaignMap() {
       />
 
       {saveError && <p role="alert" className="border-b border-destructive bg-card px-3 py-2 text-xs text-destructive">{saveError}</p>}
+      {saveMessage && !overlayDirty && dirtyLayers.size === 0 && <p role="status" className="border-b border-border bg-card px-3 py-2 text-xs text-foreground">{saveMessage}</p>}
 
       {/* Coastline Tracer panel */}
       {osmBbox && showCoastlineTracer && mapW2 > 0 && mapH > 0 && (
@@ -1612,7 +1588,7 @@ export default function CampaignMap() {
                   }}
                   onNamesLoad={(text) => { try { sessionStorage.setItem('m2tw_names_raw', text); } catch {} setSettlementNamesRaw(parseSettlementNames(text)); }}
                   onFactionsLoad={(text) => { try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {} setFactionColorsRaw(parseDescrSmFactions(text)); }}
-                  onRegionsDataUpdate={setRegionsDataRaw}
+                  onRegionsDataUpdate={updated => { setRegionsDataRaw(updated); setOverlayDirty(true); }}
                   onSettlementChange={(id, edits) => updateSettlements([{ id, edits }])}
                   onBulkSettlementChange={updateSettlements}
                   overlayItems={overlayItems}
@@ -1642,6 +1618,7 @@ export default function CampaignMap() {
                   regionsLayer={layers['regions']}
                   onSettlementNamesChange={(nameUpdates) => {
                     setSettlementNamesRaw(prev => ({ ...(prev || {}), ...nameUpdates }));
+                    setOverlayDirty(true);
                   }}
                   onRecolorRegion={handleRecolorRegion}
                   onAddNewRegion={handleAddNewRegion}
@@ -1688,5 +1665,7 @@ export default function CampaignMap() {
       </div>
 
     </div>
+    {saving && <div role="status" className="fixed inset-0 z-[1200] flex items-center justify-center bg-background/80 text-sm text-foreground">Saving campaign…</div>}
+    </>
   );
 }

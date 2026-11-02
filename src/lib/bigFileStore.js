@@ -21,16 +21,33 @@ function openDb() {
 }
 const dbPromise = typeof indexedDB !== 'undefined' ? openDb().catch(() => null) : Promise.resolve(null);
 
-async function persist(key, value) {
+async function persistEntries(entries) {
   const db = await dbPromise;
   if (!db) throw new Error('Persistent file storage is unavailable');
   await new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
     tx.oncomplete = () => resolve();
     tx.onerror = tx.onabort = () => reject(tx.error || new Error('File storage write failed'));
-    if (value == null) tx.objectStore(STORE).delete(key);
-    else tx.objectStore(STORE).put(value, key);
+    try {
+      for (const [key, value] of entries) {
+        if (value == null) tx.objectStore(STORE).delete(key);
+        else tx.objectStore(STORE).put(value, key);
+      }
+    } catch (error) {
+      tx.abort();
+      reject(error);
+    }
   });
+}
+async function persist(key, value) { await persistEntries([[key, value]]); }
+
+/** Atomically store structured editor data, including typed pixel buffers. */
+export async function setStoredFiles(entries) {
+  await persistEntries(entries);
+  for (const [key, value] of entries) {
+    mem()[key] = value;
+    notifyChange(key);
+  }
 }
 
 const pendingWrites = new Set();

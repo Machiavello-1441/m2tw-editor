@@ -192,7 +192,7 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
               <RotateCcw className="w-3 h-3" /> Revert
             </button>
           )}
-          <button onClick={onSave} title="Save current state as checkpoint"
+          <button onClick={onSave} title="Save campaign changes inside this editor on this browser"
             className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] border font-semibold transition-colors ${
               hasUnsaved
                 ? 'bg-green-700/80 hover:bg-green-700 border-green-600/40 text-green-200 animate-pulse'
