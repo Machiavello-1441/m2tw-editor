@@ -15,7 +15,7 @@ export default class CampaignRecoveryController {
     if (this.skipNext) { this.skipNext = false; return; }
     this.revision++;
     this.since ||= Date.now();
-    this.notify(previous => ({ ...previous, pending: true }));
+    this.notify(previous => previous.pending ? previous : { ...previous, pending: true });
     this.timer = setTimeout(() => this.flush(), Math.min(600, Math.max(0, 2000 - (Date.now() - this.since))));
   }
   async flush() {
