@@ -95,7 +95,6 @@ export default function Layout({ children, currentPageName }) {
     <ModDataProvider>
         <div className="dark min-h-screen bg-background flex">
           <nav aria-label="Editors" className={`${sidebarCollapsed ? 'w-16' : 'w-16 lg:w-56'} border-r border-border bg-card flex flex-col shrink-0`}>
-            <EditorSidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
             <div className="p-3 lg:p-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -107,6 +106,7 @@ export default function Layout({ children, currentPageName }) {
                 </div>}
               </div>
             </div>
+            <EditorSidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
             <div id="editor-navigation" className="flex-1 p-2 space-y-1">
               {navItems.map((item) => {
                       const isActive = currentPageName === item.page;
