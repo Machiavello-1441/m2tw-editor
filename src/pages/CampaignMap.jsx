@@ -152,6 +152,7 @@ export default function CampaignMap() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [visibleCategories, setVisibleCategories] = useState(new Set(['settlement', 'resource', 'character', 'fortification']));
   const [editedSettlements, setEditedSettlements] = useState({});
+  const [saveError, setSaveError] = useState('');
   const updateSettlements = useSettlementChanges({ setEditedSettlements, setOverlayItems, setStratDataRaw, setSelectedItem, setOverlayDirty });
   const [pendingPlace, setPendingPlace] = useState(null); // item waiting to be placed on click
   const [regionWizard, setRegionWizard] = useState(null); // { draft, step: 'paint'|'city'|'port' }
@@ -1236,6 +1237,7 @@ export default function CampaignMap() {
 
   // ── Save / Revert / Export TGA ─────────────────────────────────────────────
   const handleSave = useCallback(() => {
+    setSaveError('');
     // Flush any pending bitmap rebuilds so the display matches the saved data
     if (bitmapTimerRef.current) { clearTimeout(bitmapTimerRef.current); flushBitmaps(); }
     // Snapshot current layer pixel data + overlay items
@@ -1259,7 +1261,6 @@ export default function CampaignMap() {
           { ...stratData, _regionsLookup: regionsData, _regionsLayer: layers['regions'] },
           overlayItems, editedSettlements
         );
-        sessionStorage.setItem('m2tw_strat_raw', updatedRaw);
         // Re-parse the serialized text so _lineNum / _lineStart / _lineEnd values
         // stay in sync with the modified raw. Without this, the line indices
         // become stale after splices (new settlements/characters/forts inserted,
@@ -1267,7 +1268,15 @@ export default function CampaignMap() {
         // lines — overwriting settlement lines with character lines and
         // corrupting the file (characters interspersed with settlements).
         const reparsed = parseDescrStrat(updatedRaw);
+        const savedOwners = new Map(reparsed.items.filter(item => item.category === 'settlement').map(item => [item.region, item.faction]));
+        for (const item of overlayItems.filter(item => item.category === 'settlement')) {
+          const expected = { ...item, ...editedSettlements[item.id] };
+          if (savedOwners.get(expected.region) !== expected.faction) {
+            throw new Error(`Ownership for ${expected.region} could not be saved. Your edits have been kept.`);
+          }
+        }
         const enriched = applySettlementPositions(reparsed, regionsData, layers['regions']);
+        sessionStorage.setItem('m2tw_strat_raw', updatedRaw);
         setStratDataRaw(enriched);
         setOverlayItems(enriched.items || []);
         setSelectedItem(previous => previous?.category === 'settlement'
@@ -1276,7 +1285,10 @@ export default function CampaignMap() {
         setEditedSettlements({});
         updatedRaw = enriched.raw || updatedRaw;
         savedItems = enriched.items || [];
-      } catch {}
+      } catch (error) {
+        setSaveError(error.message || 'Could not save campaign changes. Your edits have been kept.');
+        return;
+      }
     }
     savedSnapshot.current = {
       layers: layerSnap,
@@ -1303,7 +1315,9 @@ export default function CampaignMap() {
         return next;
       });
     });
-    // Restore overlay items
+    // Restore overlay items and discard ownership edits from the reverted draft.
+    setEditedSettlements({});
+    setSaveError('');
     const restoredItems = JSON.parse(JSON.stringify(snap.overlayItems));
     setOverlayItems(restoredItems);
     if (snap.stratRaw) {
@@ -1489,6 +1503,8 @@ export default function CampaignMap() {
         show3D={show3D}
         onToggle3D={() => setShow3D(v => !v)}
       />
+
+      {saveError && <p role="alert" className="border-b border-destructive bg-card px-3 py-2 text-xs text-destructive">{saveError}</p>}
 
       {/* Coastline Tracer panel */}
       {osmBbox && showCoastlineTracer && mapW2 > 0 && mapH > 0 && (

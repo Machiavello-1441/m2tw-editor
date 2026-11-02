@@ -4,6 +4,7 @@
  */
 
 import settlementOwnershipTransfers from '@/components/map/settlementOwnershipTransfers';
+import { insertFactionIntoStrat } from '@/components/map/factionBlockOps';
 
 export const SETTLEMENT_LEVELS = ['village', 'town', 'large_town', 'city', 'large_city', 'huge_city'];
 export const SETTLEMENT_LEVEL_ICONS = {
@@ -635,7 +636,8 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   }
   // Settlement and fort-comment edits use ORIGINAL coordinates. Apply them
   // together before faction/global insertions shift any of those coordinates.
-  const transferredSettlements = settlementOwnershipTransfers(lines, stratData.items || [], overlayItems, editedSettlements);
+  const campaignFactions = [...(stratData.factions || []).map(faction => faction.name), ...(stratData.playable || []), ...(stratData.unlockable || []), ...(stratData.nonplayable || [])];
+  const transferredSettlements = settlementOwnershipTransfers(lines, stratData.items || [], overlayItems, editedSettlements, campaignFactions);
   const settlementIds = new Set([...Object.keys(editedSettlements), ...transferredSettlements.keys()]);
   for (const id of settlementIds) {
     const orig = stratData.items?.find(it => it.id == id && it.category === 'settlement');
@@ -818,6 +820,14 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     ...overlayItems.filter(i => i.id < 0 && i.category === 'settlement'),
     ...transferredSettlements.values(),
   ];
+  // Listed factions may have no starting possessions or raw campaign block.
+  // Create their header only after all original-coordinate patches are done.
+  for (const factionName of new Set([...transferredSettlements.values()].map(item => item.faction))) {
+    if (!lines.some(line => cleanLine(line).match(/^faction\s+([^,\s]+)/i)?.[1] === factionName)) {
+      const expanded = insertFactionIntoStrat(lines.join('\n'), factionName);
+      lines.splice(0, lines.length, ...expanded.split('\n'));
+    }
+  }
   if (newSettlements.length > 0) {
     for (const s of newSettlements) {
       const factionName = s.faction || 'slave';
@@ -843,8 +853,8 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
           const raw = lines[fi];
           const fl = raw.replace(/;.*$/, '').trim();
 
-          // Track brace depth
-          for (const ch of raw) {
+          // Comment braces are not part of the settlement structure.
+          for (const ch of fl) {
             if (ch === '{') braceDepth++;
             else if (ch === '}') braceDepth--;
           }

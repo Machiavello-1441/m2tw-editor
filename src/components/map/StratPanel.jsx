@@ -34,6 +34,7 @@ import { addCharacterNamesToZip } from '@/components/export/characterNamesExport
 import BulkSettlementEditor from '@/components/map/BulkSettlementEditor';
 import SettlementTypeFields from '@/components/map/SettlementTypeFields';
 import StratPanelTabs from '@/components/map/StratPanelTabs';
+import SettlementListFilters from '@/components/map/SettlementListFilters';
 import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
 import { getCampaignExportPaths, rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 
@@ -860,6 +861,8 @@ export default function StratPanel({
   const [tab, setTab] = useState('overview');
   const [openCharId, setOpenCharId] = useState(null);
   const [search, setSearch] = useState('');
+  const [settlementFaction, setSettlementFaction] = useState('');
+  const [settlementResource, setSettlementResource] = useState('');
   // Faction settlement lists are collapsed by default for readability.
   // A faction is added to this Set when the user expands it.
   const [expandedFactions, setExpandedFactions] = useState(() => new Set());
@@ -948,7 +951,7 @@ export default function StratPanel({
     if (selectedItem?.category === 'settlement' && selectedItem.faction) {
       setExpandedFactions(prev => prev.has(selectedItem.faction) ? prev : new Set(prev).add(selectedItem.faction));
     }
-  }, [selectedItem?.id]);
+  }, [selectedItem?.id, selectedItem?.faction]);
 
   const handleDoubleClickItem = (item) => {
     if (item.category === 'character') {
@@ -1168,9 +1171,16 @@ export default function StratPanel({
   (overlayItems || []).filter((i) => i.category === 'settlement'),
   [overlayItems]);
 
+  const settlementFactionOptions = useMemo(() => [...new Set(settlements.map(item => item.faction).filter(Boolean))].sort(), [settlements]);
+  const resourceRegions = useMemo(() => new Map((regionsData || []).map(region => [region.regionName, region.resources || []])), [regionsData]);
+  const settlementResourceOptions = useMemo(() => [...new Set(hiddenResourceList || extractHiddenResourcesFromEDB(edbData))].sort(), [hiddenResourceList, edbData]);
+  const settlementFiltersActive = Boolean(search || settlementFaction || settlementResource);
   const filteredSettlements = useMemo(() =>
-  settlements.filter((s) => !search || s.region?.toLowerCase().includes(search.toLowerCase()) || s.faction?.toLowerCase().includes(search.toLowerCase())),
-  [settlements, search]);
+    settlements.filter(item =>
+      (!search || item.region?.toLowerCase().includes(search.toLowerCase()) || item.faction?.toLowerCase().includes(search.toLowerCase())) &&
+      (!settlementFaction || item.faction === settlementFaction) &&
+      (!settlementResource || resourceRegions.get(item.region)?.includes(settlementResource))),
+    [settlements, search, settlementFaction, settlementResource, resourceRegions]);
 
   const byFaction = useMemo(() => {
     const map = {};
@@ -1683,6 +1693,11 @@ export default function StratPanel({
             }} />
 
           }
+          <SettlementListFilters faction={settlementFaction} resource={settlementResource}
+            factions={settlementFactionOptions} resources={settlementResourceOptions}
+            onFactionChange={setSettlementFaction} onResourceChange={setSettlementResource}
+            shown={filteredSettlements.length} total={settlements.length} />
+          {settlements.length > 0 && !filteredSettlements.length && <p className="py-3 text-center text-[10px] text-muted-foreground">No settlements match these filters.</p>}
           {bulkMode && <BulkSettlementEditor selected={settlements.filter(s => bulkIds.has(s.id))} visible={filteredSettlements} edbData={edbData}
             onSelectVisible={() => { setBulkIds(new Set(filteredSettlements.map(s => s.id))); setExpandedFactions(new Set(byFaction.map(([f]) => f))); }}
             onClear={() => setBulkIds(new Set())} onApply={onBulkSettlementChange} />}
@@ -1700,7 +1715,7 @@ export default function StratPanel({
             onReorderSettlements(factionName, reordered.map((s) => s.id));
           }}>
               {byFaction.map(([factionName, setts]) => {
-                const isExpanded = expandedFactions.has(factionName);
+                const isExpanded = settlementFiltersActive || expandedFactions.has(factionName);
                 return (
             <div key={factionName}>
                   <div className="flex items-center gap-1.5 px-1 py-0.5 mb-0.5">
@@ -1717,7 +1732,7 @@ export default function StratPanel({
                     {(provided) =>
                 <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-0.5 ml-2">
                         {setts.map((s, idx) =>
-                  <Draggable key={String(s.id)} draggableId={String(s.id)} index={idx}>
+                  <Draggable key={String(s.id)} draggableId={String(s.id)} index={idx} isDragDisabled={settlementFiltersActive}>
                             {(drag, snapshot) =>
                     <div ref={drag.innerRef} {...drag.draggableProps}
                     className={snapshot.isDragging ? 'opacity-70' : ''}>
@@ -1726,7 +1741,7 @@ export default function StratPanel({
                                     <GripVertical className="w-3 h-3" />
                                   </div>
                                   {bulkMode && <input type="checkbox" aria-label={`Select ${s.region}`} checked={bulkIds.has(s.id)} onChange={() => setBulkIds(prev => { const next = new Set(prev); next.has(s.id) ? next.delete(s.id) : next.add(s.id); return next; })} />}
-                                  {idx === 0 && <span className="text-[8px] text-amber-500 shrink-0" title="Capital">★</span>}
+                                  {settlements.find(item => item.faction === factionName)?.id === s.id && <span className="text-[8px] text-amber-500 shrink-0" title="Capital">★</span>}
                                   <div className="flex-1 min-w-0">
                                     <SettlementRow
                             item={s}

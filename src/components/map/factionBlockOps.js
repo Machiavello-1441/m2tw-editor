@@ -31,7 +31,7 @@ export function findFactionBlocks(lines) {
         current = null;
       }
     }
-    for (const ch of raw) {
+    for (const ch of c) {
       if (ch === '{') depth++;
       else if (ch === '}') depth--;
     }
