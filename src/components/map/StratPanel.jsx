@@ -4,7 +4,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { getItemIcon } from './StratOverlay';
-import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, parseWinConditions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
+import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { exportTGA, downloadBlob } from './tgaExporter';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { encodeStringsBin } from '../strings/stringsBinCodec';
@@ -851,7 +851,8 @@ export default function StratPanel({
   descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onPinCharacter,
   openItemId, onOpenItemHandled,
   onPickFromMap,
-  osmBbox, onOsmAddRegion, onOsmPaintBoundary
+  osmBbox, onOsmAddRegion, onOsmPaintBoundary, historyRevision = 0,
+  campaignDetails, onCampaignDetailsChange
 }) {
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
@@ -871,22 +872,13 @@ export default function StratPanel({
   const [showNewRegion, setShowNewRegion] = useState(false);
   const [newRegionSeedColor, setNewRegionSeedColor] = useState(null);
   const [exportIssues, setExportIssues] = useState(null);
-  const [winConditions, setWinConditions] = useState(() => {
-    try {
-      // Try sessionStorage first, then fall back to localStorage (loaded from Home)
-      const raw = sessionStorage.getItem('m2tw_win_conditions_raw') ||
-      getFile('m2tw_campaign_win_conditions');
-      return raw ? parseWinConditions(raw) : null;
-    } catch {return null;}
-  });
-
-  const [factionMovies, setFactionMovies] = useState(() => {
-    try {
-      const raw = sessionStorage.getItem('m2tw_faction_movies_raw') ||
-      getFile('m2tw_campaign_faction_movies');
-      return raw ? parseFactionMovies(raw) : null;
-    } catch {return null;}
-  });
+  const { winConditions, factionMovies, disasters, campaignEvents, campaignDescription } = campaignDetails;
+  const setDetail = (key, value) => onCampaignDetailsChange(previous => ({ ...previous, [key]: value }));
+  const setWinConditions = value => setDetail('winConditions', value);
+  const setFactionMovies = value => setDetail('factionMovies', value);
+  const setDisasters = value => setDetail('disasters', value);
+  const setCampaignEvents = value => setDetail('campaignEvents', value);
+  const setCampaignDescription = value => setDetail('campaignDescription', value);
 
   // Re-sync factionMovies when folder import stores the raw XML to sessionStorage
   useEffect(() => {
@@ -900,28 +892,12 @@ export default function StratPanel({
     return () => window.removeEventListener('m2tw-faction-movies-loaded', handler);
   }, []);
 
-  const [disasters, setDisasters] = useState(() => {
-    try {
-      const raw = sessionStorage.getItem('m2tw_disasters_raw') ||
-      getFile('m2tw_campaign_disasters');
-      return raw ? parseDisasters(raw) : null;
-    } catch {return null;}
-  });
 
-  const [campaignEvents, setCampaignEvents] = useState(() => {
-    try {
-      const raw = sessionStorage.getItem('m2tw_campaign_events_raw') ||
-      getFile('m2tw_campaign_events');
-      return raw ? parseCampaignEvents(raw) : null;
-    } catch {return null;}
-  });
-
-  const [campaignDescription, setCampaignDescription] = useState(() => {
-    try {return sessionStorage.getItem('m2tw_campaign_description') || getFile('m2tw_campaign_description') || '';} catch {return '';}
-  });
 
   const [overviewTab, setOverviewTab] = useState('files');
   const [loadError, setLoadError] = useState('');
+
+
 
   // ── M2EX wasteland detection ─────────────────────────────────────────────
   // Wasteland regions are an M2EX-patch feature. A wasteland province uses the
@@ -1247,7 +1223,7 @@ export default function StratPanel({
     <div className="flex flex-col h-full">
       <StratPanelTabs tab={tab} onChange={setTab} />
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div key={historyRevision} className="flex-1 overflow-y-auto p-2 space-y-2">
 
         {/* ── Overview tab ── */}
         {tab === 'overview' && <>

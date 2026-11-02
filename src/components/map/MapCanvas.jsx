@@ -156,7 +156,7 @@ function MapSyncHandler({ onTransformChange, jumpRef, osmBbox }) {
 
 /** Handles painting on a transparent canvas overlaid on Leaflet */
 function PaintCanvas({
-  layers, paintState, onPaint, osmBbox,
+  layers, paintState, onPaint, onPaintStart, onPaintEnd, osmBbox,
   onRegionClick, showTooltip, regionsData, settlementNames,
   showPixelGrid,
 }) {
@@ -393,6 +393,7 @@ function PaintCanvas({
     didDrag.current = false;
     lastMouse.current = { x: e.clientX, y: e.clientY };
     if (paintState?.active) {
+      onPaintStart?.();
       isPainting.current = true;
       map.dragging.disable();
       if (paintState.tool === 'bucket') doPaint(e.clientX, e.clientY, 'bucket');
@@ -400,7 +401,7 @@ function PaintCanvas({
       else if (paintState.tool === 'spray') doPaint(e.clientX, e.clientY, 'spray');
       else doPaint(e.clientX, e.clientY, 'pencil');
     }
-  }, [paintState, doPaint, map]);
+  }, [paintState, doPaint, map, onPaintStart]);
 
   const handleMouseMove = useCallback((e) => {
     const dx = e.clientX - lastMouse.current.x, dy = e.clientY - lastMouse.current.y;
@@ -451,10 +452,21 @@ function PaintCanvas({
     }
   }, [paintState, doPaint, drawCanvas, screenToMapPx, layers, mapW, mapH, osmBbox, showTooltip]);
 
+  const finishPaint = useCallback(() => {
+    if (!isPainting.current) return;
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (pendingPaint.current) {
+      doPaint(pendingPaint.current.x, pendingPaint.current.y, paintState.tool);
+      pendingPaint.current = null;
+    }
+    isPainting.current = false;
+    map.dragging.enable();
+    onPaintEnd?.();
+  }, [map, doPaint, paintState, onPaintEnd]);
+
   const handleMouseUp = useCallback((e) => {
     if (isPainting.current) {
-      isPainting.current = false;
-      map.dragging.enable();
+      finishPaint();
       return;
     }
     if (!didDrag.current && mapW > 0 && onRegionClick && osmBbox) {
@@ -467,17 +479,14 @@ function PaintCanvas({
       }
     }
     didDrag.current = false;
-  }, [map, mapW, mapH, onRegionClick, screenToMapPx, layers, osmBbox]);
+  }, [map, mapW, mapH, onRegionClick, screenToMapPx, layers, osmBbox, finishPaint]);
 
   const handleMouseLeave = useCallback(() => {
-    if (isPainting.current) {
-      isPainting.current = false;
-      map.dragging.enable();
-    }
+    finishPaint();
     cursorPosRef.current = null;
     drawCanvas();
     setProbe(null);
-  }, [map, drawCanvas]);
+  }, [finishPaint, drawCanvas]);
 
   // Use crosshair cursor always — the canvas draws the preview
   const cursorStyle = paintState?.active && paintState.tool === 'pipette' ? CURSOR_PIPETTE
@@ -576,7 +585,7 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
 export default function MapCanvas({
   layers, regionsMode = 'fill',
   onRegionClick, jumpRef,
-  paintState, onPaint,
+  paintState, onPaint, onPaintStart, onPaintEnd,
   showPixelGrid = false,
   showTooltip = true,
   osmBbox = null,
@@ -698,6 +707,8 @@ export default function MapCanvas({
           layers={layers}
           paintState={paintState}
           onPaint={onPaint}
+          onPaintStart={onPaintStart}
+          onPaintEnd={onPaintEnd}
           osmBbox={effectiveBbox}
           onRegionClick={onRegionClick}
           showTooltip={showTooltip}

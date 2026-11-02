@@ -1,7 +1,7 @@
 import CampaignDropdown from '@/components/map/CampaignDropdown';
 import React, { useState } from 'react';
 import { Pencil, PaintBucket, Save, Download, Pipette, SprayCan, Box } from 'lucide-react';
-import CampaignRevertButton from '@/components/map/CampaignRevertButton';
+import CampaignUndoControls from '@/components/map/CampaignUndoControls';
 import { LAYER_DEFS } from './mapLayerConstants';
 import { LAYER_PRESETS } from './paintPresets';
 import { useModClimatePresets } from '@/lib/modClimates';
@@ -69,7 +69,7 @@ function PresetPicker({ layerId, paintColor, onColorChange }) {
   );
 }
 
-export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onRevert, onExport, hasUnsaved, hasSavedSnapshot, dirtyLayers, show3D, onToggle3D }) {
+export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onUndo, undoEntries, historyDisabled, onExport, hasUnsaved, dirtyLayers, show3D, onToggle3D }) {
   const { active, layerId, paintColor, tool, brushSize } = paintState;
   const [showPresets, setShowPresets] = useState(false);
 
@@ -180,7 +180,7 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
           </>
         )}
 
-        {/* Save / Revert / Export */}
+        {/* Save / Undo history / Export */}
         <div className="ml-auto flex items-center gap-1.5">
           <button onClick={onSave} title="Save campaign changes inside this editor on this browser"
             className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] border font-semibold transition-colors ${
@@ -190,7 +190,7 @@ export default function MapPaintToolbar({ paintState, onPaintChange, onSave, onR
             }`}>
             <Save className="w-3 h-3" /> Save
           </button>
-          <CampaignRevertButton onRevert={onRevert} hasSavedSnapshot={hasSavedSnapshot} />
+          <CampaignUndoControls entries={undoEntries} onUndo={onUndo} disabled={historyDisabled} />
           {dirtyLayers && dirtyLayers.size > 0 && (
             <button onClick={onExport} title="Export modified layers as TGA files"
               className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-amber-600/80 hover:bg-amber-600 border border-amber-500/40 text-slate-900 font-semibold transition-colors">
