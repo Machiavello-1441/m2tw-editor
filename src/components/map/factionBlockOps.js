@@ -40,8 +40,8 @@ export function findFactionBlocks(lines) {
   return blocks;
 }
 
-// Insert a minimal new faction block after the last existing faction block,
-// and register the faction in the nonplayable list if it isn't listed yet.
+// Insert a minimal new faction block before slave, or after the last faction
+// when slave is absent, and register it in nonplayable if it isn't listed yet.
 export function insertFactionIntoStrat(raw, name) {
   const lines = raw.split('\n');
   const blocks = findFactionBlocks(lines);
@@ -54,8 +54,11 @@ export function insertFactionIntoStrat(raw, name) {
     '\tdenari_kings_purse\t1500',
     '',
   ];
+  const slaveBlock = blocks.find(block => block.name.toLowerCase() === 'slave');
   let insertIdx;
-  if (blocks.length > 0) {
+  if (slaveBlock) {
+    insertIdx = slaveBlock.start;
+  } else if (blocks.length > 0) {
     insertIdx = blocks[blocks.length - 1].end;
   } else {
     insertIdx = lines.findIndex(l =>
