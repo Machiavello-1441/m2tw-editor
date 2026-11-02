@@ -10,6 +10,7 @@ import { ModDataProvider } from './components/shared/ModDataContext';
 import { Castle, Download, Home, Shield, Package, Code2, Swords, Map, Globe, Volume2, FileText, ScrollText, Gem, Image } from 'lucide-react';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
+import EditorSidebarToggle from '@/components/shared/EditorSidebarToggle';
 
 // localStorage keys that indicate a given editor has data loaded
 const NAV_DATA_KEYS = {
@@ -76,6 +77,16 @@ const navItems = [
 
 export default function Layout({ children, currentPageName }) {
   const loadedPages = useLoadedPages();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('m2tw_sidebar_collapsed') === 'true');
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed;
+    localStorage.setItem('m2tw_sidebar_collapsed', String(next));
+    setSidebarCollapsed(next);
+  };
+  useEffect(() => {
+    // Editors listening for window resize must also adapt to the sidebar width.
+    window.dispatchEvent(new Event('resize'));
+  }, [sidebarCollapsed]);
   return (
     <RefDataProvider>
     <EDBProvider>
@@ -83,24 +94,27 @@ export default function Layout({ children, currentPageName }) {
     <AncillariesProvider>
     <ModDataProvider>
         <div className="dark min-h-screen bg-background flex">
-          <nav className="w-16 lg:w-56 border-r border-border bg-card flex flex-col shrink-0">
+          <nav aria-label="Editors" className={`${sidebarCollapsed ? 'w-16' : 'w-16 lg:w-56'} border-r border-border bg-card flex flex-col shrink-0`}>
+            <EditorSidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
             <div className="p-3 lg:p-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
                   <Castle className="w-4 h-4 text-primary" />
                 </div>
-                <div className="hidden lg:block">
+                {!sidebarCollapsed && <div className="hidden lg:block">
                   <h1 className="text-sm font-bold text-foreground leading-none">Mylae’s</h1>
                   <p className="text-muted-foreground text-lg">M2TW Mod Editor</p>
-                </div>
+                </div>}
               </div>
             </div>
-            <div className="flex-1 p-2 space-y-1">
+            <div id="editor-navigation" className="flex-1 p-2 space-y-1">
               {navItems.map((item) => {
                       const isActive = currentPageName === item.page;
                       return (
                         <Link
                           key={item.page}
+                          title={item.name}
+                          aria-label={item.name}
                           to={createPageUrl(item.page)}
                           className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
                       ${isActive ?
@@ -109,25 +123,25 @@ export default function Layout({ children, currentPageName }) {
                           }>
                           
                     <item.icon className="w-4 h-4 shrink-0" />
-                    <span className="hidden lg:block flex-1">{item.name}</span>
-                    {loadedPages[item.page] && (
+                    {!sidebarCollapsed && <span className="hidden lg:block flex-1">{item.name}</span>}
+                    {loadedPages[item.page] && !sidebarCollapsed && (
                       <span className="hidden lg:block w-2 h-2 rounded-full bg-green-500 shrink-0 ml-auto" title="Data loaded" />
                     )}
                     {loadedPages[item.page] && (
-                      <span className="lg:hidden w-2 h-2 rounded-full bg-green-500 shrink-0 absolute bottom-1 right-1" />
+                      <span className={`${sidebarCollapsed ? 'block' : 'lg:hidden'} w-2 h-2 rounded-full bg-green-500 shrink-0 absolute bottom-1 right-1`} title="Data loaded" />
                     )}
                   </Link>);
 
                     })}
             </div>
-            <div className="p-3 border-t border-border">
+            {!sidebarCollapsed && <div className="p-3 border-t border-border">
               <p className="text-[10px] text-muted-foreground text-center hidden lg:block">Based on Ultimate Docudemons 5.5
 
                     </p>
-            </div>
+            </div>}
           </nav>
 
-          <main className="flex-1 min-h-screen overflow-auto">
+          <main className="flex-1 min-w-0 min-h-screen overflow-auto">
             <AppErrorBoundary>
               {children}
             </AppErrorBoundary>
