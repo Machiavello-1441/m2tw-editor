@@ -98,7 +98,7 @@ export default function GroundTypeRangeEditor({ ranges, onChange }) {
       </div>
 
       <p className="text-[9px] text-slate-500 leading-relaxed">
-        Each band covers a brightness range (0=dark, 255=bright). Drag rows to reorder. Sea pixels (pure blue) use separate logic.
+        Each band covers a brightness range (0=dark, 255=bright). Drag rows to reorder. Sea pixels (RGB 0,0,x, any blue value) use separate logic.
       </p>
 
       {/* Visual band bar */}

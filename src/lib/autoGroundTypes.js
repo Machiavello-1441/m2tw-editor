@@ -4,7 +4,7 @@
  *   - groundRanges: ordered array of { gtId, max } bands
  *
  * M2TW ground type RGB values (canonical):
- *   Sea pixels from heightmap = (0,0,255) → sea_shallow (default)
+ *   Sea pixels from heightmap = (0,0,x), any blue value → sea_shallow (default)
  *   Land pixels = elevation 1-255 → mapped via groundRanges
  */
 
@@ -66,7 +66,7 @@ export function autoGenerateGroundTypes(heightData, groundRanges) {
     const r = hd[i], g = hd[i + 1], b = hd[i + 2];
 
     let gt;
-    if (r === 0 && g === 0 && b === 255) {
+    if (r === 0 && g === 0) {
       // Sea pixel
       gt = GT.sea_shallow;
     } else {
@@ -105,7 +105,7 @@ export async function autoGenerateGroundTypesAsync(heightData, groundRanges, onP
         const i = (y * width + x) * 4;
         const r = hd[i], g = hd[i + 1], b = hd[i + 2];
         let gt;
-        if (r === 0 && g === 0 && b === 255) {
+        if (r === 0 && g === 0) {
           gt = GT.sea_shallow;
         } else {
           const elev = Math.round((r + g + b) / 3);
