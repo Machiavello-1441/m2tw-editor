@@ -296,6 +296,7 @@ export default function CampaignMap() {
   const [importProgress, setImportProgress] = React.useState(null); // null | { step, total }
 
   const jumpRef = useRef(null);
+  const locateRef = useRef(null);
   const folderInputRef = useRef();
 
   // Auto-load files pre-staged from Home page (keep them in window for re-navigation)
@@ -1558,6 +1559,7 @@ export default function CampaignMap() {
             overlayUrl={overlayMap?.url}
             onRegionClick={handleCanvasClick}
             jumpRef={jumpRef}
+            locateRef={locateRef}
             paintState={paintState}
             onPaint={handlePaint}
             onPaintStart={undoHistory.begin}
@@ -1697,6 +1699,7 @@ export default function CampaignMap() {
                     onPickFromMap={(cb) => setPendingCoordPick(() => cb)}
                     osmBbox={osmBbox}
                     onOsmAddRegion={handleOsmAddRegion}
+                    onOsmLocate={(lat, lng) => locateRef.current?.(lat, lng)}
                     onOsmPaintBoundary={handleOsmPaintBoundary}
                     />
                     </div>

@@ -851,7 +851,7 @@ export default function StratPanel({
   descrNames, namesDisplayMap, traitsList, ancillariesList, eduUnits, onPinCharacter,
   openItemId, onOpenItemHandled,
   onPickFromMap,
-  osmBbox, onOsmAddRegion, onOsmPaintBoundary, historyRevision = 0,
+  osmBbox, onOsmAddRegion, onOsmPaintBoundary, onOsmLocate, historyRevision = 0,
   campaignDetails, onCampaignDetailsChange
 }) {
   const [addMode, setAddMode] = useState(null);
@@ -1634,6 +1634,7 @@ export default function StratPanel({
             <OsmRegionSearch
               bbox={osmBbox}
               onAdd={onOsmAddRegion}
+              onLocate={onOsmLocate}
               onMergeBoundary={onOsmPaintBoundary}
               lastRegionLabel={lastRegionLabel}
               selectedRegionInfo={selectedRegionInfo} />

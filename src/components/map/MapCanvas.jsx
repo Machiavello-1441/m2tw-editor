@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, ImageOverlay, useMap, useMapEvents } from 'rea
 import { LAYER_DEFS } from './mapLayerConstants';
 import MapPixelTooltip from './MapPixelTooltip';
 import StratOverlay from './StratOverlay';
+import CampaignMapLocate from '@/components/map/CampaignMapLocate';
 import 'leaflet/dist/leaflet.css';
 
 const DRAW_ORDER = ['heights', 'ground', 'climates', 'regions', 'features', 'fog'];
@@ -584,7 +585,7 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
 
 export default function MapCanvas({
   layers, regionsMode = 'fill',
-  onRegionClick, jumpRef,
+  onRegionClick, jumpRef, locateRef,
   paintState, onPaint, onPaintStart, onPaintEnd,
   showPixelGrid = false,
   showTooltip = true,
@@ -690,6 +691,7 @@ export default function MapCanvas({
         )}
 
         <MapSyncHandler onTransformChange={onTransformChange} jumpRef={jumpRef} osmBbox={effectiveBbox} />
+        <CampaignMapLocate locateRef={locateRef} />
 
         <StratOverlay
           items={overlayItems}

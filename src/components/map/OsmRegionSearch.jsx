@@ -53,7 +53,7 @@ function LevelBadge({ r }) {
  *
  * Only shown by the parent when the campaign map has a validated BBox.
  */
-export default function OsmRegionSearch({ bbox, onAdd, onMergeBoundary, lastRegionLabel, selectedRegionInfo }) {
+export default function OsmRegionSearch({ bbox, onAdd, onMergeBoundary, onLocate, lastRegionLabel, selectedRegionInfo }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -200,7 +200,12 @@ export default function OsmRegionSearch({ bbox, onAdd, onMergeBoundary, lastRegi
             return (
               <div key={i}
                 className="px-2 py-1.5 hover:bg-slate-700/60 border-b border-slate-700 last:border-0 flex items-start gap-1.5 transition-colors">
-                <MapPin className="w-3 h-3 text-blue-400 shrink-0 mt-0.5" />
+                <button type="button" onClick={() => onLocate?.(Number(r.lat), Number(r.lon))}
+                  title={`Center map on ${r.display_name || top}`}
+                  aria-label={`Center map on ${r.display_name || top}`}
+                  className="shrink-0 mt-0.5 rounded hover:bg-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring">
+                  <MapPin className="w-3 h-3 text-blue-400" />
+                </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-slate-200 truncate flex-1">{top}</span>
