@@ -6,7 +6,7 @@ import { useClimatePalette } from '@/lib/climateStore';
 import CustomClimatesPanel from '@/components/newmap/CustomClimatesPanel';
 import GroundTypeRangeEditor, { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import RiverChecker from '@/components/newmap/RiverChecker';
-import OsmTagOverlayEditor from '@/components/newmap/OsmTagOverlayEditor';
+import OsmOverlaySources from '@/components/newmap/OsmOverlaySources';
 import LandCoverFetcher from '@/components/newmap/LandCoverFetcher';
 import KoppenClimateFetcher from '@/components/newmap/KoppenClimateFetcher';
 import FeaturesLayerGenerator from '@/components/newmap/FeaturesLayerGenerator';
@@ -187,7 +187,7 @@ export default function WorkflowPanel({
 
                     <ImportButton layerId="ground" label="Ground Map" />
 
-                    <OsmTagOverlayEditor
+                    <OsmOverlaySources
                       bbox={bbox}
                       groundLayer={layers.ground}
                       onLayerUpdate={onLayerUpdate}
