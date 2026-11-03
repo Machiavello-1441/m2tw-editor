@@ -63,8 +63,8 @@ export function hexToRgb(hex) {
 
 /** Returns the pixel dimensions of a given layer relative to the base map size. */
 export function getLayerDimensions(def, mapWidth, mapHeight) {
-  // Ground/climates are 2× regions size + 1 in M2TW; everything else matches base size
-  const scaled = def?.id === 'ground' || def?.id === 'climates';
+  // Heights, ground and climates share the 2× regions + 1 grid in M2TW.
+  const scaled = def?.id === 'heights' || def?.id === 'ground' || def?.id === 'climates';
   return {
     width:  scaled ? mapWidth  * 2 + 1 : mapWidth,
     height: scaled ? mapHeight * 2 + 1 : mapHeight,

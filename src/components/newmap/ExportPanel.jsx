@@ -3,6 +3,7 @@ import { Download, Package, CheckCircle, AlertCircle, CloudUpload, Link, LogOut 
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { downloadTGA, validateRegionMap } from '@/lib/tgaEncoder';
 import { rotateResampleImageData, mapWorkPixelToTarget } from '@/lib/rotatedBbox';
+import resizePixelMap from '@/lib/resizePixelMap';
 import JSZip from 'jszip';
 import { base44 } from '@/api/base44Client';
 
@@ -49,9 +50,11 @@ export default function ExportPanel({ layers, mapWidth, mapHeight, baseBbox = nu
   const isRotated = !!(baseBbox?.rotation && Math.abs(baseBbox.rotation) > 0.01 && workBbox);
 
   const getExportImageData = (def, layer) => {
-    if (!isRotated) return layer.imageData;
     const { width, height } = getLayerDimensions(def, mapWidth, mapHeight);
-    return rotateResampleImageData(layer.imageData, workBbox, baseBbox, width, height);
+    if (isRotated) return rotateResampleImageData(layer.imageData, workBbox, baseBbox, width, height);
+    // Also repair older, undersized height/ground drafts for individual and bundle exports.
+    if (def.id === 'heights' || def.id === 'ground') return resizePixelMap(layer.imageData, width, height);
+    return layer.imageData;
   };
 
   // Transform a work-space pixel coordinate (regions-layer space) to target map space

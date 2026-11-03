@@ -18,6 +18,7 @@ import OsmHistoricTagFetcher from '../components/newmap/OsmHistoricTagFetcher';
 import { useReferenceLayers, ReferenceLayerControls } from '../components/newmap/ReferenceLayers';
 
 import { autoGenerateGroundTypesAsync, autoGenerateClimates, fillSolidColor } from '@/lib/autoGroundTypes';
+import resizePixelMap from '@/lib/resizePixelMap';
 import { DEFAULT_GROUND_RANGES } from '@/components/newmap/GroundTypeRangeEditor';
 import { computeTiles } from '@/lib/osmTiles';
 import { computeWorkArea } from '@/lib/rotatedBbox';
@@ -258,7 +259,11 @@ export default function NewMapEditor() {
     if (!heightLayer?.imageData) return;
     setGeneratingGround(true);
     setGroundProgress(0);
-    const result = await autoGenerateGroundTypesAsync(heightLayer.imageData, groundRanges, setGroundProgress);
+    const heightDef = LAYER_DEFS.find(def => def.id === 'heights');
+    const { width, height } = getLayerDimensions(heightDef, workWidth, workHeight);
+    const heightData = resizePixelMap(heightLayer.imageData, width, height);
+    if (heightData !== heightLayer.imageData) handleLayerUpdate('heights', { imageData: heightData, dirty: true });
+    const result = await autoGenerateGroundTypesAsync(heightData, groundRanges, setGroundProgress);
     handleLayerUpdate('ground', { imageData: result, visible: true, opacity: 1, dirty: true });
     setGroundProgress(100);
     setGeneratingGround(false);

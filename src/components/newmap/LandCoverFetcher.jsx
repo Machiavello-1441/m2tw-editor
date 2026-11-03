@@ -9,19 +9,7 @@ import {
 
 const GT_COLOR = Object.fromEntries(GROUND_TYPE_PALETTE.map(p => [p.id, p.color]));
 
-/** Ensures an ImageData is at the target dimensions (nearest-neighbour resize). */
-function ensureDimensions(imageData, targetW, targetH) {
-  if (imageData.width === targetW && imageData.height === targetH) return imageData;
-  const canvas = document.createElement('canvas');
-  canvas.width = targetW; canvas.height = targetH;
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  const src = document.createElement('canvas');
-  src.width = imageData.width; src.height = imageData.height;
-  src.getContext('2d').putImageData(imageData, 0, 0);
-  ctx.drawImage(src, 0, 0, targetW, targetH);
-  return ctx.getImageData(0, 0, targetW, targetH);
-}
+import resizePixelMap from '@/lib/resizePixelMap';
 
 export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, mapWidth, mapHeight }) {
   const [expanded, setExpanded] = useState(false);
@@ -67,7 +55,7 @@ export default function LandCoverFetcher({ bbox, groundLayer, onLayerUpdate, map
       }
 
       const base = groundRef.current.imageData;
-      const fixedBase = ensureDimensions(base, gW, gH);
+      const fixedBase = resizePixelMap(base, gW, gH);
       const { imageData, painted } = compositeLandCover(coverage, fixedBase, bbox, classColor, hidden);
       onLayerUpdate('ground', { imageData, visible: true, opacity: 1, dirty: true });
       setStatus(`Done — painted ${painted.toLocaleString()} pixels from ESA WorldCover (level ${coverage.level}).`);
