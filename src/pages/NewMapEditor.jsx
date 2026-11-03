@@ -441,6 +441,10 @@ export default function NewMapEditor() {
                       onConfirmSelection={confirmSelection}
                       onClearSelection={() => { setSelection(null); setBox(null); setSelectionMode(false); }}
                       onBboxEdit={handleSelectionUpdate}
+                      onDimensionsImport={({ width, height }) => {
+                        if (width !== undefined) setMapWidth(width);
+                        if (height !== undefined) setMapHeight(height);
+                      }}
                     />
                     {/* Box coords editor once box is set */}
                     {box && (

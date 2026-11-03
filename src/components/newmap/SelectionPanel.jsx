@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
 import { Crop, Check, X, FolderOpen } from 'lucide-react';
+import parseBboxFile from '@/components/newmap/parseBboxFile';
 
-export default function SelectionPanel({ selectionMode, onToggleSelection, selection, onConfirmSelection, onClearSelection, bboxConfirmed, onBboxEdit }) {
+export default function SelectionPanel({ selectionMode, onToggleSelection, selection, onConfirmSelection, onClearSelection, bboxConfirmed, onBboxEdit, onDimensionsImport }) {
   const fileInputRef = useRef(null);
   const hasSel = selection?.start && selection?.end;
 
@@ -10,17 +11,10 @@ export default function SelectionPanel({ selectionMode, onToggleSelection, selec
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const lines = ev.target.result.split('\n');
-      const vals = {};
-      for (const line of lines) {
-        const m = line.match(/^(north|south|east|west)=([-\d.]+)/);
-        if (m) vals[m[1]] = parseFloat(m[2]);
-      }
-      if (vals.north && vals.south && vals.east && vals.west) {
-        onBboxEdit?.({
-          start: { lat: vals.north, lng: vals.west },
-          end:   { lat: vals.south, lng: vals.east },
-        });
+      const imported = parseBboxFile(ev.target.result);
+      if (imported.selection) {
+        onBboxEdit?.(imported.selection);
+        onDimensionsImport?.({ width: imported.width, height: imported.height });
       }
     };
     reader.readAsText(file);
