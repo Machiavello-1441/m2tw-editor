@@ -16,7 +16,7 @@ import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat } from '../components/map/stratParser';
 import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB, parseDescrNames, parseExportDescrTraits, parseExportDescrAncillaries } from '../components/map/additionalParsers';
 import { parseFactionMovies } from '../components/map/factionMoviesParser';
-import { parseEDU } from '../components/units/EDUParser';
+import useSharedEduUnits, { seedCampaignEdu } from '@/components/units/useSharedEduUnits';
 import { parseStringsBin } from '../components/strings/stringsBinCodec';
 import { getStringsBinStore } from '../lib/stringsBinStore';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
@@ -197,7 +197,7 @@ export default function CampaignMap() {
   const [descrNames, setDescrNames] = useState(() => { try { const r = getCharacterNamesRaw(); return r ? parseDescrNames(r) : null; } catch { return null; } });
   const [traitsList, setTraitsList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_traits_raw'); return r ? parseExportDescrTraits(r) : []; } catch { return []; } });
   const [ancillariesList, setAncillariesList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_ancillaries_raw'); return r ? parseExportDescrAncillaries(r) : []; } catch { return []; } });
-  const [eduUnits, setEduUnits] = useState(() => { try { const r = sessionStorage.getItem('m2tw_edu_raw'); return r ? parseEDU(r) : []; } catch { return []; } });
+  const eduUnits = useSharedEduUnits();
   // namesDisplayMap: decoded from names.txt.strings.bin (separate from region settlement names)
   const [namesDisplayMap, setNamesDisplayMap] = useState(() => { try { return getCharacterDisplayNames(); } catch { return {}; } });
 
@@ -495,11 +495,7 @@ export default function CampaignMap() {
         try { sessionStorage.setItem('m2tw_ancillaries_raw', text); } catch {}
         setAncillariesList(parseExportDescrAncillaries(text));
       }
-      if (name === 'export_descr_unit.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_edu_raw', text); } catch {}
-        setEduUnits(parseEDU(text));
-      }
+      if (name === 'export_descr_unit.txt') await seedCampaignEdu(file);
       // Store additional campaign text files for ZIP export
       const extraSessionMap = {
         'descr_events.txt': 'm2tw_events_raw',
@@ -581,7 +577,7 @@ export default function CampaignMap() {
     }
   }, []);
 
-  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, factionColors, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, eduUnits, namesDisplayMap, campaignDetails, edbData, regionWizard, pendingPlace, paintState };
+  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, factionColors, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, namesDisplayMap, campaignDetails, edbData, regionWizard, pendingPlace, paintState };
   const campaignSelection = useCampaignSelection(
     campaignSnapshot,
     (saved) => {
@@ -596,7 +592,7 @@ export default function CampaignMap() {
       if (saved) {
         setFactionColorsRaw(saved.factionColors); setRebelFactions(saved.rebelFactions); setReligions(saved.religions);
         setNaturalRes(saved.naturalResources); setCultures(saved.cultures); setDescrNames(saved.descrNames);
-        setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList); setEduUnits(saved.eduUnits); setNamesDisplayMap(saved.namesDisplayMap);
+        setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList); setNamesDisplayMap(saved.namesDisplayMap);
       }
       if (saved?.edbData) setEdbData(saved.edbData);
       setCampaignDetails(saved?.campaignDetails || readCampaignDetails());

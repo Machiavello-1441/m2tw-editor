@@ -413,7 +413,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
               <p className="text-[9px] text-slate-500 uppercase font-semibold mb-0.5">
                 {c.charType === 'admiral' ? 'Ships' : 'Army Units'}
                 {c.faction && availableUnits.length > 0 && <span className="ml-1 text-slate-600">({availableUnits.length} available)</span>}
-                {c.faction && availableUnits.length === 0 && eduUnits.length > 0 && <span className="ml-1 text-amber-500"> — load EDU</span>}
+                {c.faction && availableUnits.length === 0 && eduUnits.length > 0 && <span className="ml-1 text-amber-500"> — no {c.charType === 'admiral' ? 'ships' : 'land units'} owned by {c.faction} in the loaded EDU</span>}
               </p>
 
               {/* Named character: must pick general_unit first */}
@@ -429,7 +429,7 @@ function CharacterRow({ char, allFactions, descrNames, namesDisplayMap, traitsLi
                         if (e.target.value) set('army', [{ unit: e.target.value, exp: 0, armour: 0, weaponLvl: 0 }, ...(c.army || [])]);
                         e.target.value = '';
                       }} className="w-full h-6 px-1 text-[9px] bg-slate-800 border border-amber-500/40 rounded text-amber-200 font-mono">
-                        <option value="">{generalUnits.length ? '— select general unit —' : 'No general units in EDU (load EDU)'}</option>
+                        <option value="">{generalUnits.length ? '— select general unit —' : eduUnits.length ? 'No general units owned by this faction' : 'Load EDU for general units'}</option>
                         {generalUnits.map(u => <option key={u.type} value={u.type}>{u.type}</option>)}
                       </CampaignDropdown>
                     );
