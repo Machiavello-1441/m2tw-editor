@@ -12,6 +12,7 @@ import {
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import { patchEduOwnership, verifyEduOwnershipPatch } from '@/components/units/eduOwnershipPatch';
+import verifyEduOwnershipInheritance from '@/components/units/verifyEduOwnershipInheritance';
 import { duplicateDescrNames } from '@/lib/descrNamesCodec';
 
 const EXPANDED_KEY = 'm2tw_strings_bin_global';
@@ -235,16 +236,20 @@ export function prepareEduOwnership(srcName, dstName, srcCulture = '') {
   const original = getFile(EDU_KEY);
   const patch = patchEduOwnership(original, srcName, dstName, srcCulture);
   verifyEduOwnershipPatch(original, patch);
-  return { ...patch, original };
+  const coverage = verifyEduOwnershipInheritance(original, patch.out, srcName, dstName, srcCulture);
+  return { ...patch, ...coverage, original };
 }
 
-export function duplicateEduOwnership(srcName, dstName, srcCulture = '') {
+export function duplicateEduOwnership(srcName, dstName, srcCulture = '', prepared) {
   const raw = getFile(EDU_KEY);
   if (typeof raw !== 'string' || !raw.trim()) {
     return { count: 0, already: 0, srcLines: 0, loaded: false,
       error: 'Load the original export_descr_unit.txt. Parsed unit caches are not used to reconstruct it.' };
   }
-  const patch = prepareEduOwnership(srcName, dstName, srcCulture);
+  const patch = prepared || prepareEduOwnership(srcName, dstName, srcCulture);
+  if (patch.original !== raw) throw new Error('The EDU changed during duplication. Try duplicating again; no faction was created.');
+  verifyEduOwnershipPatch(raw, patch);
+  const coverage = verifyEduOwnershipInheritance(raw, patch.out, srcName, dstName, srcCulture);
   if (patch.count > 0) {
     // A recovery copy of the immediately preceding raw file, never a reconstruction.
     setFile('m2tw_units_before_faction_patch', raw);
@@ -253,7 +258,7 @@ export function duplicateEduOwnership(srcName, dstName, srcCulture = '') {
     window.dispatchEvent(new CustomEvent('edu-file-loaded'));
   }
   return { count: patch.count, already: patch.already, srcLines: patch.srcLines,
-    ownershipLines: patch.ownershipLines, eraLines: patch.eraLines, loaded: true };
+    ownershipLines: patch.ownershipLines, eraLines: patch.eraLines, ...coverage, loaded: true };
 }
 
 /**

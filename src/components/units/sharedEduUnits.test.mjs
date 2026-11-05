@@ -13,6 +13,8 @@ const built = await build({
     export * from './src/components/units/useSharedEduUnits';
     export * from './src/components/units/EDUParser';
     export * from './src/components/units/eduOwnershipPatch';
+    export { default as verifyEduOwnershipInheritance } from './src/components/units/verifyEduOwnershipInheritance';
+    export { prepareEduOwnership, duplicateEduOwnership } from './src/components/factions/factionBulkDuplicate';
     export * from './src/lib/bigFileStore';
     export * from './src/lib/modFileRegistry';
   ` },
@@ -98,4 +100,78 @@ test('Campaign restoration cannot reinstate saved unit lists, and missing owners
   const characters = readFileSync(path.join(root, 'src/components/map/CharactersTab.jsx'), 'utf8');
   assert.match(characters, /No general units owned by this faction/);
   assert.doesNotMatch(characters, /— load EDU|No general units in EDU \(load EDU\)/);
+});
+
+test('Faction duplication assigns the complete land, bodyguard, naval, siege and culture roster', async () => {
+  const { a } = runtime();
+  const source = '\uFEFF; Original file\r\n'
+    + 'type Bodyguard\r\nattributes general_unit, general_unit_upgrade\r\nownership\tEngland, france ; untouched comment\r\nera 0 England\r\n'
+    + 'type Foot Soldiers\ncategory infantry\nownership england\nera 1 england, france\n'
+    + 'type Riders\rcategory cavalry\rownership france, england\rera 2 england\r'
+    + 'type Ship\ncategory ship\nship heavy cog\nownership england\nera 0 england\n'
+    + 'type Engine\ncategory siege\nengine huge_bombard\nownership england\nera 9 england\ncustom_extension preserve\n'
+    + 'type Cultural Levy\nownership northern_european\nera 1 northern_european\n'
+    + 'type Already Assigned\nownership england, new_faction\nera 0 england, new_faction\n'
+    + 'type Unrelated\nownership england_other, france\nera 0 france\n'
+    + 'type Universal\nownership all\n; ownership england\n';
+  a.setFile('m2tw_units_file', source);
+  const prepared = a.prepareEduOwnership('england', 'new_faction', 'northern_european');
+  assert.equal(prepared.ownershipMatches, 7);
+  assert.equal(prepared.ownershipAlready, 1);
+  assert.equal(prepared.universalUnits, 1);
+  const result = a.duplicateEduOwnership('england', 'new_faction', 'northern_european', prepared);
+  assert.equal(result.ownershipLines, 6);
+  assert.equal(result.eraLines, 6);
+  const copied = a.parseEDU(a.readSharedEdu());
+  for (const unit of copied.slice(0, 7)) assert.ok(unit.ownership.includes('new_faction'), unit.type);
+  assert.equal(copied[7].ownership.join(','), 'england_other,france');
+  assert.equal(copied[8].ownership.join(','), 'all');
+  assert.ok(a.readSharedEdu().includes('ship heavy cog'));
+  assert.ok(a.readSharedEdu().includes('engine huge_bombard'));
+  assert.equal(a.getFile('m2tw_units_before_faction_patch'), source);
+  assert.equal(a.getFile('m2tw_edu_raw'), prepared.out);
+  await a.flushBigFiles();
+});
+
+test('Verification rejects a skipped ownership or era entry before any file is written', () => {
+  const { a } = runtime();
+  assert.throws(() => a.verifyEduOwnershipInheritance(original, original, 'england', 'new_faction'), /Could not copy ownership/);
+  const onlyOwnership = original.replace('ownership england', 'ownership england, new_faction');
+  assert.throws(() => a.verifyEduOwnershipInheritance(original, onlyOwnership, 'england', 'new_faction'), /Could not copy era/);
+  const malformed = 'type Partial\nownership england, invalid-token\n';
+  a.setFile('m2tw_units_file', malformed);
+  assert.throws(() => a.prepareEduOwnership('england', 'new_faction'), /Could not copy ownership/);
+  assert.equal(a.readSharedEdu(), malformed);
+  assert.equal(a.getFile('m2tw_units_before_faction_patch'), null);
+});
+
+test('Prepared duplication refuses a stale EDU and repeated assignment is idempotent', async () => {
+  const { a } = runtime();
+  a.setFile('m2tw_units_file', original);
+  const prepared = a.prepareEduOwnership('england', 'new_faction');
+  a.setFile('m2tw_units_file', corrected);
+  assert.throws(() => a.duplicateEduOwnership('england', 'new_faction', '', prepared), /changed during duplication/);
+  assert.equal(a.readSharedEdu(), corrected);
+  const first = a.duplicateEduOwnership('england', 'new_faction');
+  const out = a.readSharedEdu();
+  const second = a.duplicateEduOwnership('england', 'new_faction');
+  assert.ok(first.count > 0);
+  assert.equal(second.count, 0);
+  assert.equal(second.ownershipMatches, 1);
+  assert.equal(second.ownershipAlready, 1);
+  assert.equal(a.readSharedEdu(), out);
+  assert.equal(a.getFile('m2tw_units_before_faction_patch'), corrected);
+  await a.flushBigFiles();
+});
+
+test('Era-only matches cannot pass the faction creation ownership guard', () => {
+  const { a } = runtime();
+  a.setFile('m2tw_units_file', 'type Other\nownership france\nera 0 england\n');
+  const prepared = a.prepareEduOwnership('england', 'new_faction');
+  assert.equal(prepared.ownershipMatches, 0);
+  assert.equal(prepared.universalUnits, 0);
+  const page = readFileSync(path.join(root, 'src/pages/FactionsEditor.jsx'), 'utf8');
+  assert.match(page, /!preparedEdu\.ownershipMatches && !preparedEdu\.universalUnits/);
+  assert.ok(page.indexOf('eduRes = duplicateEduOwnership') < page.indexOf('updated.splice(duplicateSourceIdx + 1'), 'Ownership is committed before the faction is created');
+  assert.match(page, /unit ownerships verified/);
 });
