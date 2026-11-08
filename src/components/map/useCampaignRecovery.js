@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CampaignRecoveryController from '@/components/map/CampaignRecoveryController';
 import { campaignLibrary } from '@/components/map/campaignLibrary';
 import campaignAutoSaveLifecycle from '@/components/map/campaignAutoSaveLifecycle';
@@ -11,9 +11,9 @@ export default function useCampaignRecovery(snapshot, active, enabled, protect) 
     id: active || snapshot.stratData?.campaignName || 'campaign',
     ready: Boolean(snapshot.stratData || snapshot.regionsData || Object.values(snapshot.layers).some(layer => layer.data)) };
   if (!controller.current) controller.current = new CampaignRecoveryController(() => current.current, setStatus);
-  // Check actual draft changes, not a variable-length positional dependency list.
-  // Store the observation before notifying React so status updates cannot retrigger it.
-  useLayoutEffect(() => {
+  // Recovery is background work: never dispatch status updates during layout.
+  // Observe before notifying, so the resulting status render is not another edit.
+  useEffect(() => {
     const next = captureRecoveryInputs(snapshot, active, enabled);
     if (sameRecoveryInputs(observed.current, next)) return;
     observed.current = next;
