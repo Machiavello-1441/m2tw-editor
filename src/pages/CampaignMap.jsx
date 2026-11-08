@@ -13,7 +13,7 @@ import NewRegionPaintWizard from '../components/map/NewRegionPaintWizard';
 import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
-import { parseDescrStrat, parseDescrRegions, parseSettlementNames, parseDescrSmFactions, computeSettlementPositions, serializeDescrStrat } from '../components/map/stratParser';
+import { parseDescrStrat, parseDescrRegions, parseSettlementNames, computeSettlementPositions, serializeDescrStrat } from '../components/map/stratParser';
 import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB, parseDescrNames, parseExportDescrTraits, parseExportDescrAncillaries } from '../components/map/additionalParsers';
 import { parseFactionMovies } from '../components/map/factionMoviesParser';
 import useSharedEduUnits, { seedCampaignEdu } from '@/components/units/useSharedEduUnits';
@@ -39,6 +39,8 @@ import { restoreUndoStorage } from '@/components/map/campaignUndoStorage';
 import readCampaignDetails from '@/components/map/readCampaignDetails';
 import useCampaignRecovery from '@/components/map/useCampaignRecovery';
 import CampaignRecoveryStatus from '@/components/map/CampaignRecoveryStatus';
+import useSharedFactionColors, { seedCampaignFactions } from '@/components/map/useSharedFactionColors';
+import useCampaignPaintBitmaps from '@/components/map/useCampaignPaintBitmaps';
 
 const INITIAL_PAINT = {
   active: false,
@@ -135,13 +137,7 @@ export default function CampaignMap() {
     } catch {}
     return null;
   });
-  const [factionColors, setFactionColorsRaw] = useState(() => {
-    try {
-      const raw = sessionStorage.getItem('m2tw_factions_raw');
-      if (raw) return parseDescrSmFactions(raw);
-    } catch {}
-    return null;
-  });
+  const factionColors = useSharedFactionColors();
   const [overlayItems, setOverlayItems] = useState(() => {
     try {
       // First try the persisted overlay (includes any new items added in this session)
@@ -289,9 +285,6 @@ export default function CampaignMap() {
   const setSettlementNames = (data) => {
     setSettlementNamesRaw(data);
   };
-  const setFactionColors = (data) => {
-    setFactionColorsRaw(data);
-  };
 
   const [importProgress, setImportProgress] = React.useState(null); // null | { step, total }
 
@@ -426,11 +419,7 @@ export default function CampaignMap() {
         const text = await file.text();
         try { localStorage.setItem('m2tw_campaign_script', text); sessionStorage.setItem('m2tw_script_raw', text); } catch {}
       }
-      if (name === 'descr_sm_factions.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {}
-        setFactionColorsRaw(parseDescrSmFactions(text));
-      }
+      if (name === 'descr_sm_factions.txt') await seedCampaignFactions(file);
       if (/_regions_and_settlement_names\.(txt|txt\.strings\.bin|strings\.bin|bin)$/i.test(name)) {
         const names = await loadNamesMap(file);
         setSettlementNamesRaw(prev => ({ ...(prev || {}), ...names }));
@@ -577,7 +566,7 @@ export default function CampaignMap() {
     }
   }, []);
 
-  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, factionColors, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, namesDisplayMap, campaignDetails, edbData, regionWizard, pendingPlace, paintState };
+  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, namesDisplayMap, campaignDetails, edbData, regionWizard, pendingPlace, paintState };
   const campaignSelection = useCampaignSelection(
     campaignSnapshot,
     (saved) => {
@@ -590,7 +579,7 @@ export default function CampaignMap() {
       setOverlayDirty(saved?.overlayDirty || false); setOsmBbox(saved?.osmBbox || null);
       setMercenaryPools(saved?.mercenaryPools || []); setMusicTypes(saved?.musicTypes || []);
       if (saved) {
-        setFactionColorsRaw(saved.factionColors); setRebelFactions(saved.rebelFactions); setReligions(saved.religions);
+        setRebelFactions(saved.rebelFactions); setReligions(saved.religions);
         setNaturalRes(saved.naturalResources); setCultures(saved.cultures); setDescrNames(saved.descrNames);
         setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList); setNamesDisplayMap(saved.namesDisplayMap);
       }
@@ -607,18 +596,17 @@ export default function CampaignMap() {
   }, [settlementNames, campaignSelection.loading]);
 
   const undoHistory = useCampaignUndoHistory(
-    { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, edbData, descrNames, namesDisplayMap, factionColors, campaignDetails },
+    { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, edbData, descrNames, namesDisplayMap, campaignDetails },
     restored => {
       restoreUndoStorage(restored.storage, restored);
-      clearTimeout(bitmapTimerRef.current);
-      bitmapTimerRef.current = null; pendingBitmapRef.current = {};
+      paintBitmaps.cancel();
       layersRef.current = restored.layers; setLayers(restored.layers);
       setStratDataRaw(restored.stratData); setOverlayItems(restored.overlayItems);
       setRegionsDataRaw(restored.regionsData); setSettlementNamesRaw(restored.settlementNames);
       setCampaignDetails(restored.campaignDetails);
       setEditedSettlements(restored.editedSettlements); setDirtyLayers(restored.dirtyLayers); setOverlayDirty(restored.overlayDirty);
       if (restored.edbData !== edbData) setEdbData(restored.edbData);
-      setDescrNames(restored.descrNames); setNamesDisplayMap(restored.namesDisplayMap); setFactionColorsRaw(restored.factionColors);
+      setDescrNames(restored.descrNames); setNamesDisplayMap(restored.namesDisplayMap);
       setSelectedItem(previous => restored.overlayItems.find(item => item.id === previous?.id) || null);
       setSelectedRegion(previous => restored.regionsData?.find(region => region.regionName === previous?.regionName) || null);
       setPendingPlace(null); setPendingRelocate(null); setPendingCoordPick(null); setRegionWizard(null);
@@ -633,38 +621,7 @@ export default function CampaignMap() {
     saving || undoing || overlayDirty || dirtyLayers.size > 0 || undoHistory.entries.length > 0 || Boolean(regionWizard || pendingPlace));
 
   // ── Painting ───────────────────────────────────────────────────────────────
-  // Debounce handle for bitmap rebuilds during painting. Using a timeout
-  // (~120ms) instead of requestAnimationFrame means we rebuild the layer
-  // bitmap ~8×/sec during a continuous stroke rather than 60×/sec. Each
-  // rebuild copies the full pixel buffer (tens of MB for large TGA maps)
-  // and uploads it to the GPU via createImageBitmap, so doing that every
-  // frame was the main cause of painting lag. The cursor preview on the
-  // overlay canvas still updates at full 60fps for immediate feedback.
-  const bitmapTimerRef = useRef(null);
-  const pendingBitmapRef = useRef({}); // layerId → data
-
-  const flushBitmaps = useCallback(() => {
-    bitmapTimerRef.current = null;
-    const pending = { ...pendingBitmapRef.current };
-    pendingBitmapRef.current = {};
-    for (const [layerId, data] of Object.entries(pending)) {
-      const layer = layersRef.current[layerId];
-      if (!layer) continue;
-      // Copy the data — createImageBitmap may read asynchronously and the
-      // underlying array is mutated in place by subsequent paint strokes.
-      const copy = new Uint8ClampedArray(data);
-      createImageBitmap(new ImageData(copy, layer.width, layer.height)).then(bitmap => {
-        // A completed paint rebuild must not overwrite a reverted layer's bitmap.
-        if (layersRef.current[layerId]?.data !== data) { bitmap.close(); return; }
-        setLayers(p2 => ({ ...p2, [layerId]: { ...p2[layerId], bitmap } }));
-      });
-    }
-  }, []);
-
-  const scheduleBitmapFlush = useCallback(() => {
-    if (bitmapTimerRef.current) clearTimeout(bitmapTimerRef.current);
-    bitmapTimerRef.current = setTimeout(flushBitmaps, 120);
-  }, [flushBitmaps]);
+  const paintBitmaps = useCampaignPaintBitmaps(layers, layersRef, setLayers);
 
   const handlePaint = useCallback((type, layerId, color, patches, bucketCoord) => {
     if (type === 'pipette') {
@@ -686,10 +643,9 @@ export default function CampaignMap() {
       floodFillRGB(data, layer.width, layer.height, bucketCoord.x, bucketCoord.y, color.r, color.g, color.b);
     }
     // Debounce bitmap rebuild — coalesces rapid strokes into one GPU upload
-    pendingBitmapRef.current[layerId] = data;
-    scheduleBitmapFlush();
+    paintBitmaps.schedule(layerId, data);
     setDirtyLayers(prev => new Set([...prev, layerId]));
-  }, [scheduleBitmapFlush]);
+  }, [paintBitmaps.schedule]);
 
   // Derive map dimensions from loaded layers
   const mapH = (() => {
@@ -1307,7 +1263,7 @@ export default function CampaignMap() {
     }
     setSaving(true);
     try {
-      if (bitmapTimerRef.current) { clearTimeout(bitmapTimerRef.current); flushBitmaps(); }
+      await paintBitmaps.flush();
       await recovery.flush();
       const saved = campaignCheckpoint({ layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, religionList });
       // Keep the draft and dirty flags untouched until persistent storage confirms the save.
@@ -1331,8 +1287,7 @@ export default function CampaignMap() {
   const handleHistoryChange = async (index, redo = false) => {
     if (saving || undoing || campaignSelection.loading) return;
     setUndoing(true); setSaveError(''); setSaveMessage('');
-    clearTimeout(bitmapTimerRef.current);
-    bitmapTimerRef.current = null; pendingBitmapRef.current = {};
+    paintBitmaps.cancel();
     try {
       if (redo) await undoHistory.redo(); else await undoHistory.undo(index);
     } catch (error) {
@@ -1374,7 +1329,7 @@ export default function CampaignMap() {
 
         <CampaignSelector value={campaignSelection.active} loading={campaignSelection.loading} error={campaignSelection.error} onChange={async id => {
           if (await recovery.flush() === false) return;
-          clearTimeout(bitmapTimerRef.current); pendingBitmapRef.current = {};
+          paintBitmaps.cancel();
           campaignSelection.select(id);
         }} />
 
@@ -1633,7 +1588,7 @@ export default function CampaignMap() {
                     }
                   }}
                   onNamesLoad={(text) => { try { sessionStorage.setItem('m2tw_names_raw', text); } catch {} setSettlementNamesRaw(parseSettlementNames(text)); }}
-                  onFactionsLoad={(text) => { try { sessionStorage.setItem('m2tw_factions_raw', text); } catch {} setFactionColorsRaw(parseDescrSmFactions(text)); }}
+                  onFactionsLoad={text => setFile('m2tw_factions_file', text)}
                   onRegionsDataUpdate={updated => { setRegionsDataRaw(updated); setOverlayDirty(true); }}
                   onSettlementChange={(id, edits) => updateSettlements([{ id, edits }])}
                   onBulkSettlementChange={updateSettlements}

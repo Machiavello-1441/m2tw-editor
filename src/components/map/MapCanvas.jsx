@@ -4,6 +4,8 @@ import { LAYER_DEFS } from './mapLayerConstants';
 import MapPixelTooltip from './MapPixelTooltip';
 import StratOverlay from './StratOverlay';
 import CampaignMapLocate from '@/components/map/CampaignMapLocate';
+import observePaintCanvasSize from '@/components/map/observePaintCanvasSize';
+import useTransparentMapBitmap from '@/components/map/useTransparentMapBitmap';
 import 'leaflet/dist/leaflet.css';
 
 const DRAW_ORDER = ['heights', 'ground', 'climates', 'regions', 'features', 'fog'];
@@ -31,32 +33,7 @@ export function floodFillRGB(data, width, height, sx, sy, nr, ng, nb, tolerance 
   }
 }
 
-function makeBlackTransparent(data, width, height) {
-  const rgba = new Uint8ClampedArray(data);
-  for (let i = 0; i < rgba.length; i += 4) {
-    if (rgba[i] < 12 && rgba[i+1] < 12 && rgba[i+2] < 12) rgba[i+3] = 0;
-  }
-  return createImageBitmap(new ImageData(rgba, width, height));
-}
 
-function makeWhiteTransparent(data, width, height) {
-  const rgba = new Uint8ClampedArray(data);
-  for (let i = 0; i < rgba.length; i += 4) {
-    if (rgba[i] > 243 && rgba[i+1] > 243 && rgba[i+2] > 243) rgba[i+3] = 0;
-  }
-  return createImageBitmap(new ImageData(rgba, width, height));
-}
-
-function buildCitiesPortsBitmap(data, width, height) {
-  const out = new Uint8ClampedArray(width * height * 4);
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i+1], b = data[i+2];
-    const isCity = r < 12 && g < 12 && b < 12;
-    const isPort = r > 243 && g > 243 && b > 243;
-    if (isCity || isPort) { out[i]=r; out[i+1]=g; out[i+2]=b; out[i+3]=255; }
-  }
-  return createImageBitmap(new ImageData(out, width, height));
-}
 
 /**
  * Renders a single layer's ImageBitmap as a Leaflet ImageOverlay. The bitmap
@@ -189,32 +166,12 @@ function PaintCanvas({
     return { gW: mapW, gH: mapH };
   }, [paintState, layers, mapW, mapH]);
 
-  // Keep canvas sized to the Leaflet container
-  useEffect(() => {
-    const container = map.getContainer();
-    const onMoveZoom = () => drawCanvasRef.current?.();
-    const resize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width  = container.clientWidth;
-      canvas.height = container.clientHeight;
-      drawCanvasRef.current?.();
-    };
-    resize();
-    map.on('resize', resize);
-    map.on('move zoom', onMoveZoom);
-    // Leaflet only listens to window resizes; the container also changes size
-    // when the toolbar above grows/shrinks (e.g. presets open). Without this,
-    // the canvas backing store keeps its old size and gets CSS-stretched, so
-    // the brush preview goes oval/rectangular and drifts from the pointer.
-    const ro = new ResizeObserver(() => { map.invalidateSize({ animate: false }); resize(); });
-    ro.observe(container);
-    return () => {
-      ro.disconnect();
-      map.off('resize', resize);
-      map.off('move zoom', onMoveZoom);
-    };
-  }, [map]); // eslint-disable-line
+  useEffect(() => observePaintCanvasSize(map, canvasRef, drawCanvasRef), [map]);
+  useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null; pendingPaint.current = null; isPainting.current = false;
+    map.dragging.enable();
+  }, [map]);
 
   // Convert screen point → map pixel coordinate. Going through
   // latLngToContainerPoint keeps hit-testing consistent with what Leaflet
@@ -521,31 +478,9 @@ function PaintCanvas({
 
 /** Renders TGA layer bitmaps as Leaflet ImageOverlays */
 function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
-  const [transparentBitmaps, setTransparentBitmaps] = useState({});
-
-  // Build transparent variants for features/fog/regions-cities.
-  // Key on the *bitmap* reference (which changes on every flushBitmaps
-  // rebuild), NOT the data reference — handlePaint mutates data in place,
-  // so keying on data would never detect a change and the transparent
-  // variant would stay stale during painting (rivers drawn but never
-  // appearing on the map).
-  useEffect(() => {
-    const featState = layers['features'];
-    if (featState?.data && transparentBitmaps.features?.src !== featState.bitmap) {
-      makeBlackTransparent(featState.data, featState.width, featState.height)
-        .then(bmp => setTransparentBitmaps(p => ({ ...p, features: { bmp, src: featState.bitmap } })));
-    }
-    const fogState = layers['fog'];
-    if (fogState?.data && transparentBitmaps.fog?.src !== fogState.bitmap) {
-      makeWhiteTransparent(fogState.data, fogState.width, fogState.height)
-        .then(bmp => setTransparentBitmaps(p => ({ ...p, fog: { bmp, src: fogState.bitmap } })));
-    }
-    const regState = layers['regions'];
-    if (regState?.data && transparentBitmaps.citiesports?.src !== regState.bitmap) {
-      buildCitiesPortsBitmap(regState.data, regState.width, regState.height)
-        .then(bmp => setTransparentBitmaps(p => ({ ...p, citiesports: { bmp, src: regState.bitmap } })));
-    }
-  }, [layers]);
+  const features = useTransparentMapBitmap(layers.features, 'features', layers.features?.visible ?? true);
+  const fog = useTransparentMapBitmap(layers.fog, 'fog', layers.fog?.visible ?? true);
+  const citiesports = useTransparentMapBitmap(layers.regions, 'citiesports', regionsMode === 'citiesports' && (layers.regions?.visible ?? true));
 
   // Note: each visible layer renders through its own <TgaBitmapOverlay> below,
   // which only re-encodes its bitmap when that specific bitmap changes. The old
@@ -564,9 +499,9 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
         if (!state?.bitmap) return null;
         if (!(state.visible ?? def?.defaultVisible)) return null;
         let bmp = state.bitmap;
-        if (id === 'features' && transparentBitmaps.features?.bmp) bmp = transparentBitmaps.features.bmp;
-        else if (id === 'fog' && transparentBitmaps.fog?.bmp) bmp = transparentBitmaps.fog.bmp;
-        else if (id === 'regions' && regionsMode === 'citiesports' && transparentBitmaps.citiesports?.bmp) bmp = transparentBitmaps.citiesports.bmp;
+        if (id === 'features' && features) bmp = features;
+        else if (id === 'fog' && fog) bmp = fog;
+        else if (id === 'regions' && regionsMode === 'citiesports' && citiesports) bmp = citiesports;
         return (
           <TgaBitmapOverlay
             key={id}
