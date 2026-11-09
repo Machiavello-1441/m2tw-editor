@@ -35,6 +35,7 @@ import BulkSettlementEditor from '@/components/map/BulkSettlementEditor';
 import SettlementTypeFields from '@/components/map/SettlementTypeFields';
 import StratPanelTabs from '@/components/map/StratPanelTabs';
 import SettlementListFilters from '@/components/map/SettlementListFilters';
+import settlementMapDetails from '@/components/map/settlementMapDetails';
 import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
 import { getCampaignExportPaths, rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 
@@ -307,7 +308,7 @@ function CampaignInfoEditor({ stratData, allFactions, onStratDataChange }) {
 }
 
 // ─── Settlement editor (inline) ──────────────────────────────────────────────
-function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionsData, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer, onRelocatePixel, mapH, rebelFactionList, musicTypeList, mercenaryPoolList, religionList, allFactions, onAddHiddenResource }) {
+function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, onChange, edbData, regionInfo, hiddenResourceMasterList, settlementNames, onSettlementNamesChange, onRegionsDataChange, onRecolorRegion, overlayItems, regionsLayer, onRelocatePixel, mapH, rebelFactionList, musicTypeList, mercenaryPoolList, religionList, allFactions, onAddHiddenResource }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
@@ -324,18 +325,12 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     prevSelected.current = isSelected;
   }, [isSelected]);
 
-  // Find matching region from regionsData — match by region internal name
-  const regionInfo = useMemo(() => {
-    if (!regionsData?.length || !item.region) return null;
-    return regionsData.find((r) => r.regionName === item.region);
-  }, [regionsData, item.region]);
-
-  const buildingLevels = useMemo(() => availableSettlementBuildings(edbData, draft, showAllBuildings), [edbData, draft.level, draft.castle, showAllBuildings]);
-  const hiddenResourceMasterList = useMemo(() => extractHiddenResourcesFromEDB(edbData), [edbData]);
+  // Building choices are only needed when editing, not while mounting search results.
+  const buildingLevels = useMemo(() => editing ? availableSettlementBuildings(edbData, draft, showAllBuildings) : [], [editing, edbData, draft.level, draft.castle, showAllBuildings]);
 
   // Compute which resource overlay items sit on this region's territory via pixel lookup
   const regionResources = useMemo(() => {
-    if (!regionInfo || !regionsLayer?.data || !overlayItems?.length) return [];
+    if (!expanded || !regionInfo || !regionsLayer?.data || !overlayItems?.length) return [];
     const { r: regR, g: regG, b: regB } = regionInfo;
     const { data, width, height } = regionsLayer;
     const resources = overlayItems.filter((oi) => {
@@ -347,7 +342,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       return data[idx] === regR && data[idx + 1] === regG && data[idx + 2] === regB;
     });
     return resources;
-  }, [regionInfo, regionsLayer, overlayItems]);
+  }, [expanded, regionInfo, regionsLayer, overlayItems]);
 
   // Hidden resources from descr_regions resources list (editable)
   const regionHiddenResources = useMemo(() => {
@@ -444,34 +439,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
     setEditing(false);
   };
 
-  // Find city (black pixel) and port (white pixel) positions adjacent to this region's color
-  const cityPortPos = useMemo(() => {
-    if (!regionInfo || !regionsLayer?.data) return { city: null, port: null };
-    const { r: rr, g: rg, b: rb } = regionInfo;
-    const { data, width, height } = regionsLayer;
-    let city = null,port = null;
-    for (let py = 0; py < height && (!city || !port); py++) {
-      for (let px = 0; px < width && (!city || !port); px++) {
-        const idx = (py * width + px) * 4;
-        const pr = data[idx],pg = data[idx + 1],pb = data[idx + 2];
-        const isBlack = pr < 5 && pg < 5 && pb < 5;
-        const isWhite = pr > 250 && pg > 250 && pb > 250;
-        if (!isBlack && !isWhite) continue;
-        // Check if adjacent to this region's color
-        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-          const nx = px + dx,ny = py + dy;
-          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-          const ni = (ny * width + nx) * 4;
-          if (data[ni] === rr && data[ni + 1] === rg && data[ni + 2] === rb) {
-            if (isBlack && !city) city = { px, py, stratY: height - 1 - py };
-            if (isWhite && !port) port = { px, py, stratY: height - 1 - py };
-            break;
-          }
-        }
-      }
-    }
-    return { city, port };
-  }, [regionInfo, regionsLayer]);
+  const cityPortPos = useMemo(() => settlementMapDetails(regionInfo, regionsLayer, expanded && !editing), [regionInfo, regionsLayer, expanded, editing]);
 
   const iconChar = SETTLEMENT_LEVEL_ICONS[item.level] || '🏘️';
   const posText = item.x != null ? `${item.x},${item.y}` : 'pos?';
@@ -1149,7 +1117,9 @@ export default function StratPanel({
 
   const settlementFactionOptions = useMemo(() => [...new Set(settlements.map(item => item.faction).filter(Boolean))].sort(), [settlements]);
   const resourceRegions = useMemo(() => new Map((regionsData || []).map(region => [region.regionName, region.resources || []])), [regionsData]);
-  const settlementResourceOptions = useMemo(() => [...new Set(hiddenResourceList || extractHiddenResourcesFromEDB(edbData))].sort(), [hiddenResourceList, edbData]);
+  const regionsByName = useMemo(() => new Map((regionsData || []).map(region => [region.regionName, region])), [regionsData]);
+  const settlementHiddenResources = useMemo(() => extractHiddenResourcesFromEDB(edbData), [edbData]);
+  const settlementResourceOptions = useMemo(() => [...new Set(hiddenResourceList || settlementHiddenResources)].sort(), [hiddenResourceList, settlementHiddenResources]);
   const settlementFiltersActive = Boolean(search || settlementFaction || settlementResource);
   const filteredSettlements = useMemo(() =>
     settlements.filter(item =>
@@ -1728,7 +1698,8 @@ export default function StratPanel({
                             onDelete={onDeleteItem}
                             onChange={onSettlementChange}
                             edbData={edbData}
-                            regionsData={regionsData}
+                            regionInfo={regionsByName.get(s.region)}
+                            hiddenResourceMasterList={settlementHiddenResources}
                             settlementNames={settlementNames}
                             onSettlementNamesChange={onSettlementNamesChange}
                             onRegionsDataChange={(regionName, edits) => {
