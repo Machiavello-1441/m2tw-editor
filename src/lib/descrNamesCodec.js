@@ -46,7 +46,26 @@ export function duplicateDescrNames(raw, source, target) {
   const src = source.toLowerCase(), dst = target.toLowerCase();
   const sources = headers.filter(header => header.factions.includes(src));
   if (!sources.length) throw new Error(`No names block found for ${source} in descr_names.txt. No changes made.`);
-  if (headers.some(header => header.factions.includes(dst))) return { ok: false, already: true, out: raw };
+  const parsed = Object.entries(parseDescrNames(raw));
+  const sourceNames = parsed.filter(([name]) => name.toLowerCase() === src).map(([, data]) => data);
+  const targetHeaders = headers.filter(header => header.factions.includes(dst));
+  if (targetHeaders.length) {
+    // Existing placeholders or incomplete pools must not silently skip the copy.
+    // Preserve custom target names and add only missing source entries.
+    const targetNames = parsed.filter(([name]) => name.toLowerCase() === dst).map(([, data]) => data);
+    const missing = {};
+    for (const section of ['characters', 'surnames', 'females']) {
+      const existing = new Set(targetNames.flatMap(data => data[section]));
+      missing[section] = [...new Set(sourceNames.flatMap(data => data[section]))].filter(name => !existing.has(name));
+    }
+    const count = Object.values(missing).reduce((total, names) => total + names.length, 0);
+    if (!count) return { ok: false, already: true, out: raw, count: 0, blocks: 0 };
+    const lastTarget = targetHeaders[targetHeaders.length - 1];
+    const end = headers.find(next => next.index > lastTarget.index)?.index ?? lines.length;
+    const out = [...lines];
+    out.splice(end, 0, '', ...serializeDescrNames({ [target]: missing }).split('\n'), '');
+    return { ok: true, out: out.join(newline), count, blocks: 1 };
+  }
   const out = [...lines];
   // Copy EVERY source block, including all sections, comments and name entries.
   // Insert bottom-up so all source boundaries remain valid.
@@ -56,7 +75,6 @@ export function duplicateDescrNames(raw, source, target) {
     block[0] = `faction: ${target}`;
     out.splice(end, 0, '', ...block);
   }
-  const entries = Object.entries(parseDescrNames(raw)).filter(([name]) => name.toLowerCase() === src);
-  const count = entries.reduce((total, [, data]) => total + data.characters.length + data.surnames.length + data.females.length, 0);
+  const count = sourceNames.reduce((total, data) => total + data.characters.length + data.surnames.length + data.females.length, 0);
   return { ok: true, out: out.join(newline), count, blocks: sources.length };
 }

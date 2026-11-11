@@ -13,13 +13,12 @@ import { getFile, setFile } from '@/lib/bigFileStore';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import { patchEduOwnership, verifyEduOwnershipPatch } from '@/components/units/eduOwnershipPatch';
 import verifyEduOwnershipInheritance from '@/components/units/verifyEduOwnershipInheritance';
-import { duplicateDescrNames } from '@/lib/descrNamesCodec';
+export { prepareFactionNames, duplicateFactionNames } from '@/components/factions/factionNamesDuplicate';
 
 const EXPANDED_KEY = 'm2tw_strings_bin_global';
 const MENU_KEY = 'm2tw_menu_strings_bin';
 const CHAR_KEY = 'm2tw_descr_character';
 const STRAT_KEY = 'm2tw_descr_model_strat';
-const NAMES_KEY = 'm2tw_names_file';
 const EDU_KEY = 'm2tw_units_file';
 
 const bare = (k) => String(k || '').replace(/[{}]/g, '').toUpperCase();
@@ -207,25 +206,6 @@ export function duplicateStratmapCharacters(srcName, dstName) {
     }
   } catch {}
   return { charTypes, stratTextures, charLoaded, stratLoaded };
-}
-
-/**
- * Duplicate the source faction's names block in descr_names.txt,
- * inserting the copy right after the source block.
- */
-export function prepareFactionNames(srcName, dstName) {
-  const raw = getFile(NAMES_KEY);
-  if (!raw) throw new Error('Load descr_names.txt before duplicating a faction. No changes made.');
-  return { ...duplicateDescrNames(raw, srcName, dstName), loaded: true };
-}
-
-export function duplicateFactionNames(srcName, dstName, prepared) {
-  const result = prepared || prepareFactionNames(srcName, dstName);
-  if (result.ok) {
-    setFile(NAMES_KEY, result.out);
-    window.dispatchEvent(new CustomEvent('load-character-names', { detail: { raw: result.out } }));
-  }
-  return result;
 }
 
 /**

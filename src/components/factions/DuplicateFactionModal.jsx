@@ -126,7 +126,7 @@ export default function DuplicateFactionModal({ open, onOpenChange, sourceFactio
 
           <div className="border-t border-slate-700 pt-3 text-[9px] text-slate-500 leading-relaxed">
             <p className="text-slate-400 font-semibold mb-1">Also duplicated automatically:</p>
-            <p>• Banner textures (descr_banners_new.xml) • Stratmap characters &amp; strat model textures (descr_character.txt, descr_model_strat.txt) • Character names block (descr_names.txt) • Unit ownership (export_descr_unit.txt) • Navy entry (descr_offmap_models.txt) • Menu UI strings</p>
+            <p>• Banner textures (descr_banners_new.xml) • Stratmap characters &amp; strat model textures (descr_character.txt, descr_model_strat.txt) • Character name lists and loaded display names (descr_names.txt + names.txt) • Unit ownership (export_descr_unit.txt) • Navy entry (descr_offmap_models.txt) • Menu UI strings</p>
             <p className="mt-1">The new faction is inserted directly below the source in descr_sm_factions.txt.</p>
           </div>
         </div>

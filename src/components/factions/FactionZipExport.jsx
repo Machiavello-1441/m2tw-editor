@@ -7,6 +7,7 @@ import { BANNERS_GLOBAL_KEY } from './BannersTab';
 import { getFile } from '@/lib/bigFileStore';
 import { getAllSymbols } from '@/lib/factionSymbolStore';
 import { toUtf16leBytes } from '@/lib/utf16';
+import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
 
 const entriesToTxt = (entries) =>
   entries.map((e) => `{${String(e.key).replace(/[{}]/g, '')}}${e.value}`).join('\n');
@@ -32,7 +33,7 @@ export default function FactionZipExport({ getFactionsText }) {
       addLs('data/descr_offmap_models.txt', 'm2tw_offmap_models');
       addLs('data/descr_character.txt', 'm2tw_descr_character');
       addLs('data/descr_model_strat.txt', 'm2tw_descr_model_strat');
-      addLs('data/descr_names.txt', 'm2tw_names_file');
+      addCharacterNamesToZip(zip.folder('data'));
       addLs('data/descr_cultures.txt', 'm2tw_cultures_file');
       addLs('data/descr_religions.txt', 'm2tw_religions_file');
       addLs('data/export_descr_unit.txt', 'm2tw_units_file');
