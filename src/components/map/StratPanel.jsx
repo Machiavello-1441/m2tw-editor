@@ -36,6 +36,7 @@ import SettlementTypeFields from '@/components/map/SettlementTypeFields';
 import StratPanelTabs from '@/components/map/StratPanelTabs';
 import SettlementListFilters from '@/components/map/SettlementListFilters';
 import settlementMapDetails from '@/components/map/settlementMapDetails';
+import useSettlementSearch from '@/components/map/useSettlementSearch';
 import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
 import { getCampaignExportPaths, rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 
@@ -1116,26 +1117,14 @@ export default function StratPanel({
   [overlayItems]);
 
   const settlementFactionOptions = useMemo(() => [...new Set(settlements.map(item => item.faction).filter(Boolean))].sort(), [settlements]);
-  const resourceRegions = useMemo(() => new Map((regionsData || []).map(region => [region.regionName, region.resources || []])), [regionsData]);
   const regionsByName = useMemo(() => new Map((regionsData || []).map(region => [region.regionName, region])), [regionsData]);
   const settlementHiddenResources = useMemo(() => extractHiddenResourcesFromEDB(edbData), [edbData]);
   const settlementResourceOptions = useMemo(() => [...new Set(hiddenResourceList || settlementHiddenResources)].sort(), [hiddenResourceList, settlementHiddenResources]);
-  const settlementFiltersActive = Boolean(search || settlementFaction || settlementResource);
-  const filteredSettlements = useMemo(() =>
-    settlements.filter(item =>
-      (!search || item.region?.toLowerCase().includes(search.toLowerCase()) || item.faction?.toLowerCase().includes(search.toLowerCase())) &&
-      (!settlementFaction || item.faction === settlementFaction) &&
-      (!settlementResource || resourceRegions.get(item.region)?.includes(settlementResource))),
-    [settlements, search, settlementFaction, settlementResource, resourceRegions]);
-
-  const byFaction = useMemo(() => {
-    const map = {};
-    for (const s of filteredSettlements) {
-      if (!map[s.faction]) map[s.faction] = [];
-      map[s.faction].push(s);
-    }
-    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filteredSettlements]);
+  const { filteredSettlements, settlementFiltersActive, byFaction, visibleByFaction, matchCounts,
+    capitalIds, visibleCount, renderableCount, hasMore, showMore } = useSettlementSearch({
+    settlements, regionsByName, settlementNames, search, expandedFactions,
+    faction: settlementFaction, resource: settlementResource, selectedItem,
+  });
 
   const allFactions = useMemo(() => {
     const from = (stratData?.factions || []).map((f) => f.name).filter(Boolean);
@@ -1656,12 +1645,16 @@ export default function StratPanel({
             if (source.droppableId !== destination.droppableId || source.index === destination.index) return;
             const factionName = source.droppableId;
             const factionSetts = byFaction.find(([f]) => f === factionName)?.[1] || [];
+            const shown = visibleByFaction.find(([f]) => f === factionName)?.[1] || [];
+            const from = factionSetts.indexOf(shown[source.index]);
+            const to = factionSetts.indexOf(shown[destination.index]);
+            if (from < 0 || to < 0) return;
             const reordered = [...factionSetts];
-            const [moved] = reordered.splice(source.index, 1);
-            reordered.splice(destination.index, 0, moved);
+            const [moved] = reordered.splice(from, 1);
+            reordered.splice(to, 0, moved);
             onReorderSettlements(factionName, reordered.map((s) => s.id));
           }}>
-              {byFaction.map(([factionName, setts]) => {
+              {visibleByFaction.map(([factionName, setts]) => {
                 const isExpanded = settlementFiltersActive || expandedFactions.has(factionName);
                 return (
             <div key={factionName}>
@@ -1671,7 +1664,7 @@ export default function StratPanel({
                     </button>
                     <FactionDot factionColors={factionColors} factionName={factionName} />
                     <span className="text-[10px] font-semibold text-slate-400">{settlementNames?.[factionName] || factionName}</span>
-                    <span className="text-[9px] text-slate-600 font-mono">({setts.length})</span>
+                    <span className="text-[9px] text-slate-600 font-mono">({matchCounts.get(factionName)})</span>
                     <span className="text-[8px] text-slate-700 italic ml-1">drag to reorder • 1st = capital</span>
                   </div>
                   {isExpanded && (
@@ -1688,7 +1681,7 @@ export default function StratPanel({
                                     <GripVertical className="w-3 h-3" />
                                   </div>
                                   {bulkMode && <input type="checkbox" aria-label={`Select ${s.region}`} checked={bulkIds.has(s.id)} onChange={() => setBulkIds(prev => { const next = new Set(prev); next.has(s.id) ? next.delete(s.id) : next.add(s.id); return next; })} />}
-                                  {settlements.find(item => item.faction === factionName)?.id === s.id && <span className="text-[8px] text-amber-500 shrink-0" title="Capital">★</span>}
+                                  {capitalIds.get(factionName) === s.id && <span className="text-[8px] text-amber-500 shrink-0" title="Capital">★</span>}
                                   <div className="flex-1 min-w-0">
                                     <SettlementRow
                             item={s}
@@ -1735,6 +1728,7 @@ export default function StratPanel({
               })}
             </DragDropContext>
           }
+          {hasMore && <button type="button" onClick={showMore} className="w-full rounded border border-border bg-card px-2 py-2 text-[10px] text-foreground hover:bg-accent">Show more settlements ({visibleCount} of {renderableCount})</button>}
         </>}
 
 
