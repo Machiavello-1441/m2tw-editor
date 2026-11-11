@@ -650,14 +650,14 @@ export default function CampaignMap() {
   // Derive map dimensions from loaded layers
   const mapH = (() => {
     const reg = layers['regions'];
-    if (reg?.bitmap) return reg.bitmap.height;
-    for (const def of LAYER_DEFS) { const s = layers[def.id]; if (s?.bitmap) return s.bitmap.height; }
+    if (reg?.height) return reg.height;
+    for (const def of LAYER_DEFS) { const s = layers[def.id]; if (s?.height) return s.height; }
     return 0;
   })();
   const mapW2 = (() => {
     const reg = layers['regions'];
-    if (reg?.bitmap) return reg.bitmap.width;
-    for (const def of LAYER_DEFS) { const s = layers[def.id]; if (s?.bitmap) return s.bitmap.width; }
+    if (reg?.width) return reg.width;
+    for (const def of LAYER_DEFS) { const s = layers[def.id]; if (s?.width) return s.width; }
     return 0;
   })();
 
@@ -671,7 +671,7 @@ export default function CampaignMap() {
       newData[idx] = r; newData[idx + 1] = g; newData[idx + 2] = b;
       createImageBitmap(new ImageData(newData, regLayer.width, regLayer.height)).then(bitmap => {
         setLayers(p => {
-          if (p.regions?.data !== newData) { bitmap.close(); return p; }
+          if (p.regions?.data !== newData) return p;
           return { ...p, regions: { ...p.regions, bitmap } };
         });
       });
@@ -1006,7 +1006,7 @@ export default function CampaignMap() {
       // Rebuild bitmap
       createImageBitmap(new ImageData(newData, regLayer.width, regLayer.height)).then(bitmap => {
         setLayers(p => {
-          if (p.regions?.data !== newData) { bitmap.close(); return p; }
+          if (p.regions?.data !== newData) return p;
           return { ...p, regions: { ...p.regions, bitmap } };
         });
       });
@@ -1112,7 +1112,7 @@ export default function CampaignMap() {
       }
       createImageBitmap(new ImageData(newData, w, h)).then(bitmap => {
         setLayers(p => {
-          if (p.regions?.data !== newData) { bitmap.close(); return p; }
+          if (p.regions?.data !== newData) return p;
           return { ...p, regions: { ...p.regions, bitmap } };
         });
       });
@@ -1175,7 +1175,7 @@ export default function CampaignMap() {
           setLayers(previous => ({ ...previous, regions: { ...previous.regions, data: newData } }));
           createImageBitmap(new ImageData(newData, regLayer.width, regLayer.height)).then(bitmap => {
             setLayers(previous => {
-              if (previous.regions?.data !== newData) { bitmap.close(); return previous; }
+              if (previous.regions?.data !== newData) return previous;
               return { ...previous, regions: { ...previous.regions, bitmap } };
             });
           });
@@ -1213,7 +1213,7 @@ export default function CampaignMap() {
         const newData = new Uint8ClampedArray(coastlineImageData.data);
         createImageBitmap(new ImageData(newData, coastlineImageData.width, coastlineImageData.height)).then(bitmap => {
           setLayers(p => {
-            if (p[layerId]?.data !== newData) { bitmap.close(); return p; }
+            if (p[layerId]?.data !== newData) return p;
             return { ...p, [layerId]: { ...p[layerId], bitmap } };
           });
         });
@@ -1229,7 +1229,7 @@ export default function CampaignMap() {
       }
       createImageBitmap(new ImageData(newData, layer.width, layer.height)).then(bitmap => {
         setLayers(p => {
-          if (p[layerId]?.data !== newData) { bitmap.close(); return p; }
+          if (p[layerId]?.data !== newData) return p;
           return { ...p, [layerId]: { ...p[layerId], bitmap } };
         });
       });

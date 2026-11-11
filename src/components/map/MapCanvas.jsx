@@ -5,7 +5,7 @@ import MapPixelTooltip from './MapPixelTooltip';
 import StratOverlay from './StratOverlay';
 import CampaignMapLocate from '@/components/map/CampaignMapLocate';
 import observePaintCanvasSize from '@/components/map/observePaintCanvasSize';
-import useTransparentMapBitmap from '@/components/map/useTransparentMapBitmap';
+import TgaBitmapOverlay from '@/components/map/TgaBitmapOverlay';
 import 'leaflet/dist/leaflet.css';
 
 const DRAW_ORDER = ['heights', 'ground', 'climates', 'regions', 'features', 'fog'];
@@ -35,62 +35,15 @@ export function floodFillRGB(data, width, height, sx, sy, nr, ng, nb, tolerance 
 
 
 
-/**
- * Renders a single layer's ImageBitmap as a Leaflet ImageOverlay. The bitmap
- * is asynchronously encoded (toBlob → object URL) and the URL is only rebuilt
- * when the bitmap reference actually changes. This keeps painting responsive:
- * touching one layer's pixels only re-encodes that one layer, and the encode
- * happens off the main thread (toBlob) instead of blocking on toDataURL.
- * The previous implementation re-encoded ALL visible layers to a synchronous
- * base64 PNG on every stroke, which froze the UI for several seconds per
- * pixel on large TGA maps.
- */
-function TgaBitmapOverlay({ bounds, bitmap, opacity, zIndex }) {
-  const [url, setUrl] = useState(null);
-  const urlRef = useRef(null);
-
-  useEffect(() => {
-    if (!bitmap) { setUrl(null); return; }
-    let cancelled = false;
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    canvas.getContext('2d').drawImage(bitmap, 0, 0);
-    canvas.toBlob((blob) => {
-      if (cancelled || !blob) return;
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-      const u = URL.createObjectURL(blob);
-      urlRef.current = u;
-      setUrl(u);
-    }, 'image/png');
-    return () => { cancelled = true; };
-  }, [bitmap]);
-
-  // Revoke the last blob URL on unmount to avoid leaking object URLs.
-  useEffect(() => () => {
-    if (urlRef.current) { URL.revokeObjectURL(urlRef.current); urlRef.current = null; }
-  }, []);
-
-  if (!url) return null;
-  return (
-    <ImageOverlay
-      url={url}
-      bounds={bounds}
-      opacity={opacity}
-      className="pixelated-overlay"
-      zIndex={zIndex}
-    />
-  );
-}
-
 /** Get map pixel dimensions from loaded layers */
 function getMapSize(layers) {
   const reg = layers['regions'];
-  if (reg?.bitmap) return { w: reg.bitmap.width, h: reg.bitmap.height };
+  if (reg?.width && reg?.height) return { w: reg.width, h: reg.height };
+  if (reg?.bitmap?.width && reg.bitmap.height) return { w: reg.bitmap.width, h: reg.bitmap.height };
   let w = 0, h = 0;
   for (const def of LAYER_DEFS) {
     const s = layers[def.id];
-    if (s?.bitmap) { if (s.bitmap.width > w) w = s.bitmap.width; if (s.bitmap.height > h) h = s.bitmap.height; }
+    if (s) { w = Math.max(w, s.width || s.bitmap?.width || 0); h = Math.max(h, s.height || s.bitmap?.height || 0); }
   }
   return { w, h };
 }
@@ -245,11 +198,15 @@ function PaintCanvas({
         ctx.strokeStyle = 'rgba(255,255,255,0.25)';
         ctx.lineWidth = 0.5;
         ctx.beginPath();
-        for (let gx = 0; gx <= gW; gx++) {
+        const firstX = Math.max(0, Math.ceil(-baseX * gW / imageW));
+        const lastX = Math.min(gW, Math.floor((canvas.width - baseX) * gW / imageW));
+        const firstY = Math.max(0, Math.ceil(-baseY * gH / imageH));
+        const lastY = Math.min(gH, Math.floor((canvas.height - baseY) * gH / imageH));
+        for (let gx = firstX; gx <= lastX; gx++) {
           const sx = baseX + (gx / gW) * imageW;
           ctx.moveTo(sx, 0); ctx.lineTo(sx, canvas.height);
         }
-        for (let gy = 0; gy <= gH; gy++) {
+        for (let gy = firstY; gy <= lastY; gy++) {
           const sy = baseY + (gy / gH) * imageH;
           ctx.moveTo(0, sy); ctx.lineTo(canvas.width, sy);
         }
@@ -391,7 +348,7 @@ function PaintCanvas({
     }
 
     // Probe for tooltip — skip when painting to avoid per-move re-renders
-    if (showTooltip && pos && pos.px >= 0 && pos.py >= 0 && pos.px < mapW && pos.py < mapH) {
+    if (!isPainting.current && showTooltip && pos && pos.px >= 0 && pos.py >= 0 && pos.px < mapW && pos.py < mapH) {
       const canvas = canvasRef.current;
       const rect = canvas?.getBoundingClientRect();
       const sx = e.clientX - (rect?.left ?? 0), sy = e.clientY - (rect?.top ?? 0);
@@ -478,16 +435,8 @@ function PaintCanvas({
 
 /** Renders TGA layer bitmaps as Leaflet ImageOverlays */
 function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
-  const features = useTransparentMapBitmap(layers.features, 'features', layers.features?.visible ?? true);
-  const fog = useTransparentMapBitmap(layers.fog, 'fog', layers.fog?.visible ?? true);
-  const citiesports = useTransparentMapBitmap(layers.regions, 'citiesports', regionsMode === 'citiesports' && (layers.regions?.visible ?? true));
-
-  // Note: each visible layer renders through its own <TgaBitmapOverlay> below,
-  // which only re-encodes its bitmap when that specific bitmap changes. The old
-  // implementation re-encoded ALL visible layers to a synchronous base64 PNG
-  // (canvas.toDataURL) on every paint stroke — that froze the UI for several
-  // seconds per pixel on large TGA maps. Now encoding is async (toBlob) and
-  // per-layer, so painting stays responsive.
+  // Transparency is applied directly to pixels during the bounded encode,
+  // avoiding a second set of temporary GPU bitmaps for every paint update.
   if (!osmBbox) return null;
   const bounds = [[osmBbox.south, osmBbox.west], [osmBbox.north, osmBbox.east]];
 
@@ -496,17 +445,15 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
       {DRAW_ORDER.map(id => {
         const state = layers[id];
         const def = LAYER_DEFS.find(d => d.id === id);
-        if (!state?.bitmap) return null;
+        if (!state?.data) return null;
         if (!(state.visible ?? def?.defaultVisible)) return null;
-        let bmp = state.bitmap;
-        if (id === 'features' && features) bmp = features;
-        else if (id === 'fog' && fog) bmp = fog;
-        else if (id === 'regions' && regionsMode === 'citiesports' && citiesports) bmp = citiesports;
+        const kind = id === 'features' || id === 'fog' ? id : id === 'regions' && regionsMode === 'citiesports' ? 'citiesports' : null;
         return (
           <TgaBitmapOverlay
             key={id}
             bounds={bounds}
-            bitmap={bmp}
+            layer={state}
+            kind={kind}
             opacity={state.opacity ?? def?.defaultOpacity ?? 1}
             zIndex={DRAW_ORDER.indexOf(id) + 200}
           />

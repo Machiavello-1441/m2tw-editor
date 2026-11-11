@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function transparentMapPixels(data, kind) {
   const rgba = new Uint8ClampedArray(data);
@@ -12,7 +12,7 @@ export function transparentMapPixels(data, kind) {
 }
 
 export default function useTransparentMapBitmap(layer, kind, enabled) {
-  const [current, setCurrent] = useState(null), owned = useRef(new Set());
+  const [current, setCurrent] = useState(null);
   const source = layer?.bitmap, data = layer?.data, width = layer?.width, height = layer?.height;
   const bitmap = enabled && current?.source === source && current?.data === data &&
     current?.width === width && current?.height === height && current?.kind === kind ? current.bitmap : null;
@@ -21,18 +21,10 @@ export default function useTransparentMapBitmap(layer, kind, enabled) {
     let cancelled = false;
     createImageBitmap(new ImageData(transparentMapPixels(data, kind), width, height)).then(next => {
       if (cancelled) { next.close(); return; }
-      owned.current.add(next);
+      // Never close a published bitmap while a consumer or queued render holds it.
       setCurrent({ bitmap: next, source, data, width, height, kind });
     });
     return () => { cancelled = true; };
   }, [enabled, source, data, width, height, kind]);
-  useEffect(() => {
-    for (const previous of owned.current) if (previous !== bitmap) {
-      previous.close(); owned.current.delete(previous);
-    }
-  }, [bitmap]);
-  useEffect(() => () => {
-    owned.current.forEach(previous => previous.close()); owned.current.clear();
-  }, []);
   return bitmap;
 }
