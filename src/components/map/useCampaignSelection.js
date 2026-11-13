@@ -29,7 +29,7 @@ export default function useCampaignSelection(snapshot, apply, load) {
     try {
       const stored = library.snapshots.get(id) || await readCampaignSnapshot(id);
       const saved = stored ? await reviveCampaignSnapshot(stored) : null;
-      if (saved?.storage?.extra) restoreUndoStorage(saved.storage, saved, true);
+      if (saved?.storage?.extra) restoreUndoStorage(saved.storage, saved, true, { preserveSharedNames: true });
       else restoreCampaignStorage(saved?.storage);
       if (saved) current.current.apply(saved);
       else { current.current.apply(null); await current.current.load({ files: campaign.files, campaignName: campaign.name }); }

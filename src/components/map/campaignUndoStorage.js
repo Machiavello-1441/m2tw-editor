@@ -2,6 +2,7 @@ import { captureCampaignStorage, restoreCampaignStorage } from '@/components/map
 import { editorSessionStorage } from '@/lib/editorStorage';
 import { getFile, setFile, removeFile } from '@/lib/bigFileStore';
 import { canonicalFileKey } from '@/lib/modFileRegistry';
+import { getCharacterDisplayNames } from '@/lib/characterNames';
 
 const extraKeys = ['m2tw_names_file', 'm2tw_char_names_display'];
 const derived = new Set(['m2tw_strat_raw', 'm2tw_campaign_strat', 'm2tw_overlay_items_json', 'm2tw_regions_data_json', 'm2tw_names_raw']);
@@ -18,9 +19,14 @@ export function isUndoStorageEvent(event) {
   const keys = new Set(Object.values(storage).flatMap(values => Object.keys(values).map(canonicalFileKey)));
   return !event.detail?.keys || event.detail.keys.some(key => keys.has(key));
 }
-export function restoreUndoStorage(storage, model, clearLayers = false) {
+export function restoreUndoStorage(storage, model, clearLayers = false, { preserveSharedNames = false } = {}) {
   restoreCampaignStorage(storage, clearLayers);
   for (const [key, value] of Object.entries(storage.extra)) {
+    // Recovery may seed a missing reference, but navigation must not undo mod edits.
+    if (preserveSharedNames && extraKeys.includes(canonicalFileKey(key))) {
+      if (value == null || getFile(key) !== null) continue;
+      if (key === 'm2tw_char_names_display' && Object.keys(getCharacterDisplayNames()).length) continue;
+    }
     if (value == null) removeFile(key); else setFile(key, value);
   }
   // Drafts retain original line coordinates and negative IDs; never reparse or save here.

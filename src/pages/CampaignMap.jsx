@@ -14,11 +14,11 @@ import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, computeSettlementPositions, serializeDescrStrat } from '../components/map/stratParser';
-import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB, parseDescrNames, parseExportDescrTraits, parseExportDescrAncillaries } from '../components/map/additionalParsers';
+import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB, parseExportDescrTraits, parseExportDescrAncillaries } from '../components/map/additionalParsers';
 import { parseFactionMovies } from '../components/map/factionMoviesParser';
 import useSharedEduUnits, { seedCampaignEdu } from '@/components/units/useSharedEduUnits';
-import { parseStringsBin } from '../components/strings/stringsBinCodec';
-import { getStringsBinStore } from '../lib/stringsBinStore';
+import useSharedCharacterNames from '@/components/map/useSharedCharacterNames';
+import seedCampaignCharacterNames, { seedCampaignCharacterDisplayNames } from '@/components/map/seedCampaignCharacterNames';
 import { importCampaignToDatabase } from '../components/map/campaignImporter';
 import { latLngToPixel, paintBoundary } from '../components/newmap/boundaryRasterizer';
 import { useEDB } from '../components/edb/EDBContext';
@@ -30,7 +30,6 @@ import useCampaignSelection from '@/components/map/useCampaignSelection';
 import useSettlementChanges from '@/components/map/useSettlementChanges';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
-import { getCharacterNamesRaw, getCharacterDisplayNames } from '@/lib/characterNames';
 import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 import campaignCheckpoint from '@/components/map/campaignCheckpoint';
 import { restoreCampaignStorage } from '@/components/map/campaignSession';
@@ -190,21 +189,10 @@ export default function CampaignMap() {
   const [cultures, setCultures] = useState(() => { try { const r = sessionStorage.getItem('m2tw_cultures_raw'); return r ? parseDescrCultures(r) : []; } catch { return []; } });
 
   // ── Character creation data sources ──────────────────────────────────────
-  const [descrNames, setDescrNames] = useState(() => { try { const r = getCharacterNamesRaw(); return r ? parseDescrNames(r) : null; } catch { return null; } });
+  const { descrNames, namesDisplayMap } = useSharedCharacterNames();
   const [traitsList, setTraitsList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_traits_raw'); return r ? parseExportDescrTraits(r) : []; } catch { return []; } });
   const [ancillariesList, setAncillariesList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_ancillaries_raw'); return r ? parseExportDescrAncillaries(r) : []; } catch { return []; } });
   const eduUnits = useSharedEduUnits();
-  // namesDisplayMap: decoded from names.txt.strings.bin (separate from region settlement names)
-  const [namesDisplayMap, setNamesDisplayMap] = useState(() => { try { return getCharacterDisplayNames(); } catch { return {}; } });
-
-  useEffect(() => {
-    const onNames = e => {
-      if (e.detail?.raw) setDescrNames(parseDescrNames(e.detail.raw));
-      if (e.detail?.namesDisplayMap) setNamesDisplayMap(e.detail.namesDisplayMap);
-    };
-    window.addEventListener('load-character-names', onNames);
-    return () => window.removeEventListener('load-character-names', onNames);
-  }, []);
 
   // ── Selected region (click on map) ────────────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState(null);
@@ -296,21 +284,6 @@ export default function CampaignMap() {
   React.useEffect(() => {
     // Campaign selection below loads the staged files only once per workspace.
 
-    // Auto-restore names display map from sessionStorage only (no localStorage cross-session)
-    try {
-      if (!sessionStorage.getItem('m2tw_char_names_display')) {
-        const store = getStringsBinStore();
-        for (const [fname, binData] of Object.entries(store)) {
-          if (fname.toLowerCase().includes('names') && !fname.toLowerCase().includes('settlement') && !fname.toLowerCase().includes('region')) {
-            const namesMap = {};
-            for (const { key, value } of binData.entries) if (key) namesMap[key] = value;
-            setNamesDisplayMap(namesMap);
-            try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify(namesMap)); } catch {}
-            break;
-          }
-        }
-      }
-    } catch {}
     const handler = (e) => {
       if (e.detail?.files) handleFolderImport({ files: e.detail.files, target: { value: '' } });
     };
@@ -425,19 +398,9 @@ export default function CampaignMap() {
         setSettlementNamesRaw(prev => ({ ...(prev || {}), ...names }));
         continue;
       }
-      // Auto-parse .strings.bin files from data/text/ folder
-      if (name.endsWith('.strings.bin') || name.endsWith('_names.bin')) {
-        const buf = await file.arrayBuffer();
-        const decoded = parseStringsBin(buf);
-        if (decoded?.entries?.length) {
-          const namesMap = {};
-          for (const { key, value } of decoded.entries) if (key) namesMap[key] = value;
-          // If it's a character names file, store separately for character display names
-          if (name.toLowerCase().includes('names') && !name.toLowerCase().includes('settlement') && !name.toLowerCase().includes('region')) {
-            setNamesDisplayMap(prev => ({ ...prev, ...namesMap }));
-            try { sessionStorage.setItem('m2tw_char_names_display', JSON.stringify({ ...namesMap })); } catch {}
-          }
-        }
+      // Original campaign dictionaries may seed missing names, never replace edits.
+      if ((name.endsWith('.strings.bin') || name.endsWith('.bin')) && name.includes('names') && !name.includes('settlement') && !name.includes('region')) {
+        await seedCampaignCharacterDisplayNames(file);
       }
       if (name === 'descr_cultures.txt') {
         const text = await file.text();
@@ -469,11 +432,7 @@ export default function CampaignMap() {
         try { sessionStorage.setItem('m2tw_music_types_raw', text); } catch {}
         setMusicTypes(parseDescrSoundsMusicTypes(text));
       }
-      if (name === 'descr_names.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_descr_names_raw', text); } catch {}
-        setDescrNames(parseDescrNames(text));
-      }
+      if (name === 'descr_names.txt') await seedCampaignCharacterNames(file);
       if (name === 'export_descr_character_traits.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_traits_raw', text); } catch {}
@@ -566,7 +525,7 @@ export default function CampaignMap() {
     }
   }, []);
 
-  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, rebelFactions, religions, naturalResources, cultures, descrNames, traitsList, ancillariesList, namesDisplayMap, campaignDetails, edbData, regionWizard, pendingPlace, paintState };
+  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, rebelFactions, religions, naturalResources, cultures, traitsList, ancillariesList, campaignDetails, edbData, regionWizard, pendingPlace, paintState };
   const campaignSelection = useCampaignSelection(
     campaignSnapshot,
     (saved) => {
@@ -580,8 +539,8 @@ export default function CampaignMap() {
       setMercenaryPools(saved?.mercenaryPools || []); setMusicTypes(saved?.musicTypes || []);
       if (saved) {
         setRebelFactions(saved.rebelFactions); setReligions(saved.religions);
-        setNaturalRes(saved.naturalResources); setCultures(saved.cultures); setDescrNames(saved.descrNames);
-        setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList); setNamesDisplayMap(saved.namesDisplayMap);
+        setNaturalRes(saved.naturalResources); setCultures(saved.cultures);
+        setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList);
       }
       if (saved?.edbData) setEdbData(saved.edbData);
       setCampaignDetails(saved?.campaignDetails || readCampaignDetails());
@@ -606,7 +565,6 @@ export default function CampaignMap() {
       setCampaignDetails(restored.campaignDetails);
       setEditedSettlements(restored.editedSettlements); setDirtyLayers(restored.dirtyLayers); setOverlayDirty(restored.overlayDirty);
       if (restored.edbData !== edbData) setEdbData(restored.edbData);
-      setDescrNames(restored.descrNames); setNamesDisplayMap(restored.namesDisplayMap);
       setSelectedItem(previous => restored.overlayItems.find(item => item.id === previous?.id) || null);
       setSelectedRegion(previous => restored.regionsData?.find(region => region.regionName === previous?.regionName) || null);
       setPendingPlace(null); setPendingRelocate(null); setPendingCoordPick(null); setRegionWizard(null);
