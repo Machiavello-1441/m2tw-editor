@@ -30,7 +30,7 @@ import DisastersTab from './DisastersTab';
 import CampaignEventsTab from './CampaignEventsTab';
 import CampaignDescriptionsStrings from './CampaignDescriptionsStrings';
 import CampaignSearchSelect from '@/components/map/CampaignSearchSelect';
-import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
+import { addSharedEditedFilesToZip } from '@/components/export/sharedEditedFilesExport';
 import BulkSettlementEditor from '@/components/map/BulkSettlementEditor';
 import SettlementTypeFields from '@/components/map/SettlementTypeFields';
 import StratPanelTabs from '@/components/map/StratPanelTabs';
@@ -1009,7 +1009,6 @@ export default function StratPanel({
     const sourcePaths = getCampaignExportPaths(campaignName);
     const basePath = sourcePaths.directory;
     const writeFile = (path, content) => zip.file(sourcePaths.resolve(path), content);
-    addCharacterNamesToZip(zip.folder('data'), descrNames, namesDisplayMap);
 
     // export_descr_buildings.txt — carries hidden_resources that were added
     // from the region form, plus any other EDB edits
@@ -1059,7 +1058,6 @@ export default function StratPanel({
     // Other text files from sessionStorage if present
     const extraFiles = [
     { key: 'm2tw_mercenaries_raw', name: 'descr_mercenaries.txt' },
-    { key: 'm2tw_music_types_raw', name: 'descr_sounds_music_types.txt' },
     { key: 'm2tw_terrain_raw', name: 'descr_terrain.txt' },
     { key: 'm2tw_win_conditions_raw', name: 'descr_win_conditions.txt' }];
 
@@ -1108,6 +1106,7 @@ export default function StratPanel({
       }
     } catch (e) { console.warn('campaign_descriptions export failed', e); }
 
+    addSharedEditedFilesToZip(zip.folder('data'));
     const content = await zip.generateAsync({ type: 'blob' });
     downloadBlob(content, `${campaignName}_campaign.zip`);
   };

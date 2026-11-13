@@ -4,7 +4,6 @@ import { useEDB } from '../components/edb/EDBContext';
 import { useTraits } from '../components/traits/TraitsContext';
 import { useAncillaries } from '../components/ancillaries/AncillariesContext';
 import { useRefData } from '../components/edb/RefDataContext';
-import { encodeStringsBin } from '../components/strings/stringsBinCodec';
 import { parseDescrStrat, serializeDescrStrat } from '../components/map/stratParser';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Package, FileText, AlertCircle, CheckCircle2, Code2, Globe2, Layers, FolderOpen } from 'lucide-react';
 import JSZip from 'jszip';
 import { toUtf16leBytes } from '@/lib/utf16';
-import { entriesToTextBytes, txtNameFor } from '@/lib/stringsTxtFile';
 import { getAllLayers } from '@/lib/mapLayerStore';
 import { runExportValidation } from '../components/export/exportValidation';
 import ExportValidationDialog from '../components/export/ExportValidationDialog';
@@ -20,10 +18,11 @@ import ValidationDashboard from '../components/export/ValidationDashboard';
 import BuildingRequirementValidation from '@/components/edb/BuildingRequirementValidation';
 import TriggerValidationPanel from '../components/export/TriggerValidationPanel';
 import CampaignPackagePicker from '../components/export/CampaignPackagePicker';
-import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
+import { addSharedEditedFilesToZip } from '@/components/export/sharedEditedFilesExport';
+import { addCurrentCampaignFilesToZip } from '@/components/export/currentCampaignFilesExport';
+import useSharedExportFiles from '@/hooks/useSharedExportFiles';
 import { getCharacterNamesRaw } from '@/lib/characterNames';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
-import { addSharedStringsToZip } from '@/components/export/sharedStringsExport';
 import { getCampaignExportPaths } from '@/components/map/campaignSourcePaths';
 
 function getCampaigns() {
@@ -83,13 +82,14 @@ const IMAGE_SLOT_DEFS = [
 ];
 
 export default function Export() {
-  const { edbData, exportEDB, textData, exportTextFile, imageData } = useEDB();
-  const { traitsData, traitsFilename, exportTraitsFile, textData: traitsTextData, textBinMeta: traitsBinMeta, textFilename: traitsTextFilename, exportTextFile: exportTraitsTextFile } = useTraits();
-  const { ancData, ancFilename, exportAncFile, textData: ancTextData, textBinMeta: ancBinMeta, textFilename: ancTextFilename, exportTextFile: exportAncTextFile } = useAncillaries();
-  const { guildData, exportGuildsFile } = useRefData();
+  const { edbData, textData, imageData } = useEDB();
+  const { traitsData, textData: traitsTextData, textBinMeta: traitsBinMeta, textFilename: traitsTextFilename } = useTraits();
+  const { ancData, textData: ancTextData, textBinMeta: ancBinMeta, textFilename: ancTextFilename } = useAncillaries();
+  const { guildData } = useRefData();
   const [building, setBuilding] = useState(false);
   const [done, setDone] = useState(false);
   const [exportError, setExportError] = useState('');
+  const sharedFileCount = useSharedExportFiles();
   const sharedStringsCount = Object.keys(getStringsBinStore()).length;
   const [validation, setValidation] = useState(null);
   const [exportingTwemp, setExportingTwemp] = useState(false);
@@ -111,25 +111,7 @@ export default function Export() {
     try {
     const zip = new JSZip();
     const dataFolder = zip.folder(`${modName}/data`);
-    // Preserve the format of loaded UI dictionaries. More specialised editor
-    // exports below may replace their own keyed dictionaries with edited data.
-    addSharedStringsToZip(dataFolder);
-
-    if (edbData) {
-      const edbText = exportEDB().replace(/\n/g, '\r\n');
-      dataFolder.file('export_descr_buildings.txt', edbText);
-    }
-
-    if (textData && Object.keys(textData).length > 0) {
-      // Export as .strings.bin (the format M2TW uses)
-      const magic1 = parseInt(localStorage.getItem('m2tw_edb_txt_bin_magic1') || '2');
-      const magic2 = parseInt(localStorage.getItem('m2tw_edb_txt_bin_magic2') || '2048');
-      const entries = Object.entries(textData).map(([key, value]) => ({ key, value: String(value) }));
-      const binBuf = encodeStringsBin(entries, magic1, magic2);
-      dataFolder.folder('text').file('export_buildings.txt.strings.bin', new Uint8Array(binBuf));
-      // Plain-text twin (UTF-16LE) of the same strings
-      dataFolder.folder('text').file('export_buildings.txt', entriesToTextBytes(entries));
-    }
+    // Shared text files and dictionaries are read together immediately before packing.
 
     // Export building images as TGA files
     if (imageData && Object.keys(imageData).length > 0) {
@@ -146,43 +128,6 @@ export default function Export() {
           ? `ui/${culture}/buildings/constructed/${filename}`
           : `ui/${culture}/buildings/${filename}`;
         dataFolder.file(subPath, tga);
-      }
-    }
-
-    // Export traits
-    if (traitsData) {
-      dataFolder.file('export_descr_character_traits.txt', exportTraitsFile().replace(/\n/g, '\r\n'));
-    }
-    if (traitsTextData && Object.keys(traitsTextData).length > 0) {
-      let traitsTextContent = exportTraitsTextFile();
-      if (traitsTextContent instanceof ArrayBuffer) traitsTextContent = new Uint8Array(traitsTextContent);
-      const traitsTextName = traitsTextFilename || 'export_VnVs.txt';
-      dataFolder.folder('text').file(traitsTextName, traitsTextContent);
-      // Edited .strings.bin → also ship the plain-text twin
-      if (/\.bin$/i.test(traitsTextName)) {
-        const txtEntries = Object.entries(traitsTextData).map(([key, value]) => ({ key, value: String(value) }));
-        dataFolder.folder('text').file(txtNameFor(traitsTextName), entriesToTextBytes(txtEntries));
-      }
-    }
-
-    // Export guilds
-    if (hasGuilds) {
-      dataFolder.file('export_descr_guilds.txt', exportGuildsFile().replace(/\n/g, '\r\n'));
-    }
-
-    // Export ancillaries
-    if (ancData) {
-      dataFolder.file('export_descr_ancillaries.txt', exportAncFile().replace(/\n/g, '\r\n'));
-    }
-    if (ancTextData && Object.keys(ancTextData).length > 0) {
-      let ancTextContent = exportAncTextFile();
-      if (ancTextContent instanceof ArrayBuffer) ancTextContent = new Uint8Array(ancTextContent);
-      const ancTextName = ancTextFilename || 'export_ancillaries.txt';
-      dataFolder.folder('text').file(ancTextName, ancTextContent);
-      // Edited .strings.bin → also ship the plain-text twin
-      if (/\.bin$/i.test(ancTextName)) {
-        const txtEntries = Object.entries(ancTextData).map(([key, value]) => ({ key, value: String(value) }));
-        dataFolder.folder('text').file(txtNameFor(ancTextName), entriesToTextBytes(txtEntries));
       }
     }
 
@@ -225,7 +170,9 @@ export default function Export() {
       zip.file(`${modName}/${relPath}`, new Uint8Array(buf));
     }
 
-    addCharacterNamesToZip(dataFolder);
+    // Last writer wins: original extras and render-time snapshots cannot replace shared edits.
+    addCurrentCampaignFilesToZip(zip.folder(modName));
+    addSharedEditedFilesToZip(dataFolder);
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -453,7 +400,7 @@ export default function Export() {
             className="w-full h-12 text-base gap-2"
             onClick={startExportZip}
             title={sharedStringsCount ? `${sharedStringsCount} shared strings binaries are included in their original formats` : undefined}
-            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && sharedStringsCount === 0 && extraFiles.size === 0)}
+            disabled={building || (!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && sharedFileCount === 0 && extraFiles.size === 0)}
           >
             {building ? (
               <>
@@ -475,9 +422,9 @@ export default function Export() {
             </div>
           )}
 
-          {sharedStringsCount > 0 && <p className="text-xs text-muted-foreground">Includes {sharedStringsCount} shared strings binaries, preserving keyed or ordered format.</p>}
+          {sharedFileCount > 0 && <p className="text-xs text-muted-foreground">Includes the latest {sharedFileCount} shared files and their text counterparts; shared edits take priority over original additional files.</p>}
           {exportError && <p role="alert" className="text-xs text-destructive whitespace-pre-wrap">{exportError}</p>}
-          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && sharedStringsCount === 0 && extraFiles.size === 0 && (
+          {!hasEDB && !hasTraits && !hasAnc && !hasLua && !hasCampaigns && !hasCharacterNames && sharedFileCount === 0 && extraFiles.size === 0 && (
             <div className="flex items-center gap-2 text-muted-foreground text-xs justify-center">
               <AlertCircle className="w-3.5 h-3.5" />
               Load at least one moddable file to enable export.

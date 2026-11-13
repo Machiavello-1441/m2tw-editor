@@ -40,7 +40,11 @@ const entries = Object.entries(dictionary).map(([key, value]) => ({ key, value }
 
 function exported(a) {
   const files = new Map();
-  a.addCharacterNamesToZip({ file(name, value) { files.set(name, value); } });
+  a.addCharacterNamesToZip({
+    root: '', files: {},
+    file(name, value) { this.files[name] = {}; files.set(name, value); },
+    remove(name) { delete this.files[name]; files.delete(name); },
+  });
   return files;
 }
 
@@ -148,5 +152,7 @@ test('Faction confirmation still copies names unconditionally and the faction ZI
   const zip = readFileSync(path.join(root, 'src/components/factions/FactionZipExport.jsx'), 'utf8');
   assert.match(editor, /preparedNames = prepareFactionNames\(src\.name, newFactionName\)/);
   assert.match(editor, /duplicateFactionNames\(src\.name, newFactionName, preparedNames\)/);
-  assert.match(zip, /addCharacterNamesToZip\(zip\.folder\('data'\)\)/);
+  assert.match(zip, /addSharedEditedFilesToZip\(zip\.folder\('data'\)\)/);
+  const shared = readFileSync(path.join(root, 'src/components/export/sharedEditedFilesExport.js'), 'utf8');
+  assert.match(shared, /addCharacterNamesToZip\(dataFolder\)/);
 });
