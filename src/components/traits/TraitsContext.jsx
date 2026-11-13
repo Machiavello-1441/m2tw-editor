@@ -3,12 +3,14 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { parseTraitsFile, serializeTraitsFile, parseTextFile, serializeTextFile } from './TraitsParser';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import { encodeStringsBin } from '@/components/strings/stringsBinCodec';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
+import useSharedDictionary from '@/hooks/useSharedDictionary';
 
 const TraitsContext = createContext(null);
 
 export function TraitsProvider({ children }) {
-  const [traitsData, setTraitsData] = useState(null);
-  const [textData, setTextData] = useState(null);
+  const [traitsData, setTraitsData] = useSharedFileState('m2tw_traits_file', parseTraitsFile, serializeTraitsFile);
+  const [textData, setTextData] = useSharedDictionary('export_vnvs.txt.strings.bin', 'm2tw_vnvs_file', parseTextFile, serializeTextFile, null);
   const [traitsFilename, setTraitsFilename] = useState('export_descr_character_traits.txt');
   const [textFilename, setTextFilename] = useState('export_VnVs.txt');
   const [isDirty, setIsDirty] = useState(false);
@@ -27,7 +29,6 @@ export function TraitsProvider({ children }) {
       if (traitsContent) {
         const parsed = parseTraitsFile(traitsContent);
         originalTraitsData.current = JSON.stringify(parsed);
-        setTraitsData(parsed);
         if (traitsName) setTraitsFilename(traitsName);
       }
       // Try .strings.bin store first (case-insensitive), then fall back to plain txt cache
@@ -42,7 +43,6 @@ export function TraitsProvider({ children }) {
         const map = {};
         for (const e of vnvsBin.entries) map[e.key] = e.value;
         originalTextData.current = JSON.stringify(map);
-        setTextData(map);
         setTextBinMeta({ magic1: vnvsBin.magic1 ?? 2, magic2: vnvsBin.magic2 ?? 2048 });
         setTextFilename(vnvsBinEntry[0]);
       } else {
@@ -51,7 +51,6 @@ export function TraitsProvider({ children }) {
         if (vnvsContent) {
           const parsed = parseTextFile(vnvsContent);
           originalTextData.current = JSON.stringify(parsed);
-          setTextData(parsed);
           if (vnvsName) setTextFilename(vnvsName);
         }
       }
@@ -100,31 +99,15 @@ export function TraitsProvider({ children }) {
         loadFromStorage();
       }
     };
-    const handleBin = () => loadFromStorage();
     window.addEventListener('load-traits', handleTraits);
     window.addEventListener('load-vnvs', handleVnvs);
-    window.addEventListener('strings-bin-updated', handleBin);
     return () => {
       window.removeEventListener('load-traits', handleTraits);
       window.removeEventListener('load-vnvs', handleVnvs);
-      window.removeEventListener('strings-bin-updated', handleBin);
     };
   }, [loadFromStorage, loadTraitsFile, loadTextFile]);
 
-  // Persist to localStorage whenever traitsData or textData changes (crash protection)
-  useEffect(() => {
-    if (!traitsData) return;
-    try {
-      localStorage.setItem('m2tw_traits_file', serializeTraitsFile(traitsData));
-    } catch {}
-  }, [traitsData]);
-
-  useEffect(() => {
-    if (!textData) return;
-    try {
-      localStorage.setItem('m2tw_vnvs_file', serializeTextFile(textData));
-    } catch {}
-  }, [textData]);
+  // Shared setters persist edits immediately, without write-back effects on reads.
 
   const updateTrait = useCallback((index, updated) => {
     setTraitsData(prev => {

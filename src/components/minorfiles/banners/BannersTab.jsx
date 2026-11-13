@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { parseBannersXml, serialiseBannersXml } from './bannersParser';
 import { loadTextureFiles, getTexturePreview, getStoreSize } from './TextureStore';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
 
 const STORAGE_KEY = 'm2tw_banners_file';
 
@@ -243,7 +244,7 @@ function SectionPanel({ title, children }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function BannersTab() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useSharedFileState(STORAGE_KEY, parseBannersXml, serialiseBannersXml);
   const [texCount, setTexCount] = useState(0); // bumped after texture upload to force re-render
   const fileRef = useRef();
   const texRef = useRef();
@@ -260,10 +261,6 @@ export default function BannersTab() {
 
   // Load from localStorage on mount + listen for live loads from Home
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved && !data) setData(parseBannersXml(saved));
-    } catch {}
     const handler = (e) => {
       try { setData(parseBannersXml(e.detail)); } catch {}
     };

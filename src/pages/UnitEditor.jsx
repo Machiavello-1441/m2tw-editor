@@ -11,6 +11,10 @@ import { modeldbStore } from '../lib/modeldbStore';
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
 import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
+import { updateStringsBinFile } from '@/lib/stringsBinStore';
+import { subscribeSharedModFiles } from '@/lib/sharedModFiles';
+import useSharedUnitDescriptions from '@/components/units/useSharedUnitDescriptions';
+import { parseExportUnits } from '@/components/units/unitDescriptionsCodec';
 
 const STORAGE_KEY = 'm2tw_edu_units';
 const EDU_FILE_KEY = 'm2tw_units_file';
@@ -31,99 +35,6 @@ function saveUnits(units) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(units)); } catch {}
 }
 
-// Parse export_units.txt into a map: dictionary -> { name, long, short }
-// M2TW format: {key}value on one line, or {key}\nvalue on next line, with ¬ or tab or no separator
-function parseExportUnits(text) {
-  const map = {};
-  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-  let i = 0;
-  while (i < lines.length) {
-    const trimmed = lines[i].trim();
-    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith(';')) { i++; continue; }
-
-    // Must start with {
-    if (!trimmed.startsWith('{')) { i++; continue; }
-
-    // Extract the key between { }
-    const keyMatch = trimmed.match(/^\{([^}]+)\}/);
-    if (!keyMatch) { i++; continue; }
-    const fullKey = keyMatch[1].trim();
-    // Everything after the closing }
-    const afterBrace = trimmed.slice(keyMatch[0].length);
-    // Strip leading separator (¬, tab, space)
-    const inlineValue = afterBrace.replace(/^[¬\t ]/, '').trim();
-
-    const isShort = fullKey.endsWith('_descr_short');
-    const isLong  = !isShort && fullKey.endsWith('_descr');
-
-    if (isShort) {
-      const baseKey = fullKey.slice(0, -'_descr_short'.length);
-      map[baseKey] = map[baseKey] || {};
-      if (inlineValue) {
-        map[baseKey].short = inlineValue;
-      } else {
-        // value on next line(s) until next {
-        const parts = []; i++;
-        while (i < lines.length && !lines[i].trim().startsWith('{')) {
-          parts.push(lines[i]); i++;
-        }
-        map[baseKey].short = parts.join('\n').trim();
-        continue;
-      }
-    } else if (isLong) {
-      const baseKey = fullKey.slice(0, -'_descr'.length);
-      map[baseKey] = map[baseKey] || {};
-      if (inlineValue) {
-        map[baseKey].long = inlineValue;
-      } else {
-        const parts = []; i++;
-        while (i < lines.length && !lines[i].trim().startsWith('{')) {
-          parts.push(lines[i]); i++;
-        }
-        map[baseKey].long = parts.join('\n').trim();
-        continue;
-      }
-    } else {
-      // Name entry
-      map[fullKey] = map[fullKey] || {};
-      if (inlineValue) {
-        map[fullKey].name = inlineValue;
-      } else {
-        // Next non-empty line is the name
-        i++;
-        while (i < lines.length && !lines[i].trim()) i++;
-        if (i < lines.length && !lines[i].trim().startsWith('{')) {
-          map[fullKey].name = lines[i].trim();
-          i++;
-        }
-        continue;
-      }
-    }
-    i++;
-  }
-  return map;
-}
-
-// Serialize descriptions map back to export_units.txt text
-function serializeExportUnits(descrMap) {
-  const lines = [];
-  for (const [key, val] of Object.entries(descrMap)) {
-    lines.push(`{${key}}\t${val.name || ''}`);
-    lines.push('');
-    if (val.long) {
-      lines.push(`{${key}_descr}`);
-      lines.push(val.long);
-      lines.push('');
-    }
-    if (val.short) {
-      lines.push(`{${key}_descr_short}`);
-      lines.push(val.short);
-      lines.push('');
-    }
-  }
-  return lines.join('\n');
-}
-
 function loadUnitImages() {
   try {
     const s = localStorage.getItem(UNIT_IMAGES_KEY);
@@ -139,21 +50,7 @@ export default function UnitEditorPage() {
   const [copied, setCopied] = useState(false);
   const [eduError, setEduError] = useState('');
   const eduSourceRef = useRef(null);
-  const [descrMap, setDescrMap] = useState(() => {
-    try {
-      // Parse raw file, then overlay any manual edits saved on top
-      const raw = localStorage.getItem(EXPORT_UNITS_KEY);
-      const base = raw ? parseExportUnits(raw) : {};
-      const editsRaw = localStorage.getItem(EXPORT_UNITS_KEY + '_edits');
-      const edits = editsRaw ? JSON.parse(editsRaw) : {};
-      // Merge: edits override parsed values per-key per-field
-      const merged = { ...base };
-      for (const [k, v] of Object.entries(edits)) {
-        merged[k] = { ...(merged[k] || {}), ...v };
-      }
-      return merged;
-    } catch { return {}; }
-  });
+  const [descrMap, setDescrMap] = useSharedUnitDescriptions();
   const [unitImages, setUnitImages] = useState(() => window._m2tw_unit_images || loadUnitImages());
   const [modeldb, setModeldb] = useState(() => modeldbStore.get());
   const { factions: refFactions, loadFactionsFile } = useRefData();
@@ -207,14 +104,17 @@ export default function UnitEditorPage() {
   useEffect(() => {
     const handler = (e) => {
       try {
-        const parsed = parseModeldb(typeof e.detail === 'string' ? e.detail : e.detail);
-        modeldbStore.set(parsed);
-        setModeldb(parsed);
+        if (typeof e.detail === 'string') {
+          const parsed = parseModeldb(e.detail);
+          modeldbStore.set(parsed, e.detail);
+        } else setModeldb(e.detail ?? modeldbStore.get());
       } catch {}
     };
+    const stop = subscribeSharedModFiles(['m2tw_modeldb_file'], () => setModeldb(modeldbStore.get()));
     window.addEventListener('modeldb-loaded', handler);
     window.addEventListener('modeldb-file-loaded', handler);
     return () => {
+      stop();
       window.removeEventListener('modeldb-loaded', handler);
       window.removeEventListener('modeldb-file-loaded', handler);
     };
@@ -227,7 +127,7 @@ export default function UnitEditorPage() {
     reader.onload = (ev) => {
       try {
         const parsed = parseModeldb(ev.target.result);
-        modeldbStore.set(parsed);
+        modeldbStore.set(parsed, ev.target.result);
         setModeldb(parsed);
       } catch (err) {
         alert('Failed to parse ModelDB: ' + err.message);
@@ -308,8 +208,6 @@ export default function UnitEditorPage() {
     if (!active) return;
     const updated = { ...descrMap, [active.dictionary]: val };
     setDescrMap(updated);
-    // Save edits back as a JSON overlay; the raw file is preserved separately
-    try { localStorage.setItem(EXPORT_UNITS_KEY + '_edits', JSON.stringify(updated)); } catch {}
   };
 
   const handleFileLoad = (e) => {
@@ -396,6 +294,7 @@ export default function UnitEditorPage() {
     const buf = await file.arrayBuffer();
     const parsed = parseStringsBin(buf);
     if (!parsed) return;
+    updateStringsBinFile('export_units.txt.strings.bin', parsed);
     const map = {};
     for (const entry of parsed.entries) map[entry.key] = entry.value;
     // Rebuild descrMap from the binary strings
@@ -417,7 +316,6 @@ export default function UnitEditorPage() {
       for (const [k, v] of Object.entries(newDescr)) {
         merged[k] = { ...(merged[k] || {}), ...v };
       }
-      try { localStorage.setItem(EXPORT_UNITS_KEY + '_edits', JSON.stringify(merged)); } catch {}
       return merged;
     });
   };

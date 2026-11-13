@@ -10,7 +10,7 @@ export const FILE_KEY_GROUPS = [
   ['m2tw_descr_character', 'm2tw_descr_character_raw'],
   ['m2tw_descr_model_strat', 'm2tw_descr_model_strat_raw'],
   ['m2tw_names_file', 'm2tw_descr_names_raw'],
-  ['m2tw_factions_file', 'm2tw_factions_raw'],
+  ['m2tw_factions_file', 'm2tw_factions_raw', 'm2tw_sm_factions_raw'],
   ['m2tw_cultures_file', 'm2tw_cultures_raw'],
   ['m2tw_religions_file', 'm2tw_religions_raw'],
   ['m2tw_rebel_factions_file', 'm2tw_rebel_factions_raw'],

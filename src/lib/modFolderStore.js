@@ -44,8 +44,9 @@ export function getFolderIndex() {
 /** Parse the folder's battle_models.modeldb into the shared store. */
 export async function loadFolderModeldb(idx = index) {
   if (!idx?.modeldbFile) return null;
-  const parsed = parseModeldb(await idx.modeldbFile.text());
-  modeldbStore.set(parsed);
+  const raw = await idx.modeldbFile.text();
+  const parsed = parseModeldb(raw);
+  modeldbStore.set(parsed, raw);
   return parsed;
 }
 

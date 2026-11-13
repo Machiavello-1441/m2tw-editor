@@ -1,10 +1,11 @@
 import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { encodeStringsBin } from '../components/strings/stringsBinCodec';
 import { getStringsBinStore, setStringsBinStore } from '../lib/stringsBinStore';
-import { Globe, FolderOpen, Download, Plus, Trash2, ChevronDown, ChevronRight, Copy } from 'lucide-react';
+import { Globe, FolderOpen, Download, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseDescrCulturesFull, serializeDescrCulturesFull, SETTLEMENT_TYPES, AGENT_TYPES } from '../components/cultures/culturesParser';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
 
 // Automatically add/update the 4 expanded.txt string entries for a culture
 // in the shared strings bin store (expanded.txt.strings.bin).
@@ -357,12 +358,7 @@ function ExtrasTab({ culture, onChange }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CulturesEditor() {
-  const [cultures, setCultures] = useState(() => {
-    try {
-      const raw = localStorage.getItem('m2tw_cultures_file') || sessionStorage.getItem('m2tw_cultures_raw');
-      return raw ? parseDescrCulturesFull(raw) : [];
-    } catch { return []; }
-  });
+  const [cultures, setCultures] = useSharedFileState('m2tw_cultures_file', parseDescrCulturesFull, serializeDescrCulturesFull, []);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [tab, setTab] = useState('general');
   const [rawText, setRawText] = useState(null); // stores original raw for re-load

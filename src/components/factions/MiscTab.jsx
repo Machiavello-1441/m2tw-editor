@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Download, Settings, CheckCircle, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getFile, setFile } from '@/lib/bigFileStore';
+import { subscribeSharedModFiles } from '@/lib/sharedModFiles';
 
 const LS_KEY = 'm2tw_offmap_models';
 
@@ -87,17 +88,16 @@ export default function MiscTab({ factionName }) {
   const syncFromStorage = useCallback(() => {
     try {
       const data = getFile(LS_KEY);
-      if (data) {
-        setFileData(data);
-        setNavyEntry(parseFactionNavy(data, factionName));
-      }
+      setFileData(data || '');
+      setNavyEntry(data ? parseFactionNavy(data, factionName) : null);
     } catch {}
   }, [factionName]);
 
   useEffect(() => {
     syncFromStorage();
+    const stop = subscribeSharedModFiles([LS_KEY], syncFromStorage);
     window.addEventListener('offmap-models-updated', syncFromStorage);
-    return () => window.removeEventListener('offmap-models-updated', syncFromStorage);
+    return () => { stop(); window.removeEventListener('offmap-models-updated', syncFromStorage); };
   }, [syncFromStorage]);
 
   const loadFile = useCallback(async (e) => {

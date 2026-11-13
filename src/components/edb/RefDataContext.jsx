@@ -2,10 +2,11 @@ import { editorStorage as localStorage } from "@/lib/editorStorage";
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import {
   parseFactionsFile, parseResourcesFile, parseEventsFile, parseUnitsFile,
-  FACTIONS as DEFAULT_FACTIONS, CULTURES as DEFAULT_CULTURES, HIDDEN_RESOURCES_DEFAULT
+  FACTIONS as DEFAULT_FACTIONS, CULTURES as DEFAULT_CULTURES
 } from './EDBParser';
 import { parseGuildsFile, serializeGuildsFile } from './GuildsParser';
 import { FILES_CHANGED_EVENT } from '@/lib/modFileRegistry';
+import { parseDescrCultures } from '@/components/map/additionalParsers';
 
 const RefDataContext = createContext(null);
 
@@ -76,11 +77,13 @@ export function RefDataProvider({ children }) {
         try { apply(localStorage.getItem(key)); }
         catch (error) { console.error(`Could not read shared reference ${key}`, error); }
       };
-      read(LS_KEYS.factions, raw => {
+      if (touched(LS_KEYS.factions) || touched('m2tw_cultures_file')) {
+        const raw = localStorage.getItem(LS_KEYS.factions);
         const result = raw ? parseFactionsFile(raw) : {};
         setFactions(result.factions || DEFAULT_FACTIONS);
-        setCultures(result.cultures || DEFAULT_CULTURES);
-      });
+        const cultureRaw = localStorage.getItem('m2tw_cultures_file');
+        setCultures([...new Set([...(result.cultures || DEFAULT_CULTURES), ...(cultureRaw ? parseDescrCultures(cultureRaw) : [])])]);
+      }
       read(LS_KEYS.resources, raw => setMapResources(raw ? parseResourcesFile(raw) : []));
       read(LS_KEYS.units, raw => setUnits(raw ? parseUnitsFile(raw) : []));
       read(LS_KEYS.skeleton, raw => {

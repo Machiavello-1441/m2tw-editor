@@ -2,6 +2,8 @@ import { editorStorage as localStorage } from "@/lib/editorStorage";
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { parseEDB, serializeEDB, createDefaultBuilding, createDefaultLevel, parseTextFile, serializeTextFile, parseBuildingImageKey } from './EDBParser';
 import { useEDBAutoSave } from './useEDBAutoSave';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
+import useSharedDictionary from '@/hooks/useSharedDictionary';
 
 const EDBContext = createContext(null);
 
@@ -11,33 +13,16 @@ const EDB_TXT_LS_KEY = 'm2tw_edb_txt_file';
 const EDB_IMG_LS_KEY = 'm2tw_edb_images';
 
 export function EDBProvider({ children }) {
-  const [edbData, setEdbData] = useState(null);
+  const [edbData, setEdbData] = useSharedFileState(EDB_LS_KEY, parseEDB, serializeEDB);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedLevel, setSelectedLevel] = useState(null);
-  const [textData, setTextData] = useState({}); // { levelName: { title, desc, shortDesc, factionEntries: {} } }
-  const [imageData, setImageData] = useState({}); // { levelName_culture: { icon, constructed, construction } }
+  const [textData, setTextData] = useSharedDictionary('export_buildings.txt.strings.bin', EDB_TXT_LS_KEY, parseTextFile, serializeTextFile);
+  const [imageData, setImageData] = useSharedFileState(EDB_IMG_LS_KEY, JSON.parse, JSON.stringify, {});
   const [isDirty, setIsDirty] = useState(false);
   const [fileName, setFileName] = useState('');
 
-  // Auto-restore from localStorage on mount
   useEffect(() => {
-    // Large image metadata is now backed by the shared persistent store.
-    try { const images = localStorage.getItem(EDB_IMG_LS_KEY); if (images) setImageData(JSON.parse(images)); } catch {}
-    try {
-      const raw = localStorage.getItem(EDB_LS_KEY);
-      const name = localStorage.getItem(EDB_LS_NAME_KEY);
-      if (raw) {
-        const parsed = parseEDB(raw);
-        setEdbData(parsed);
-        setFileName(name || 'export_descr_buildings.txt');
-      }
-      const txtRaw = localStorage.getItem(EDB_TXT_LS_KEY);
-      if (txtRaw) {
-        const parsed = parseTextFile(txtRaw);
-        setTextData(prev => ({ ...prev, ...parsed }));
-      }
-      // Images are restored independently above; they cannot prevent text files from loading.
-    } catch {}
+    setFileName(localStorage.getItem(EDB_LS_NAME_KEY) || 'export_descr_buildings.txt');
   }, []);
 
   const loadEDB = useCallback((text, name) => {

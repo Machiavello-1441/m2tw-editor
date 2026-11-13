@@ -14,7 +14,7 @@ import { loadTGA } from '../components/map/tgaLoader';
 import { exportTGA, downloadBlob } from '../components/map/tgaExporter';
 import { LAYER_DEFS } from '../components/map/mapLayerConstants';
 import { parseDescrStrat, parseDescrRegions, parseSettlementNames, computeSettlementPositions, serializeDescrStrat } from '../components/map/stratParser';
-import { parseDescrRebelFactions, parseDescrReligions, parseDescrSmResources, parseDescrMercenaries, parseDescrSoundsMusicTypes, parseDescrCultures, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB, parseExportDescrTraits, parseExportDescrAncillaries } from '../components/map/additionalParsers';
+import { parseDescrMercenaries, extractHiddenResourcesFromEDB, extractBuildingLevelsFromEDB } from '../components/map/additionalParsers';
 import { parseFactionMovies } from '../components/map/factionMoviesParser';
 import useSharedEduUnits, { seedCampaignEdu } from '@/components/units/useSharedEduUnits';
 import useSharedCharacterNames from '@/components/map/useSharedCharacterNames';
@@ -40,6 +40,7 @@ import useCampaignRecovery from '@/components/map/useCampaignRecovery';
 import CampaignRecoveryStatus from '@/components/map/CampaignRecoveryStatus';
 import useSharedFactionColors, { seedCampaignFactions } from '@/components/map/useSharedFactionColors';
 import useCampaignPaintBitmaps from '@/components/map/useCampaignPaintBitmaps';
+import useSharedCampaignReferences, { CAMPAIGN_SHARED_REFERENCES, seedSharedModFile } from '@/components/map/useSharedCampaignReferences';
 
 const INITIAL_PAINT = {
   active: false,
@@ -176,22 +177,11 @@ export default function CampaignMap() {
   const [overlayMap, setOverlayMap] = useState(null); // { url, name, mode } | null
 
   // ── Extra data sources for region editor ──────────────────────────────────
-  const [rebelFactions, setRebelFactions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_rebel_factions_raw'); return r ? parseDescrRebelFactions(r) : []; } catch { return []; } });
-  const [religions, setReligions] = useState(() => { try { const r = sessionStorage.getItem('m2tw_religions_raw'); return r ? parseDescrReligions(r) : []; } catch { return []; } });
-  const [naturalResources, setNaturalRes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_sm_resources_raw'); return r ? parseDescrSmResources(r) : []; } catch { return []; } });
-  useEffect(() => {
-    const handler = () => { try { const r = sessionStorage.getItem('m2tw_sm_resources_raw'); setNaturalRes(r ? parseDescrSmResources(r) : []); } catch {} };
-    window.addEventListener('load-sm-resources', handler);
-    return () => window.removeEventListener('load-sm-resources', handler);
-  }, []);
+  const { rebelFactions, religions, naturalResources, cultures, musicTypes, traitsList, ancillariesList } = useSharedCampaignReferences();
   const [mercenaryPools, setMercenaryPools] = useState(() => { try { const r = sessionStorage.getItem('m2tw_mercenaries_raw'); return r ? parseDescrMercenaries(r) : []; } catch { return []; } });
-  const [musicTypes, setMusicTypes] = useState(() => { try { const r = sessionStorage.getItem('m2tw_music_types_raw'); return r ? parseDescrSoundsMusicTypes(r) : []; } catch { return []; } });
-  const [cultures, setCultures] = useState(() => { try { const r = sessionStorage.getItem('m2tw_cultures_raw'); return r ? parseDescrCultures(r) : []; } catch { return []; } });
 
   // ── Character creation data sources ──────────────────────────────────────
   const { descrNames, namesDisplayMap } = useSharedCharacterNames();
-  const [traitsList, setTraitsList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_traits_raw'); return r ? parseExportDescrTraits(r) : []; } catch { return []; } });
-  const [ancillariesList, setAncillariesList] = useState(() => { try { const r = sessionStorage.getItem('m2tw_ancillaries_raw'); return r ? parseExportDescrAncillaries(r) : []; } catch { return []; } });
   const eduUnits = useSharedEduUnits();
 
   // ── Selected region (click on map) ────────────────────────────────────────
@@ -336,6 +326,10 @@ export default function CampaignMap() {
     for (const file of files) {
       const name = file.name.toLowerCase();
       if (await loadSettlementMechanicsFile(file)) continue;
+      if (CAMPAIGN_SHARED_REFERENCES[name]) {
+        await seedSharedModFile(file, CAMPAIGN_SHARED_REFERENCES[name]);
+        continue;
+      }
       if (TGA_MAP[name]) {
         const buf = await file.arrayBuffer();
         const result = await loadTGA(buf);
@@ -388,7 +382,7 @@ export default function CampaignMap() {
           return prev;
         });
       }
-      if (name === 'campaign_script.txt') {
+      if (name === 'campaign_script.txt' && !e.preserveScript) {
         const text = await file.text();
         try { localStorage.setItem('m2tw_campaign_script', text); sessionStorage.setItem('m2tw_script_raw', text); } catch {}
       }
@@ -402,47 +396,12 @@ export default function CampaignMap() {
       if ((name.endsWith('.strings.bin') || name.endsWith('.bin')) && name.includes('names') && !name.includes('settlement') && !name.includes('region')) {
         await seedCampaignCharacterDisplayNames(file);
       }
-      if (name === 'descr_cultures.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_cultures_raw', text); } catch {}
-        setCultures(parseDescrCultures(text));
-      }
-      if (name === 'descr_rebel_factions.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_rebel_factions_raw', text); } catch {}
-        setRebelFactions(parseDescrRebelFactions(text));
-      }
-      if (name === 'descr_religions.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_religions_raw', text); } catch {}
-        setReligions(parseDescrReligions(text));
-      }
-      if (name === 'descr_sm_resources.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_sm_resources_raw', text); } catch {}
-        setNaturalRes(parseDescrSmResources(text));
-      }
       if (name === 'descr_mercenaries.txt') {
         const text = await file.text();
         try { sessionStorage.setItem('m2tw_mercenaries_raw', text); } catch {}
         setMercenaryPools(parseDescrMercenaries(text));
       }
-      if (name === 'descr_sounds_music_types.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_music_types_raw', text); } catch {}
-        setMusicTypes(parseDescrSoundsMusicTypes(text));
-      }
       if (name === 'descr_names.txt') await seedCampaignCharacterNames(file);
-      if (name === 'export_descr_character_traits.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_traits_raw', text); } catch {}
-        setTraitsList(parseExportDescrTraits(text));
-      }
-      if (name === 'export_descr_ancillaries.txt') {
-        const text = await file.text();
-        try { sessionStorage.setItem('m2tw_ancillaries_raw', text); } catch {}
-        setAncillariesList(parseExportDescrAncillaries(text));
-      }
       if (name === 'export_descr_unit.txt') await seedCampaignEdu(file);
       // Store additional campaign text files for ZIP export
       const extraSessionMap = {
@@ -525,7 +484,7 @@ export default function CampaignMap() {
     }
   }, []);
 
-  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, musicTypes, rebelFactions, religions, naturalResources, cultures, traitsList, ancillariesList, campaignDetails, edbData, regionWizard, pendingPlace, paintState };
+  const campaignSnapshot = { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, osmBbox, mercenaryPools, campaignDetails, regionWizard, pendingPlace, paintState };
   const campaignSelection = useCampaignSelection(
     campaignSnapshot,
     (saved) => {
@@ -536,13 +495,8 @@ export default function CampaignMap() {
       setSettlementNamesRaw(saved?.settlementNames || null); setOverlayItems(saved?.overlayItems || []);
       setEditedSettlements(saved?.editedSettlements || {}); setDirtyLayers(saved?.dirtyLayers || new Set());
       setOverlayDirty(saved?.overlayDirty || false); setOsmBbox(saved?.osmBbox || null);
-      setMercenaryPools(saved?.mercenaryPools || []); setMusicTypes(saved?.musicTypes || []);
-      if (saved) {
-        setRebelFactions(saved.rebelFactions); setReligions(saved.religions);
-        setNaturalRes(saved.naturalResources); setCultures(saved.cultures);
-        setTraitsList(saved.traitsList); setAncillariesList(saved.ancillariesList);
-      }
-      if (saved?.edbData) setEdbData(saved.edbData);
+      setMercenaryPools(saved?.mercenaryPools || []);
+      if (saved?.edbData && getFile('m2tw_edb_file') === null) setEdbData(saved.edbData);
       setCampaignDetails(saved?.campaignDetails || readCampaignDetails());
       setSaveError(''); setSaveMessage('');
       setSelectedItem(null); setSelectedRegion(null); setPendingPlace(saved?.pendingPlace || null); setPendingRelocate(null);

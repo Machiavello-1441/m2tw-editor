@@ -37,8 +37,15 @@ export function setStringsBinStore(store) {
 
 export function updateStringsBinFile(name, fileData) {
   const store = getMemoryStore();
-  store[normalizedFileName(name)] = fileData;
+  const key = normalizedFileName(name);
+  if (JSON.stringify(store[key]) === JSON.stringify(fileData)) return;
+  store[key] = fileData;
   setStringsBinStore(store);
+  if (/^names\.txt(?:\.strings\.bin|\.bin)?$/i.test(key)) {
+    const map = JSON.stringify(Object.fromEntries(fileData.entries.map(entry => [entry.key, entry.value])));
+    setFile('m2tw_names_bin_entries', map);
+    setFile('m2tw_char_names_display', map);
+  }
   window.dispatchEvent(new CustomEvent('strings-bin-updated', { detail: { name } }));
 }
 

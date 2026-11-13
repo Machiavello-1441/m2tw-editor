@@ -4,6 +4,8 @@ import { captureCampaignStorage, restoreCampaignStorage } from '@/components/map
 import { persistSavedCampaign, reviveCampaignSnapshot } from '@/components/map/campaignSavePersistence';
 import { readCampaignSnapshot } from '@/components/map/campaignRecoveryStore';
 import { restoreUndoStorage } from '@/components/map/campaignUndoStorage';
+import { setFile } from '@/lib/bigFileStore';
+import { readEditedScript } from '@/components/map/sharedCampaignScript';
 
 export default function useCampaignSelection(snapshot, apply, load) {
   const library = campaignLibrary();
@@ -29,10 +31,12 @@ export default function useCampaignSelection(snapshot, apply, load) {
     try {
       const stored = library.snapshots.get(id) || await readCampaignSnapshot(id);
       const saved = stored ? await reviveCampaignSnapshot(stored) : null;
+      const editedScript = initial && id === library.active ? readEditedScript(id) : null;
       if (saved?.storage?.extra) restoreUndoStorage(saved.storage, saved, true, { preserveSharedNames: true });
       else restoreCampaignStorage(saved?.storage);
+      if (editedScript !== null) setFile('m2tw_campaign_script', editedScript);
       if (saved) current.current.apply(saved);
-      else { current.current.apply(null); await current.current.load({ files: campaign.files, campaignName: campaign.name }); }
+      else { current.current.apply(null); await current.current.load({ files: campaign.files, campaignName: campaign.name, preserveScript: editedScript !== null }); }
       if (committed.current !== id) library.snapshots.delete(committed.current);
       library.active = id; committed.current = id; setActive(id); setRecoveredAt(saved?.recoveryAt || null);
       window._m2tw_map_files = campaign.files;

@@ -4,10 +4,13 @@ import { Upload, Download, Plus, X, Search, Copy, GitMerge } from 'lucide-react'
 import MergeNamesModal from './MergeNamesModal';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
 import { getCharacterNamesFile } from '@/lib/characterNames';
-import { getFile, setFile } from '@/lib/bigFileStore';
+import { setFile } from '@/lib/bigFileStore';
 import { parseDescrNames, serializeDescrNames } from '@/lib/descrNamesCodec';
 import FactionNamesCheck from '@/components/minorfiles/FactionNamesCheck';
 import { useModData } from '@/components/shared/ModDataContext';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
+import useSharedDictionary from '@/hooks/useSharedDictionary';
+import { updateStringsBinFile } from '@/lib/stringsBinStore';
 
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob);
@@ -53,15 +56,8 @@ function NameRow({ internalName, displayName, onDisplayChange, onRemoveInternal,
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CharacterNamesTab() {
-  const [descrNames, setDescrNamesState] = useState({});
-  const setDescrNames = update => {
-    const next = typeof update === 'function' ? update(descrNames) : update;
-    const raw = serializeDescrNames(next);
-    setFile('m2tw_names_file', raw);
-    setDescrNamesState(next);
-    window.dispatchEvent(new CustomEvent('load-character-names', { detail: { raw } }));
-  };
-  const [displayNames, setDisplayNames] = useState({});
+  const [descrNames, setDescrNames] = useSharedFileState('m2tw_names_file', parseDescrNames, serializeDescrNames, {});
+  const [displayNames, setDisplayNames] = useSharedDictionary('names.txt.strings.bin', 'm2tw_names_bin_entries', JSON.parse, JSON.stringify);
   const [binMeta, setBinMeta] = useState(null);
 
   const [selectedFaction, setSelectedFaction] = useState('');
@@ -78,13 +74,14 @@ export default function CharacterNamesTab() {
       setParseError('No factions found. The file may use an unsupported format or be empty.');
       return;
     }
-    setDescrNamesState(parsed);
+    setFile('m2tw_names_file', raw);
     setSelectedFaction(previous => parsed[previous] ? previous : factions[0]);
   };
 
   const applyNamesBin = (buf) => {
     const decoded = parseStringsBin(buf);
     if (decoded?.entries) {
+      updateStringsBinFile('names.txt.strings.bin', decoded);
       const map = {};
       for (const { key, value } of decoded.entries) if (key) map[key] = value;
       setDisplayNames(map);
@@ -96,54 +93,11 @@ export default function CharacterNamesTab() {
     }
   };
 
-  const applyNamesBinEntries = (entries, meta) => {
-    const map = {};
-    for (const { key, value } of entries) if (key) map[key] = value;
-    setDisplayNames(map);
-    if (meta) setBinMeta(meta);
-    try {
-      localStorage.setItem('m2tw_names_bin_entries', JSON.stringify(map));
-      localStorage.setItem('m2tw_names_bin_meta', JSON.stringify(meta));
-    } catch {}
-  };
-
-  // Auto-restore from localStorage / stringsBinStore on mount
   useEffect(() => {
-    try {
-      const raw = getFile('m2tw_names_file');
-      if (raw) applyDescrNames(raw);
-    } catch {}
-
-    try {
-      const entry = getCharacterNamesFile();
-      if (entry?.[1]) {
-        applyNamesBinEntries(entry[1].entries, { magic1: entry[1].magic1 ?? 2, magic2: entry[1].magic2 ?? 2048 });
-      }
-    } catch {}
-
-    try {
-      const raw = localStorage.getItem('m2tw_names_bin_entries');
-      if (raw) {
-        setDisplayNames(JSON.parse(raw));
-        const meta = localStorage.getItem('m2tw_names_bin_meta');
-        if (meta) setBinMeta(JSON.parse(meta));
-      }
-    } catch {}
-
-    const onNamesLoaded = (e) => { if (e.detail?.raw) applyDescrNames(e.detail.raw); };
-    const onStringsBinUpdated = () => {
-      try {
-        const entry = getCharacterNamesFile();
-        if (entry?.[1]) applyNamesBinEntries(entry[1].entries, { magic1: entry[1].magic1 ?? 2, magic2: entry[1].magic2 ?? 2048 });
-      } catch {}
-    };
-    window.addEventListener('load-character-names', onNamesLoaded);
-    window.addEventListener('strings-bin-updated', onStringsBinUpdated);
-    return () => {
-      window.removeEventListener('load-character-names', onNamesLoaded);
-      window.removeEventListener('strings-bin-updated', onStringsBinUpdated);
-    };
-  }, []);
+    setSelectedFaction(previous => descrNames[previous] ? previous : Object.keys(descrNames)[0] || '');
+    const file = getCharacterNamesFile()?.[1];
+    if (file) setBinMeta({ magic1: file.magic1 ?? 2, magic2: file.magic2 ?? 2048 });
+  }, [descrNames, displayNames]);
 
   const factionList = useMemo(() => Object.keys(descrNames), [descrNames]);
 
@@ -173,13 +127,7 @@ export default function CharacterNamesTab() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target.result;
-      // Clear stale cache before applying fresh file
-      try {
-        localStorage.removeItem('m2tw_names_bin_entries');
-        localStorage.removeItem('m2tw_names_bin_meta');
-      } catch {}
-      setDisplayNames({});
-      setBinMeta(null);
+      // Name pools and their shared display dictionary are separate files.
       applyDescrNames(text);
       try { localStorage.setItem('m2tw_names_file', text); } catch {}
     };

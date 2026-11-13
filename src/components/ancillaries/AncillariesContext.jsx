@@ -3,12 +3,14 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { parseAncillariesFile, serializeAncillariesFile, parseTextFile, serializeTextFile } from './AncillariesParser';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
 import { encodeStringsBin } from '@/components/strings/stringsBinCodec';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
+import useSharedDictionary from '@/hooks/useSharedDictionary';
 
 const AncillariesContext = createContext(null);
 
 export function AncillariesProvider({ children }) {
-  const [ancData, setAncData] = useState(null);
-  const [textData, setTextData] = useState(null);
+  const [ancData, setAncData] = useSharedFileState('m2tw_anc_file', parseAncillariesFile, serializeAncillariesFile);
+  const [textData, setTextData] = useSharedDictionary('export_ancillaries.txt.strings.bin', 'm2tw_anctxt_file', parseTextFile, serializeTextFile, null);
   const [ancFilename, setAncFilename] = useState('export_descr_ancillaries.txt');
   const [textFilename, setTextFilename] = useState('export_ancillaries.txt');
   const [isDirty, setIsDirty] = useState(false);
@@ -40,7 +42,6 @@ export function AncillariesProvider({ children }) {
       if (ancContent) {
         const parsed = parseAncillariesFile(ancContent);
         originalAncData.current = JSON.stringify(parsed);
-        setAncData(parsed);
         if (ancName) setAncFilename(ancName);
       }
       // Try .strings.bin store first (case-insensitive), then fall back to plain txt cache
@@ -53,7 +54,6 @@ export function AncillariesProvider({ children }) {
         const map = {};
         for (const e of binData.entries) map[e.key] = e.value;
         originalTextData.current = JSON.stringify(map);
-        setTextData(map);
         setTextFilename(filename);
         setTextBinMeta({ magic1: binData.magic1 ?? 2, magic2: binData.magic2 ?? 2048 });
       } else {
@@ -62,7 +62,6 @@ export function AncillariesProvider({ children }) {
         if (txtContent) {
           const parsed = parseTextFile(txtContent);
           originalTextData.current = JSON.stringify(parsed);
-          setTextData(parsed);
           if (txtName) setTextFilename(txtName);
           setTextBinMeta(null);
         }
@@ -114,14 +113,11 @@ export function AncillariesProvider({ children }) {
         loadFromStorage();
       }
     };
-    const handleBin = () => loadFromStorage();
     window.addEventListener('load-ancillaries', handleAnc);
     window.addEventListener('load-anctxt', handleAncTxt);
-    window.addEventListener('strings-bin-updated', handleBin);
     return () => {
       window.removeEventListener('load-ancillaries', handleAnc);
       window.removeEventListener('load-anctxt', handleAncTxt);
-      window.removeEventListener('strings-bin-updated', handleBin);
     };
   }, [loadFromStorage, loadAncFile, loadTextFile]);
 
@@ -130,20 +126,7 @@ export function AncillariesProvider({ children }) {
     setTgaImages(prev => ({ ...prev, ...images }));
   }, []);
 
-  // Persist to localStorage on every change (crash protection)
-  useEffect(() => {
-    if (!ancData) return;
-    try {
-      localStorage.setItem('m2tw_anc_file', serializeAncillariesFile(ancData));
-    } catch {}
-  }, [ancData]);
-
-  useEffect(() => {
-    if (!textData) return;
-    try {
-      localStorage.setItem('m2tw_anctxt_file', serializeTextFile(textData));
-    } catch {}
-  }, [textData]);
+  // Shared setters persist edits immediately, without write-back effects on reads.
 
   const updateAncillary = useCallback((index, updated) => {
     setAncData(prev => {

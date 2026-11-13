@@ -2,7 +2,9 @@ import { editorStorage as localStorage, editorSessionStorage as sessionStorage }
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Upload, Download, Plus, X, AlertCircle, ImageIcon } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
-import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { getStringsBinStore, updateStringsBinFile } from '@/lib/stringsBinStore';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
+import useSharedDictionary from '@/hooks/useSharedDictionary';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
 
 function parseResourcesFull(text) {
@@ -68,8 +70,8 @@ function useResourceIcons() {
 }
 
 export default function ResourcesTab() {
-  const [resources, setResources] = useState([]);
-  const [names, setNames] = useState({});
+  const [resources, setResources] = useSharedFileState('m2tw_resources_file', parseResourcesFull, serializeResources, []);
+  const [names, setNames] = useSharedDictionary('strat.txt.strings.bin', 'm2tw_resource_display_names', JSON.parse, JSON.stringify);
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const txtInputRef = useRef(null);
@@ -82,7 +84,7 @@ export default function ResourcesTab() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem('m2tw_resources_file');
-      if (raw) { setResources(parseResourcesFull(raw)); setLoaded(true); }
+      if (raw !== null) setLoaded(true);
     } catch {}
     try {
       const store = getStringsBinStore();
@@ -126,6 +128,7 @@ export default function ResourcesTab() {
     const buf = await file.arrayBuffer();
     const decoded = parseStringsBin(buf);
     if (decoded?.entries) {
+      updateStringsBinFile('strat.txt.strings.bin', decoded);
       const map = {};
       for (const { key, value } of decoded.entries) if (key) map[key] = value;
       setNames(map);
@@ -168,7 +171,7 @@ export default function ResourcesTab() {
     e.target.value = '';
   };
 
-  const resourceBinKey = (name) => `{SMT_RESOURCE_${name.toUpperCase()}}`;
+  const resourceBinKey = (name) => `SMT_RESOURCE_${name.toUpperCase()}`;
   const getDisplayName = (name) => names[resourceBinKey(name)] ?? '';
   const setDisplayName = (name, displayName) => {
     setNames(prev => ({ ...prev, [resourceBinKey(name)]: displayName }));

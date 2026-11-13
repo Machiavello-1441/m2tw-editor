@@ -1,8 +1,10 @@
 import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Upload, Download, Plus, X, AlertCircle, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { Upload, Download, Plus, AlertCircle, Search } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
-import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { getStringsBinStore, updateStringsBinFile } from '@/lib/stringsBinStore';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
+import useSharedDictionary from '@/hooks/useSharedDictionary';
 import RebelFactionRow from './RebelFactionRow';
 import { useRefData } from '../edb/RefDataContext';
 
@@ -72,8 +74,8 @@ function downloadBlob(blob, name) {
 const CATEGORIES = ['gladiator_revolt', 'brigands', 'pirates', 'peasant_revolt'];
 
 export default function RebelFactionsTab() {
-  const [factions, setFactions] = useState([]);
-  const [names, setNames] = useState({});
+  const [factions, setFactions] = useSharedFileState('m2tw_rebel_factions_file', parseRebelFactionsFull, serializeRebelFactions, []);
+  const [names, setNames] = useSharedDictionary('rebel_faction_descr.txt.strings.bin', 'm2tw_rebel_display_names', JSON.parse, JSON.stringify);
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [search, setSearch] = useState('');
@@ -88,10 +90,7 @@ export default function RebelFactionsTab() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem('m2tw_rebel_factions_file');
-      if (raw) {
-        setFactions(parseRebelFactionsFull(raw));
-        setLoaded(true);
-      }
+      if (raw !== null) setLoaded(true);
     } catch {}
     // Auto-load strings.bin for rebel faction display names
     try {
@@ -128,6 +127,7 @@ export default function RebelFactionsTab() {
     const buf = await file.arrayBuffer();
     const decoded = parseStringsBin(buf);
     if (decoded?.entries) {
+      updateStringsBinFile('rebel_faction_descr.txt.strings.bin', decoded);
       const map = {};
       for (const { key, value } of decoded.entries) if (key) map[key] = value;
       setNames(map);

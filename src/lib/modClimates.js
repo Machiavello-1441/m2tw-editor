@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { editorStorage as localStorage } from '@/lib/editorStorage';
 import { LAYER_PRESETS } from '@/components/map/paintPresets';
+import { subscribeSharedModFiles } from '@/lib/sharedModFiles';
 
 export const DESCR_CLIMATES_KEY = 'm2tw_descr_climates';
 export const AERIAL_RAW_KEY = 'm2tw_aerial_ground_types_raw';
@@ -44,9 +45,10 @@ export function useModClimatePresets() {
   const [presets, setPresets] = useState(getModClimatePresets);
   useEffect(() => {
     const f = () => setPresets(getModClimatePresets());
+    const stop = subscribeSharedModFiles([DESCR_CLIMATES_KEY, AERIAL_RAW_KEY], f);
     window.addEventListener(MOD_CLIMATES_EVT, f);
     window.addEventListener('storage', f);
-    return () => { window.removeEventListener(MOD_CLIMATES_EVT, f); window.removeEventListener('storage', f); };
+    return () => { stop(); window.removeEventListener(MOD_CLIMATES_EVT, f); window.removeEventListener('storage', f); };
   }, []);
   return presets;
 }

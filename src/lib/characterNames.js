@@ -11,9 +11,9 @@ export function getCharacterNamesRaw() {
 }
 export function getCharacterDisplayNames() {
   const file = getCharacterNamesFile()?.[1];
-  return { ...JSON.parse(getFile('m2tw_names_bin_entries') || '{}'),
-    ...Object.fromEntries((file?.entries || []).map(e => [e.key, e.value])),
-    ...JSON.parse(sessionStorage.getItem('m2tw_char_names_display') || '{}') };
+  return { ...JSON.parse(sessionStorage.getItem('m2tw_char_names_display') || '{}'),
+    ...JSON.parse(getFile('m2tw_names_bin_entries') || '{}'),
+    ...Object.fromEntries((file?.entries || []).map(e => [e.key, e.value])) };
 }
 export function serializeCharacterNames(names) {
   const factions = new Set(['male', '_surnames', 'female'].flatMap(section => Object.keys(names?.[section] || {})));

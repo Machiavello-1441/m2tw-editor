@@ -2,7 +2,9 @@ import { editorStorage as localStorage, editorSessionStorage as sessionStorage }
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Upload, Download, Plus, X, AlertCircle } from 'lucide-react';
 import { encodeStringsBin, parseStringsBin } from '../strings/stringsBinCodec';
-import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { getStringsBinStore, updateStringsBinFile } from '@/lib/stringsBinStore';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
+import useSharedDictionary from '@/hooks/useSharedDictionary';
 
 function parseReligionsFull(text) {
   const religions = [];
@@ -42,8 +44,8 @@ function downloadBlob(blob, name) {
 }
 
 export default function ReligionsTab() {
-  const [religions, setReligions] = useState([]);
-  const [names, setNames] = useState({}); // internal→display from strings.bin
+  const [religions, setReligions] = useSharedFileState('m2tw_religions_file', parseReligionsFull, serializeReligions, []);
+  const [names, setNames] = useSharedDictionary('descr_religions.txt.strings.bin', 'm2tw_religion_display_names', JSON.parse, JSON.stringify);
   const [binMeta, setBinMeta] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const txtInputRef = useRef(null);
@@ -53,10 +55,7 @@ export default function ReligionsTab() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem('m2tw_religions_file');
-      if (raw) {
-        setReligions(parseReligionsFull(raw));
-        setLoaded(true);
-      }
+      if (raw !== null) setLoaded(true);
     } catch {}
     // Auto-load strings.bin for religion display names
     try {
@@ -88,6 +87,7 @@ export default function ReligionsTab() {
     const buf = await file.arrayBuffer();
     const decoded = parseStringsBin(buf);
     if (decoded?.entries) {
+      updateStringsBinFile('descr_religions.txt.strings.bin', decoded);
       const map = {};
       for (const { key, value } of decoded.entries) if (key) map[key] = value;
       setNames(map);

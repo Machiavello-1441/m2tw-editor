@@ -13,6 +13,7 @@ import { parseStringsBin, decodeStringsBin } from '@/components/strings/stringsB
 import { formatImportSummary } from '@/lib/importReport';
 import { setStringsBinStore, getStringsBinStore, clearStringsBinStore } from '@/lib/stringsBinStore';
 import { setFile, getFile, flushBigFiles, clearBigFiles } from '@/lib/bigFileStore';
+import storeImportedUnitDescriptions from '@/components/units/sharedUnitDescriptions';
 import { DATA_FILE_MAP, DATA_FILE_DEFINITIONS, normalizedFileName } from '@/lib/modFileRegistry';
 import { indexCampaignLibrary } from '@/components/map/campaignLibrary';
 import { readNamesFile } from '@/components/map/settlementNamesIO';
@@ -494,6 +495,7 @@ export default function Home() {
           if (key === 'traits') sessionStorage.setItem('m2tw_traits_raw', text);
           if (key === 'anc') sessionStorage.setItem('m2tw_ancillaries_raw', text);
           if (key === 'expunits') {
+            storeImportedUnitDescriptions(text);
             window.dispatchEvent(new CustomEvent('load-export-units'));
           }
           if (key === 'traits') {

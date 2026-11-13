@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { parseSdXml, serialiseSdXml } from './sdXmlParser';
 import SpriteCanvas from './SpriteCanvas';
-import { getFile } from '@/lib/bigFileStore';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
 import { decodeTgaToDataUrl } from '@/components/shared/tgaDecoder';
 
 async function loadImageAsDataUrl(file) {
@@ -24,7 +24,7 @@ async function loadImageAsDataUrl(file) {
 }
 
 export default function SpriteSheetEditor({ label, storageKey }) {
-  const [data, setData] = useState(null);        // { version, enumName, pages, sprites }
+  const [data, setData] = useSharedFileState(storageKey, parseSdXml, serialiseSdXml);
   const [pageImages, setPageImages] = useState({}); // { pageIndex: dataUrl }
   const [activePageIdx, setActivePageIdx] = useState(0);
   const [hoveredIdx, setHoveredIdx] = useState(null);
@@ -46,15 +46,7 @@ export default function SpriteSheetEditor({ label, storageKey }) {
   const eventKey = storageKey?.replace('m2tw_', 'sd_').replace('_sd_xml', '');
 
   useEffect(() => {
-    // On mount, try to restore from localStorage
-    try {
-      const stored = getFile(storageKey);
-      if (stored) {
-        const parsed = parseSdXml(stored);
-        setData(parsed);
-        setOriginalFilename(`${eventKey}.sd.xml`);
-      }
-    } catch {}
+    setOriginalFilename(label);
 
     // Listen for live loads from the Home page
     const handler = (e) => {

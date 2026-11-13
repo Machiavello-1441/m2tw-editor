@@ -7,6 +7,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { parseDescrCharacter, serialiseDescrCharacter, parseDescrModelStrat, serialiseDescrModelStrat } from './stratCharParser';
 import { loadTextureFiles, getTexturePreview, getStoreSize } from '../banners/TextureStore';
 import StratModelPreview from './StratModelPreview';
+import { useSharedFileState } from '@/hooks/useSharedModFile';
+import { useRefData } from '@/components/edb/RefDataContext';
 
 const CHAR_KEY = 'm2tw_descr_character';
 const STRAT_KEY = 'm2tw_descr_model_strat';
@@ -540,10 +542,10 @@ function BulkDuplicateFactionPanel({ factions, charData, stratData, onApply, onC
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function StratMapCharTab() {
-  const [charData, setCharData] = useState(null);
-  const [stratData, setStratData] = useState(null);
-  const [stratModelMap, setStratModelMap] = useState({});
-  const [factions, setFactions] = useState([]);
+  const [charData, setCharData] = useSharedFileState(CHAR_KEY, parseDescrCharacter, serialiseDescrCharacter);
+  const [stratData, setStratData] = useSharedFileState(STRAT_KEY, parseDescrModelStrat, serialiseDescrModelStrat);
+  const stratModelMap = useMemo(() => buildModelMap(stratData || []), [stratData]);
+  const { factions, loadFactionsFile } = useRefData();
   const [texCount, setTexCount] = useState(0);
   const [activeView, setActiveView] = useState('characters');
   const [showBulkPanel, setShowBulkPanel] = useState(false);
@@ -552,37 +554,6 @@ export default function StratMapCharTab() {
   const stratRef = useRef();
   const texRef = useRef();
   const factionsRef = useRef();
-
-  useEffect(() => {
-    try { const s = localStorage.getItem(CHAR_KEY); if (s) setCharData(parseDescrCharacter(s)); } catch {}
-    try {
-      const s = localStorage.getItem(STRAT_KEY);
-      if (s) { const m = parseDescrModelStrat(s); setStratData(m); setStratModelMap(buildModelMap(m)); }
-    } catch {}
-    try { const s = localStorage.getItem(FACTIONS_KEY); if (s) setFactions(JSON.parse(s)); } catch {}
-  }, []);
-
-  // Listen for files loaded from the Home page while this tab is mounted
-  useEffect(() => {
-    const onChar = (e) => { try { setCharData(parseDescrCharacter(e.detail)); } catch {} };
-    const onStrat = (e) => {
-      try {
-        const m = parseDescrModelStrat(e.detail);
-        setStratData(m); setStratModelMap(buildModelMap(m));
-      } catch {}
-    };
-    const onFactions = (e) => {
-      try { setFactions(e.detail || JSON.parse(localStorage.getItem(FACTIONS_KEY) || '[]')); } catch {}
-    };
-    window.addEventListener('load-descr-character', onChar);
-    window.addEventListener('load-descr-model-strat', onStrat);
-    window.addEventListener('m2tw-factions-loaded', onFactions);
-    return () => {
-      window.removeEventListener('load-descr-character', onChar);
-      window.removeEventListener('load-descr-model-strat', onStrat);
-      window.removeEventListener('m2tw-factions-loaded', onFactions);
-    };
-  }, []);
 
   function buildModelMap(models) {
     const map = {};
@@ -602,7 +573,7 @@ export default function StratMapCharTab() {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
     const models = parseDescrModelStrat(text);
-    setStratData(models); setStratModelMap(buildModelMap(models));
+    setStratData(models);
     try { localStorage.setItem(STRAT_KEY, text); } catch {}
     e.target.value = '';
   }, []);
@@ -610,9 +581,7 @@ export default function StratMapCharTab() {
   const handleFactionsFile = useCallback(async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     const text = await file.text();
-    const list = parseFactionsList(text);
-    setFactions(list);
-    try { localStorage.setItem(FACTIONS_KEY, JSON.stringify(list)); } catch {}
+    loadFactionsFile(text);
     e.target.value = '';
   }, []);
 
@@ -637,7 +606,6 @@ export default function StratMapCharTab() {
         models: [{ keyword: 'model_flexi_m', path: `models_strat/${modelName}.CAS`, range: 'max' }],
       };
       const updated = [...prev, newModel];
-      setStratModelMap(buildModelMap(updated));
       return updated;
     });
     // Switch view so user sees the new model
@@ -670,20 +638,20 @@ export default function StratMapCharTab() {
 
   const updateStratModel = (i, m) => {
     const updated = stratData.map((x, idx) => idx === i ? m : x);
-    setStratData(updated); setStratModelMap(buildModelMap(updated));
+    setStratData(updated);
   };
   const deleteStratModel = (i) => {
     const updated = stratData.filter((_, idx) => idx !== i);
-    setStratData(updated); setStratModelMap(buildModelMap(updated));
+    setStratData(updated);
   };
   const addStratModel = () => {
     const updated = [...stratData, { name: 'new_model', skeleton: '', scale: '0.7', indivRange: '40', textures: [], models: [] }];
-    setStratData(updated); setStratModelMap(buildModelMap(updated));
+    setStratData(updated);
   };
 
   const handleBulkApply = useCallback((newCharData, newStratData) => {
     if (newCharData) setCharData(newCharData);
-    if (newStratData) { setStratData(newStratData); setStratModelMap(buildModelMap(newStratData)); }
+    if (newStratData) setStratData(newStratData);
     setShowBulkPanel(false);
   }, []);
 

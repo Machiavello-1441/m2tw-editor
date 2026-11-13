@@ -61,8 +61,9 @@ export default function ModeldbSkinPanel({ modelName, parsedMesh, onApplySkin, o
 
   const parseModeldbFile = async (file) => {
     try {
-      const parsed = parseModeldb(await file.text());
-      modeldbStore.set(parsed);
+      const raw = await file.text();
+      const parsed = parseModeldb(raw);
+      modeldbStore.set(parsed, raw);
       setDb(parsed);
       setStatus({ ok: true, text: `${parsed.entries.length} modeldb entries loaded` });
     } catch (err) {

@@ -5,6 +5,7 @@ import { AUTOCOMPLETE_BY_PREFIX } from './scriptAutocomplete';
 import ScriptTemplateSidebar from './ScriptTemplateSidebar';
 import ScriptReferenceSidebar from './ScriptReferenceSidebar';
 import ScriptAIAssistant from './ScriptAIAssistant';
+import useSharedCampaignScript from '@/components/map/useSharedCampaignScript';
 
 /* ── tiny validator ──────────────────────────────────────────────────────── */
 function validateScript(text, stratData) {
@@ -37,7 +38,7 @@ function validateScript(text, stratData) {
 
 /* ── main component ──────────────────────────────────────────────────────── */
 export default function ScriptingPanel({ stratData }) {
-  const [text, setText]       = useState('');
+  const [text, setText] = useSharedCampaignScript();
   const [fileName, setFileName] = useState(null);
   const [validation, setValidation] = useState(null);
   const [showValid, setShowValid]   = useState(false);
@@ -60,13 +61,12 @@ export default function ScriptingPanel({ stratData }) {
 
   const editorRef   = useRef(null);   // the scrollable wrapper div
   const textareaRef = useRef(null);
-  const saveTimer   = useRef(null);
 
   /* restore */
   useEffect(() => {
     try {
       const c = localStorage.getItem('m2tw_campaign_script') || sessionStorage.getItem('m2tw_script_raw');
-      if (c) { setText(c); setFileName('campaign_script.txt'); }
+      if (c) setFileName('campaign_script.txt');
     } catch {}
   }, []);
 
@@ -80,13 +80,7 @@ export default function ScriptingPanel({ stratData }) {
     return nums.join('\n');
   }, [lineCount]);
 
-  /* debounced save */
-  const save = useCallback((v) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      try { localStorage.setItem('m2tw_campaign_script', v); sessionStorage.setItem('m2tw_script_raw', v); } catch {}
-    }, 2000);
-  }, []);
+  /* Shared text setters persist immediately, including before navigation. */
 
   /* autocomplete helpers */
   const wordBefore = (val, cur) => { const m = val.slice(0, cur).match(/(\w+)$/); return m ? m[1] : ''; };
@@ -108,21 +102,21 @@ export default function ScriptingPanel({ stratData }) {
     const w = wordBefore(ta.value, cur);
     const ins = item.params ? `${item.label} ${item.params}` : item.label;
     const nv = ta.value.slice(0, cur - w.length) + ins + ta.value.slice(cur);
-    setText(nv); save(nv); setAcShow(false);
+    setText(nv); setAcShow(false);
     setTimeout(() => { ta.focus(); const p = cur - w.length + ins.length; ta.setSelectionRange(p, p); }, 0);
-  }, [save]);
+  }, [setText]);
 
   /* onChange */
   const onChange = useCallback((e) => {
     const v = e.target.value;
-    setText(v); setValidation(null); save(v);
+    setText(v); setValidation(null);
     const w = wordBefore(v, e.target.selectionStart);
     if (w.length >= 2) {
       const m = AUTOCOMPLETE_BY_PREFIX(w);
       if (m.length) { setAcItems(m); setAcIdx(0); setAcShow(true); setTimeout(updateAcPos, 0); return; }
     }
     setAcShow(false);
-  }, [save, updateAcPos]);
+  }, [setText, updateAcPos]);
 
   /* onKeyDown */
   const onKey = useCallback((e) => {
@@ -136,10 +130,10 @@ export default function ScriptingPanel({ stratData }) {
       e.preventDefault();
       const ta = e.target, s = ta.selectionStart;
       const nv = text.slice(0, s) + '  ' + text.slice(ta.selectionEnd);
-      setText(nv); save(nv);
+      setText(nv);
       setTimeout(() => { ta.selectionStart = ta.selectionEnd = s + 2; }, 0);
     }
-  }, [acShow, acItems, acIdx, insertAc, text, save]);
+  }, [acShow, acItems, acIdx, insertAc, text, setText]);
 
   /* file I/O */
   const loadFile = async (e) => {
@@ -165,9 +159,9 @@ export default function ScriptingPanel({ stratData }) {
     const prefix = before.length && !before.endsWith('\n') ? '\n' : '';
     const suffix = after.length && !after.startsWith('\n') ? '\n' : '';
     const nv = before + prefix + code + suffix + after;
-    setText(nv); save(nv);
+    setText(nv);
     setTimeout(() => { if (ta) { ta.focus(); const p = cur + prefix.length + code.length; ta.setSelectionRange(p, p); } }, 0);
-  }, [text, save]);
+  }, [text, setText]);
 
   const ec = validation?.errors.length ?? 0;
   const wc = validation?.warnings.length ?? 0;
