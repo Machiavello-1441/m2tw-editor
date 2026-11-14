@@ -1283,7 +1283,7 @@ export function parseWinConditions(text) {
   let inShort = false;
 
   for (const raw of lines) {
-    const line = raw.replace(/;.*$/, '').trim();
+    let line = raw.replace(/;.*$/, '').trim();
     if (!line) continue;
 
     let m;
@@ -1299,7 +1299,11 @@ export function parseWinConditions(text) {
     }
     if (!current) continue;
 
-    if (line === 'short_campaign') { inShort = true; continue; }
+    if ((m = line.match(/^short_campaign(?:\s+(.*))?$/))) {
+      inShort = true;
+      line = m[1] || '';
+      if (!line) continue;
+    }
 
     if ((m = line.match(/^hold_regions\s*(.*)/))) {
       const regs = m[1].trim().split(/\s+/).filter(Boolean);

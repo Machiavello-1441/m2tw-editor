@@ -5,6 +5,7 @@ import { editorSessionStorage as sessionStorage } from '@/lib/editorStorage';
 import { Info, ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import { parseWinConditions, parseDescrStrat } from './stratParser';
 import { insertFactionIntoStrat, moveFactionInStrat } from './factionBlockOps';
+import VictoryAutoUpdate from '@/components/map/VictoryAutoUpdate';
 
 const defaultWinCond = () => ({
   holdRegions: [], takeRegions: 15, outlive: [],
@@ -583,7 +584,7 @@ export default function FactionsCampaignTab({
   stratData, factionColors, onStratDataChange,
   winConditions, onWinConditionsChange,
   factionMovies, onFactionMoviesChange,
-  regionNames, units,
+  regionNames, units, settlements,
 }) {
   const [subTab, setSubTab] = useState('factions');
   const [search, setSearch] = useState('');
@@ -726,6 +727,12 @@ export default function FactionsCampaignTab({
                 }} />
               </label>
             </div>
+            <VictoryAutoUpdate
+              winConditions={winConditions}
+              onWinConditionsChange={onWinConditionsChange}
+              factionNames={allFactionNames}
+              settlements={settlements}
+            />
             <WinConditionsEditor
               winConditions={winConditions}
               onWinConditionsChange={onWinConditionsChange}

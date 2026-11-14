@@ -1541,6 +1541,7 @@ export default function StratPanel({
         <FactionsCampaignTab
           stratData={stratData}
           factionColors={factionColors}
+          settlements={settlements}
           onStratDataChange={onStratDataChange}
           winConditions={winConditions}
           onWinConditionsChange={(wc) => {
