@@ -5,6 +5,7 @@
 
 import settlementOwnershipTransfers from '@/components/map/settlementOwnershipTransfers';
 import { insertFactionIntoStrat } from '@/components/map/factionBlockOps';
+import patchStratDiplomacy from '@/components/map/patchStratDiplomacy';
 
 export const SETTLEMENT_LEVELS = ['village', 'town', 'large_town', 'city', 'large_city', 'huge_city'];
 export const SETTLEMENT_LEVEL_ICONS = {
@@ -779,35 +780,8 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
   }
 
-  // ── Patch diplomacy (faction_standings + faction_relationships) ────────────
-  if (stratData.factionStandings?.length) {
-    // Find the diplomacy section start
-    const firstStandingsIdx = lines.findIndex(l => /^\s*faction_standings\b/i.test(l.replace(/;.*$/, '')));
-    if (firstStandingsIdx >= 0) {
-      // Find the end of standings block
-      let endStandingsIdx = firstStandingsIdx;
-      for (let fi = firstStandingsIdx; fi < lines.length; fi++) {
-        const fl = lines[fi].replace(/;.*$/, '').trim();
-        if (!fl || /^(faction_standings|faction_relationships|action_relationships)\b/i.test(fl)) {
-          endStandingsIdx = fi;
-        } else if (fl && !/^(faction_standings|faction_relationships|action_relationships)\b/i.test(fl)) {
-          break;
-        }
-      }
-      // Replace the whole diplomacy block
-      const newDiploLines = [];
-      for (const s of stratData.factionStandings) {
-        // Use the original value string to preserve decimal precision (e.g. 0.20 not 0.2)
-        const val = s.valueStr ?? String(s.value);
-        // Keep multiple targets on one line, comma-separated, matching original format
-        newDiploLines.push(`faction_standings\t${s.faction},\t\t${val}\t${s.targets.join(', ')}`);
-      }
-      for (const r of (stratData.factionRelationships || [])) {
-        newDiploLines.push(`faction_relationships \t${r.faction}, ${r.relation}\t${r.targets.join(', ')}`);
-      }
-      lines.splice(firstStandingsIdx, endStandingsIdx - firstStandingsIdx + 1, ...newDiploLines);
-    }
-  }
+  // Relationships must also save when the campaign has no standings entries.
+  patchStratDiplomacy(lines, stratData);
 
   // (Existing characters/resources/forts are patched at the TOP of this
   // function, before any line-shifting splices.)

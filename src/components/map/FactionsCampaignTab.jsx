@@ -397,7 +397,7 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
         <div className="flex flex-col flex-1 min-h-0">
           <div className="flex items-center justify-between mb-1 shrink-0">
             <p className="text-[9px] text-slate-500 uppercase font-semibold">Faction Relationships
-              <InfoTooltip text="at_war_with or allied_to. Neutral relationships don't need to be listed." />
+              <InfoTooltip text="at_war_with, allied_to, or protectorate_of (requires M2EX). For protectorate_of, the left faction is the protectorate and the right faction is its overlord. Neutral relationships don't need to be listed." />
             </p>
             <button onClick={addRelationship} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
           </div>
@@ -412,6 +412,7 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400">
                   <option value="at_war_with">at_war_with</option>
                   <option value="allied_to">allied_to</option>
+                  <option value="protectorate_of">protectorate_of</option>
                 </CampaignDropdown>
                 <CampaignDropdown value={r.targets?.[0] || ''} onChange={e => updateRelationship(i, 'targets', [e.target.value])}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
