@@ -223,7 +223,7 @@ export function parseDescrStrat(text) {
   let unlockable = [];
   let nonplayable = [];
   let startDate = '', endDate = '', timescale = '';
-  let scriptFile = 'campaign_script.txt';
+  let scriptFile = '';
 
   // Global flags (boolean or string value)
   const flags = {};
@@ -717,7 +717,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       const aiIdx = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*ai_label\b/i.test(l.replace(/;.*$/, '')));
       const aiLine = `\tai_label\t${faction.aiLabel || 'default'}`;
       if (aiIdx >= 0) lines[aiIdx] = aiLine;
-      else lines.splice(factionLineIdx + 1, 0, aiLine);
+      else if (faction.aiLabel && faction.aiLabel !== 'default') lines.splice(factionLineIdx + 1, 0, aiLine);
 
       factionEnd = findFactionEnd(lines, factionLineIdx);
       // Remove/add dead flags
@@ -728,7 +728,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       }
       factionEnd = findFactionEnd(lines, factionLineIdx);
       // Insert new dead flags after ai_label line
-      const insertFlagAfter = lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*ai_label\b/i.test(l.replace(/;.*$/, '')));
+      const insertFlagAfter = Math.max(factionLineIdx, lines.findIndex((l, i) => i > factionLineIdx && i < factionEnd && /^\s*ai_label\b/i.test(l.replace(/;.*$/, ''))));
       const flagsToInsert = [];
       if (faction.deadUntilResurrected) flagsToInsert.push('\tdead_until_resurrected');
       if (faction.deadUntilEmerged) flagsToInsert.push('\tdead_until_emerged');
@@ -1060,7 +1060,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
   // ── Tail cleanup ──────────────────────────────────────────────────────────
   // 1. Remove every "script" + filename pair wherever it sits (it must only
   //    appear once, at the very end of the file).
-  const scriptFileName = stratData.scriptFile || 'campaign_script.txt';
+  const scriptFileName = stratData.scriptFile;
   for (let i = result.length - 1; i >= 0; i--) {
     const c = result[i].replace(/;.*$/, '').trim();
     if (/^script$/i.test(c)) {
@@ -1087,9 +1087,9 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       seenForts.add(key);
     }
   }
-  // 3. Close the file with the script directive at the very end.
+  // 3. Preserve the absence of a script; never invent a reference to a missing file.
   while (result.length && !result[result.length - 1].trim()) result.pop();
-  result.push('', 'script', scriptFileName);
+  if (scriptFileName) result.push('', 'script', scriptFileName);
 
   return result.join('\n');
 }

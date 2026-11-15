@@ -4,16 +4,15 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Upload, Download, Eye, EyeOff, Trash2, Plus, ChevronDown, ChevronRight, Edit2, Check, X, FolderDown, MapPin, Anchor, Save, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { getItemIcon } from './StratOverlay';
-import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, SETTLEMENT_LEVELS, SETTLEMENT_LEVEL_ICONS } from './stratParser';
+import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions, SETTLEMENT_LEVEL_ICONS } from './stratParser';
 import { exportTGA, downloadBlob } from './tgaExporter';
 import { LAYER_DEFS } from './mapLayerConstants';
-import { encodeStringsBin } from '../strings/stringsBinCodec';
+
 import { readNamesFile } from '@/components/map/settlementNamesIO';
 import StratChangePreview, { rememberOriginalStrat } from '@/components/map/StratChangePreview';
-import { getFile } from '@/lib/bigFileStore';
+
 import campaignArchive from '@/components/export/campaignArchive';
-import { extractBuildingLevelsFromEDB, extractHiddenResourcesFromEDB } from './additionalParsers';
-import { serializeEDB } from '../edb/EDBParser';
+import { extractHiddenResourcesFromEDB } from './additionalParsers';
 import { entriesToTextBytes } from '@/lib/stringsTxtFile';
 import { runExportValidation } from '../export/exportValidation';
 import ExportValidationDialog from '../export/ExportValidationDialog';
@@ -38,7 +37,7 @@ import SettlementListFilters from '@/components/map/SettlementListFilters';
 import settlementMapDetails from '@/components/map/settlementMapDetails';
 import useSettlementSearch from '@/components/map/useSettlementSearch';
 import { availableSettlementBuildings, normalizeSettlement, replaceSettlementBuilding } from '@/components/map/settlementBuildings';
-import { getCampaignExportPaths, rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
+import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 
 // Ensure Windows line endings (CRLF) for all exported .txt files
 const toCRLF = (text) => text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
@@ -1007,6 +1006,10 @@ export default function StratPanel({
     setLoadError('');
     try {
       const zip = await campaignArchive({ stratData, regionsData, settlementNames, layers, regionsLayer, overlayItems, editedSettlements, religionList, campaignDetails });
+      if (!Object.values(zip.files).some(file => !file.dir)) {
+        setLoadError('No changes were found against the imported campaign files. Your editor data has been kept.');
+        return;
+      }
       const content = await zip.generateAsync({ type: 'blob' });
       downloadBlob(content, `${stratData?.campaignName || 'imperial_campaign'}_campaign.zip`);
     } catch (error) {
@@ -1226,7 +1229,7 @@ export default function StratPanel({
               className={`w-full flex items-center justify-center gap-1.5 px-2 py-2 mt-1 rounded text-[11px] font-semibold border transition-colors ${
               hasAnyModifiedData ? 'bg-green-600/20 hover:bg-green-600/40 border-green-500/40 text-green-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'}`
               }>
-              <FolderDown className="w-3.5 h-3.5" /> Download Campaign Folder (.zip)
+              <FolderDown className="w-3.5 h-3.5" /> Download Campaign Changes (.zip)
             </button>
 
             <ExportValidationDialog

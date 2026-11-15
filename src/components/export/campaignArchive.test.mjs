@@ -71,7 +71,8 @@ test('Campaign ZIP keeps current province/city names over old shared binaries an
   options.settlementNames = editedNames;
   a.setFile('m2tw_names_raw', a.namesToText(editedNames));
   const zip = await unpack(await a.campaignArchive(options));
-  assert.deepEqual(paths(zip), [`data/text/${stem}`, `data/text/${stem}.strings.bin`]);
+  const unexpectedStrat = zip.file(`${directory}/descr_strat.txt`);
+  assert.deepEqual(paths(zip), [`data/text/${stem}`, `data/text/${stem}.strings.bin`], unexpectedStrat ? await unexpectedStrat.async('string') : undefined);
   const result = await namesFrom(a, zip);
   assert.deepEqual(result.map, editedNames);
   assert.equal(result.decoded.trailerKind, 'key-lookup');
@@ -172,6 +173,19 @@ test('Exporting cannot clear edits, and unsupported binary trailers abort rather
   await assert.rejects(a.campaignArchive({ ...options, settlementNames: editedNames }), /unknown binary trailer/);
   assert.equal(a.getFile('m2tw_names_raw'), beforeNames);
   assert.equal(JSON.stringify(a.getStringsBinStore()), beforeBin);
+});
+
+test('Unedited serialization never invents a script or AI label, but explicit script and faction flag changes are retained', () => {
+  const { a } = runtime(), data = a.parseDescrStrat(strat);
+  const unchanged = a.serializeDescrStrat(data, data.items);
+  assert.doesNotMatch(unchanged, /^script\s*$/m);
+  assert.doesNotMatch(unchanged, /^\s*ai_label\b/m);
+  data.scriptFile = 'custom_script.txt';
+  data.factions[0].undiscovered = true;
+  const changed = a.serializeDescrStrat(data, data.items);
+  assert.match(changed, /script\ncustom_script.txt$/);
+  assert.match(changed, /undiscovered/);
+  assert.doesNotMatch(changed, /ai_label/);
 });
 
 test('Unknown original files are retained rather than guessed unchanged', async () => {

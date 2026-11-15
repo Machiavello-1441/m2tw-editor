@@ -136,10 +136,15 @@ test('Full mod exports keep the active campaign edits and original base paths wi
 });
 
 test('All mod bundles apply shared sources after their other entries and immediately before packing', () => {
-  for (const file of ['src/pages/Export.jsx', 'src/components/map/StratPanel.jsx', 'src/components/factions/FactionZipExport.jsx']) {
+  for (const file of ['src/pages/Export.jsx', 'src/components/factions/FactionZipExport.jsx']) {
     const source = readFileSync(path.join(root, file), 'utf8');
     assert.match(source, /addSharedEditedFilesToZip\([^;]+;\s*const (?:blob|content) = await zip.generateAsync/, file);
   }
+  const panel = readFileSync(path.join(root, 'src/components/map/StratPanel.jsx'), 'utf8');
+  const archive = readFileSync(path.join(root, 'src/components/export/campaignArchive.js'), 'utf8');
+  assert.match(panel, /await campaignArchive\(\{ stratData, regionsData, settlementNames/);
+  assert.ok(archive.indexOf('addSharedEditedFilesToZip(zip.folder') < archive.indexOf('addCampaignNamesToZip(zip.folder'));
+  assert.ok(archive.indexOf('addCampaignNamesToZip(zip.folder') < archive.indexOf('await removeUnchangedCampaignFiles(zip)'));
   const source = readFileSync(path.join(root, 'src/pages/Export.jsx'), 'utf8');
   assert.match(source, /useSharedExportFiles\(\)/);
   assert.match(source, /sharedFileCount === 0/);
