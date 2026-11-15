@@ -6,6 +6,8 @@ import { Info, ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown } from 'luc
 import { parseWinConditions, parseDescrStrat } from './stratParser';
 import { insertFactionIntoStrat, moveFactionInStrat } from './factionBlockOps';
 import VictoryAutoUpdate from '@/components/map/VictoryAutoUpdate';
+import clientStateRules from '@/components/map/clientStateRules';
+import ClientStateRulesNotice from '@/components/map/ClientStateRulesNotice';
 
 const defaultWinCond = () => ({
   holdRegions: [], takeRegions: 15, outlive: [],
@@ -314,6 +316,8 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
   const [diploTab, setDiploTab] = useState('standings');
   const standings = stratData?.factionStandings || [];
   const relationships = stratData?.factionRelationships || [];
+  const [rejectedChange, setRejectedChange] = useState(null);
+  const relationshipIssues = useMemo(() => clientStateRules(relationships), [relationships]);
 
   const addStanding = () => {
     onStratDataChange({
@@ -340,6 +344,13 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
 
   const updateRelationship = (i, field, val) => {
     const updated = relationships.map((r, idx) => idx === i ? { ...r, [field]: val } : r);
+    const previousIssues = new Set(relationshipIssues.map(issue => issue.id));
+    const introduced = clientStateRules(updated).find(issue => !previousIssues.has(issue.id));
+    if (introduced) {
+      setRejectedChange({ relationships, message: introduced.message });
+      return;
+    }
+    setRejectedChange(null);
     onStratDataChange({ ...stratData, factionRelationships: updated });
   };
 
@@ -397,10 +408,12 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
         <div className="flex flex-col flex-1 min-h-0">
           <div className="flex items-center justify-between mb-1 shrink-0">
             <p className="text-[9px] text-slate-500 uppercase font-semibold">Faction Relationships
-              <InfoTooltip text="at_war_with, allied_to, or protectorate_of (requires M2EX). For protectorate_of, the left faction is the protectorate and the right faction is its overlord. Neutral relationships don't need to be listed." />
+              <InfoTooltip text="at_war_with, allied_to, or protectorate_of (requires M2EX). For protectorate_of, the left faction is the protectorate and the right faction is its overlord. client_of also requires M2EX: the left faction is the client and the right faction is its suzerain. Neutral relationships don't need to be listed." />
             </p>
             <button onClick={addRelationship} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
           </div>
+          <ClientStateRulesNotice issues={relationshipIssues}
+            rejectedMessage={rejectedChange?.relationships === relationships ? rejectedChange.message : null} />
           <div className="flex-1 overflow-y-auto space-y-1">
             {relationships.map((r, i) => (
               <div key={i} className="flex items-center gap-1">
@@ -413,6 +426,7 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
                   <option value="at_war_with">at_war_with</option>
                   <option value="allied_to">allied_to</option>
                   <option value="protectorate_of">protectorate_of</option>
+                  <option value="client_of">client_of</option>
                 </CampaignDropdown>
                 <CampaignDropdown value={r.targets?.[0] || ''} onChange={e => updateRelationship(i, 'targets', [e.target.value])}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">

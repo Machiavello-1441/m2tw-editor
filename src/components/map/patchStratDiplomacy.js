@@ -1,10 +1,13 @@
 import { findFactionBlocks } from '@/components/map/factionBlockOps';
+import clientStateRules from '@/components/map/clientStateRules';
 
 const isDiplomacy = line => /^(faction_standings|faction_relationships|action_relationships)\b/i.test(line.replace(/;.*$/, '').trim());
 
-/** Write relationships independently of standings, including M2EX protectorates. */
+/** Write relationships independently of standings, including M2EX client states. */
 export default function patchStratDiplomacy(lines, stratData) {
   if (!Array.isArray(stratData.factionStandings) && !Array.isArray(stratData.factionRelationships)) return;
+  const issues = clientStateRules(stratData.factionRelationships || []);
+  if (issues.length) throw new Error(`Invalid M2EX client relationships: ${issues.map(issue => issue.message).join(' ')}`);
   const updated = (stratData.factionStandings || []).map(standing => {
     const value = standing.valueStr ?? String(standing.value);
     return `faction_standings\t${standing.faction},\t\t${value}\t${standing.targets.join(', ')}`;
