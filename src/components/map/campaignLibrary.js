@@ -1,5 +1,6 @@
 import { restoreCampaignStorage } from '@/components/map/campaignSession';
-import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
+import { rememberCampaignSourceFiles, sourceDataPath } from '@/components/map/campaignSourcePaths';
+import { rememberExportOriginals } from '@/components/export/exportOriginals';
 import { getFile, setFile } from '@/lib/bigFileStore';
 import { CAMPAIGN_SAVE_INDEX, restoreSavedCampaignLibrary } from '@/components/map/campaignSavePersistence';
 import { SCRIPT_OWNER_KEY } from '@/components/map/sharedCampaignScript';
@@ -13,6 +14,7 @@ export const campaignLibrary = () => {
 };
 export function indexCampaignLibrary(files, preferred) {
   // An explicitly imported mod starts its own workspace, never another mod's saved maps.
+  rememberExportOriginals(files, files.map(sourceDataPath), true);
   setFile(CAMPAIGN_SAVE_INDEX, '');
   setFile(SCRIPT_OWNER_KEY, '');
   const groups = new Map(), base = [], shared = [], names = [];

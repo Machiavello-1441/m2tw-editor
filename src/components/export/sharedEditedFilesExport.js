@@ -6,9 +6,10 @@ import { addSharedStringsToZip } from '@/components/export/sharedStringsExport';
 import { addCharacterNamesToZip } from '@/components/export/characterNamesExport';
 import { addSharedTextToZip } from '@/components/export/sharedTextExport';
 import { getAllSymbols } from '@/lib/factionSymbolStore';
+import { addActiveCampaignNamesToZip } from '@/components/export/campaignNamesExport';
 
 /** Run last, after imported extras and cached editor exports, and before ZIP generation. */
-export function addSharedEditedFilesToZip(dataFolder) {
+export function addSharedEditedFilesToZip(dataFolder, { campaignNames = true } = {}) {
   for (const { key, name } of SHARED_EXPORT_SOURCES) {
     const raw = getFile(key);
     if (raw === null) continue;
@@ -23,4 +24,5 @@ export function addSharedEditedFilesToZip(dataFolder) {
   addCharacterNamesToZip(dataFolder);
   // Binary entries, layout and trailers are authoritative, not old parsed dictionaries.
   addSharedStringsToZip(dataFolder);
+  if (campaignNames) addActiveCampaignNamesToZip(dataFolder);
 }

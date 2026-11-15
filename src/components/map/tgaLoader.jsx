@@ -2,7 +2,7 @@
  * Load a TGA file (ArrayBuffer) into a usable layer state object.
  * Returns { bitmap, data, width, height } or null on failure.
  */
-export async function loadTGA(buffer) {
+export function decodeTGA(buffer) {
   const data = new Uint8Array(buffer);
   if (data.length < 18) return null;
 
@@ -63,7 +63,12 @@ export async function loadTGA(buffer) {
     }
   }
 
-  const imageData = new ImageData(pixels, width, height);
-  const bitmap = await createImageBitmap(imageData);
-  return { bitmap, data: pixels, width, height };
+  return { data: pixels, width, height };
+}
+
+export async function loadTGA(buffer) {
+  const decoded = decodeTGA(buffer);
+  if (!decoded) return null;
+  const bitmap = await createImageBitmap(new ImageData(decoded.data, decoded.width, decoded.height));
+  return { ...decoded, bitmap };
 }

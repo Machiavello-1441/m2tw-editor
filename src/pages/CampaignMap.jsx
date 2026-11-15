@@ -505,8 +505,8 @@ export default function CampaignMap() {
     handleFolderImport
   );
   useEffect(() => {
-    if (!campaignSelection.loading && settlementNames) persistNames(settlementNames);
-  }, [settlementNames, campaignSelection.loading]);
+    if (!campaignSelection.loading && settlementNames) persistNames(settlementNames, stratData?.campaignName);
+  }, [settlementNames, campaignSelection.loading, stratData?.campaignName]);
 
   const undoHistory = useCampaignUndoHistory(
     { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, edbData, descrNames, namesDisplayMap, campaignDetails },

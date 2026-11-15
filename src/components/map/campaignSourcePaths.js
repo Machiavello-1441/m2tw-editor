@@ -1,4 +1,5 @@
 import { editorStorage } from '@/lib/editorStorage';
+import { rememberExportOriginals } from '@/components/export/exportOriginals';
 
 const STORAGE_KEY = 'm2tw_campaign_source_paths';
 const normalize = path => String(path || '').replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\/+|\/+$/g, '');
@@ -29,6 +30,7 @@ function pathsFromFiles(files) {
 }
 
 export function rememberCampaignSourceFiles(files, campaignName, replace = false) {
+  rememberExportOriginals(files || [], (files || []).map(sourceDataPath));
   const incoming = pathsFromFiles(files);
   if (!Object.keys(incoming.paths).length) return;
   const previous = replace ? {} : JSON.parse(editorStorage.getItem(STORAGE_KEY) || '{}');

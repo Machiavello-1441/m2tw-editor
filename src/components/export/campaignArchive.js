@@ -55,7 +55,10 @@ export default async function campaignArchive({ stratData, regionsData, settleme
     write('data/text/campaign_descriptions.txt.strings.bin', encodeStringsBin(entries));
     write('data/text/campaign_descriptions.txt', entriesToTextBytes(entries));
   }
-  addSharedEditedFilesToZip(zip.folder('data'));
+  addSharedEditedFilesToZip(zip.folder('data'), { campaignNames: false });
+  for (const path of Object.keys(zip.files)) {
+    if (/^data\/text\/[^/]+_regions_and_settlement_names\.(?:txt|(?:txt\.)?strings\.bin|bin)$/i.test(path)) zip.remove(path);
+  }
   // This must be last: global strings can still contain the original imported names.
   addCampaignNamesToZip(zip.folder('data'), campaignName, settlementNames);
   await removeUnchangedCampaignFiles(zip);

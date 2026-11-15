@@ -1,7 +1,8 @@
 import { editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
 import { parseStringsBin } from '@/components/strings/stringsBinCodec';
 import { parseSettlementNames } from '@/components/map/stratParser';
-import { getStringsBinStore } from '@/lib/stringsBinStore';
+import { getStringsBinStore, updateStringsBinFile } from '@/lib/stringsBinStore';
+import { campaignNamesRecord } from '@/components/export/campaignNamesExport';
 import { setFile } from '@/lib/bigFileStore';
 
 export const namesToText = names => Object.entries(names || {}).map(([k, v]) => `{${k}}${v}`).join('\n');
@@ -15,16 +16,20 @@ export async function readNamesFile(file) {
   if (/\.bin$/i.test(file.name)) {
     const decoded = parseStringsBin(buffer);
     if (!decoded) throw new Error('Could not read the settlement names file.');
-    sessionStorage.setItem('m2tw_names_bin_meta', JSON.stringify({ magic1: decoded.magic1, magic2: decoded.magic2 }));
+    sessionStorage.setItem('m2tw_names_bin_meta', JSON.stringify({ ...decoded, entries: undefined, filename: file.name }));
     return namesToText(Object.fromEntries(decoded.entries.filter(e => e.key).map(e => [e.key, e.value])));
   }
   const bytes = new Uint8Array(buffer);
   const encoding = bytes[0] === 0xfe && bytes[1] === 0xff ? 'utf-16be' : (bytes[0] === 0xff && bytes[1] === 0xfe) || bytes[1] === 0 ? 'utf-16le' : 'utf-8';
   return new TextDecoder(encoding).decode(buffer);
 }
-export function persistNames(names) {
+export function persistNames(names, campaignName) {
   const text = namesToText(names);
   setFile('m2tw_names_raw', text);
+  if (campaignName) {
+    const record = campaignNamesRecord(campaignName, names);
+    if (record) updateStringsBinFile(record.filename, record.data);
+  }
   try { sessionStorage.setItem('m2tw_names_raw', text); } catch { sessionStorage.removeItem('m2tw_names_raw'); }
 }
 export async function loadNamesMap(file) { return parseSettlementNames(await readNamesFile(file)); }
