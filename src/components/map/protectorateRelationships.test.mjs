@@ -29,7 +29,7 @@ test('The M2EX example imports directionally, including comments and CRLF files'
 });
 
 test('The relation selector offers protectorate_of and explains its M2EX direction', () => {
-  const source = readFileSync(path.join(root, 'src/components/map/FactionsCampaignTab.jsx'), 'utf8');
+  const source = ['CampaignDiplomacyEditor.jsx', 'DiplomacyRows.jsx'].map(name => readFileSync(path.join(root, 'src/components/map', name), 'utf8')).join('\n');
   assert.match(source, /<option value="protectorate_of">protectorate_of<\/option>/);
   assert.match(source, /protectorate_of \(requires M2EX\)/);
   assert.match(source, /left faction is the protectorate and the right faction is its overlord/);

@@ -126,14 +126,14 @@ test('Faction search matches either side case-insensitively and preserves full t
 });
 
 test('Both tabs wire independent search, original edit indices, and multi-target controls into campaign updates', () => {
-  const tab = readFileSync(path.join(root, 'src/components/map/FactionsCampaignTab.jsx'), 'utf8');
+  const tab = ['CampaignDiplomacyEditor.jsx', 'DiplomacyRows.jsx', 'useCampaignDiplomacy.js'].map(name => readFileSync(path.join(root, 'src/components/map', name), 'utf8')).join('\n');
   const control = readFileSync(path.join(root, 'src/components/map/DiplomacyTargets.jsx'), 'utf8');
   assert.match(tab, /useState\(\{ standings: '', relationships: '' \}\)/);
-  assert.match(tab, /visibleStandings\.map\(\(\{ row: s, index: i \}\)/);
-  assert.match(tab, /visibleRelationships\.map\(\(\{ row: r, index: i \}\)/);
-  assert.match(tab, /<DiplomacyTargets value=\{s.targets\}/);
-  assert.match(tab, /<DiplomacyTargets value=\{r.targets\}/);
-  assert.match(tab, /single=\{r.relation === 'client_of'\}/);
+  assert.match(tab, /filterDiplomacyRows\(rows, search\[tab\]\)/);
+  assert.match(tab, /entries\.map\(\(\{ row, index \}\)/);
+  assert.match(tab, /onUpdate\(index, 'faction'/);
+  assert.match(tab, /<DiplomacyTargets value=\{row.targets\}/);
+  assert.match(tab, /single=\{!standing && row.relation === 'client_of'\}/);
   assert.match(tab, /editDiplomacyRelationship\(relationships, i, null\)/);
   assert.match(control, /type="search"/);
   assert.match(control, /value.join\(', '\)/);

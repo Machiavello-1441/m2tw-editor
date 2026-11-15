@@ -6,11 +6,7 @@ import { Info, ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown } from 'luc
 import { parseWinConditions, parseDescrStrat } from './stratParser';
 import { insertFactionIntoStrat, moveFactionInStrat } from './factionBlockOps';
 import VictoryAutoUpdate from '@/components/map/VictoryAutoUpdate';
-import clientStateRules from '@/components/map/clientStateRules';
-import ClientStateRulesNotice from '@/components/map/ClientStateRulesNotice';
-import DiplomacyTargets from '@/components/map/DiplomacyTargets';
-import filterDiplomacyRows from '@/components/map/filterDiplomacyRows';
-import synchronizeDiplomacyRelationships, { editDiplomacyRelationship } from '@/components/map/diplomacyRelationships';
+import CampaignDiplomacyEditor from '@/components/map/CampaignDiplomacyEditor';
 
 const defaultWinCond = () => ({
   holdRegions: [], takeRegions: 15, outlive: [],
@@ -314,143 +310,6 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate, fa
   );
 }
 
-// ── Diplomacy editor ──────────────────────────────────────────────────────────
-function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
-  const [diploTab, setDiploTab] = useState('standings');
-  const [search, setSearch] = useState({ standings: '', relationships: '' });
-  const standings = stratData?.factionStandings || [];
-  const relationships = useMemo(() => synchronizeDiplomacyRelationships(stratData?.factionRelationships || []), [stratData?.factionRelationships]);
-  const [rejectedChange, setRejectedChange] = useState(null);
-  const relationshipIssues = useMemo(() => clientStateRules(relationships), [relationships]);
-  const visibleStandings = filterDiplomacyRows(standings, search.standings);
-  const visibleRelationships = filterDiplomacyRows(relationships, search.relationships);
-  const firstFaction = allFactionNames.find(name => name.toLowerCase().includes(search[diploTab].trim().toLowerCase())) || allFactionNames[0] || '';
-  const firstTarget = allFactionNames.find(name => name !== firstFaction) || '';
-
-  const addStanding = () => {
-    onStratDataChange({
-      ...stratData,
-      factionStandings: [...standings, { faction: firstFaction, value: 0, targets: [firstTarget] }]
-    });
-  };
-
-  const updateStanding = (i, field, val) => {
-    const updated = standings.map((s, idx) => idx === i ? { ...s, [field]: val, ...(field === 'value' ? { valueStr: String(val) } : {}) } : s);
-    onStratDataChange({ ...stratData, factionStandings: updated });
-  };
-
-  const removeStanding = (i) => {
-    onStratDataChange({ ...stratData, factionStandings: standings.filter((_, idx) => idx !== i) });
-  };
-
-  const addRelationship = () => {
-    const added = { faction: firstFaction, relation: 'at_war_with', targets: [firstTarget] };
-    const updated = editDiplomacyRelationship(relationships, relationships.length, added);
-    onStratDataChange({ ...stratData, factionRelationships: updated });
-  };
-
-  const updateRelationship = (i, field, val) => {
-    const updated = editDiplomacyRelationship(relationships, i, { ...relationships[i], [field]: val });
-    const previousIssues = new Set(relationshipIssues.map(issue => issue.id));
-    const introduced = clientStateRules(updated).find(issue => !previousIssues.has(issue.id));
-    if (introduced) {
-      setRejectedChange({ relationships, message: introduced.message });
-      return;
-    }
-    setRejectedChange(null);
-    onStratDataChange({ ...stratData, factionRelationships: updated });
-  };
-
-  const removeRelationship = (i) => {
-    onStratDataChange({ ...stratData, factionRelationships: editDiplomacyRelationship(relationships, i, null) });
-  };
-
-  return (
-    <div className="flex flex-col h-full space-y-2">
-      {/* Inner sub-tabs: Standings | Relationships */}
-      <div className="flex rounded overflow-hidden border border-slate-700/50 shrink-0">
-        <button onClick={() => setDiploTab('standings')}
-          className={`flex-1 py-1 text-[9px] font-semibold transition-colors ${diploTab === 'standings' ? 'bg-amber-600/20 text-amber-400' : 'bg-slate-800/40 text-slate-500 hover:text-slate-300'}`}>
-          Standings ({standings.length})
-        </button>
-        <button onClick={() => setDiploTab('relationships')}
-          className={`flex-1 py-1 text-[9px] font-semibold transition-colors border-l border-slate-700/50 ${diploTab === 'relationships' ? 'bg-amber-600/20 text-amber-400' : 'bg-slate-800/40 text-slate-500 hover:text-slate-300'}`}>
-          Relationships ({relationships.length})
-        </button>
-      </div>
-
-      <input type="search" aria-label={`Filter ${diploTab} by faction`} placeholder="Filter factions on either side…"
-        value={search[diploTab]} onChange={event => setSearch({ ...search, [diploTab]: event.target.value })}
-        className="h-6 w-full shrink-0 rounded border border-input bg-background px-2 text-[11px] text-foreground" />
-
-      {/* faction_standings */}
-      {diploTab === 'standings' && (
-        <div className="flex flex-col flex-1 min-h-0">
-          <div className="flex items-center justify-between mb-1 shrink-0">
-            <p className="text-[9px] text-slate-500 uppercase font-semibold">Faction Standings
-              <InfoTooltip text="Values from -1.00 (hostile) to 1.00 (friendly). Defines initial diplomatic attitude between factions." />
-            </p>
-            <button onClick={addStanding} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-1">
-            {visibleStandings.map(({ row: s, index: i }) => (
-              <div key={i} className="flex items-center gap-1">
-                <CampaignDropdown value={s.faction} onChange={e => updateStanding(i, 'faction', e.target.value)}
-                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
-                  {allFactionNames.map(f => <option key={f}>{f}</option>)}
-                </CampaignDropdown>
-                <input type="number" step="0.1" min="-1" max="1" value={s.value}
-                  onChange={e => updateStanding(i, 'value', parseFloat(e.target.value))}
-                  className="h-5 w-14 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400 font-mono text-center" />
-                <DiplomacyTargets value={s.targets} options={allFactionNames.filter(name => name !== s.faction)}
-                  label={`Standing targets for ${s.faction}`} onChange={targets => updateStanding(i, 'targets', targets)} />
-                <button onClick={() => removeStanding(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
-              </div>
-            ))}
-            {visibleStandings.length === 0 && <p className="text-[10px] text-muted-foreground italic">{standings.length ? 'No standings match this faction' : 'No standings defined'}</p>}
-          </div>
-        </div>
-      )}
-
-      {/* faction_relationships */}
-      {diploTab === 'relationships' && (
-        <div className="flex flex-col flex-1 min-h-0">
-          <div className="flex items-center justify-between mb-1 shrink-0">
-            <p className="text-[9px] text-slate-500 uppercase font-semibold">Faction Relationships
-              <InfoTooltip text="at_war_with, allied_to, or protectorate_of (requires M2EX). For protectorate_of, the left faction is the protectorate and the right faction is its overlord. client_of also requires M2EX: the left faction is the client and the right faction is its suzerain. Neutral relationships don't need to be listed." />
-            </p>
-            <button onClick={addRelationship} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
-          </div>
-          <p className="mb-1 text-[9px] text-muted-foreground">Wars and alliances are automatically mirrored for every target, including when edited or removed.</p>
-          <ClientStateRulesNotice issues={relationshipIssues}
-            rejectedMessage={rejectedChange?.relationships === relationships ? rejectedChange.message : null} />
-          <div className="flex-1 overflow-y-auto space-y-1">
-            {visibleRelationships.map(({ row: r, index: i }) => (
-              <div key={i} className="flex items-center gap-1">
-                <CampaignDropdown value={r.faction} onChange={e => updateRelationship(i, 'faction', e.target.value)}
-                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
-                  {allFactionNames.map(f => <option key={f}>{f}</option>)}
-                </CampaignDropdown>
-                <CampaignDropdown value={r.relation} onChange={e => updateRelationship(i, 'relation', e.target.value)}
-                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400">
-                  <option value="at_war_with">at_war_with</option>
-                  <option value="allied_to">allied_to</option>
-                  <option value="protectorate_of">protectorate_of</option>
-                  <option value="client_of">client_of</option>
-                </CampaignDropdown>
-                <DiplomacyTargets value={r.targets} options={allFactionNames.filter(name => name !== r.faction)} single={r.relation === 'client_of'}
-                  label={`Relationship targets for ${r.faction}`} onChange={targets => updateRelationship(i, 'targets', targets)} />
-                <button onClick={() => removeRelationship(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
-              </div>
-            ))}
-            {visibleRelationships.length === 0 && <p className="text-[10px] text-muted-foreground italic">{relationships.length ? 'No relationships match this faction' : 'No special relationships'}</p>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Win Conditions editor ─────────────────────────────────────────────────────
 function WinConditionsEditor({ winConditions, onWinConditionsChange, regionNames, allFactionNames }) {
   const [search, setSearch] = useState('');
@@ -728,7 +587,7 @@ export default function FactionsCampaignTab({
         )}
         {subTab === 'diplomacy' && (
           <div className="rounded border border-slate-700/40 bg-slate-900/30 p-2.5 flex flex-col" style={{ minHeight: '60vh' }}>
-            <DiplomacyEditor
+            <CampaignDiplomacyEditor
               stratData={stratData}
               allFactionNames={allFactionNames}
               onStratDataChange={onStratDataChange}

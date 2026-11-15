@@ -88,11 +88,11 @@ test('Client relationships require a suzerain and the validator never mutates su
 });
 
 test('The editor offers client_of, explains gameplay, and rejects new invalid changes before updating campaign state', () => {
-  const tab = readFileSync(path.join(root, 'src/components/map/FactionsCampaignTab.jsx'), 'utf8');
+  const tab = ['CampaignDiplomacyEditor.jsx', 'DiplomacyRows.jsx', 'useCampaignDiplomacy.js'].map(name => readFileSync(path.join(root, 'src/components/map', name), 'utf8')).join('\n');
   const notice = readFileSync(path.join(root, 'src/components/map/ClientStateRulesNotice.jsx'), 'utf8');
   assert.match(tab, /<option value="client_of">client_of<\/option>/);
   assert.match(tab, /clientStateRules\(updated\)\.find\(issue => !previousIssues\.has\(issue\.id\)\)/);
-  assert.match(tab, /if \(introduced\) \{[\s\S]*?return;[\s\S]*?onStratDataChange\(\{ \.\.\.stratData, factionRelationships: updated \}\)/);
+  assert.match(tab, /if \(introduced\) \{[\s\S]*?return introduced.message;[\s\S]*?onStratDataChange\(\{ \.\.\.stratData, factionRelationships: updated \}\)/);
   assert.match(tab, /<ClientStateRulesNotice issues=\{relationshipIssues\}/);
   assert.match(notice, /Clients join all suzerain wars and alliances; the suzerain can ignore client wars/);
   assert.match(notice, /In-game, clients can leave only through war/);
