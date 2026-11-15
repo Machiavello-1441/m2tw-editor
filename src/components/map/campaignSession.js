@@ -1,5 +1,5 @@
-import { editorStorage as localStorage, editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
-import { getFile, setFile } from '@/lib/bigFileStore';
+import { editorSessionStorage as sessionStorage } from "@/lib/editorStorage";
+import { getFile, setFile, removeFile } from '@/lib/bigFileStore';
 import { clearAllLayers } from '@/lib/mapLayerStore';
 
 const sessionKeys = ['m2tw_strat_raw', 'm2tw_regions_raw', 'm2tw_regions_data_json', 'm2tw_overlay_items_json', 'm2tw_names_raw', 'm2tw_names_bin_meta', 'm2tw_script_raw', 'm2tw_events_raw', 'm2tw_campaign_events_raw', 'm2tw_terrain_raw', 'm2tw_win_conditions_raw', 'm2tw_mercenaries_raw', 'm2tw_faction_movies_raw', 'm2tw_disasters_raw', 'm2tw_campaign_description', 'm2tw_campaign_desc_strings'];
@@ -14,8 +14,9 @@ export function restoreCampaignStorage(saved, clearLayers = true) {
     if (saved?.session?.[k] != null) sessionStorage.setItem(k, saved.session[k]);
   }
   for (const k of localKeys) {
-    localStorage.removeItem(k);
-    setFile(k, saved?.local?.[k] ?? '');
+    if (saved?.local?.[k] != null) setFile(k, saved.local[k]);
+    else removeFile(k);
   }
-  setFile('m2tw_names_raw', saved?.session?.m2tw_names_raw || '');
+  if (saved?.session?.m2tw_names_raw != null) setFile('m2tw_names_raw', saved.session.m2tw_names_raw);
+  else removeFile('m2tw_names_raw');
 }

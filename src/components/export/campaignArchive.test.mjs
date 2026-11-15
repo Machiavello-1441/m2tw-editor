@@ -11,9 +11,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const built = await build({ absWorkingDir: root, stdin: { resolveDir: root, contents: `
   export { default as campaignArchive } from './src/components/export/campaignArchive';
   export * from './src/components/export/campaignNamesExport';
+  export * from './src/components/export/campaignExportDraft';
+  export * from './src/components/export/currentCampaignFilesExport';
   export * from './src/components/export/exportOriginals';
   export * from './src/components/export/sharedEditedFilesExport';
   export * from './src/components/map/settlementNamesIO';
+  export * from './src/components/map/campaignSession';
   export * from './src/components/map/campaignSourcePaths';
   export * from './src/lib/bigFileStore';
   export * from './src/lib/stringsBinStore';
@@ -88,6 +91,23 @@ test('An untouched campaign exports no regenerated data or localization twins', 
   assert.deepEqual(paths(zip), []);
 });
 
+test('Empty legacy placeholders and default descriptions do not generate fictitious campaign files', async () => {
+  const { a } = runtime(), options = prepare(a);
+  for (const key of ['m2tw_campaign_script', 'm2tw_campaign_events', 'm2tw_campaign_mercenaries', 'm2tw_campaign_win_conditions', 'm2tw_campaign_faction_movies', 'm2tw_campaign_disasters', 'm2tw_campaign_description']) a.setFile(key, '');
+  const zip = await a.campaignArchive({ ...options, campaignDetails: { campaignDescription: '', factionMovies: null, disasters: null, campaignEvents: null, winConditions: null } });
+  assert.deepEqual(paths(zip), []);
+});
+
+test('Campaign restoration distinguishes absent files from intentionally emptied files', () => {
+  const { a } = runtime();
+  a.restoreCampaignStorage({ local: { m2tw_campaign_script: '', m2tw_campaign_strat: strat }, session: { m2tw_names_raw: '' } }, false);
+  assert.equal(a.getFile('m2tw_campaign_script'), '');
+  assert.equal(a.getFile('m2tw_names_raw'), '');
+  assert.equal(a.getFile('m2tw_campaign_disasters'), null);
+  assert.equal(a.getFile('m2tw_campaign_faction_movies'), null);
+  assert.equal(a.getFile('m2tw_campaign_strat'), strat);
+});
+
 test('Real shared edits are included but unchanged shared references are excluded', async () => {
   const { a } = runtime(), options = prepare(a);
   a.setFile('m2tw_units_file', '; latest roster edit\n');
@@ -106,6 +126,32 @@ test('Full-mod export also writes current campaign names last, including edits n
     assert.deepEqual(result.map, editedNames);
     assert.equal(loaded.file(`${prefix}/text/${stem.toUpperCase()}`), null);
   }
+});
+
+test('Navigating to full-mod export retains unsaved faction, settlement, region and event edits instead of original raw data', async () => {
+  const { a } = runtime(), options = prepare(a);
+  options.stratData.factions[0].treasury = 9876;
+  const city = options.overlayItems.find(item => item.category === 'settlement');
+  const live = { ...options, editedSettlements: { [city.id]: { population: 4321 } },
+    regionsData: options.regionsData.map(region => ({ ...region, val2: 9 })),
+    campaignDetails: { campaignDescription: 'Latest unsaved description', disasters: [] } };
+  a.rememberCampaignExportDraft(live);
+  const zip = new JSZip(); a.addCurrentCampaignFilesToZip(zip.folder('mod'));
+  const exportedStrat = await zip.file(`mod/${directory}/descr_strat.txt`).async('string');
+  assert.match(exportedStrat, /denari\s+9876/); assert.match(exportedStrat, /population\s+4321/);
+  assert.match(await zip.file('mod/data/world/maps/base/descr_regions.txt').async('string'), /\n9\n/);
+  assert.equal(await zip.file(`mod/${directory}/description.txt`).async('string'), 'Latest unsaved description');
+  assert.equal(await zip.file(`mod/${directory}/descr_disasters.txt`).async('string'), '');
+  assert.equal(a.getFile('m2tw_campaign_strat'), strat, 'Export does not replace the original or commit a save');
+});
+
+test('Edits from the strings editor update the active names text rather than being replaced by older campaign raw names', async () => {
+  const { a } = runtime(); prepare(a);
+  const record = a.getStringsBinStore()[`${stem}.strings.bin`];
+  a.updateStringsBinFile(`${stem}.strings.bin`, { ...record, entries: Object.entries(editedNames).map(([key, value]) => ({ key, value })) });
+  const zip = new JSZip(); a.addSharedEditedFilesToZip(zip.folder('data'));
+  assert.deepEqual((await namesFrom(a, zip)).map, editedNames);
+  assert.match(a.getFile('m2tw_names_raw'), /Saint-Étienne/);
 });
 
 test('Name edits synchronize to shared binaries and survive navigation or reload without resetting original fingerprints', async () => {

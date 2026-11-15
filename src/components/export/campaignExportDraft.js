@@ -1,6 +1,7 @@
 import { getFile } from '@/lib/bigFileStore';
 import { campaignLibrary } from '@/components/map/campaignLibrary';
 import { readCampaignSnapshot } from '@/components/map/campaignRecoveryStore';
+import { CAMPAIGN_SAVE_INDEX } from '@/components/map/campaignStorageRecords';
 import { serializeDescrStrat, serializeDescrRegions, serializeWinConditions } from '@/components/map/stratParser';
 import { serializeFactionMovies } from '@/components/map/factionMoviesParser';
 import { serializeDisasters } from '@/components/map/disastersParser';
@@ -18,7 +19,8 @@ export async function prepareCampaignExportDraft() {
   if (getCampaignExportDraft()) return;
   const library = campaignLibrary();
   if (!library.active) return;
-  const snapshot = library.snapshots.get(library.active) || await readCampaignSnapshot(library.active);
+  const hasSavedCopy = getFile(CAMPAIGN_SAVE_INDEX)?.campaigns?.some(campaign => campaign.id === library.active);
+  const snapshot = library.snapshots.get(library.active) || (hasSavedCopy ? await readCampaignSnapshot(library.active) : null);
   const current = (getFile('m2tw_campaign_strat') || '').match(/^[\t ]*campaign[\t ]+([^\s;]+)/im)?.[1];
   const original = snapshot?.stratData?.raw?.match(/^[\t ]*campaign[\t ]+([^\s;]+)/im)?.[1];
   if (snapshot && current && [snapshot.stratData?.campaignName, original].includes(current)) rememberCampaignExportDraft(snapshot);

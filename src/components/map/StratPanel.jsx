@@ -1011,6 +1011,7 @@ export default function StratPanel({
         return;
       }
       const content = await zip.generateAsync({ type: 'blob' });
+      if (zip.exportUnverifiedFiles?.length) setLoadError(`${zip.exportUnverifiedFiles.length} files have no original available for comparison and were kept to avoid dropping edits.`);
       downloadBlob(content, `${stratData?.campaignName || 'imperial_campaign'}_campaign.zip`);
     } catch (error) {
       setLoadError(`Campaign export stopped: ${error.message}. Your editor changes have been kept.`);

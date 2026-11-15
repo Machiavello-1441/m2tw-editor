@@ -45,4 +45,5 @@ export async function removeUnchangedCampaignFiles(zip) {
   for (const path of Object.keys(zip.files).sort((a, b) => b.length - a.length)) {
     if (zip.files[path]?.dir && !Object.keys(zip.files).some(other => other !== path && other.startsWith(path))) zip.remove(path);
   }
+  return [...checks].filter(([, unchanged]) => unchanged == null).map(([path]) => path);
 }

@@ -24,6 +24,7 @@ export default async function campaignArchive({ stratData, regionsData, settleme
   const paths = getCampaignExportPaths(campaignName, undefined, true), directory = paths.directory;
   const write = (path, content) => writeLatestZipFile(zip, paths.resolve(path), content);
   const read = (session, key) => editorSessionStorage.getItem(session) ?? getFile(key);
+  const knownFiles = new Set([...sources.map(file => file.name.toLowerCase()), ...Object.keys(JSON.parse(getFile('m2tw_campaign_source_paths') || '{}').paths || {})]);
   if (stratData?.raw) write(`${directory}/descr_strat.txt`, crlf(serializeDescrStrat({ ...stratData, _regionsLookup: regionsData, _regionsLayer: regionsLayer }, overlayItems, editedSettlements)));
   if (regionsData) write(`${directory}/descr_regions.txt`, crlf(serializeDescrRegions(regionsData, religionList)));
   const rawFiles = [
@@ -33,7 +34,7 @@ export default async function campaignArchive({ stratData, regionsData, settleme
   ];
   for (const [session, key, name] of rawFiles) {
     const raw = read(session, key);
-    if (raw != null) write(`${directory}/${name}`, crlf(raw));
+    if (raw != null && (raw !== '' || knownFiles.has(name.toLowerCase()))) write(`${directory}/${name}`, crlf(raw));
   }
   for (const [field, session, key, name, serialize] of [
     ['winConditions', 'm2tw_win_conditions_raw', 'm2tw_campaign_win_conditions', 'descr_win_conditions.txt', serializeWinConditions],
@@ -42,15 +43,17 @@ export default async function campaignArchive({ stratData, regionsData, settleme
     ['campaignEvents', 'm2tw_campaign_events_raw', 'm2tw_campaign_events', 'descr_events.txt', serializeCampaignEvents],
     ['campaignDescription', 'm2tw_campaign_description', 'm2tw_campaign_description', 'description.txt', value => value],
   ]) {
-    const raw = campaignDetails[field] != null ? serialize(campaignDetails[field]) : read(session, key);
-    if (raw != null) write(`${directory}/${name}`, crlf(raw));
+    const value = campaignDetails[field];
+    const raw = value != null ? serialize(value) : read(session, key);
+    const explicitEmpty = value != null && field !== 'campaignDescription';
+    if (raw != null && (raw !== '' || knownFiles.has(name.toLowerCase()) || explicitEmpty)) write(`${directory}/${name}`, crlf(raw));
   }
   for (const [id, filename] of Object.entries({ heights: 'map_heights.tga', ground: 'map_ground_types.tga', climates: 'map_climates.tga', regions: 'map_regions.tga', features: 'map_features.tga', fog: 'map_fog.tga' })) {
     const layer = layers[id];
     if (layer?.data) write(`${directory}/${filename}`, exportTGA(layer.data, layer.width, layer.height).arrayBuffer());
   }
   const descriptions = read('m2tw_campaign_desc_strings', 'm2tw_campaign_desc_strings');
-  if (descriptions != null) {
+  if (descriptions) {
     const entries = Object.entries(JSON.parse(descriptions)).map(([key, value]) => ({ key, value }));
     write('data/text/campaign_descriptions.txt.strings.bin', encodeStringsBin(entries));
     write('data/text/campaign_descriptions.txt', entriesToTextBytes(entries));
@@ -61,6 +64,6 @@ export default async function campaignArchive({ stratData, regionsData, settleme
   }
   // This must be last: global strings can still contain the original imported names.
   addCampaignNamesToZip(zip.folder('data'), campaignName, settlementNames);
-  await removeUnchangedCampaignFiles(zip);
+  zip.exportUnverifiedFiles = await removeUnchangedCampaignFiles(zip);
   return zip;
 }
