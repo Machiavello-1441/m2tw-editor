@@ -8,6 +8,9 @@ import { insertFactionIntoStrat, moveFactionInStrat } from './factionBlockOps';
 import VictoryAutoUpdate from '@/components/map/VictoryAutoUpdate';
 import clientStateRules from '@/components/map/clientStateRules';
 import ClientStateRulesNotice from '@/components/map/ClientStateRulesNotice';
+import DiplomacyTargets from '@/components/map/DiplomacyTargets';
+import filterDiplomacyRows from '@/components/map/filterDiplomacyRows';
+import synchronizeDiplomacyRelationships, { editDiplomacyRelationship } from '@/components/map/diplomacyRelationships';
 
 const defaultWinCond = () => ({
   holdRegions: [], takeRegions: 15, outlive: [],
@@ -314,20 +317,25 @@ function FactionRow({ faction, allFactionNames, regionNames, units, onUpdate, fa
 // ── Diplomacy editor ──────────────────────────────────────────────────────────
 function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
   const [diploTab, setDiploTab] = useState('standings');
+  const [search, setSearch] = useState({ standings: '', relationships: '' });
   const standings = stratData?.factionStandings || [];
-  const relationships = stratData?.factionRelationships || [];
+  const relationships = useMemo(() => synchronizeDiplomacyRelationships(stratData?.factionRelationships || []), [stratData?.factionRelationships]);
   const [rejectedChange, setRejectedChange] = useState(null);
   const relationshipIssues = useMemo(() => clientStateRules(relationships), [relationships]);
+  const visibleStandings = filterDiplomacyRows(standings, search.standings);
+  const visibleRelationships = filterDiplomacyRows(relationships, search.relationships);
+  const firstFaction = allFactionNames.find(name => name.toLowerCase().includes(search[diploTab].trim().toLowerCase())) || allFactionNames[0] || '';
+  const firstTarget = allFactionNames.find(name => name !== firstFaction) || '';
 
   const addStanding = () => {
     onStratDataChange({
       ...stratData,
-      factionStandings: [...standings, { faction: allFactionNames[0] || '', value: 0, targets: [allFactionNames[1] || ''] }]
+      factionStandings: [...standings, { faction: firstFaction, value: 0, targets: [firstTarget] }]
     });
   };
 
   const updateStanding = (i, field, val) => {
-    const updated = standings.map((s, idx) => idx === i ? { ...s, [field]: val } : s);
+    const updated = standings.map((s, idx) => idx === i ? { ...s, [field]: val, ...(field === 'value' ? { valueStr: String(val) } : {}) } : s);
     onStratDataChange({ ...stratData, factionStandings: updated });
   };
 
@@ -336,14 +344,13 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
   };
 
   const addRelationship = () => {
-    onStratDataChange({
-      ...stratData,
-      factionRelationships: [...relationships, { faction: allFactionNames[0] || '', relation: 'at_war_with', targets: [allFactionNames[1] || ''] }]
-    });
+    const added = { faction: firstFaction, relation: 'at_war_with', targets: [firstTarget] };
+    const updated = editDiplomacyRelationship(relationships, relationships.length, added);
+    onStratDataChange({ ...stratData, factionRelationships: updated });
   };
 
   const updateRelationship = (i, field, val) => {
-    const updated = relationships.map((r, idx) => idx === i ? { ...r, [field]: val } : r);
+    const updated = editDiplomacyRelationship(relationships, i, { ...relationships[i], [field]: val });
     const previousIssues = new Set(relationshipIssues.map(issue => issue.id));
     const introduced = clientStateRules(updated).find(issue => !previousIssues.has(issue.id));
     if (introduced) {
@@ -355,7 +362,7 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
   };
 
   const removeRelationship = (i) => {
-    onStratDataChange({ ...stratData, factionRelationships: relationships.filter((_, idx) => idx !== i) });
+    onStratDataChange({ ...stratData, factionRelationships: editDiplomacyRelationship(relationships, i, null) });
   };
 
   return (
@@ -372,6 +379,10 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
         </button>
       </div>
 
+      <input type="search" aria-label={`Filter ${diploTab} by faction`} placeholder="Filter factions on either side…"
+        value={search[diploTab]} onChange={event => setSearch({ ...search, [diploTab]: event.target.value })}
+        className="h-6 w-full shrink-0 rounded border border-input bg-background px-2 text-[11px] text-foreground" />
+
       {/* faction_standings */}
       {diploTab === 'standings' && (
         <div className="flex flex-col flex-1 min-h-0">
@@ -382,7 +393,7 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
             <button onClick={addStanding} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
           </div>
           <div className="flex-1 overflow-y-auto space-y-1">
-            {standings.map((s, i) => (
+            {visibleStandings.map(({ row: s, index: i }) => (
               <div key={i} className="flex items-center gap-1">
                 <CampaignDropdown value={s.faction} onChange={e => updateStanding(i, 'faction', e.target.value)}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
@@ -391,14 +402,12 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
                 <input type="number" step="0.1" min="-1" max="1" value={s.value}
                   onChange={e => updateStanding(i, 'value', parseFloat(e.target.value))}
                   className="h-5 w-14 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-amber-400 font-mono text-center" />
-                <CampaignDropdown value={s.targets?.[0] || ''} onChange={e => updateStanding(i, 'targets', [e.target.value])}
-                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
-                  {allFactionNames.map(f => <option key={f}>{f}</option>)}
-                </CampaignDropdown>
+                <DiplomacyTargets value={s.targets} options={allFactionNames.filter(name => name !== s.faction)}
+                  label={`Standing targets for ${s.faction}`} onChange={targets => updateStanding(i, 'targets', targets)} />
                 <button onClick={() => removeStanding(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
               </div>
             ))}
-            {standings.length === 0 && <p className="text-[10px] text-slate-600 italic">No standings defined</p>}
+            {visibleStandings.length === 0 && <p className="text-[10px] text-muted-foreground italic">{standings.length ? 'No standings match this faction' : 'No standings defined'}</p>}
           </div>
         </div>
       )}
@@ -412,10 +421,11 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
             </p>
             <button onClick={addRelationship} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-slate-100">+ Add</button>
           </div>
+          <p className="mb-1 text-[9px] text-muted-foreground">Wars and alliances are automatically mirrored for every target, including when edited or removed.</p>
           <ClientStateRulesNotice issues={relationshipIssues}
             rejectedMessage={rejectedChange?.relationships === relationships ? rejectedChange.message : null} />
           <div className="flex-1 overflow-y-auto space-y-1">
-            {relationships.map((r, i) => (
+            {visibleRelationships.map(({ row: r, index: i }) => (
               <div key={i} className="flex items-center gap-1">
                 <CampaignDropdown value={r.faction} onChange={e => updateRelationship(i, 'faction', e.target.value)}
                   className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
@@ -428,14 +438,12 @@ function DiplomacyEditor({ stratData, allFactionNames, onStratDataChange }) {
                   <option value="protectorate_of">protectorate_of</option>
                   <option value="client_of">client_of</option>
                 </CampaignDropdown>
-                <CampaignDropdown value={r.targets?.[0] || ''} onChange={e => updateRelationship(i, 'targets', [e.target.value])}
-                  className="h-5 px-0.5 text-[9px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 flex-1">
-                  {allFactionNames.map(f => <option key={f}>{f}</option>)}
-                </CampaignDropdown>
+                <DiplomacyTargets value={r.targets} options={allFactionNames.filter(name => name !== r.faction)} single={r.relation === 'client_of'}
+                  label={`Relationship targets for ${r.faction}`} onChange={targets => updateRelationship(i, 'targets', targets)} />
                 <button onClick={() => removeRelationship(i)} className="text-[9px] text-slate-600 hover:text-red-400">✕</button>
               </div>
             ))}
-            {relationships.length === 0 && <p className="text-[10px] text-slate-600 italic">No special relationships</p>}
+            {visibleRelationships.length === 0 && <p className="text-[10px] text-muted-foreground italic">{relationships.length ? 'No relationships match this faction' : 'No special relationships'}</p>}
           </div>
         </div>
       )}

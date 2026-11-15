@@ -6,6 +6,7 @@
 import settlementOwnershipTransfers from '@/components/map/settlementOwnershipTransfers';
 import { insertFactionIntoStrat } from '@/components/map/factionBlockOps';
 import patchStratDiplomacy from '@/components/map/patchStratDiplomacy';
+import synchronizeDiplomacyRelationships from '@/components/map/diplomacyRelationships';
 
 export const SETTLEMENT_LEVELS = ['village', 'town', 'large_town', 'city', 'large_city', 'huge_city'];
 export const SETTLEMENT_LEVEL_ICONS = {
@@ -516,7 +517,8 @@ export function parseDescrStrat(text) {
   }
 
   return {
-    raw: text, items, factions, factionStandings, factionRelationships,
+    raw: text, items, factions, factionStandings,
+    factionRelationships: synchronizeDiplomacyRelationships(factionRelationships),
     campaignName, playable, unlockable, nonplayable,
     startDate, endDate, timescale, scriptFile, flags,
   };

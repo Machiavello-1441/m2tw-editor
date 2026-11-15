@@ -37,7 +37,9 @@ test('Multiple clients may share a suzerain, and unrelated alliances/wars remain
     { faction: 'egypt', relation: 'allied_to', targets: ['rome'] },
     { faction: 'nabataea', relation: 'at_war_with', targets: ['carthage'] }];
   assert.deepEqual(clientStateRules(relationships), []);
-  assert.deepEqual(parseDescrStrat(save(relationships)).factionRelationships, relationships);
+  assert.deepEqual(parseDescrStrat(save(relationships)).factionRelationships, [...relationships,
+    { faction: 'rome', relation: 'allied_to', targets: ['egypt'] },
+    { faction: 'carthage', relation: 'at_war_with', targets: ['nabataea'] }]);
 });
 
 test('A client cannot have multiple suzerains in one row or across rows', () => {

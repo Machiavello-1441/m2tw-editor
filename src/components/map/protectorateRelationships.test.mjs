@@ -10,11 +10,12 @@ const bundle = await build({
   absWorkingDir: root,
   stdin: { resolveDir: root, sourcefile: 'protectorate-regression.js', contents: `
     export { parseDescrStrat, serializeDescrStrat } from './src/components/map/stratParser';
+    export { editDiplomacyRelationship } from './src/components/map/diplomacyRelationships';
   ` },
   bundle: true, write: false, format: 'esm', platform: 'node',
   alias: { '@': path.join(root, 'src') }, logLevel: 'silent',
 });
-const { parseDescrStrat, serializeDescrStrat } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const { parseDescrStrat, serializeDescrStrat, editDiplomacyRelationship } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const protectorate = { faction: 'nabataea', relation: 'protectorate_of', targets: ['egypt'] };
 const header = 'campaign imperial_campaign\nplayable\nnabataea\negypt\nend\n\nfaction nabataea, balanced smith\ndenari 1000\n\nfaction egypt, balanced smith\ndenari 2000\n\n';
 const tail = 'region Nile_Province\n{\nwatchtower 1, 2\n}\n\nscript\ncampaign_script.txt\n';
@@ -36,7 +37,7 @@ test('The relation selector offers protectorate_of and explains its M2EX directi
 
 test('Changing a relationship to protectorate saves without any standings entries', () => {
   const data = parseDescrStrat(campaign('faction_relationships nabataea, at_war_with egypt'));
-  data.factionRelationships[0].relation = 'protectorate_of';
+  data.factionRelationships = editDiplomacyRelationship(data.factionRelationships, 0, protectorate);
   const exported = save(data);
   assert.match(exported, savedProtectorate);
   assert.doesNotMatch(exported, /at_war_with/);

@@ -1,5 +1,6 @@
 import { findFactionBlocks } from '@/components/map/factionBlockOps';
 import clientStateRules from '@/components/map/clientStateRules';
+import synchronizeDiplomacyRelationships from '@/components/map/diplomacyRelationships';
 
 const isDiplomacy = line => /^(faction_standings|faction_relationships|action_relationships)\b/i.test(line.replace(/;.*$/, '').trim());
 
@@ -12,7 +13,7 @@ export default function patchStratDiplomacy(lines, stratData) {
     const value = standing.valueStr ?? String(standing.value);
     return `faction_standings\t${standing.faction},\t\t${value}\t${standing.targets.join(', ')}`;
   });
-  for (const relationship of (stratData.factionRelationships || [])) {
+  for (const relationship of synchronizeDiplomacyRelationships(stratData.factionRelationships || [])) {
     updated.push(`faction_relationships \t${relationship.faction}, ${relationship.relation}\t${relationship.targets.join(', ')}`);
   }
   const existing = [];
