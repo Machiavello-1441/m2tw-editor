@@ -24,12 +24,10 @@ export async function readNamesFile(file) {
   return new TextDecoder(encoding).decode(buffer);
 }
 export function persistNames(names, campaignName) {
-  const text = namesToText(names);
+  const record = campaignName ? campaignNamesRecord(campaignName, names) : null;
+  const text = namesToText(record ? Object.fromEntries(record.data.entries.map(entry => [entry.key, entry.value])) : names);
+  if (record) updateStringsBinFile(record.filename, record.data);
   setFile('m2tw_names_raw', text);
-  if (campaignName) {
-    const record = campaignNamesRecord(campaignName, names);
-    if (record) updateStringsBinFile(record.filename, record.data);
-  }
   try { sessionStorage.setItem('m2tw_names_raw', text); } catch { sessionStorage.removeItem('m2tw_names_raw'); }
 }
 export async function loadNamesMap(file) { return parseSettlementNames(await readNamesFile(file)); }

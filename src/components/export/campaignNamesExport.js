@@ -4,6 +4,7 @@ import { parseSettlementNames } from '@/components/map/stratParser';
 import { encodeStoredStringsBin } from '@/components/strings/stringsBinCodec';
 import { entriesToTextBytes } from '@/lib/stringsTxtFile';
 import { writeLatestZipFile, removeZipFile } from '@/components/export/zipFilePrecedence';
+import { getCampaignExportDraft } from '@/components/export/campaignExportDraft';
 
 export const campaignNamesBase = name => String(name).replace(/^.*[\\/]/, '').replace(/(?:\.txt)?(?:\.strings)?\.bin$|\.txt$/i, '').toLowerCase();
 export function campaignNamesRecord(campaignName, names) {
@@ -38,6 +39,6 @@ export function addCampaignNamesToZip(folder, campaignName, names) {
 
 export function addActiveCampaignNamesToZip(folder) {
   const raw = getFile('m2tw_campaign_strat') || '';
-  const campaignName = raw.match(/^[\t ]*campaign[\t ]+([^\s;]+)/im)?.[1];
+  const campaignName = getCampaignExportDraft()?.stratData?.campaignName || raw.match(/^[\t ]*campaign[\t ]+([^\s;]+)/im)?.[1];
   addCampaignNamesToZip(folder, campaignName);
 }

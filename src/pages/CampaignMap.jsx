@@ -30,6 +30,7 @@ import useCampaignSelection from '@/components/map/useCampaignSelection';
 import useSettlementChanges from '@/components/map/useSettlementChanges';
 import { loadSettlementMechanicsFile } from '@/components/map/settlementMechanics';
 import { storedCampaignNames, loadNamesMap, persistNames } from '@/components/map/settlementNamesIO';
+import { rememberCampaignExportDraft } from '@/components/export/campaignExportDraft';
 import { rememberCampaignSourceFiles } from '@/components/map/campaignSourcePaths';
 import campaignCheckpoint from '@/components/map/campaignCheckpoint';
 import { restoreCampaignStorage } from '@/components/map/campaignSession';
@@ -507,6 +508,9 @@ export default function CampaignMap() {
   useEffect(() => {
     if (!campaignSelection.loading && settlementNames) persistNames(settlementNames, stratData?.campaignName);
   }, [settlementNames, campaignSelection.loading, stratData?.campaignName]);
+  useEffect(() => {
+    if (!campaignSelection.loading) rememberCampaignExportDraft({ ...campaignSnapshot, religionList });
+  }, [campaignSelection.loading, layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, campaignDetails, religionList]);
 
   const undoHistory = useCampaignUndoHistory(
     { layers, stratData, regionsData, settlementNames, overlayItems, editedSettlements, dirtyLayers, overlayDirty, edbData, descrNames, namesDisplayMap, campaignDetails },

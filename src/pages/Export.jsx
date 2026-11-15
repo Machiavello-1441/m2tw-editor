@@ -20,6 +20,7 @@ import TriggerValidationPanel from '../components/export/TriggerValidationPanel'
 import CampaignPackagePicker from '../components/export/CampaignPackagePicker';
 import { addSharedEditedFilesToZip } from '@/components/export/sharedEditedFilesExport';
 import { addCurrentCampaignFilesToZip } from '@/components/export/currentCampaignFilesExport';
+import { prepareCampaignExportDraft } from '@/components/export/campaignExportDraft';
 import useSharedExportFiles from '@/hooks/useSharedExportFiles';
 import { getCharacterNamesRaw } from '@/lib/characterNames';
 import { getStringsBinStore } from '@/lib/stringsBinStore';
@@ -109,6 +110,7 @@ export default function Export() {
     setDone(false);
     setExportError('');
     try {
+    await prepareCampaignExportDraft();
     const zip = new JSZip();
     const dataFolder = zip.folder(`${modName}/data`);
     // Shared text files and dictionaries are read together immediately before packing.

@@ -41,6 +41,11 @@ export function updateStringsBinFile(name, fileData) {
   if (JSON.stringify(store[key]) === JSON.stringify(fileData)) return;
   store[key] = fileData;
   setStringsBinStore(store);
+  const campaign = (getFile('m2tw_campaign_strat') || '').match(/^[\t ]*campaign[\t ]+([^\s;]+)/im)?.[1];
+  const namesBase = key.replace(/(?:\.txt)?(?:\.strings)?\.bin$|\.txt$/i, '');
+  if (campaign && namesBase === `${campaign}_regions_and_settlement_names`.toLowerCase() && fileData.magic1 !== 1 && fileData.format !== 'ordered') {
+    setFile('m2tw_names_raw', fileData.entries.map(entry => `{${entry.key}}${entry.value}`).join('\n'));
+  }
   if (/^names\.txt(?:\.strings\.bin|\.bin)?$/i.test(key)) {
     const map = JSON.stringify(Object.fromEntries(fileData.entries.map(entry => [entry.key, entry.value])));
     setFile('m2tw_names_bin_entries', map);

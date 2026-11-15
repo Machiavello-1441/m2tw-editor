@@ -3,6 +3,7 @@ import { getAllLayers, LAYER_DEFS } from '@/lib/mapLayerStore';
 import { getCampaignExportPaths } from '@/components/map/campaignSourcePaths';
 import { exportTGA } from '@/components/map/tgaExporter';
 import { writeLatestZipFile } from '@/components/export/zipFilePrecedence';
+import { getCampaignExportDraft, campaignDraftFile } from '@/components/export/campaignExportDraft';
 
 const files = [
   ['m2tw_campaign_strat', 'descr_strat.txt'], ['m2tw_regions_raw', 'descr_regions.txt'],
@@ -14,7 +15,7 @@ const files = [
 export const currentCampaignExportKeys = [...files.map(([key]) => key), 'm2tw_campaign_source_paths'];
 function activeCampaignName() {
   const raw = getFile('m2tw_campaign_strat');
-  return raw?.match(/^[\t ]*campaign[\t ]+([^\s;]+)/im)?.[1] || JSON.parse(getFile('m2tw_campaign_source_paths') || '{}').campaignName;
+  return getCampaignExportDraft()?.stratData?.campaignName || raw?.match(/^[\t ]*campaign[\t ]+([^\s;]+)/im)?.[1] || JSON.parse(getFile('m2tw_campaign_source_paths') || '{}').campaignName;
 }
 export function getCurrentCampaignExportCount() {
   return activeCampaignName() ? files.filter(([key]) => getFile(key) !== null).length + Object.values(getAllLayers()).filter(layer => layer?.data).length : 0;
@@ -25,10 +26,10 @@ export function addCurrentCampaignFilesToZip(modFolder) {
   const campaign = activeCampaignName();
   if (!campaign) return;
   const paths = getCampaignExportPaths(campaign, undefined, true);
-  const rawStrat = getFile('m2tw_campaign_strat') || '';
+  const rawStrat = campaignDraftFile('m2tw_campaign_strat', getFile('m2tw_campaign_strat')) || '';
   const scriptName = rawStrat.match(/^[\t ]*script[\t ]*\r?\n[\t ]*([^\r\n;]+)/im)?.[1]?.trim() || 'campaign_script.txt';
   for (const [key, name] of files) {
-    const raw = getFile(key);
+    const raw = campaignDraftFile(key, getFile(key));
     if (raw !== null) writeLatestZipFile(modFolder, paths.resolve(`${paths.directory}/${name === 'campaign_script.txt' ? scriptName : name}`), raw);
   }
   for (const def of LAYER_DEFS) {
