@@ -27,7 +27,7 @@ export default function CampaignDiplomacyEditor({ stratData, allFactionNames, on
       onChange={event => setSearch({ ...search, [tab]: event.target.value })} className="h-6 w-full shrink-0 rounded border border-input bg-background px-2 text-[11px] text-foreground" />
     <div className="flex flex-wrap items-center justify-between gap-1">
       <button type="button" onClick={() => setAdding(true)} disabled={allFactionNames.length < 2} className="rounded border border-input px-2 py-1 text-[10px] text-foreground hover:bg-accent disabled:opacity-40">+ Add {tab === 'standings' ? 'standing' : 'relationship'}</button>
-      <button type="button" onClick={() => setChecked(true)} className="rounded border border-input px-2 py-1 text-[10px] text-foreground hover:bg-accent">Check diplomacy</button>
+      <button type="button" onClick={() => setChecked(true)} className="rounded border border-input px-2 py-1 text-[10px] text-foreground hover:bg-accent">Validate all relations</button>
     </div>
     {adding && <DiplomacyEntryForm key={tab} type={tab} factionNames={allFactionNames} onAdd={entry => data.addEntry(tab, entry)} onCancel={() => setAdding(false)} />}
     {checked && <DiplomacyCheckResults issues={diagnostics} />}

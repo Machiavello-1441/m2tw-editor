@@ -3,7 +3,8 @@ import React from 'react';
 export default function DiplomacyCheckResults({ issues }) {
   const errors = issues.filter(issue => issue.severity === 'error').length;
   return <section aria-label="Diplomacy check results" aria-live="polite" className="space-y-1 rounded border border-border bg-card p-2 text-[10px]">
-    <p className="font-semibold text-foreground">Diplomacy check: {errors} errors, {issues.length - errors} warnings</p>
+    <p className="font-semibold text-foreground">Relations validation: {errors} errors, {issues.length - errors} warnings</p>
+    <p className="text-muted-foreground">Checks self-relations, war/alliance conflicts, incompatible subject statuses, multiple overlords and subject relationship cycles.</p>
     {!issues.length && <p className="text-muted-foreground">No diplomacy errors or discrepancies found.</p>}
     <ul className="max-h-48 space-y-1 overflow-y-auto pl-3">
       {issues.map(issue => <li key={issue.id} className={issue.severity === 'error' ? 'list-disc text-destructive' : 'list-disc text-muted-foreground'}>

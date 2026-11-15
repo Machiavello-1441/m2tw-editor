@@ -1,4 +1,4 @@
-import clientStateRules from '@/components/map/clientStateRules';
+import diplomacyRelationRules from '@/components/map/diplomacyRelationRules';
 
 const keyOf = (...parts) => JSON.stringify(parts);
 const pairKey = (a, b) => keyOf(...[a, b].sort());
@@ -17,7 +17,10 @@ export default function validateCampaignDiplomacy({ standings = [], relationship
     for (const target of row.targets || []) {
       if (!target) add(`${kind}-blank-${index}`, 'error', `${label}: a target faction is empty.`);
       else if (!known.has(target)) add(`unknown-${target}`, 'warning', `${target} is not declared in this campaign.`);
-      if (target === row.faction && row.relation !== 'client_of') add(`${kind}-self-${index}`, 'error', `${label}: ${target} cannot target itself.`);
+      if (target && target === row.faction && row.relation !== 'client_of') {
+        const problem = { at_war_with: 'cannot be at war with itself', allied_to: 'cannot be allied to itself', protectorate_of: 'cannot be its own overlord' }[row.relation] || 'cannot target itself';
+        add(`${kind}-self-${index}`, 'error', `${label}: ${target} ${problem}.`);
+      }
     }
   };
   standings.forEach((row, index) => {
@@ -59,7 +62,7 @@ export default function validateCampaignDiplomacy({ standings = [], relationship
       }
     }
   }
-  for (const issue of clientStateRules(relationships)) add(`client-${issue.id}`, 'error', issue.message);
+  for (const issue of diplomacyRelationRules(relationships)) add(issue.id, 'error', issue.message);
   for (const name of known) {
     const missing = ['religion', 'culture'].filter(field => !metadata[name]?.[field]);
     if (missing.length) add(`metadata-${name}`, 'warning', `${name}: missing ${missing.join(' and ')}; those standings modifiers will be skipped.`);

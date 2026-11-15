@@ -17,7 +17,7 @@ export default function DiplomacyStandingUpdater({ factionNames, standings, rela
       <option value="recalculate">Recalculate from zero</option><option value="add">Add to existing standings</option>
     </CampaignDropdown>
     <p className="text-muted-foreground">Updates every campaign faction pair in both directions, not just search results. Missing pairs start at 0. Totals stay between −1 and +1. {mode === 'add' ? 'Each click adds the modifiers again.' : 'Existing pair values are replaced by the calculated totals.'}</p>
-    {missing.length > 0 && <p className="text-muted-foreground">{missing.length} factions lack religion or culture data. Missing modifiers are skipped, never guessed; load faction definitions to include them. Use Check diplomacy for details.</p>}
+    {missing.length > 0 && <p className="text-muted-foreground">{missing.length} factions lack religion or culture data. Missing modifiers are skipped, never guessed; load faction definitions to include them. Use Validate all relations for details.</p>}
     <button type="button" onClick={apply} disabled={factionNames.length < 2} className="rounded bg-primary px-2 py-1 text-primary-foreground disabled:opacity-40">Update standings</button>
     {updated && <p role="status" className="text-muted-foreground">Standings updated. Save the campaign to keep these changes.</p>}
   </section>;
