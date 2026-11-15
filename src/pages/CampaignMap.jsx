@@ -1573,7 +1573,8 @@ export default function CampaignMap() {
             )}
 
             {activeTab === 'validation' && <CampaignValidationTab
-              layers={layers} settlements={overlayItems.filter(item => item.category === 'settlement')}
+              layers={layers} regionsData={regionsData} settlementNames={settlementNames}
+              settlements={overlayItems.filter(item => item.category === 'settlement')}
               edbData={edbData} onApply={updateSettlements}
               onJumpTo={(x, y) => jumpRef.current?.(x, y, mapW2, mapH)}
               overlayProps={{ regionsLayer: layers['regions'], regionsData, hiddenResourceList, religionList, factionList, stratData, factionColors, onShowOverlay: showOverlayMap, onClearOverlay: clearOverlayMap, active: !!overlayMap }}

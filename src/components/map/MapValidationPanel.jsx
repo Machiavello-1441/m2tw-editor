@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { AlertCircle, AlertTriangle, Info, Play, Loader2, CheckCircle2, X } from 'lucide-react';
 import { validateLayers } from './mapValidator';
+import validateCampaignNames from '@/components/map/validateCampaignNames';
 
 const SEV_CONFIG = {
   error:   { Icon: AlertCircle,   color: 'text-red-400',    bg: 'bg-red-900/20 border-red-700/40',    label: 'Error' },
@@ -8,9 +9,10 @@ const SEV_CONFIG = {
   info:    { Icon: Info,          color: 'text-sky-400',    bg: 'bg-sky-900/20 border-sky-700/40',    label: 'Info' },
 };
 
-export default function MapValidationPanel({ layers, onJumpTo }) {
-  const [issues, setIssues] = useState(null);
+export default function MapValidationPanel({ layers, regionsData, settlementNames, settlements = [], onJumpTo }) {
+  const [layerIssues, setIssues] = useState(null);
   const [running, setRunning] = useState(false);
+  const issues = layerIssues === null ? null : [...layerIssues, ...validateCampaignNames({ regionsData, settlementNames, settlements })];
 
   const runValidation = useCallback(() => {
     setRunning(true);
@@ -23,6 +25,7 @@ export default function MapValidationPanel({ layers, onJumpTo }) {
   }, [layers]);
 
   const loadedLayers = Object.values(layers).filter(s => s?.data).length;
+  const hasData = loadedLayers > 0 || regionsData?.length > 0 || settlements.length > 0;
   const errors   = issues ? issues.filter(i => i.severity === 'error').length : 0;
   const warnings = issues ? issues.filter(i => i.severity === 'warning').length : 0;
 
@@ -33,10 +36,11 @@ export default function MapValidationPanel({ layers, onJumpTo }) {
           Scans loaded layer pixel data for common modding errors: river loops, 2×2 river
           blocks, diagonal gaps, invalid/missing sources or outlets, isolated pixels, invalid feature
           colours, mismatched map sizes, and city/port markers on impassable or feature pixels.
+          Also checks missing province/settlement identifiers, region definitions, and empty or missing localized names.
         </p>
         <button
           onClick={runValidation}
-          disabled={running || loadedLayers === 0}
+          disabled={running || !hasData}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold
             bg-amber-600/90 hover:bg-amber-600 text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
@@ -44,7 +48,7 @@ export default function MapValidationPanel({ layers, onJumpTo }) {
             ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Scanning…</>
             : <><Play className="w-3.5 h-3.5" /> Run Validation</>}
         </button>
-        {loadedLayers === 0 && <p className="text-[10px] text-slate-600 text-center">Load at least one layer first</p>}
+        {!hasData && <p className="text-[10px] text-slate-600 text-center">Load a map layer or campaign region data first</p>}
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
