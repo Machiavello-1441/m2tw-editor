@@ -41,6 +41,7 @@ import useCampaignRecovery from '@/components/map/useCampaignRecovery';
 import CampaignRecoveryStatus from '@/components/map/CampaignRecoveryStatus';
 import useSharedFactionColors, { seedCampaignFactions } from '@/components/map/useSharedFactionColors';
 import useCampaignPaintBitmaps from '@/components/map/useCampaignPaintBitmaps';
+import { buildPoliticalStyles, politicalMapPixels } from '@/components/map/politicalMapPixels';
 import useSharedCampaignReferences, { CAMPAIGN_SHARED_REFERENCES, seedSharedModFile } from '@/components/map/useSharedCampaignReferences';
 
 const INITIAL_PAINT = {
@@ -90,6 +91,7 @@ export default function CampaignMap() {
   const [showPixelGrid, setShowPixelGrid] = useState(false);
   const [showTooltip, setShowTooltip] = useState(true);
   const [regionsMode, setRegionsMode] = useState('fill');
+  const [showPolitical, setShowPolitical] = useState(false);
 
   // Strat overlay state — initialize from sessionStorage if available
   const [stratData, setStratDataRaw] = useState(() => {
@@ -535,6 +537,14 @@ export default function CampaignMap() {
   const recovery = useCampaignRecovery(campaignSnapshot, campaignSelection.active,
     !saving && !undoing && !campaignSelection.loading && !campaignSelection.error,
     saving || undoing || overlayDirty || dirtyLayers.size > 0 || undoHistory.entries.length > 0 || Boolean(regionWizard || pendingPlace));
+
+  // ── Political map view — faction colours on the regions layer ──────────────
+  const politicalTransform = useMemo(() => {
+    if (!showPolitical || !factionColors) return null;
+    const styles = buildPoliticalStyles(regionsData, overlayItems, factionColors);
+    if (!styles.size) return null;
+    return (data, width, height) => politicalMapPixels(data, width, height, styles);
+  }, [showPolitical, regionsData, overlayItems, factionColors]);
 
   // ── Painting ───────────────────────────────────────────────────────────────
   const paintBitmaps = useCampaignPaintBitmaps(layers, layersRef, setLayers);
@@ -1317,6 +1327,18 @@ export default function CampaignMap() {
           <option value="citiesports">Regions: cities+ports</option>
         </CampaignDropdown>
 
+        {/* Political map view — provinces in faction colours, borders in secondary */}
+        <button
+          onClick={() => setShowPolitical(v => !v)}
+          className={`px-2 py-1 rounded text-[10px] border transition-colors ${showPolitical ? 'border-purple-500/50 text-purple-300 bg-purple-500/10' : 'border-slate-600/40 text-slate-500 hover:text-slate-200'}`}
+          title="Political map: each province in its owner's main colour, province borders in the secondary colour"
+        >Political</button>
+        {showPolitical && !politicalTransform && (
+          <span className="text-[9px] text-amber-400" title="Faction ownership comes from descr_strat.txt and the colours from descr_sm_factions.txt">
+            needs regions + strat + factions
+          </span>
+        )}
+
         {/* DB import progress */}
         {importProgress && (
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-blue-500/20 border border-blue-500/40 text-blue-400 text-[10px] font-semibold">
@@ -1423,6 +1445,7 @@ export default function CampaignMap() {
             showTopo={showTopo}
             layers={layers}
             regionsMode={regionsMode}
+            politicalTransform={politicalTransform}
             overlayUrl={overlayMap?.url}
             onRegionClick={handleCanvasClick}
             jumpRef={jumpRef}

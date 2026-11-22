@@ -434,7 +434,7 @@ function PaintCanvas({
 }
 
 /** Renders TGA layer bitmaps as Leaflet ImageOverlays */
-function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
+function TgaLayerOverlays({ layers, regionsMode, osmBbox, politicalTransform }) {
   // Transparency is applied directly to pixels during the bounded encode,
   // avoiding a second set of temporary GPU bitmaps for every paint update.
   if (!osmBbox) return null;
@@ -447,14 +447,16 @@ function TgaLayerOverlays({ layers, regionsMode, osmBbox }) {
         const def = LAYER_DEFS.find(d => d.id === id);
         if (!state?.data) return null;
         if (!(state.visible ?? def?.defaultVisible)) return null;
-        const kind = id === 'features' || id === 'fog' ? id : id === 'regions' && regionsMode === 'citiesports' ? 'citiesports' : null;
+        const political = id === 'regions' && !!politicalTransform;
+        const kind = political ? null : id === 'features' || id === 'fog' ? id : id === 'regions' && regionsMode === 'citiesports' ? 'citiesports' : null;
         return (
           <TgaBitmapOverlay
             key={id}
             bounds={bounds}
             layer={state}
             kind={kind}
-            opacity={state.opacity ?? def?.defaultOpacity ?? 1}
+            transform={political ? politicalTransform : null}
+            opacity={political ? 1 : state.opacity ?? def?.defaultOpacity ?? 1}
             zIndex={DRAW_ORDER.indexOf(id) + 200}
           />
         );
@@ -487,6 +489,7 @@ export default function MapCanvas({
   onMoveItem,
   onDoubleClickItem,
   overlayUrl = null,
+  politicalTransform = null,
 }) {
   const { w: mapW, h: mapH } = getMapSize(layers);
   const anyLoaded = Object.values(layers).some(s => s?.bitmap);
@@ -559,7 +562,7 @@ export default function MapCanvas({
           />
         )}
 
-        <TgaLayerOverlays layers={layers} regionsMode={regionsMode} osmBbox={effectiveBbox} />
+        <TgaLayerOverlays layers={layers} regionsMode={regionsMode} osmBbox={effectiveBbox} politicalTransform={politicalTransform} />
 
         {overlayUrl && (
           <ImageOverlay

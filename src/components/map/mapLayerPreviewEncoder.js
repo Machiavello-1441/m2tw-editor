@@ -5,13 +5,14 @@ export default function mapLayerPreviewEncoder(onUrl) {
   const canvas = document.createElement('canvas');
   let pending = null, latest = null, busy = false, stopped = false, url = null;
   const releaseUrl = () => { if (url) URL.revokeObjectURL(url); url = null; };
-  const matches = (a, b) => a && b && a.data === b.data && a.width === b.width && a.height === b.height && a.kind === b.kind;
+  const matches = (a, b) => a && b && a.data === b.data && a.width === b.width && a.height === b.height && a.kind === b.kind && a.transform === b.transform;
   const drain = () => {
     if (stopped || busy || !pending) return;
     const job = pending; pending = null; busy = true;
     if (canvas.width !== job.width) canvas.width = job.width;
     if (canvas.height !== job.height) canvas.height = job.height;
-    const pixels = job.kind ? transparentMapPixels(job.data, job.kind) : job.data;
+    const pixels = job.transform ? job.transform(job.data, job.width, job.height)
+      : job.kind ? transparentMapPixels(job.data, job.kind) : job.data;
     // Read canonical pixels, not a shared ImageBitmap that may already be detached.
     canvas.getContext('2d').putImageData(new ImageData(pixels, job.width, job.height), 0, 0);
     canvas.toBlob(blob => {
@@ -26,12 +27,12 @@ export default function mapLayerPreviewEncoder(onUrl) {
     }, 'image/png');
   };
   return {
-    update(layer, kind = null) {
+    update(layer, kind = null, transform = null) {
       if (stopped) return;
       if (!layer?.data || !layer.width || !layer.height) {
         latest = null; pending = null; releaseUrl(); onUrl(null); return;
       }
-      latest = { data: layer.data, width: layer.width, height: layer.height, kind };
+      latest = { data: layer.data, width: layer.width, height: layer.height, kind, transform };
       pending = latest; drain();
     },
     dispose() {
