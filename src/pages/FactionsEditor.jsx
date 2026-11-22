@@ -137,6 +137,7 @@ function parseDescrSmFactions(text) {
         small_logo_index: '',
         triumph_value: '5',
         custom_battle_availability: 'yes',
+        can_homeless: 'no',
         can_sap: 'no',
         prefers_naval_invasions: 'no',
         can_have_princess: 'yes',
@@ -176,6 +177,7 @@ function parseDescrSmFactions(text) {
       case 'small_logo_index':current.small_logo_index = val;break;
       case 'triumph_value':current.triumph_value = val;break;
       case 'custom_battle_availability':current.custom_battle_availability = val;break;
+      case 'can_homeless':current.can_homeless = val;break;
       case 'can_sap':current.can_sap = val;break;
       case 'prefers_naval_invasions':current.prefers_naval_invasions = val;break;
       case 'can_have_princess':current.can_have_princess = val;break;
@@ -252,6 +254,8 @@ function serialiseDescrSmFactions(factions) {
     `horde_disband_percent_on_settlement_capture\t${f.horde_disband_percent_on_settlement_capture}`,
     ...(f.horde_units || []).map((u, idx) => `horde_unit${T4}${u}${idx === 0 && f.can_horde ? ' ; general_unit required' : ''}`)] :
     []),
+    // M2EX-only flag: written only when enabled so vanilla files stay untouched.
+    f.can_homeless === 'yes' ? `can_homeless${T}${f.can_homeless}` : null,
     `can_sap${T}${f.can_sap}`,
     `prefers_naval_invasions\t\t${f.prefers_naval_invasions}`,
     `can_have_princess${T3}${f.can_have_princess}`,
@@ -507,6 +511,12 @@ function FactionDetail({ faction, onChange, cultures, religions, eduUnits, onSav
         <section className="space-y-1">
           <h3 className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-600 pb-1">Flags</h3>
           <YesNo label="Custom battle availability" value={draft.custom_battle_availability} onChange={(v) => set('custom_battle_availability', v)} />
+          <YesNo label="Can homeless (M2EX)" value={draft.can_homeless ?? 'no'} onChange={(v) => set('can_homeless', v)} />
+          {draft.can_homeless === 'yes' && (
+            <p className="text-[9px] text-amber-300 pl-1">
+              ⚠ M2EX only. Cannot be used by senate, slave or papal_state. Written before can_sap.
+            </p>
+          )}
           <YesNo label="Can sap" value={draft.can_sap} onChange={(v) => set('can_sap', v)} />
           <YesNo label="Prefers naval invasions" value={draft.prefers_naval_invasions} onChange={(v) => set('prefers_naval_invasions', v)} />
           <YesNo label="Can have princess" value={draft.can_have_princess} onChange={(v) => set('can_have_princess', v)} />
@@ -740,6 +750,7 @@ export default function FactionsEditor() {
       small_logo_index: '',
       triumph_value: '5',
       custom_battle_availability: 'yes',
+      can_homeless: 'no',
       can_sap: 'no',
       prefers_naval_invasions: 'no',
       can_have_princess: 'yes',
