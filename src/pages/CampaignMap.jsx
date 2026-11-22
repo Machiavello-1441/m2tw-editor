@@ -42,6 +42,7 @@ import CampaignRecoveryStatus from '@/components/map/CampaignRecoveryStatus';
 import useSharedFactionColors, { seedCampaignFactions } from '@/components/map/useSharedFactionColors';
 import useCampaignPaintBitmaps from '@/components/map/useCampaignPaintBitmaps';
 import { buildPoliticalStyles, politicalMapPixels } from '@/components/map/politicalMapPixels';
+import { politicalBorderRuns } from '@/components/map/politicalBorders';
 import useSharedCampaignReferences, { CAMPAIGN_SHARED_REFERENCES, seedSharedModFile } from '@/components/map/useSharedCampaignReferences';
 
 const INITIAL_PAINT = {
@@ -545,6 +546,15 @@ export default function CampaignMap() {
     if (!styles.size) return null;
     return (data, width, height) => politicalMapPixels(data, width, height, styles);
   }, [showPolitical, regionsData, overlayItems, factionColors]);
+
+  // Hairline province borders, drawn on the pixel edges of the regions layer.
+  const regionsLayer = layers.regions;
+  const politicalBorders = useMemo(() => {
+    if (!showPolitical || !factionColors || !regionsLayer?.data) return null;
+    const styles = buildPoliticalStyles(regionsData, overlayItems, factionColors);
+    if (!styles.size) return null;
+    return politicalBorderRuns(regionsLayer.data, regionsLayer.width, regionsLayer.height, styles);
+  }, [showPolitical, factionColors, regionsData, overlayItems, regionsLayer]);
 
   // ── Painting ───────────────────────────────────────────────────────────────
   const paintBitmaps = useCampaignPaintBitmaps(layers, layersRef, setLayers);
@@ -1446,6 +1456,7 @@ export default function CampaignMap() {
             layers={layers}
             regionsMode={regionsMode}
             politicalTransform={politicalTransform}
+            politicalBorders={politicalBorders}
             overlayUrl={overlayMap?.url}
             onRegionClick={handleCanvasClick}
             jumpRef={jumpRef}

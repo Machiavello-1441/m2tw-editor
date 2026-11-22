@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { MapContainer, TileLayer, ImageOverlay, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, ImageOverlay, Pane, useMap, useMapEvents } from 'react-leaflet';
 import { LAYER_DEFS } from './mapLayerConstants';
 import MapPixelTooltip from './MapPixelTooltip';
 import StratOverlay from './StratOverlay';
 import CampaignMapLocate from '@/components/map/CampaignMapLocate';
 import observePaintCanvasSize from '@/components/map/observePaintCanvasSize';
 import TgaBitmapOverlay from '@/components/map/TgaBitmapOverlay';
+import PoliticalBorderLines from '@/components/map/PoliticalBorderLines';
 import 'leaflet/dist/leaflet.css';
 
 const DRAW_ORDER = ['heights', 'ground', 'climates', 'regions', 'features', 'fog'];
@@ -490,9 +491,12 @@ export default function MapCanvas({
   onDoubleClickItem,
   overlayUrl = null,
   politicalTransform = null,
+  politicalBorders = null,
 }) {
   const { w: mapW, h: mapH } = getMapSize(layers);
   const anyLoaded = Object.values(layers).some(s => s?.bitmap);
+  const regionsVisible = layers.regions?.visible
+    ?? LAYER_DEFS.find(d => d.id === 'regions')?.defaultVisible;
 
   // When no bbox_coords.txt is loaded, synthesize an equatorial bounding box
   // whose aspect ratio matches the TGA. That keeps Leaflet's pan/zoom + paint
@@ -563,6 +567,13 @@ export default function MapCanvas({
         )}
 
         <TgaLayerOverlays layers={layers} regionsMode={regionsMode} osmBbox={effectiveBbox} politicalTransform={politicalTransform} />
+
+        {/* Political borders sit on the pixel edges, above the faction fills */}
+        {politicalBorders && regionsVisible && (
+          <Pane name="politicalBorders" style={{ zIndex: 420 }}>
+            <PoliticalBorderLines runs={politicalBorders} bounds={effectiveBbox} />
+          </Pane>
+        )}
 
         {overlayUrl && (
           <ImageOverlay
