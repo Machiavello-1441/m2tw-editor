@@ -66,11 +66,16 @@ function resolveRingsFromGeo(geo, bbox, mapWidth, mapHeight) {
  * @param {boolean} [opts.drawDot=false]           Whether to draw the black
  *                                                  settlement marker + 3×3 rgb.
  * @param {number}  [opts.dotPx, opts.dotPy]       Marker pixel (when drawDot).
+ * @param {string[]}[opts.protectColors]            "r,g,b" colour keys that must
+ *                                                  never be overwritten — the
+ *                                                  territory of already-drawn
+ *                                                  non-wasteland provinces.
  */
 export async function paintBoundary({
   lat, lng, osmId, osmType, rgb,
   drawDot = false, dotPx = null, dotPy = null,
   bbox, layers, onLayerUpdate, mapWidth, mapHeight,
+  protectColors = null,
 }) {
   if (!bbox) throw new Error('No bounding box set.');
 
@@ -132,10 +137,15 @@ out tags;`;
   const ins = insideData.data;
   const isSeaPix = i => dst[i] === 0 && dst[i + 1] === 0 && dst[i + 2] === 255;
   const isBlackPix = i => dst[i] === 0 && dst[i + 1] === 0 && dst[i + 2] === 0;
+  // Pixels of other provinces that must keep their territory.
+  const protectedSet = protectColors?.length ? new Set(protectColors) : null;
+  const isProtectedPix = i => protectedSet !== null &&
+    protectedSet.has(`${dst[i]},${dst[i + 1]},${dst[i + 2]}`);
   for (let i = 0; i < dst.length; i += 4) {
     if (ins[i + 3] === 0) continue;
     if (isBlackPix(i)) continue;
     if (isSeaPix(i)) continue;
+    if (isProtectedPix(i)) continue;
     dst[i] = rgb[0]; dst[i + 1] = rgb[1]; dst[i + 2] = rgb[2]; dst[i + 3] = 255;
   }
 
@@ -149,7 +159,7 @@ out tags;`;
         if (dx === 0 && dy === 0) {
           dst[idx] = 0; dst[idx + 1] = 0; dst[idx + 2] = 0; dst[idx + 3] = 255;
         } else {
-          if (isSeaPix(idx) || isBlackPix(idx)) continue;
+          if (isSeaPix(idx) || isBlackPix(idx) || isProtectedPix(idx)) continue;
           dst[idx] = rgb[0]; dst[idx + 1] = rgb[1]; dst[idx + 2] = rgb[2]; dst[idx + 3] = 255;
         }
       }

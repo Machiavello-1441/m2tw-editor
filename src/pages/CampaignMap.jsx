@@ -1092,6 +1092,13 @@ export default function CampaignMap() {
       : (regionsData || [])[regionsData?.length ? regionsData.length - 1 : 0];
     if (!last) return;
     const rgb = [last.r, last.g, last.b];
+    const targetKey = `${last.r},${last.g},${last.b}`;
+    // Every other non-wasteland province keeps its territory: the automatic
+    // boundary only fills empty space and wasteland pixels.
+    const protectColors = (regionsData || [])
+      .filter(reg => !reg.wasteland && !/^wasteland$/i.test(reg.settlementName || ''))
+      .map(reg => `${reg.r},${reg.g},${reg.b}`)
+      .filter(key => key !== targetKey);
     const imageData = new ImageData(new Uint8ClampedArray(regLayer.data), regLayer.width, regLayer.height);
     const fakeLayers = { regions: { imageData, opacity: regLayer.opacity ?? 1 } };
     try {
@@ -1102,6 +1109,7 @@ export default function CampaignMap() {
         osmType: result.osm_type,
         rgb,
         drawDot: false,
+        protectColors,
         bbox: osmBbox,
         layers: fakeLayers,
         mapWidth: regLayer.width,
