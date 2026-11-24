@@ -2,11 +2,12 @@
  * TileRasterizer — rasterizes web map tile layers into an ImageData at a target resolution.
  *
  * Strategy:
- *  - Compute which tiles cover the bbox at a chosen zoom level
- *  - Fetch each tile as an <img> (CORS: anonymous)
- *  - Draw each tile straight into the output canvas at its own destination rect
- *    (no giant intermediate canvas — one that exceeds the browser's canvas area
- *    limit is silently blank, which turned whole heightmaps into sea)
+ *  - Compute which tiles cover the bbox at a chosen zoom level (bounded tile budget)
+ *  - Fetch each tile as an <img> (CORS: anonymous), with retries
+ *  - Assemble the output in BLOCKS: a small reusable scratch canvas is filled
+ *    with the tiles covering that block, read back, and copied into the final
+ *    pixel buffer. No full-size canvas is ever created, so map size is not
+ *    limited by the browser's per-canvas pixel/side caps.
  *  - Nearest-neighbor scaling (imageSmoothingEnabled = false)
  *
  * All standard slippy-map tile sources (OSM, OpenTopoMap, Terrarium, OHM) use
@@ -38,6 +39,9 @@ const TILE_SIZE = 256;
 // Tiles fetched per rasterization — keeps large bboxes responsive instead of
 // requesting thousands of tiles at a zoom the output cannot use anyway.
 const MAX_TILES = 400;
+// Assembly block size in pixels. Blocks are stitched into the final buffer, so
+// this only bounds the scratch canvas (4096² ≈ 16.7 MP works everywhere).
+const BLOCK = 4096;
 
 async function loadImage(url) {
   return new Promise((resolve, reject) => {
@@ -94,13 +98,6 @@ export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgres
   const yMin = lat2tile(bbox.north, zoom); // note: y increases southward
   const yMax = lat2tile(bbox.south, zoom);
 
-  // Output canvas at target resolution — tiles are drawn straight into it.
-  const outCanvas = document.createElement('canvas');
-  outCanvas.width = width;
-  outCanvas.height = height;
-  const outCtx = outCanvas.getContext('2d');
-  outCtx.imageSmoothingEnabled = false; // nearest-neighbor
-
   // Destination pixel edges of every tile column/row. Shared edges keep the
   // tiles gap- and overlap-free at any scale factor.
   const mercNorth = latToMercN(bbox.north);
@@ -115,22 +112,22 @@ export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgres
     yEdges.push(Math.round((mercNorth - latToMercN(tile2lat(ty, zoom))) / mercRange * height));
   }
 
-  const tasks = [];
-  for (let tx = xMin; tx <= xMax; tx++) {
-    for (let ty = yMin; ty <= yMax; ty++) {
-      tasks.push({ tx, ty });
-    }
-  }
+  const cols = xMax - xMin + 1;
+  const rows = yMax - yMin + 1;
+  const total = cols * rows;
 
-  const total = tasks.length;
-  let fetched = 0;
+  // ── Fetch every tile once (bounded by MAX_TILES, so memory stays flat) ─────
+  const tiles = new Array(total);
   const failures = [];
+  let fetched = 0;
 
-  // Fetch tiles in parallel batches of 8
   const BATCH = 8;
-  for (let i = 0; i < tasks.length; i += BATCH) {
-    const batch = tasks.slice(i, i + BATCH);
-    await Promise.all(batch.map(async ({ tx, ty }) => {
+  for (let i = 0; i < total; i += BATCH) {
+    const batch = [];
+    for (let k = i; k < Math.min(i + BATCH, total); k++) batch.push(k);
+    await Promise.all(batch.map(async (index) => {
+      const tx = xMin + (index % cols);
+      const ty = yMin + Math.floor(index / cols);
       const url = buildUrl(urlTemplate, tx, ty, zoom);
       let img = null;
       for (let attempt = 0; attempt < 3 && !img; attempt++) {
@@ -140,15 +137,7 @@ export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgres
           if (attempt === 2) failures.push(url);
         }
       }
-      if (img) {
-        const col = tx - xMin;
-        const row = ty - yMin;
-        const dx = xEdges[col];
-        const dy = yEdges[row];
-        const dw = Math.max(1, xEdges[col + 1] - dx);
-        const dh = Math.max(1, yEdges[row + 1] - dy);
-        outCtx.drawImage(img, 0, 0, TILE_SIZE, TILE_SIZE, dx, dy, dw, dh);
-      }
+      tiles[index] = img;
       fetched++;
       onProgress?.(fetched, total);
     }));
@@ -160,37 +149,69 @@ export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgres
     throw new Error(`${failures.length} of ${total} tiles failed to load (zoom ${zoom}) — check the connection and try again.`);
   }
 
-  const imageData = outCtx.getImageData(0, 0, width, height);
+  // ── Assemble block by block straight into the final pixel buffer ───────────
+  const imageData = new ImageData(width, height);
+  const out = imageData.data;
+  const scratch = document.createElement('canvas');
+  const scratchCtx = scratch.getContext('2d', { willReadFrequently: true });
+
+  for (let by = 0; by < height; by += BLOCK) {
+    const bh = Math.min(BLOCK, height - by);
+    for (let bx = 0; bx < width; bx += BLOCK) {
+      const bw = Math.min(BLOCK, width - bx);
+
+      // Resizing clears the scratch canvas for the next block.
+      scratch.width = bw;
+      scratch.height = bh;
+      scratchCtx.imageSmoothingEnabled = false;
+
+      for (let row = 0; row < rows; row++) {
+        const top = yEdges[row] - by;
+        const bottom = yEdges[row + 1] - by;
+        if (bottom <= 0 || top >= bh) continue;
+        for (let col = 0; col < cols; col++) {
+          const left = xEdges[col] - bx;
+          const right = xEdges[col + 1] - bx;
+          if (right <= 0 || left >= bw) continue;
+          const img = tiles[row * cols + col];
+          if (!img) continue;
+          // The canvas clips whatever falls outside the block, so a tile
+          // straddling a block edge lands correctly in every block it touches.
+          scratchCtx.drawImage(img, 0, 0, TILE_SIZE, TILE_SIZE, left, top, right - left, bottom - top);
+        }
+      }
+
+      const block = scratchCtx.getImageData(0, 0, bw, bh);
+      const rowBytes = bw * 4;
+      for (let r = 0; r < bh; r++) {
+        out.set(block.data.subarray(r * rowBytes, (r + 1) * rowBytes), ((by + r) * width + bx) * 4);
+      }
+    }
+  }
 
   if (options?.grayscale) {
     // Terrarium tiles encode elevation as: elevation = (R*256 + G + B/256) - 32768
     // elevation <= 0  → sea  → (0, 0, 255)
     // elevation >  0  → land → grayscale 1–255 (normalised to max land elevation)
-    const d = imageData.data;
-    const len = d.length;
-
-    // Decode all elevations first
-    const elevs = new Float32Array(len / 4);
-    for (let i = 0; i < len; i += 4) {
-      elevs[i / 4] = d[i] * 256 + d[i + 1] + d[i + 2] / 256 - 32768;
-    }
-
-    // Find max land elevation for normalisation
+    // Two passes over the buffer (no extra elevation array) so huge maps stay
+    // within memory.
+    const len = out.length;
     let maxElev = 0;
-    for (let j = 0; j < elevs.length; j++) {
-      if (elevs[j] > maxElev) maxElev = elevs[j];
+    for (let i = 0; i < len; i += 4) {
+      const elev = out[i] * 256 + out[i + 1] + out[i + 2] / 256 - 32768;
+      if (elev > maxElev) maxElev = elev;
     }
     const range = maxElev || 1;
 
-    // Write output: sea pixels → blue, land → grayscale 1–255
     for (let i = 0; i < len; i += 4) {
-      const elev = elevs[i / 4];
+      const elev = out[i] * 256 + out[i + 1] + out[i + 2] / 256 - 32768;
       if (elev <= 0) {
-        d[i] = 0; d[i + 1] = 0; d[i + 2] = 255; d[i + 3] = 255;
+        out[i] = 0; out[i + 1] = 0; out[i + 2] = 255;
       } else {
         const v = Math.max(1, Math.round(elev / range * 255));
-        d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255;
+        out[i] = v; out[i + 1] = v; out[i + 2] = v;
       }
+      out[i + 3] = 255;
     }
   }
 
