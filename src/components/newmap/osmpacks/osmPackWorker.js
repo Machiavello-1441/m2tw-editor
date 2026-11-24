@@ -63,8 +63,14 @@ self.onmessage = async ({ data }) => {
     if (kind === 'preferences') { dataset.preferences = data.preferences; self.postMessage({ id, result: { warning: await persist() } }); return; }
     if (kind === 'clear') { await osmPackStore('delete', key); dataset = { features: [], classes: [], packs: [], preferences: {} }; rebuild(); self.postMessage({ id, result: summary() }); return; }
     if (kind === 'paint') {
+      // One band of the ground layer at a time: rows y0…y0+height of the full layer.
+      const y0 = data.y0 ?? 0, fullHeight = data.fullHeight ?? data.height;
       if (!Number.isInteger(data.width) || !Number.isInteger(data.height) || data.width < 1 || data.height < 1 || data.width * data.height > 33554432) throw new Error('Ground layer exceeds the 32-million-pixel regional overlay limit.');
-      const result = paintOsmClasses(index, data.choices, bbox, data.pixels, data.width, data.height, progress);
+      if (!Number.isInteger(y0) || y0 < 0 || !Number.isInteger(fullHeight) || y0 + data.height > fullHeight) throw new Error('This band of the ground layer lies outside the layer.');
+      const start = Number(data.progressStart) || 0, end = Number.isFinite(data.progressEnd) ? data.progressEnd : 1;
+      const band = data.bandCount > 1 ? ` · band ${data.bandIndex + 1}/${data.bandCount}` : '';
+      const bandProgress = (label, percent) => progress(`${label}${band}`, Math.round((start + (end - start) * percent / 100) * 100));
+      const result = paintOsmClasses(index, data.choices, bbox, data.pixels, data.width, data.height, bandProgress, y0, fullHeight);
       self.postMessage({ id, result }, [result.pixels.buffer]); return;
     }
     throw new Error('Unknown regional data operation.');
