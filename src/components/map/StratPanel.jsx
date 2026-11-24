@@ -379,6 +379,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
       population: item.population,
       yearFounded: item.yearFounded,
       planSet: item.planSet,
+      legionName: regionInfo?.legionName || '',
       factionCreator: item.factionCreator || regionInfo?.factionCreator || '',
       faction: item.faction,
       buildings: [...(item.buildings || [])],
@@ -422,6 +423,7 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
         onRecolorRegion({ oldR, oldG, oldB }, { newR, newG, newB });
       }
       onRegionsDataChange(regionInfo.regionName, {
+        legionName: draft.legionName?.trim() || '',
         settlementName: draft.settlementName,
         factionCreator: draft.factionCreator,
         r: draft.regionR,
@@ -492,6 +494,15 @@ function SettlementRow({ item, isSelected, factionColors, onSelect, onDelete, on
                     <input value={draft.settlementDisplayName} onChange={(e) => setDraft((d) => ({ ...d, settlementDisplayName: e.target.value }))}
                 className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
                   </div>
+                </div>
+
+                <div className="col-span-2">
+                  <span className="text-[9px] text-slate-500">Legion Name (optional)</span>
+                  <input value={draft.legionName || ''} onChange={(e) => setDraft((d) => ({ ...d, legionName: e.target.value }))}
+                placeholder="legion name from the names file…"
+                className="h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 w-full font-mono" />
+                  {draft.legionName?.trim() && settlementNames && !settlementNames[draft.legionName.trim()] &&
+                <p className="text-[9px] text-amber-400/90 leading-tight mt-0.5">Not in regions_and_settlement_names.txt — the game needs the legion name to exist there.</p>}
                 </div>
               </div>
 

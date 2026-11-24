@@ -1095,8 +1095,9 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
 }
 
 // ─── descr_regions.txt ────────────────────────────────────────────────────────
-// Format per block (9 non-blank, non-comment lines):
+// Format per block (9 non-blank, non-comment lines, plus an optional legion line):
 //   (province name)
+//   legion: (name)   — optional, must exist in regions_and_settlement_names.txt
 //   (settlement name)
 //   (faction creator)
 //   (rebel faction)
@@ -1121,22 +1122,31 @@ export function parseDescrRegions(text) {
 
   let i = 0;
   while (i < stripped.length) {
+    // Optional `legion: <name>` line sits between the province name and the
+    // settlement name, shifting the rest of the block down by one line.
+    // See https://www.twcenter.net/threads/legion-names-for-mtw2.352256/
+    const legionOffset = /^legion\s*:/i.test(stripped[i + 1] || '') ? 1 : 0;
+    const legionName = legionOffset
+      ? (stripped[i + 1].match(/^legion\s*:\s*(\S+)/i)?.[1] || '')
+      : '';
+
     // ── M2EX wasteland short form ───────────────────────────────────────────
     // <regionName>\nwasteland\nR G B (3 lines, no settlement/owner/economy).
     // See https://github.com/Pannoniae/rex/blob/master/modding/wasteland_regions.md
     if (
-      i + 2 <= stripped.length - 1 &&
-      /^wasteland$/i.test(stripped[i + 1]) &&
-      /^\d+\s+\d+\s+\d+$/.test(stripped[i + 2])
+      i + 2 + legionOffset <= stripped.length - 1 &&
+      /^wasteland$/i.test(stripped[i + 1 + legionOffset]) &&
+      /^\d+\s+\d+\s+\d+$/.test(stripped[i + 2 + legionOffset])
     ) {
       const regionName = stripped[i++];
+      if (legionOffset) i++; // skip the legion line
       i++; // skip the 'wasteland' keyword (where the settlement name normally sits)
       const rgbParts = stripped[i++].split(/\s+/);
       const r = parseInt(rgbParts[0]) || 0;
       const g = parseInt(rgbParts[1]) || 0;
       const b = parseInt(rgbParts[2]) || 0;
       regions.push({
-        regionName, settlementName: 'wasteland', wasteland: true,
+        regionName, legionName, settlementName: 'wasteland', wasteland: true,
         factionCreator: '', rebelFaction: '', r, g, b,
         resources: [], val1: 0, val2: 0, religions: {},
       });
@@ -1146,11 +1156,12 @@ export function parseDescrRegions(text) {
     // ── Standard 9-line form ───────────────────────────────────────────────
     // The 5th line in a block must be RGB values (3 numbers). If not, skip this
     // line to re-sync (handles stray comment remnants or section headers).
-    if (i + 8 > stripped.length - 1) { i++; continue; }
-    const rgbCandidate = stripped[i + 4];
+    if (i + 8 + legionOffset > stripped.length - 1) { i++; continue; }
+    const rgbCandidate = stripped[i + 4 + legionOffset];
     if (!rgbCandidate || !/^\d+\s+\d+\s+\d+$/.test(rgbCandidate)) { i++; continue; }
 
     const regionName     = stripped[i++];
+    if (legionOffset) i++; // skip the legion line (captured above)
     const settlementName = stripped[i++];
     const factionCreator = stripped[i++];
     const rebelFaction   = stripped[i++];
@@ -1176,6 +1187,7 @@ export function parseDescrRegions(text) {
     const isWasteland = /^wasteland$/i.test(settlementName);
     regions.push({
       regionName,
+      legionName,
       settlementName: isWasteland ? 'wasteland' : settlementName,
       wasteland: isWasteland,
       factionCreator, rebelFaction, r, g, b, resources, val1, val2, religions,
@@ -1193,9 +1205,11 @@ export function serializeDescrRegions(regions, allReligions) {
     (a.wasteland ? 1 : 0) - (b.wasteland ? 1 : 0)
   );
   return sorted.map(reg => {
+    // Optional legion line, directly under the province name.
+    const legionLine = reg.legionName?.trim() ? `legion: ${reg.legionName.trim()}` : null;
     // Wasteland short form: <regionName>\nwasteland\nR G B
     if (reg.wasteland) {
-      return [reg.regionName, 'wasteland', `${reg.r} ${reg.g} ${reg.b}`].join('\n');
+      return [reg.regionName, ...(legionLine ? [legionLine] : []), 'wasteland', `${reg.r} ${reg.g} ${reg.b}`].join('\n');
     }
     // Standard 9-line form
     let relEntries;
@@ -1208,6 +1222,7 @@ export function serializeDescrRegions(regions, allReligions) {
     const resourcesLine = (reg.resources || []).length > 0 ? (reg.resources || []).join(', ') : 'none';
     return [
       reg.regionName,
+      ...(legionLine ? [legionLine] : []),
       reg.settlementName,
       reg.factionCreator,
       reg.rebelFaction || 'slave',
