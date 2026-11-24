@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Sliders, RotateCcw, Check, Wand2 } from 'lucide-react';
 
 /**
@@ -19,8 +19,25 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
   const [contrast, setContrast] = useState(0);     // -100..100
   const [gamma, setGamma] = useState(1);           // 0.1..3.0
   const [expanded, setExpanded] = useState(false);
+  // Heightmap pixels from before each applied change, newest last.
+  const history = useRef([]);
+  const [depth, setDepth] = useState(0);
 
   if (!layer?.imageData) return null;
+
+  const resetSliders = () => {
+    setBrightness(0);
+    setContrast(0);
+    setGamma(1);
+  };
+
+  /** Remember the current pixels so the next change can be reverted. */
+  const pushSnapshot = () => {
+    const { data, width, height } = layer.imageData;
+    history.current.push(new ImageData(new Uint8ClampedArray(data), width, height));
+    if (history.current.length > 10) history.current.shift();
+    setDepth(history.current.length);
+  };
 
   /** Apply a tone function to greyscale pixels, keeping them grey. */
   const applyToGreyscale = (srcData, fn) => {
@@ -45,11 +62,10 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
       r = 255 * Math.pow(r / 255, gammaInv);
       return Math.max(0, Math.min(255, Math.round(r)));
     };
+    pushSnapshot();
     const result = applyToGreyscale(layer.imageData, fn);
     onLayerUpdate('heights', { imageData: result, visible: true, dirty: true });
-    setBrightness(0);
-    setContrast(0);
-    setGamma(1);
+    resetSliders();
   };
 
   const handleEqualize = () => {
@@ -73,6 +89,7 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
     for (let i = 0; i < 256; i++) {
       lut[i] = denom > 0 ? Math.round(((cdf[i] - cdfMin) / denom) * 255) : i;
     }
+    pushSnapshot();
     const out = new Uint8ClampedArray(data);
     for (let i = 0; i < out.length; i += 4) {
       if (!isGrey(data, i)) continue; // sea / painted water untouched
@@ -82,10 +99,16 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
     onLayerUpdate('heights', { imageData: new ImageData(out, width, height), visible: true, dirty: true });
   };
 
-  const handleReset = () => {
-    setBrightness(0);
-    setContrast(0);
-    setGamma(1);
+  /** Restore the heightmap from before the last applied change. */
+  const handleRevert = () => {
+    const previous = history.current.pop();
+    setDepth(history.current.length);
+    resetSliders();
+    const current = layer.imageData;
+    // A re-fetched heightmap has different dimensions: never paste a stale one back.
+    if (previous && previous.width === current.width && previous.height === current.height) {
+      onLayerUpdate('heights', { imageData: previous, visible: true, dirty: true });
+    }
   };
 
   return (
@@ -145,14 +168,16 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
               className="flex items-center justify-center gap-1 px-2 py-1 rounded text-[10px] bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 font-semibold border border-purple-500/40 transition-colors">
               <Wand2 className="w-3 h-3" /> Equalize
             </button>
-            <button onClick={handleReset}
-              title="Reset sliders"
-              className="flex items-center justify-center px-1.5 py-1 rounded text-[10px] bg-slate-700/60 hover:bg-slate-600 text-slate-300 border border-slate-600/40 transition-colors">
-              <RotateCcw className="w-3 h-3" />
+            <button onClick={handleRevert}
+              disabled={depth === 0}
+              title={depth === 0 ? 'Nothing to revert yet' : `Revert the last applied change (${depth} undoable)`}
+              className="flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10px] bg-slate-700/60 hover:bg-slate-600 text-slate-300 border border-slate-600/40 transition-colors">
+              <RotateCcw className="w-3 h-3" /> Revert
             </button>
           </div>
           <p className="text-[8px] text-slate-600 leading-tight">
             Adjustments affect only grey land pixels and keep them grey. Sea and painted water <code className="text-amber-300">(0,0,255)</code> keep their exact colour.
+            {depth > 0 ? ` Revert steps back one change at a time (${depth} available).` : ''}
           </p>
         </div>
       )}
