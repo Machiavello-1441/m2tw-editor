@@ -3,6 +3,7 @@ import { Download, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { hexToRgb } from '@/lib/mapLayerStore';
 import { KOPPEN_ZONES, KOPPEN_RGB } from '@/lib/koppenZones';
 import { useClimatePalette, useCustomClimates } from '@/lib/climateStore';
+import { base44 } from '@/api/base44Client';
 
 const GROUPS = [...new Set(KOPPEN_ZONES.map(z => z.group))];
 
@@ -50,11 +51,8 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
   const toggleGroup = (g) => setOpenGroups(s => ({ ...s, [g]: !s[g] }));
 
   // koppen.earth serves its Köppen map through a terrakio WMS (EPSG:3857) backend
-  // using the Beck 2018 classification (cmap "koppen", values 1–30). The WMS itself
-  // does not send CORS headers, so we load via blob-URL image fetch with CORS-proxy
-  // fallbacks — blob-URL images are same-origin, so getImageData never taints.
-  const WMS_BASE = 'https://terrakio-server-wms-lark-573248941006.australia-southeast1.run.app/wms';
-  const WMS_KEY = 'dzK6YcYlYjlXsI7k5r2pv1EPHpQ1-7GHPizDazLMy4c';
+  // using the Beck 2018 classification (cmap "koppen", values 1–30). Its API key
+  // stays server-side: the koppenWmsTile function requests the image for us.
 
   // Compute request dimensions that match the bbox's true Web-Mercator aspect
   // (so the WMS server doesn't quietly resample / letterbox ↔ detail loss or distortion).
@@ -69,40 +67,28 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
     return { W: Math.max(8, W), H: Math.max(8, H) };
   };
 
-  const buildWmsURL = (W, H) => {
+  // Web-Mercator bounds (metres) of the bbox, in the WMS's BBOX order.
+  const wmsBbox = () => {
     const R = 6378137;
     const westX = R * bbox.west * Math.PI / 180;
     const eastX = R * bbox.east * Math.PI / 180;
     const northY = R * Math.log(Math.tan(Math.PI / 4 + bbox.north * Math.PI / 360));
     const southY = R * Math.log(Math.tan(Math.PI / 4 + bbox.south * Math.PI / 360));
-    const params = new URLSearchParams({
-      service: 'WMS', request: 'GetMap', layers: 'koppen', styles: '',
-      format: 'image/png', transparent: 'false', version: '1.1.1',
-      expression: 'CMIP6Koppen.reanalysis@(year=2020)',
-      cmap: 'koppen', vmin: '1', vmax: '30',
-      'api-key': WMS_KEY,
-      width: String(W), height: String(H), srs: 'EPSG:3857',
-      bbox: `${westX},${southY},${eastX},${northY}`,
-    });
-    return `${WMS_BASE}?${params.toString()}`;
+    return [westX, southY, eastX, northY];
   };
 
-  const fetchAsImage = async (urls) => {
-    for (const u of urls) {
-      try {
-        const res = await fetch(u, { mode: 'cors' });
-        if (!res.ok) continue;
-        const blob = await res.blob();
-        if (!blob || blob.size < 100) continue;
-        const obj = URL.createObjectURL(blob);
-        try {
-          return await new Promise((resolve, reject) => {
-            const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = obj;
-          });
-        } finally { URL.revokeObjectURL(obj); }
-      } catch { /* try next source */ }
-    }
-    return null;
+  // The backend fetches the WMS image with the server-side key; we then load it
+  // from a blob URL so the canvas stays same-origin and getImageData never taints.
+  const loadWmsImage = async (W, H) => {
+    const { data } = await base44.functions.invoke('koppenWmsTile', { width: W, height: H, bbox: wmsBbox() });
+    if (!data?.imageBase64) throw new Error(data?.error || 'Köppen fetch failed — WMS service unavailable.');
+    const bytes = Uint8Array.from(atob(data.imageBase64), c => c.charCodeAt(0));
+    const obj = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+    try {
+      return await new Promise((resolve, reject) => {
+        const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = obj;
+      });
+    } finally { URL.revokeObjectURL(obj); }
   };
 
   const fetchAndApply = async () => {
@@ -115,13 +101,8 @@ export default function KoppenClimateFetcher({ bbox, climateLayer, onLayerUpdate
       // so no aspect resampling skews our sampling.
       const targetSide = Math.min(2048, Math.max(512, Math.max(mapWidth, mapHeight) * 2 + 1));
       const { W, H } = computeWmsDimensions(targetSide);
-      const raw = buildWmsURL(W, H);
-      const img = await fetchAsImage([
-        raw,
-        `https://corsproxy.io/?url=${encodeURIComponent(raw)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(raw)}`,
-      ]);
-      if (!img) { setStatus('Köppen fetch failed — WMS service unavailable.'); setFetching(false); return; }
+      const img = await loadWmsImage(W, H).catch(e => { setStatus(`Error: ${e.message}`); return null; });
+      if (!img) { setFetching(false); return; }
       applyKoppenImage(img);
     } catch (e) {
       setStatus(`Error: ${e.message}`);
