@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Check, Droplets, Mountain, AlertTriangle, Download } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { rasterizeTiles } from './TileRasterizer';
+import { applyCoastlineMask } from './coastlineMask';
+import { fetchCoverage } from '@/lib/worldCover';
 import SvgMapDownloader from './SvgMapDownloader';
 
 const OSM_OVERPASS_MIRRORS = [
@@ -179,6 +181,8 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
   const lakesImageDataRef = useRef(null);
   const lagoonsImageDataRef = useRef(null);
   const [heightmapStatus, setHeightmapStatus] = useState('');
+  const [refineCoastline, setRefineCoastline] = useState(true);
+  const [coastProgress, setCoastProgress] = useState(null);
 
   const bboxStr = `${bbox.south},${bbox.west},${bbox.north},${bbox.east}`;
   const { width: W, height: H } = getHeightmapSize(mapWidth, mapHeight);
@@ -253,9 +257,30 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     }
     setRasterProgress({});
 
-    // Sea pixels are already (0,0,255) — handled inside rasterizeTiles grayscale mode.
-    const seaCount = elevData.data.reduce((n, _, i) => (i % 4 === 2 && elevData.data[i] === 255 && elevData.data[i - 1] === 0 && elevData.data[i - 2] === 0) ? n + 1 : n, 0);
-    setHeightmapStatus(`✓ Heightmap ready — ${seaCount} sea pixels (0,0,255), land grayscale 1–255.`);
+    // Elevation alone puts low-lying land under water (polders, deltas and
+    // lagoon shores all read at or below 0 m). ESA WorldCover knows land from
+    // water, so use it to put the coastline back where it really is.
+    let coastNote = '';
+    if (refineCoastline) {
+      setHeightmapStatus('Refining coastline with ESA land cover…');
+      setCoastProgress(0);
+      try {
+        const coverage = await fetchCoverage(bbox, mapWidth, mapHeight, p => setCoastProgress(p));
+        const { restored } = applyCoastlineMask(elevData, coverage, bbox);
+        coastNote = `, ${restored.toLocaleString()} low-lying land pixels restored`;
+      } catch (e) {
+        coastNote = ` (coastline refinement skipped: ${e.message})`;
+      }
+      setCoastProgress(null);
+    }
+
+    // Sea pixels are (0,0,255); land is grayscale 1–255.
+    let seaCount = 0;
+    const hd = elevData.data;
+    for (let i = 0; i < hd.length; i += 4) {
+      if (hd[i] === 0 && hd[i + 1] === 0 && hd[i + 2] === 255) seaCount++;
+    }
+    setHeightmapStatus(`✓ Heightmap ready — ${seaCount.toLocaleString()} sea pixels (0,0,255)${coastNote}, land grayscale 1–255.`);
     pushHeightmap(elevData, { heightmap: true, seaLevel: true });
   };
 
@@ -392,13 +417,28 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
         <p className="text-[9px] text-slate-500">
           Fetches Terrarium elevation tiles as grayscale. The lowest ground value is clamped to <code className="text-amber-300">(1,1,1)</code> — pure black <code className="text-amber-300">(0,0,0)</code> is reserved for sea.
         </p>
-        {/* Notice about low-lying land */}
-        <div className="flex items-start gap-1.5 bg-amber-900/25 border border-amber-600/30 rounded px-2 py-1.5">
-          <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-[9px] text-amber-300 leading-snug">
-            Land at or near sea level (deltas, coastal plains, polders) may have an elevation value of <code>0</code> in the Terrarium data and will appear as sea <code>(0,0,255)</code> in the game. You may need to manually paint those areas in the heightmap editor.
-          </p>
-        </div>
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" checked={refineCoastline}
+            onChange={e => setRefineCoastline(e.target.checked)}
+            className="mt-0.5 accent-amber-400" />
+          <span className="flex-1">
+            <span className="text-[10px] text-slate-300 font-medium">Refine coastline (ESA land cover)</span>
+            <span className="block text-[9px] text-slate-500 leading-snug">
+              Land at or below sea level (polders, deltas, lagoon shores) reads as <code className="text-amber-300">0</code> in the elevation data and would be painted sea. ESA WorldCover separates land from water, so the coast follows the real coastline instead of the 0 m contour.
+            </span>
+          </span>
+        </label>
+        {coastProgress !== null && (
+          <p className="text-[9px] font-mono text-amber-300">Fetching land cover… {coastProgress}%</p>
+        )}
+        {!refineCoastline && (
+          <div className="flex items-start gap-1.5 bg-amber-900/25 border border-amber-600/30 rounded px-2 py-1.5">
+            <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-[9px] text-amber-300 leading-snug">
+              Without refinement, land at or near sea level is painted sea <code>(0,0,255)</code> and has to be painted back by hand.
+            </p>
+          </div>
+        )}
         <button onClick={async () => { setGenerating(true); await generateHeightmap(); setGenerating(false); }} disabled={generating}
           className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-[10px] border transition-colors disabled:opacity-50 font-semibold ${generated.heightmap ? 'bg-green-800/30 border-green-600/40 text-green-300 hover:bg-green-700/40' : 'bg-amber-700 border-amber-600 text-white hover:bg-amber-600'}`}>
           <Mountain className={`w-3 h-3 ${generating && rasterPct !== null ? 'animate-pulse' : ''}`} />
