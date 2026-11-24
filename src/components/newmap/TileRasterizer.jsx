@@ -4,9 +4,10 @@
  * Strategy:
  *  - Compute which tiles cover the bbox at a chosen zoom level
  *  - Fetch each tile as an <img> (CORS: anonymous)
- *  - Draw them onto an intermediate canvas (true tile coordinates)
- *  - Clip and scale to target width×height using nearest-neighbor (imageSmoothingEnabled=false)
- *  - Return an ImageData object
+ *  - Draw each tile straight into the output canvas at its own destination rect
+ *    (no giant intermediate canvas — one that exceeds the browser's canvas area
+ *    limit is silently blank, which turned whole heightmaps into sea)
+ *  - Nearest-neighbor scaling (imageSmoothingEnabled = false)
  *
  * All standard slippy-map tile sources (OSM, OpenTopoMap, Terrarium, OHM) use
  * EPSG:3857 Web Mercator, so bboxes in WGS84 lat/lon map correctly.
@@ -29,8 +30,14 @@ function tile2lat(y, zoom) {
   const n = Math.PI - 2 * Math.PI * y / Math.pow(2, zoom);
   return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
 }
+function latToMercN(lat) {
+  return Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 180 / 2));
+}
 
 const TILE_SIZE = 256;
+// Tiles fetched per rasterization — keeps large bboxes responsive instead of
+// requesting thousands of tiles at a zoom the output cannot use anyway.
+const MAX_TILES = 400;
 
 async function loadImage(url) {
   return new Promise((resolve, reject) => {
@@ -53,6 +60,22 @@ function buildUrl(urlTemplate, x, y, z) {
 }
 
 /**
+ * Highest zoom whose tile grid stays within the tile budget, aiming for about
+ * twice the target resolution so the output has enough detail.
+ */
+function pickZoom(bbox, width, height) {
+  let best = 3;
+  for (let z = 3; z <= 15; z++) {
+    const tilesX = lon2tile(bbox.east, z) - lon2tile(bbox.west, z) + 1;
+    const tilesY = lat2tile(bbox.south, z) - lat2tile(bbox.north, z) + 1;
+    if (tilesX * tilesY > MAX_TILES) break;
+    best = z;
+    if (tilesX * TILE_SIZE >= width * 2 && tilesY * TILE_SIZE >= height * 2) break;
+  }
+  return best;
+}
+
+/**
  * Rasterize a tile URL template for the given bbox into an ImageData of width×height.
  * Uses nearest-neighbor scaling (no anti-aliasing).
  *
@@ -64,38 +87,34 @@ function buildUrl(urlTemplate, x, y, z) {
  * @returns {Promise<ImageData>}
  */
 export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgress, options) {
-  // Pick zoom level: aim for ~2×the target resolution so we have plenty of detail
-  let zoom = 5;
-  for (let z = 3; z <= 12; z++) {
-    const tileW = lon2tile(bbox.east, z) - lon2tile(bbox.west, z) + 1;
-    const tileH = lat2tile(bbox.south, z) - lat2tile(bbox.north, z) + 1;
-    const canvasW = tileW * TILE_SIZE;
-    const canvasH = tileH * TILE_SIZE;
-    zoom = z;
-    if (canvasW >= width * 1.5 && canvasH >= height * 1.5) break;
-  }
+  const zoom = pickZoom(bbox, width, height);
 
   const xMin = lon2tile(bbox.west, zoom);
   const xMax = lon2tile(bbox.east, zoom);
   const yMin = lat2tile(bbox.north, zoom); // note: y increases southward
   const yMax = lat2tile(bbox.south, zoom);
 
-  const tilesX = xMax - xMin + 1;
-  const tilesY = yMax - yMin + 1;
-  const fullW = tilesX * TILE_SIZE;
-  const fullH = tilesY * TILE_SIZE;
+  // Output canvas at target resolution — tiles are drawn straight into it.
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = width;
+  outCanvas.height = height;
+  const outCtx = outCanvas.getContext('2d');
+  outCtx.imageSmoothingEnabled = false; // nearest-neighbor
 
-  // Intermediate canvas covering all tiles
-  const tileCanvas = document.createElement('canvas');
-  tileCanvas.width = fullW;
-  tileCanvas.height = fullH;
-  const tileCtx = tileCanvas.getContext('2d');
-  tileCtx.imageSmoothingEnabled = false;
+  // Destination pixel edges of every tile column/row. Shared edges keep the
+  // tiles gap- and overlap-free at any scale factor.
+  const mercNorth = latToMercN(bbox.north);
+  const mercSouth = latToMercN(bbox.south);
+  const mercRange = mercNorth - mercSouth || 1;
+  const xEdges = [];
+  for (let tx = xMin; tx <= xMax + 1; tx++) {
+    xEdges.push(Math.round((tile2lon(tx, zoom) - bbox.west) / (bbox.east - bbox.west) * width));
+  }
+  const yEdges = [];
+  for (let ty = yMin; ty <= yMax + 1; ty++) {
+    yEdges.push(Math.round((mercNorth - latToMercN(tile2lat(ty, zoom))) / mercRange * height));
+  }
 
-  const total = tilesX * tilesY;
-  let fetched = 0;
-
-  // Fetch tiles in parallel batches of 8
   const tasks = [];
   for (let tx = xMin; tx <= xMax; tx++) {
     for (let ty = yMin; ty <= yMax; ty++) {
@@ -103,52 +122,43 @@ export async function rasterizeTiles(urlTemplate, bbox, width, height, onProgres
     }
   }
 
+  const total = tasks.length;
+  let fetched = 0;
+  const failures = [];
+
+  // Fetch tiles in parallel batches of 8
   const BATCH = 8;
   for (let i = 0; i < tasks.length; i += BATCH) {
     const batch = tasks.slice(i, i + BATCH);
-    await Promise.allSettled(batch.map(async ({ tx, ty }) => {
+    await Promise.all(batch.map(async ({ tx, ty }) => {
       const url = buildUrl(urlTemplate, tx, ty, zoom);
-      try {
-        const img = await loadImage(url);
-        const dx = (tx - xMin) * TILE_SIZE;
-        const dy = (ty - yMin) * TILE_SIZE;
-        tileCtx.drawImage(img, dx, dy, TILE_SIZE, TILE_SIZE);
-      } catch (e) {
-        // tile load failed — leave blank
+      let img = null;
+      for (let attempt = 0; attempt < 3 && !img; attempt++) {
+        try {
+          img = await loadImage(url);
+        } catch (e) {
+          if (attempt === 2) failures.push(url);
+        }
+      }
+      if (img) {
+        const col = tx - xMin;
+        const row = ty - yMin;
+        const dx = xEdges[col];
+        const dy = yEdges[row];
+        const dw = Math.max(1, xEdges[col + 1] - dx);
+        const dh = Math.max(1, yEdges[row + 1] - dy);
+        outCtx.drawImage(img, 0, 0, TILE_SIZE, TILE_SIZE, dx, dy, dw, dh);
       }
       fetched++;
       onProgress?.(fetched, total);
     }));
   }
 
-  // Now clip to exact bbox in tile space and scale to target resolution
-  // Compute pixel coordinates within the tile canvas for the bbox edges
-  const lonToTilePixel = (lon) => ((lon2tile(lon, zoom) - xMin) + (lon - tile2lon(Math.floor(lon2tile(lon, zoom)), zoom)) / (tile2lon(Math.floor(lon2tile(lon, zoom)) + 1, zoom) - tile2lon(Math.floor(lon2tile(lon, zoom)), zoom))) * TILE_SIZE;
-  
-  // Simpler pixel mapping using Mercator directly
-  const mercX = (lon) => (lon - tile2lon(xMin, zoom)) / (tile2lon(xMax + 1, zoom) - tile2lon(xMin, zoom)) * fullW;
-  const mercY = (lat) => {
-    const latRad = lat * Math.PI / 180;
-    const mercN = Math.log(Math.tan(Math.PI / 4 + latRad / 2));
-    const northRad = tile2lat(yMin, zoom) * Math.PI / 180;
-    const southRad = tile2lat(yMax + 1, zoom) * Math.PI / 180;
-    const mercNorth = Math.log(Math.tan(Math.PI / 4 + northRad / 2));
-    const mercSouth = Math.log(Math.tan(Math.PI / 4 + southRad / 2));
-    return ((mercNorth - mercN) / (mercNorth - mercSouth)) * fullH;
-  };
-
-  const sx = mercX(bbox.west);
-  const sy = mercY(bbox.north);
-  const sw = mercX(bbox.east) - sx;
-  const sh = mercY(bbox.south) - sy;
-
-  // Output canvas at target resolution
-  const outCanvas = document.createElement('canvas');
-  outCanvas.width = width;
-  outCanvas.height = height;
-  const outCtx = outCanvas.getContext('2d');
-  outCtx.imageSmoothingEnabled = false; // nearest-neighbor
-  outCtx.drawImage(tileCanvas, sx, sy, sw, sh, 0, 0, width, height);
+  // Missing tiles leave transparent holes, which would silently read as sea
+  // level — refuse to hand back a broken layer instead.
+  if (failures.length) {
+    throw new Error(`${failures.length} of ${total} tiles failed to load (zoom ${zoom}) — check the connection and try again.`);
+  }
 
   const imageData = outCtx.getImageData(0, 0, width, height);
 
