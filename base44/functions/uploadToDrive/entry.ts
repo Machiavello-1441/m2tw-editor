@@ -2,6 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const CONNECTOR_ID = '6a44eaca88b0c5609fcdc001';
 
+// Hard cap on the base64 payload (100 MB of base64 ≈ 75 MB of binary), so a
+// single request can never allocate an unbounded amount of memory.
+const MAX_BASE64_CHARS = 100 * 1024 * 1024;
+const MAX_REQUEST_CHARS = MAX_BASE64_CHARS + 1024 * 1024; // + room for the JSON envelope
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -10,11 +15,22 @@ Deno.serve(async (req) => {
 
     const { accessToken } = await base44.asServiceRole.connectors.getCurrentAppUserConnection(CONNECTOR_ID);
 
+    // Reject an oversized request before reading/parsing its body.
+    const declaredLength = Number(req.headers.get('content-length') || 0);
+    if (declaredLength > MAX_REQUEST_CHARS) {
+      return Response.json({ error: 'Payload too large: maximum file size is 75 MB' }, { status: 413 });
+    }
+
     const body = await req.json();
     const { fileName, fileBase64, mimeType = 'application/zip' } = body;
 
     if (!fileName || !fileBase64) {
       return Response.json({ error: 'fileName and fileBase64 are required' }, { status: 400 });
+    }
+
+    // Validate the size before decoding, so atob never allocates unbounded memory.
+    if (typeof fileBase64 !== 'string' || fileBase64.length > MAX_BASE64_CHARS) {
+      return Response.json({ error: 'File too large: maximum file size is 75 MB' }, { status: 413 });
     }
 
     // Decode base64 to binary
