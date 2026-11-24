@@ -4,11 +4,16 @@ import { Sliders, RotateCcw, Check, Wand2 } from 'lucide-react';
 /**
  * Image adjustment controls for the heightmap layer.
  *
- * M2TW heightmaps are stored as RGB images where the R and G channels carry
- * the grayscale elevation data, while the B channel encodes sea/water level
- * information. All adjustments here operate on R and G only — the blue
- * channel is always left untouched.
+ * Land pixels are pure greyscale (R = G = B), sea is (0,0,255). Adjustments
+ * therefore touch only grey pixels and write the new value back to all three
+ * channels, so land stays grey instead of drifting yellow (B left behind) or
+ * blue (B left ahead). Sea and any painted water keep their exact colour.
  */
+
+/** True when a pixel is greyscale, i.e. land rather than painted water. */
+const isGrey = (data, i) =>
+  data[i] === data[i + 1] && data[i + 1] === data[i + 2];
+
 export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
   const [brightness, setBrightness] = useState(0); // -100..100
   const [contrast, setContrast] = useState(0);     // -100..100
@@ -17,14 +22,14 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
 
   if (!layer?.imageData) return null;
 
-  /** Apply a per-pixel function to R and G only, leaving B and A intact. */
-  const applyToRG = (srcData, fn) => {
+  /** Apply a tone function to greyscale pixels, keeping them grey. */
+  const applyToGreyscale = (srcData, fn) => {
     const { data, width, height } = srcData;
     const out = new Uint8ClampedArray(data);
     for (let i = 0; i < out.length; i += 4) {
-      out[i]     = fn(out[i]);     // R
-      out[i + 1] = fn(out[i + 1]); // G
-      // B (out[i+2]) and A (out[i+3]) untouched
+      if (!isGrey(data, i)) continue; // sea / painted water untouched
+      const v = fn(data[i]);
+      out[i] = v; out[i + 1] = v; out[i + 2] = v;
     }
     return new ImageData(out, width, height);
   };
@@ -40,7 +45,7 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
       r = 255 * Math.pow(r / 255, gammaInv);
       return Math.max(0, Math.min(255, Math.round(r)));
     };
-    const result = applyToRG(layer.imageData, fn);
+    const result = applyToGreyscale(layer.imageData, fn);
     onLayerUpdate('heights', { imageData: result, visible: true, dirty: true });
     setBrightness(0);
     setContrast(0);
@@ -49,16 +54,20 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
 
   const handleEqualize = () => {
     const { data, width, height } = layer.imageData;
-    // Build histogram from the R channel (R≈G in a grayscale heightmap)
+    // Histogram of the greyscale (land) pixels only — sea must not drag it down
     const hist = new Array(256).fill(0);
-    for (let i = 0; i < data.length; i += 4) hist[data[i]]++;
+    let total = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (!isGrey(data, i)) continue;
+      hist[data[i]]++;
+      total++;
+    }
     // Cumulative distribution
     const cdf = new Array(256).fill(0);
     let sum = 0;
     for (let i = 0; i < 256; i++) { sum += hist[i]; cdf[i] = sum; }
     let cdfMin = 0;
     for (let i = 0; i < 256; i++) { if (cdf[i] > 0) { cdfMin = cdf[i]; break; } }
-    const total = data.length / 4;
     const denom = total - cdfMin;
     const lut = new Array(256);
     for (let i = 0; i < 256; i++) {
@@ -66,9 +75,9 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
     }
     const out = new Uint8ClampedArray(data);
     for (let i = 0; i < out.length; i += 4) {
-      out[i]     = lut[out[i]];
-      out[i + 1] = lut[out[i + 1]];
-      // B untouched
+      if (!isGrey(data, i)) continue; // sea / painted water untouched
+      const v = lut[data[i]];
+      out[i] = v; out[i + 1] = v; out[i + 2] = v;
     }
     onLayerUpdate('heights', { imageData: new ImageData(out, width, height), visible: true, dirty: true });
   };
@@ -87,7 +96,7 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
       >
         <Sliders className="w-3 h-3" />
         Adjust Heightmap
-        <span className="text-slate-600 ml-auto text-[9px] font-normal">R/G only · B preserved</span>
+        <span className="text-slate-600 ml-auto text-[9px] font-normal">greyscale only</span>
       </button>
 
       {expanded && (
@@ -132,7 +141,7 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
               <Check className="w-3 h-3" /> Apply
             </button>
             <button onClick={handleEqualize}
-              title="Histogram equalization (R/G channels only)"
+              title="Histogram equalization (land pixels only)"
               className="flex items-center justify-center gap-1 px-2 py-1 rounded text-[10px] bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 font-semibold border border-purple-500/40 transition-colors">
               <Wand2 className="w-3 h-3" /> Equalize
             </button>
@@ -143,7 +152,7 @@ export default function HeightmapAdjustPanel({ layer, onLayerUpdate }) {
             </button>
           </div>
           <p className="text-[8px] text-slate-600 leading-tight">
-            Adjustments affect only the grayscale (R/G) channels. The blue channel — used for sea level — is preserved.
+            Adjustments affect only grey land pixels and keep them grey. Sea and painted water <code className="text-amber-300">(0,0,255)</code> keep their exact colour.
           </p>
         </div>
       )}
