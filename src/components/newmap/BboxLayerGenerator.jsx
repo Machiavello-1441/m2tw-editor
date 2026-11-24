@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Check, Droplets, Mountain, AlertTriangle, Download } from 'lucide-react';
 import { LAYER_DEFS, getLayerDimensions } from '@/lib/mapLayerStore';
 import { rasterizeTiles } from './TileRasterizer';
-import { applyCoastlineMask } from './coastlineMask';
+import { buildHeightmap } from './heightmapContrast';
 import { fetchCoverage } from '@/lib/worldCover';
 import SvgMapDownloader from './SvgMapDownloader';
 
@@ -237,18 +237,17 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
   };
 
   // ── STEP 1: Heightmap ─────────────────────────────────────────────────────
-  // Fetch Terrarium elevation tiles (grayscale). Pixels with value 0 = sea level → (0,0,255).
-  // All other pixels stay as grayscale land elevation.
+  // Raw Terrarium elevation → heightmap whose contrast is stretched over THIS
+  // bbox: lowest land (1,1,1), highest land (255,255,255), sea (0,0,255).
   const generateHeightmap = async () => {
     setHeightmapStatus('Fetching elevation tiles (Terrarium)…');
     setRasterProgress({ heights: { done: 0, total: 1 } });
 
-    let elevData;
+    let rawElev;
     try {
-      elevData = await rasterizeTiles(
+      rawElev = await rasterizeTiles(
         HEIGHTMAP_URL, bbox, W, H,
-        (done, total) => setRasterProgress({ heights: { done, total } }),
-        { grayscale: true }
+        (done, total) => setRasterProgress({ heights: { done, total } })
       );
     } catch (e) {
       setHeightmapStatus(`Error fetching elevation: ${e.message}`);
@@ -257,31 +256,29 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
     }
     setRasterProgress({});
 
-    // Elevation alone puts low-lying land under water (polders, deltas and
-    // lagoon shores all read at or below 0 m). ESA WorldCover knows land from
-    // water, so use it to put the coastline back where it really is.
+    // Elevation alone cannot tell the sea from low-lying land (polders, deltas
+    // and lagoon shores all read at or below 0 m). ESA WorldCover knows land
+    // from water, so it supplies the land/water decision for the contrast pass.
+    let coverage = null;
     let coastNote = '';
     if (refineCoastline) {
       setHeightmapStatus('Refining coastline with ESA land cover…');
       setCoastProgress(0);
       try {
-        const coverage = await fetchCoverage(bbox, mapWidth, mapHeight, p => setCoastProgress(p));
-        const { restored } = applyCoastlineMask(elevData, coverage, bbox);
-        coastNote = `, ${restored.toLocaleString()} low-lying land pixels restored`;
+        coverage = await fetchCoverage(bbox, mapWidth, mapHeight, p => setCoastProgress(p));
       } catch (e) {
         coastNote = ` (coastline refinement skipped: ${e.message})`;
       }
       setCoastProgress(null);
     }
 
-    // Sea pixels are (0,0,255); land is grayscale 1–255.
-    let seaCount = 0;
-    const hd = elevData.data;
-    for (let i = 0; i < hd.length; i += 4) {
-      if (hd[i] === 0 && hd[i + 1] === 0 && hd[i + 2] === 255) seaCount++;
-    }
-    setHeightmapStatus(`✓ Heightmap ready — ${seaCount.toLocaleString()} sea pixels (0,0,255)${coastNote}, land grayscale 1–255.`);
-    pushHeightmap(elevData, { heightmap: true, seaLevel: true });
+    const built = buildHeightmap(rawElev, coverage, bbox);
+    setHeightmapStatus(
+      `✓ Heightmap ready — land ${Math.round(built.minElev)} m → (1,1,1), ` +
+      `${Math.round(built.maxElev)} m → (255,255,255), ` +
+      `${built.seaPixels.toLocaleString()} sea pixels (0,0,255)${coastNote}.`
+    );
+    pushHeightmap(built.imageData, { heightmap: true, seaLevel: true });
   };
 
   // ── STEP 2: Water Bodies ──────────────────────────────────────────────────
@@ -415,7 +412,7 @@ export default function BboxLayerGenerator({ bbox, mapWidth, mapHeight, onLayerU
           <p className={`text-[9px] px-2 py-1 rounded border ${heightmapStatus.startsWith('✓') ? 'bg-green-900/20 border-green-600/30 text-green-400' : heightmapStatus.startsWith('Error') ? 'bg-red-900/20 border-red-600/30 text-red-400' : 'bg-amber-900/20 border-amber-600/30 text-amber-300'}`}>{heightmapStatus}</p>
         )}
         <p className="text-[9px] text-slate-500">
-          Fetches Terrarium elevation tiles as grayscale. The lowest ground value is clamped to <code className="text-amber-300">(1,1,1)</code> — pure black <code className="text-amber-300">(0,0,0)</code> is reserved for sea.
+          Fetches Terrarium elevation tiles, then stretches the contrast to this bbox: the lowest land becomes <code className="text-amber-300">(1,1,1)</code> and the highest <code className="text-amber-300">(255,255,255)</code>, so a flat region keeps its relief. Pure black <code className="text-amber-300">(0,0,0)</code> is reserved for sea.
         </p>
         <label className="flex items-start gap-2 cursor-pointer">
           <input type="checkbox" checked={refineCoastline}
