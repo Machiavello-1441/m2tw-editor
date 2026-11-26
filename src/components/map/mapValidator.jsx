@@ -171,7 +171,7 @@ export function validateLayers(layers, step = 4) {
           }
         }
         if (seaCount === 0) {
-          push('error', 'regions',
+          push('warning', 'regions',
             `Port at (${x},${y}) is completely inland — does not overlap Ocean/Sea ground tile`,
             x, y);
         } else if (landCount === 0) {
@@ -184,8 +184,8 @@ export function validateLayers(layers, step = 4) {
   }
 
   // Check 8: City/port markers on river/ford/source/volcano feature pixels.
-  // A settlement or port placed on one of these map_features.tga pixels causes
-  // a back-to-menu crash in-game. Full-resolution scan — markers are single pixels.
+  // River, source and volcano pixels cause a back-to-menu crash in-game; a ford
+  // overlap is only a warning. Full-resolution scan — markers are single pixels.
   if (regions?.data && features?.data &&
       regions.width === features.width && regions.height === features.height) {
     const rw = regions.width, rh = regions.height;
@@ -198,9 +198,13 @@ export function validateLayers(layers, step = 4) {
         const feat = getBlockingFeature(fr, fg, fb);
         if (!feat) continue;
         const name = isCity ? 'City' : 'Port';
-        push('error', 'regions',
-          `${name} marker sits on a ${feat} feature pixel at (${x},${y}) — causes back-to-menu crash`,
-          x, y);
+        if (feat === 'ford') {
+          push('warning', 'regions', `${name} marker sits on a ford feature pixel at (${x},${y})`, x, y);
+        } else {
+          push('error', 'regions',
+            `${name} marker sits on a ${feat} feature pixel at (${x},${y}) — causes back-to-menu crash`,
+            x, y);
+        }
       }
     }
   }
