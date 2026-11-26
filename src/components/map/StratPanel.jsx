@@ -80,23 +80,21 @@ function ResourceEditor({ item, onSave, resourceList }) {
 }
 
 // ─── Inline fort/watchtower editor ─────────────────────────────────────────────
-function FortEditor({ item, cultureList, onSave }) {
-  const [draft, setDraft] = useState({
+function FortEditor({ item, cultureList, factionList, onSave }) {
+  const buildDraft = () => ({
     fortType: item.fortType || 'me_fort_a',
+    faction: item.faction || '',
     culture: item.culture || '',
+    permanent: !!item.permanent,
+    name: item.name || '',
     comment: item.comment || '',
     x: item.x ?? '',
     y: item.y ?? ''
   });
-  useEffect(() => {
-    setDraft({
-      fortType: item.fortType || 'me_fort_a',
-      culture: item.culture || '',
-      comment: item.comment || '',
-      x: item.x ?? '',
-      y: item.y ?? ''
-    });
-  }, [item.id]);
+  const [draft, setDraft] = useState(buildDraft);
+  useEffect(() => { setDraft(buildDraft()); }, [item.id]);
+  const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
+  const modelOptions = [...new Set([draft.fortType, ...FORT_TYPES].filter(Boolean))];
   return (
     <div className="space-y-1 border-t border-amber-500/20 pt-1.5">
       <p className="text-[9px] text-slate-500 uppercase font-semibold">Edit {item.type === 'watchtower' ? 'Watchtower' : 'Fort'}</p>
@@ -104,10 +102,24 @@ function FortEditor({ item, cultureList, onSave }) {
         {item.type === 'fort' &&
         <>
             <div>
-              <span className="text-[9px] text-slate-500">Fort Type</span>
-              <CampaignDropdown value={draft.fortType} onChange={(e) => setDraft((d) => ({ ...d, fortType: e.target.value }))}
+              <span className="text-[9px] text-slate-500">Faction (M2EX)</span>
+              {factionList?.length > 0 ?
+            <CampaignDropdown value={draft.faction} onChange={(e) => set({ faction: e.target.value })}
             className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
-                {FORT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  <option value="">— none (vanilla) —</option>
+                  {factionList.map((f) => <option key={f} value={f}>{f}</option>)}
+                </CampaignDropdown> :
+
+            <input value={draft.faction} onChange={(e) => set({ faction: e.target.value })}
+            placeholder="faction (optional)"
+            className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+            }
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500">Fort Model / Variant</span>
+              <CampaignDropdown value={draft.fortType} onChange={(e) => set({ fortType: e.target.value })}
+            className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                {modelOptions.map((t) => <option key={t} value={t}>{t}</option>)}
               </CampaignDropdown>
             </div>
             <div>
@@ -124,9 +136,20 @@ function FortEditor({ item, cultureList, onSave }) {
             className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
             }
             </div>
+            <label className="flex items-center gap-1.5 pt-0.5 cursor-pointer">
+              <input type="checkbox" checked={draft.permanent} onChange={(e) => set({ permanent: e.target.checked })}
+            className="w-3 h-3 accent-amber-500" />
+              <span className="text-[10px] text-slate-300">Permanent</span>
+            </label>
+            <div>
+              <span className="text-[9px] text-slate-500">Name (M2EX)</span>
+              <input value={draft.name} onChange={(e) => set({ name: e.target.value })}
+            placeholder="e.g. Fort Chad"
+            className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+            </div>
             <div>
               <span className="text-[9px] text-slate-500">Comment</span>
-              <input value={draft.comment} onChange={(e) => setDraft((d) => ({ ...d, comment: e.target.value }))}
+              <input value={draft.comment} onChange={(e) => set({ comment: e.target.value })}
             placeholder="optional comment"
             className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-400 font-mono" />
             </div>
@@ -836,7 +859,10 @@ export default function StratPanel({
   const [addMode, setAddMode] = useState(null);
   const [newType, setNewType] = useState('');
   const [newFortType, setNewFortType] = useState('me_fort_a');
+  const [newFortFaction, setNewFortFaction] = useState('');
   const [newFortCulture, setNewFortCulture] = useState('');
+  const [newFortPermanent, setNewFortPermanent] = useState(false);
+  const [newFortName, setNewFortName] = useState('');
   const [newFortComment, setNewFortComment] = useState('');
   const [tab, setTab] = useState('overview');
   const [openCharId, setOpenCharId] = useState(null);
@@ -1048,6 +1074,12 @@ export default function StratPanel({
     const fromLists = [...(stratData?.playable || []), ...(stratData?.unlockable || []), ...(stratData?.nonplayable || [])];
     return [...new Set([...from, ...fromLists])].sort();
   }, [stratData]);
+
+  // Faction choices for M2EX fort lines (campaign factions + descr_sm_factions keys)
+  const factionList = useMemo(
+    () => [...new Set([...allFactions, ...Object.keys(factionColors || {})])].sort(),
+    [allFactions, factionColors]
+  );
 
   const regionNames = useMemo(() => (regionsData || []).map((r) => r.regionName).filter(Boolean), [regionsData]);
 
@@ -1359,6 +1391,17 @@ export default function StratPanel({
                   </CampaignDropdown>
                   {(newType === 'fort' || newType === '') &&
               <>
+                      {factionList?.length > 0 ?
+                <CampaignDropdown value={newFortFaction} onChange={(e) => setNewFortFaction(e.target.value)}
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
+                          <option value="">— faction (M2EX, optional) —</option>
+                          {factionList.map((f) => <option key={f}>{f}</option>)}
+                        </CampaignDropdown> :
+
+                <input value={newFortFaction} onChange={(e) => setNewFortFaction(e.target.value)}
+                placeholder="faction (optional)"
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
+                }
                       <CampaignDropdown value={newFortType} onChange={(e) => setNewFortType(e.target.value)}
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200">
                         {FORT_TYPES.map((t) => <option key={t}>{t}</option>)}
@@ -1374,6 +1417,14 @@ export default function StratPanel({
                 placeholder="culture name (optional)"
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
                 }
+                      <label className="flex items-center gap-1.5 px-0.5 cursor-pointer">
+                        <input type="checkbox" checked={newFortPermanent} onChange={(e) => setNewFortPermanent(e.target.checked)}
+                className="w-3 h-3 accent-amber-500" />
+                        <span className="text-[10px] text-slate-300">Permanent</span>
+                      </label>
+                      <input value={newFortName} onChange={(e) => setNewFortName(e.target.value)}
+                placeholder="name (optional, e.g. Fort Chad)"
+                className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
                       <input value={newFortComment} onChange={(e) => setNewFortComment(e.target.value)}
                 placeholder="comment (optional)"
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
@@ -1385,7 +1436,10 @@ export default function StratPanel({
                       ...addMode,
                       type: newType || 'fort',
                       fortType: newFortType,
+                      faction: newFortFaction,
                       culture: newFortCulture,
+                      permanent: newFortPermanent,
+                      name: newFortName.trim(),
                       comment: newFortComment
                     });
                     setAddMode(null);
@@ -1447,7 +1501,7 @@ export default function StratPanel({
 
               {/* Inline editor for fort/watchtower */}
               {selectedItem.category === 'fortification' &&
-            <FortEditor item={selectedItem} cultureList={cultureList} onSave={(saved) => {onSaveItem?.(saved);onSelectItem(saved);}} />
+            <FortEditor item={selectedItem} cultureList={cultureList} factionList={factionList} onSave={(saved) => {onSaveItem?.(saved);onSelectItem(saved);}} />
             }
             </div>
           }

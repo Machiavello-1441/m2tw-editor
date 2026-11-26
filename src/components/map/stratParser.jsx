@@ -491,8 +491,6 @@ export function parseDescrStrat(text) {
           items.push({ id: itemId++, category: 'fortification', type: 'watchtower', x: parseInt(wm[2]), y: parseInt(wm[3]), region: m[1], _lineNum: i, comment: cmtMatch ? cmtMatch[1].trim() : '' });
         } else if ((wm = rl.match(/^(fort)\s+(\d+)\s+(\d+)(.*)/i))) {
           const rest = wm[4].trim();
-          const fortTypem = rest.match(/(\S+_fort\S*)/i);
-          const culturem = rest.match(/culture\s+(\S+)/i);
           // Capture comment: prefer preceding-line format (";;; comment"),
           // fall back to old inline format (";;;;; comment" on the same line)
           const prevRaw = lines[i - 1] || '';
@@ -502,8 +500,7 @@ export function parseDescrStrat(text) {
           items.push({
             id: itemId++, category: 'fortification', type: 'fort',
             x: parseInt(wm[2]), y: parseInt(wm[3]),
-            fortType: fortTypem?.[1] || '',
-            culture: culturem?.[1] || '',
+            ...parseFortArgs(rest.replace(/;+.*$/, '')),
             region: m[1], _lineNum: i,
             comment,
           });
@@ -597,6 +594,61 @@ function generateSettlementBlock(s, indent = '') {
   return lines;
 }
 
+// ─── Fort lines (vanilla + M2EX) ──────────────────────────────────────────────
+// Vanilla:  fort <x> <y> <fort_model> culture <culture>
+// M2EX:     fort <x> <y> <faction> <culture> [<variant>] [permanent] [name <name>]
+export function parseFortArgs(rest = '') {
+  const out = { faction: '', culture: '', fortType: '', permanent: false, name: '' };
+  let tokens = String(rest).split(/\s+/).filter(Boolean);
+
+  // "name <text>" swallows the remainder of the line (names may contain spaces).
+  const nameIdx = tokens.findIndex(t => t.toLowerCase() === 'name');
+  if (nameIdx >= 0) {
+    out.name = tokens.slice(nameIdx + 1).join(' ');
+    tokens = tokens.slice(0, nameIdx);
+  }
+  if (tokens.some(t => t.toLowerCase() === 'permanent')) {
+    out.permanent = true;
+    tokens = tokens.filter(t => t.toLowerCase() !== 'permanent');
+  }
+  // Vanilla keyword form: "culture <name>"
+  const cultureIdx = tokens.findIndex(t => t.toLowerCase() === 'culture');
+  if (cultureIdx >= 0) {
+    if (tokens[cultureIdx + 1]) out.culture = tokens[cultureIdx + 1];
+    tokens.splice(cultureIdx, 2);
+  }
+  if (tokens.length) {
+    if (/fort/i.test(tokens[0])) {
+      // Vanilla positional form: <fort_model> [<culture>]
+      out.fortType = tokens[0];
+      if (tokens[1]) out.culture = out.culture || tokens[1];
+    } else {
+      // M2EX positional form: <faction> <culture> [<variant>]
+      out.faction = tokens[0];
+      if (tokens[1]) out.culture = out.culture || tokens[1];
+      if (tokens[2]) out.fortType = tokens[2];
+    }
+  }
+  return out;
+}
+
+export function serializeFortLine(item) {
+  if (item.type === 'watchtower') return `watchtower\t${item.x} ${item.y}`;
+  let line = `fort\t${item.x} ${item.y}`;
+  // A faction is only written in the M2EX form, which requires a culture after it.
+  if (item.faction && item.culture) {
+    line += ` ${item.faction} ${item.culture}`;
+    if (item.fortType) line += ` ${item.fortType}`;
+  } else {
+    if (item.faction && !item.fortType) line += ` ${item.faction}`;
+    if (item.fortType) line += ` ${item.fortType}`;
+    if (item.culture) line += ` culture ${item.culture}`;
+  }
+  if (item.permanent) line += ' permanent';
+  if (item.name) line += ` name ${item.name}`;
+  return line;
+}
+
 export function serializeDescrStrat(stratData, overlayItems, editedSettlements = {}) {
   if (!stratData?.raw) return '';
   const lines = stratData.raw.split('\n');
@@ -622,9 +674,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
     }
 
     if (item.category === 'fortification' && orig._lineNum !== undefined) {
-      lines[orig._lineNum] = item.type === 'watchtower'
-        ? `watchtower\t${item.x} ${item.y}`
-        : `fort\t${item.x} ${item.y}${item.fortType ? ` ${item.fortType}` : ''}${item.culture ? ` culture ${item.culture}` : ''}`;
+      lines[orig._lineNum] = serializeFortLine(item);
       // Handle the comment line that sits just before the fort line.
       const prevRaw = lines[orig._lineNum - 1] || '';
       const hadComment = /^;;;\s+/.test(prevRaw);
@@ -977,9 +1027,7 @@ export function serializeDescrStrat(stratData, overlayItems, editedSettlements =
       // just before the fort line, prefixed with ";;; " (three semicolons + space).
       const fortLines = [];
       if (fort.comment) fortLines.push(`;;; ${fort.comment}`);
-      fortLines.push(fort.type === 'watchtower'
-        ? `watchtower\t${fort.x} ${fort.y}`
-        : `fort\t${fort.x} ${fort.y}${fort.fortType ? ` ${fort.fortType}` : ''}${fort.culture ? ` culture ${fort.culture}` : ''}`);
+      fortLines.push(serializeFortLine(fort));
 
       // Resolve the region name: explicit property, or lookup from regions layer
       let regionName = fort.region;
