@@ -142,7 +142,7 @@ function FortEditor({ item, cultureList, factionList, onSave }) {
               <span className="text-[10px] text-slate-300">Permanent</span>
             </label>
             <div>
-              <span className="text-[9px] text-slate-500">Name (M2EX)</span>
+              <span className="text-[9px] text-slate-500">Name (M2EX, optional — leave empty to omit)</span>
               <input value={draft.name} onChange={(e) => set({ name: e.target.value })}
             placeholder="e.g. Fort Chad"
             className="w-full h-6 px-1 text-[10px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
@@ -1423,7 +1423,7 @@ export default function StratPanel({
                         <span className="text-[10px] text-slate-300">Permanent</span>
                       </label>
                       <input value={newFortName} onChange={(e) => setNewFortName(e.target.value)}
-                placeholder="name (optional, e.g. Fort Chad)"
+                placeholder="name (optional — leave empty to omit)"
                 className="w-full h-6 px-1.5 text-[11px] bg-slate-800 border border-slate-600/40 rounded text-slate-200 font-mono" />
                       <input value={newFortComment} onChange={(e) => setNewFortComment(e.target.value)}
                 placeholder="comment (optional)"
