@@ -14,16 +14,18 @@ export function rememberExportOriginals(files, paths, reset = false) {
       if (typeof file.arrayBuffer !== 'function' || !(/\.(txt|xml|modeldb|strings\.bin)$/i.test(file.name) || /^map_(?:heights|ground_types|climates|regions|features|fog)\.tga$/i.test(file.name))) continue;
       const path = exportDataPath(paths[i] || `@loose/${file.name}`);
       if (Object.hasOwn(originals, path)) continue;
-      originals[path] = await exportFingerprint(path, await file.arrayBuffer());
+      // A file whose content cannot be fingerprinted stays unknown, so the export keeps it.
+      // It must never leave this queue rejected: every later export awaits the same chain.
+      try { originals[path] = await exportFingerprint(path, await file.arrayBuffer()); } catch { /* unknown original */ }
     }
     setFile(KEY, JSON.stringify(originals));
-  });
+  }).catch(() => {});
   return pending;
 }
 
 /** Unknown originals are retained conservatively, never mistaken for unmodified work. */
 export async function removeUnchangedCampaignFiles(zip) {
-  await pending;
+  await pending.catch(() => {});
   const originals = read(), checks = new Map();
   for (const [path, file] of Object.entries(zip.files)) {
     if (file.dir) continue;

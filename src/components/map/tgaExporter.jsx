@@ -38,6 +38,10 @@ export function downloadBlob(blob, filename) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  // Revoking at once can cancel a large archive before the browser has read it.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }

@@ -877,6 +877,7 @@ export default function StratPanel({
   const [showNewRegion, setShowNewRegion] = useState(false);
   const [newRegionSeedColor, setNewRegionSeedColor] = useState(null);
   const [exportIssues, setExportIssues] = useState(null);
+  const [exportStatus, setExportStatus] = useState(null);
   const { winConditions, factionMovies, disasters, campaignEvents, campaignDescription } = campaignDetails;
   const setDetail = (key, value) => onCampaignDetailsChange(previous => ({ ...previous, [key]: value }));
   const setWinConditions = value => setDetail('winConditions', value);
@@ -1031,7 +1032,14 @@ export default function StratPanel({
   // Automated validation runs before the campaign files are written — anything
   // invalid (placement, features, EDB references) is listed in a popup first.
   const startCampaignExport = () => {
-    const result = runExportValidation({ edbData, layers });
+    setExportStatus(null);
+    let result;
+    try {
+      result = runExportValidation({ edbData, layers });
+    } catch (error) {
+      setExportStatus({ tone: 'error', text: `The pre-export check could not run: ${error.message}` });
+      return;
+    }
     if (result.errors.length > 0 || result.warnings.length > 0) {
       setExportIssues(result);
       return;
@@ -1041,17 +1049,24 @@ export default function StratPanel({
 
   const handleExportCampaignZip = async () => {
     setLoadError('');
+    setExportStatus({ tone: 'working', text: 'Building the campaign archive…' });
     try {
       const zip = await campaignArchive({ stratData, regionsData, settlementNames, layers, regionsLayer, overlayItems, editedSettlements, religionList, campaignDetails });
-      if (!Object.values(zip.files).some(file => !file.dir)) {
-        setLoadError('No changes were found against the imported campaign files. Your editor data has been kept.');
+      const exportedFiles = Object.values(zip.files).filter(file => !file.dir);
+      if (!exportedFiles.length) {
+        setExportStatus({ tone: 'warn', text: 'No changes were found against the imported campaign files, so there was nothing to download. Your editor data has been kept.' });
         return;
       }
       const content = await zip.generateAsync({ type: 'blob' });
-      if (zip.exportUnverifiedFiles?.length) setLoadError(`${zip.exportUnverifiedFiles.length} files have no original available for comparison and were kept to avoid dropping edits.`);
-      downloadBlob(content, `${stratData?.campaignName || 'imperial_campaign'}_campaign.zip`);
+      const fileName = `${stratData?.campaignName || 'imperial_campaign'}_campaign.zip`;
+      downloadBlob(content, fileName);
+      const unverified = zip.exportUnverifiedFiles?.length || 0;
+      setExportStatus({
+        tone: 'done',
+        text: `Downloaded ${fileName} with ${exportedFiles.length} file${exportedFiles.length === 1 ? '' : 's'}${unverified ? ` (${unverified} kept without an original to compare)` : ''}.`
+      });
     } catch (error) {
-      setLoadError(`Campaign export stopped: ${error.message}. Your editor changes have been kept.`);
+      setExportStatus({ tone: 'error', text: `Campaign export stopped: ${error.message}. Your editor changes have been kept.` });
     }
   };
 
@@ -1269,12 +1284,24 @@ export default function StratPanel({
             {/* Download Campaign Folder ZIP */}
             <button
               onClick={startCampaignExport}
-              disabled={!hasAnyModifiedData}
+              disabled={!hasAnyModifiedData || exportStatus?.tone === 'working'}
               className={`w-full flex items-center justify-center gap-1.5 px-2 py-2 mt-1 rounded text-[11px] font-semibold border transition-colors ${
               hasAnyModifiedData ? 'bg-green-600/20 hover:bg-green-600/40 border-green-500/40 text-green-400' : 'border-slate-700/30 text-slate-600 cursor-not-allowed opacity-40'}`
               }>
-              <FolderDown className="w-3.5 h-3.5" /> Download Campaign Changes (.zip)
+              <FolderDown className="w-3.5 h-3.5" /> {exportStatus?.tone === 'working' ? 'Building campaign .zip…' : 'Download Campaign Changes (.zip)'}
             </button>
+
+            {exportStatus && (
+              <p role={exportStatus.tone === 'error' ? 'alert' : 'status'}
+                className={`text-[10px] leading-snug rounded border px-2 py-1 ${
+                exportStatus.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' :
+                exportStatus.tone === 'done' ? 'border-green-600/40 bg-green-700/10 text-green-400' :
+                exportStatus.tone === 'warn' ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' :
+                'border-slate-600/40 bg-slate-800/40 text-slate-300'}`
+                }>
+                {exportStatus.text}
+              </p>
+            )}
 
             <ExportValidationDialog
               open={!!exportIssues}
