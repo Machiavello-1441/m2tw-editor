@@ -23,6 +23,7 @@ import FactionsEditor from './pages/FactionsEditor';
 import CampaignSettings from './pages/CampaignSettings';
 import MinorFiles from './pages/MinorFiles';
 import NewMapEditor from './pages/NewMapEditor';
+import SceneryStudio from './pages/SceneryStudio';
 import OAuthConsent from './pages/OAuthConsent';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -96,6 +97,7 @@ const AuthenticatedApp = () => {
       <Route path="/CampaignSettings" element={<LayoutWrapper currentPageName="CampaignSettings"><CampaignSettings /></LayoutWrapper>} />
       <Route path="/MinorFiles" element={<LayoutWrapper currentPageName="MinorFiles"><MinorFiles /></LayoutWrapper>} />
       <Route path="/NewMapEditor" element={<LayoutWrapper currentPageName="NewMapEditor"><NewMapEditor /></LayoutWrapper>} />
+      <Route path="/SceneryStudio" element={<LayoutWrapper currentPageName="SceneryStudio"><SceneryStudio /></LayoutWrapper>} />
       <Route path="/oauth/consent" element={<OAuthConsent />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
