@@ -1620,7 +1620,7 @@
     }
 
     // Campaign pieces (settlements, ports, forts, resources, faction symbols): models as setTreeModels takes
-    // them, and lists[i] of (map x, map y, turn, size) for model i. Few enough to draw every one each frame.
+    // them, and lists[i] of (map x, map y, turn, size) for model i.
     setPieceModels(models) {
       this._initTrees();
       this.sceneryStart = null;
@@ -1955,7 +1955,7 @@
       this.treeStats.drawn = drawn;
     }
 
-    // settlements, ports, forts, resources: every instance, every frame
+    // Keep every placement, but upload and draw only instances intersecting the view.
     _drawPieces(cam) {
       const gl = this.gl, list = this.pieceModels;
       const perf=window.SceneryPerformance;

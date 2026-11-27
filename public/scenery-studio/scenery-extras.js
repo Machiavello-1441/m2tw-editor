@@ -94,7 +94,6 @@
   setInterval(()=>{
     if(document.hidden)return;
     if(window.scenery?.studio.project&&$('#loading').hidden&&E.project!==app.state.project)run(mapReady)();
-    if(listDialog.open)refreshList();
     const v=app.view;if(!v)return;
     const s=v.sceneryStats;if(s)renderInfo.textContent=`Models in view: ${s.visible.toLocaleString()} / ${s.total.toLocaleString()} · ${s.drawCalls.toLocaleString()} draw calls`;
     const signature=JSON.stringify([v.opts.is3D,v.cam,v.view,v.canvas.width,v.canvas.height,source.value]);

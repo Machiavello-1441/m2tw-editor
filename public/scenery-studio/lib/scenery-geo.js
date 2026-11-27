@@ -4,12 +4,14 @@
   function validate(b,width,height){
     for(const k of ['north','south','east','west'])if(!Number.isFinite(b[k]))throw Error('bbox_coords.txt needs numeric north, south, west and east values.');
     if(b.north<=b.south||b.east<=b.west||b.north>limit||b.south<-limit||b.west<-180||b.east>180)throw Error('The bounding box is outside the supported Mercator extent or has reversed edges.');
-    if(b.rotation&&!Number.isFinite(b.rotation))throw Error('Invalid bbox rotation.');
+    if(b.rotation!==undefined&&!Number.isFinite(b.rotation))throw Error('Invalid bbox rotation.');
+    for(const k of ['map_width','map_height','heightmap_width','heightmap_height'])if(b[k]!==undefined&&(!Number.isInteger(b[k])||b[k]<=0))throw Error('Invalid bbox dimension: '+k);
     if(width&&b.map_width&&b.map_width!==width||height&&b.map_height&&b.map_height!==height)throw Error(`The bbox is for ${b.map_width} × ${b.map_height} tiles; this campaign has ${width} × ${height}. Use its matching bbox file.`);
     if(width&&b.heightmap_width&&b.heightmap_width!==2*width+1||height&&b.heightmap_height&&b.heightmap_height!==2*height+1)throw Error('The bbox heightmap dimensions do not match this campaign.');
     return {...b,rotation:b.rotation||0};
   }
   function parse(text,width,height){
+    if(text.trim().startsWith('{'))return validate(JSON.parse(text.replace(/^\uFEFF/,'')),width,height);
     const b={};for(const line of text.replace(/^\uFEFF/,'').split(/\r?\n/)){const m=/^\s*(north|south|west|east|rotation|map_width|map_height|heightmap_width|heightmap_height)\s*=\s*([^#;]+?)(?:\s*[#;].*)?\s*$/.exec(line);if(m){if(m[1] in b)throw Error('Duplicate bbox value: '+m[1]);b[m[1]]=Number(m[2]);}}
     return validate(b,width,height);
   }
