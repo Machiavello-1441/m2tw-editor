@@ -5,8 +5,8 @@ import { createSceneryDocument } from './sceneryDocument';
 
 export default function SceneryWorkspace({ session }) {
   const [pending, setPending] = useState(session.pending.size), [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const [document, setDocument] = useState(null);
-  useEffect(() => { const next = createSceneryDocument(); setDocument(next); return () => next.dispose(); }, [session]);
+  const [frameDocument, setFrameDocument] = useState(null);
+  useEffect(() => { const next = createSceneryDocument(); setFrameDocument(next); return () => next.dispose(); }, [session]);
   useEffect(() => {
     const timer = setInterval(() => setPending(session.pending.size), 800);
     const protect = event => { if (session.pendingVersion !== session.downloadedVersion) { event.preventDefault(); event.returnValue = ''; } };
@@ -29,6 +29,6 @@ export default function SceneryWorkspace({ session }) {
       <span>{session.config.webDownloadOnly ? 'ZIP export mode: download changes and extract them into your mod to apply them.' : 'Connected to local folders. Saving writes to your mod with backups; game and library folders are read-only.'}</span>
       {session.config.webDownloadOnly && <Button size="sm" onClick={download} disabled={!pending || busy}>{busy ? 'Preparing ZIP…' : `Download ${pending} changed files`}</Button>}
     </div>
-    {document && <iframe title="Scenery Studio terrain and model editor" srcDoc={document.html} className="w-full h-[calc(100vh-230px)] min-h-[680px] rounded-lg border border-border bg-background" allow="clipboard-write" />}
+    {frameDocument && <iframe title="Scenery Studio terrain and model editor" srcDoc={frameDocument.html} className="w-full h-[calc(100vh-230px)] min-h-[680px] rounded-lg border border-border bg-background" allow="clipboard-write" />}
   </div>;
 }
