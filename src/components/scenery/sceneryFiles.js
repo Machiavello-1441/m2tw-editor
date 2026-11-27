@@ -41,7 +41,8 @@ export function createScenerySession(mounts,onChange=()=>{}){
     const k=key(path);if(memory.has(k))return memory.get(k).slice();
     const a=parts(path),mount=mounts[a.shift()];
     if(mount?.entries instanceof Map){const entry=mount.entries.get(a.join('/').toLowerCase());if(!entry)throw Error('File not found: '+path);return new Uint8Array(await entry.file.arrayBuffer());}
-    const h=await native(path);if(h.kind!=='file')throw Error('Not a file: '+path);return new Uint8Array(await(await h.getFile()).arrayBuffer());
+    try{const h=await native(path);if(h.kind!=='file')throw Error('Not a file');return new Uint8Array(await(await h.getFile()).arrayBuffer());}
+    catch(e){throw Error('Cannot read '+path+': '+e.message);}
   }
   async function stat(path){
     const k=key(path);if(memory.has(k))return {isDir:false,size:memory.get(k).length,mtimeMs:0};
