@@ -2259,7 +2259,7 @@
     return { width: cv.width, height: cv.height, data: new Uint8Array(id.data.buffer) };
   };
   const loadImageUrl = (url) => new Promise((ok, bad) => {
-    const im = new Image(); im.onload = () => ok(im); im.onerror = () => bad(new Error('could not read the picture')); im.src = url;
+    const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => ok(im); im.onerror = () => bad(new Error('could not read the picture')); im.src = url;
   });
   const MATCAP_KEY = 'm2mp.matcapCustom';
   async function applyMatcap() {
