@@ -40,7 +40,7 @@ export function createScenerySession(mounts,onChange=()=>{}){
   async function read(path){
     const k=key(path);if(memory.has(k))return memory.get(k).slice();
     const a=parts(path),mount=mounts[a.shift()];
-    if(mount?.entries instanceof Map){const entry=mount.entries.get(a.join('/').toLowerCase());if(!entry)throw Error('File not found: '+path);return new Uint8Array(await entry.file.arrayBuffer());}
+    if(mount?.entries instanceof Map){const entry=mount.entries.get(a.join('/').toLowerCase());if(!entry)throw Error('File not found: '+path);try{return new Uint8Array(await entry.file.arrayBuffer());}catch(e){throw Error('Cannot read imported file '+path+': '+e.message+' Select the folder again if it has changed.');}}
     try{const h=await native(path);if(h.kind!=='file')throw Error('Not a file');return new Uint8Array(await(await h.getFile()).arrayBuffer());}
     catch(e){throw Error('Cannot read '+path+': '+e.message);}
   }
