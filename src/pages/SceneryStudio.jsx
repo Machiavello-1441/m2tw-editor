@@ -24,7 +24,7 @@ export default function SceneryStudio() {
     if (!index) { setError('No folder has been loaded in the 3D Model Viewer. Choose the whole mod folder here.'); return; }
     pick('mod', fileListMount([...index.byName.values()].flat().map(entry => entry.file)));
   };
-  return <div className="p-4 space-y-4">
+  return <div className="p-4 space-y-4 text-foreground">
     <header><h1 className="text-2xl font-bold text-foreground">Scenery Studio</h1><p className="text-sm text-muted-foreground">Place unique cities, ports, forts, resources and watchtowers on the campaign terrain. Edit bridge designs and align placements with geographic overlays.</p></header>
     <SceneryFolders mounts={mounts} onPick={pick} onError={setError} />
     <div className="flex flex-wrap items-center gap-3"><Button onClick={open} disabled={!mounts.mod || opening}>{opening ? 'Opening…' : 'Open selected mod'}</Button><Button variant="ghost" onClick={reuse}>Use folder loaded in Model Viewer</Button><span className="text-xs text-muted-foreground">Files stay on your PC. Chrome/Edge can save directly; folder import also supports ZIP export.</span></div>
