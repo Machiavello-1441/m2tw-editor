@@ -60,6 +60,7 @@ const navItems = [
 { name: 'Ancillaries', icon: Gem, page: 'AncillariesEditor' },
 { name: 'Unit Editor', icon: Swords, page: 'UnitEditor' },
 { name: 'Campaign Map', icon: Map, page: 'CampaignMap' },
+{ name: 'Scenery Studio', icon: Castle, page: 'SceneryStudio' },
 { name: 'Script Editor', icon: ScrollText, page: 'ScriptEditor' },
 { name: 'Minor Files', icon: Package, page: 'MinorFiles' },
 { name: 'Cultures', icon: Globe, page: 'CulturesEditor' },
